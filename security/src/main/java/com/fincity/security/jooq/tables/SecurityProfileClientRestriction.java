@@ -6,7 +6,6 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
-import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileClientRestrictionRecord;
@@ -73,13 +72,6 @@ public class SecurityProfileClientRestriction extends TableImpl<SecurityProfileC
      * Profile ID for which this restriction belongs to
      */
     public final TableField<SecurityProfileClientRestrictionRecord, ULong> PROFILE_ID = createField(DSL.name("PROFILE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Profile ID for which this restriction belongs to");
-
-    /**
-     * The column
-     * <code>security.security_profile_client_restriction.APP_ID</code>. App ID
-     * for which this restriction belongs to
-     */
-    public final TableField<SecurityProfileClientRestrictionRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "App ID for which this restriction belongs to");
 
     /**
      * The column
@@ -175,7 +167,7 @@ public class SecurityProfileClientRestriction extends TableImpl<SecurityProfileC
 
     @Override
     public List<ForeignKey<SecurityProfileClientRestrictionRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID, Keys.FK2_PROFILE_CLIENT_RESTRICTION_APP_ID, Keys.FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID, Keys.FK3_PROFILE_CLIENT_RESTRICTION_CLIENT_ID);
     }
 
     private transient SecurityProfilePath _securityProfile;
@@ -189,19 +181,6 @@ public class SecurityProfileClientRestriction extends TableImpl<SecurityProfileC
             _securityProfile = new SecurityProfilePath(this, Keys.FK1_PROFILE_CLIENT_RESTRICTION_PROFILE_ID, null);
 
         return _securityProfile;
-    }
-
-    private transient SecurityAppPath _securityApp;
-
-    /**
-     * Get the implicit join path to the <code>security.security_app</code>
-     * table.
-     */
-    public SecurityAppPath securityApp() {
-        if (_securityApp == null)
-            _securityApp = new SecurityAppPath(this, Keys.FK2_PROFILE_CLIENT_RESTRICTION_APP_ID, null);
-
-        return _securityApp;
     }
 
     private transient SecurityClientPath _securityClient;

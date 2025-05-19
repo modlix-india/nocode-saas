@@ -1,10 +1,13 @@
 package com.fincity.security.service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import static com.fincity.saas.commons.util.CommonsUtil.*;
+
+import com.fincity.saas.commons.util.StringUtil;
+import com.google.common.base.Functions;
+import org.apache.commons.lang3.NotImplementedException;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -24,7 +27,6 @@ import com.fincity.security.dao.ProfileDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.RoleV2;
-import com.fincity.security.dto.appregistration.AbstractAppRegistration;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
@@ -52,16 +54,18 @@ public class ProfileService
     private final ClientHierarchyService clientHierarchyService;
     private final AppService appService;
     private final CacheService cacheService;
+    private final RoleV2Service roleService;
 
     public ProfileService(SecurityMessageResourceService securityMessageResourceService,
                           ClientService clientService,
                           ClientHierarchyService clientHierarchyService, CacheService cacheService,
-                          AppService appService) {
+                          AppService appService, RoleV2Service roleService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.clientHierarchyService = clientHierarchyService;
         this.cacheService = cacheService;
         this.appService = appService;
+        this.roleService = roleService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_CREATE') and hasAuthority('Authorities.Profile_UPDATE')")
@@ -127,9 +131,12 @@ public class ProfileService
                                                 msg),
                                         SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS);
                             }
+                            return this.cleanProfileArrangment(entity);
+                        },
 
-                            return this.dao.createUpdateProfile(entity, ULong.valueOf(ca.getUser().getId()), clientHierarchy);
-                        }
+                        (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
+                         hasAccessToRoles, cleanedEntity) -> this.dao.createUpdateProfile(cleanedEntity, ULong.valueOf(ca.getUser().getId()), clientHierarchy)
+                                .flatMap(e -> this.fillProfileArrangements(e, true))
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
@@ -159,6 +166,53 @@ public class ProfileService
                                 StringFormatter.format(msg, PROFILE))))));
     }
 
+    private Mono<Profile> cleanProfileArrangment(Profile p) {
+
+        if (p.getArrangement() == null) return Mono.just(p);
+
+        LinkedList<Map<String, Object>> queue = new LinkedList<>();
+        p.getArrangement().values().forEach(e -> {
+            if (e instanceof Map m) queue.add(m);
+        });
+        int i = 0;
+
+        while (i < queue.size()) {
+
+            Object obj = queue.get(i).get("subArrangements");
+            if (obj instanceof Map m)
+                queue.addAll(m.values());
+
+            i++;
+        }
+
+        Map<ULong, List<Map<String, Object>>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
+                .collect(Collectors.groupingBy(m -> ULong.valueOf(m.get("roleId").toString())));
+
+        if (roleIndex.isEmpty()) return Mono.just(p);
+
+        return this.roleService.getRolesForProfileService(roleIndex.keySet())
+                .map(map -> {
+                            roleIndex.forEach((key, arrangements) -> {
+                                RoleV2 role = map.get(key);
+
+                                arrangements.forEach(arrangement -> {
+                                    arrangement.remove("role");
+                                    if (safeEquals(arrangement.get("name"), role.getName()))
+                                        arrangement.remove("name");
+
+                                    if (safeEquals(arrangement.get("shortName"), role.getShortName()))
+                                        arrangement.remove("shortName");
+
+                                    if (safeEquals(arrangement.get("description"), role.getDescription()))
+                                        arrangement.remove("description");
+
+                                });
+                            });
+                            return map;
+                        }
+                ).map(x -> p);
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
     @Override
     public Mono<Profile> read(ULong id) {
@@ -176,9 +230,54 @@ public class ProfileService
                                         ULong.valueOf(ca.getUser().getClientId()))
                                 .filter(BooleanUtil::safeValueOf)
                                 .<Profile>map(x -> profile)
+                                .flatMap(p -> this.fillProfileArrangements(p, true))
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
+    }
+
+    private Mono<Profile> fillProfileArrangements(Profile p, boolean fillArrangement) {
+
+        if (p.getArrangement() == null) return Mono.just(p);
+
+        LinkedList<Map<String, Object>> queue = new LinkedList<>();
+        p.getArrangement().values().forEach(e -> {
+            if (e instanceof Map m) queue.add(m);
+        });
+        int i = 0;
+
+        while (i < queue.size()) {
+
+            Object obj = queue.get(i).get("subArrangements");
+            if (obj instanceof Map m)
+                queue.addAll(m.values());
+            queue.get(i).putIfAbsent("assignable", true);
+            i++;
+        }
+
+        Map<ULong, Map<String, Object>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
+                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Functions.identity()));
+
+        if (roleIndex.isEmpty()) return Mono.just(p);
+
+        return this.roleService.getRolesForProfileService(roleIndex.keySet())
+                .map(map -> {
+                            roleIndex.entrySet().forEach(entry -> {
+                                Map<String, Object> arrangement = entry.getValue();
+                                RoleV2 role = map.get(entry.getKey());
+
+                                arrangement.put("role", map.get(entry.getKey()));
+
+                                if (!fillArrangement) return;
+
+                                arrangement.putIfAbsent("name", role.getName());
+                                arrangement.putIfAbsent("shortName", role.getShortName());
+                                arrangement.putIfAbsent("description", role.getDescription());
+                            });
+                            return map;
+                        }
+                ).map(x -> p);
+
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ')")
@@ -200,26 +299,8 @@ public class ProfileService
     }
 
     @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(NAME))
-            newFields.put(NAME, fields.get(NAME));
-        if (fields.containsKey(DESCRIPTION))
-            newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-
-        return Mono.just(newFields);
-    }
-
-    @Override
     protected Mono<Profile> updatableEntity(Profile entity) {
-        return this.read(entity.getId())
-                .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-                        .map(ca -> {
-                            existing.setDescription(entity.getDescription());
-                            existing.setName(entity.getName());
-                            return existing;
-                        }));
+        return Mono.error(NotImplementedException::new);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_DELETE')")
@@ -297,11 +378,16 @@ public class ProfileService
 
         return Flux.fromIterable(profileIds)
                 .flatMap(
-                        pid -> cacheService.cacheEmptyValueOrGet(CACHE_NAME_ID + "_" + pid,
+                        pid -> cacheService.cacheValueOrGet(CACHE_NAME_ID + "_" + pid,
                                         () -> this.dao.getProfileAuthorities(pid,
-                                                clientHierarchy),
+                                                        clientHierarchy).defaultIfEmpty(List.of())
+                                                .map(e -> {
+                                                    System.out.println("List (" + pid + "): " + e);
+                                                    return e;
+                                                }),
                                         clientHierarchy.getClientId())
                                 .flatMapMany(Flux::fromIterable))
+                .filter(Objects::nonNull)
                 .distinct()
                 .collectList();
     }
@@ -314,29 +400,67 @@ public class ProfileService
 
                         profileIds -> this.clientHierarchyService.getClientHierarchy(clientId),
 
-                        (profileIds, clientHierarchy) -> this.getProfileAuthorities(profileIds, clientHierarchy)
+                        this::getProfileAuthorities
 
                 )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.setAuthorities"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getProfileAuthorities"));
     }
 
     @Override
     public Mono<Profile> readObject(ULong id,
                                     AppRegistrationObjectType type) {
-        return super.read(id);
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                        (ca, hierarchy) -> this.dao.read(id, hierarchy))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.readObject"));
     }
 
     @Override
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return FlatMapUtil.flatMapMono(
 
-                        () -> super.read(id),
+                        () -> this.clientHierarchyService.getClientHierarchy(clientId).flatMap(x -> this.dao.read(id, x)),
 
-                        role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                        profile -> this.clientService.isBeingManagedBy(profile.getClientId(), clientId)
                                 .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
-                                        : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+                                        : this.clientService.isBeingManagedBy(clientId, profile.getClientId()))
 
                 )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.hasAccessTo"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.hasAccessTo"));
+    }
+
+    public Mono<List<RoleV2>> getRolesForAssignmentInApp(String appCode) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.appService.getAppId(appCode),
+
+                        (ca, appId) -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+
+                        (ca, appId, hierarchy) -> this.appService.hasReadAccess(appId, hierarchy.getClientId()).filter(BooleanUtil::safeValueOf),
+
+                        (ca, appId, hierarchy, hasAccess) -> this.dao.getRolesForAssignmentInApp(appId, hierarchy)
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.getRolesForAssignmentInApp"))
+                .switchIfEmpty(Mono.defer(() -> this.securityMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg)
+                        , SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS)));
+    }
+
+    public Mono<Boolean> checkIfUserHasAnyProfile(ULong userId, String appCode) {
+
+        if (userId == null || StringUtil.safeIsBlank(appCode)) return Mono.just(false);
+
+        return this.dao.checkIfUserHasAnyProfile(userId, appCode);
+    }
+
+    public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
+        return this.dao.getAssignedProfileIds(userId, appId)
+                .distinct()
+                .flatMap(this::read)
+                .collectList();
     }
 }

@@ -318,7 +318,7 @@
                                             </converter>
                                             <includeExpression>ARRANGEMENT</includeExpression>
                                             <includeTypes>JSON</includeTypes>
-                                            <genericConverter>true</genericConverter>
+                                            <genericConverter>false</genericConverter>
                                         </forcedType>
                                     </forcedTypes>
                                 </database>

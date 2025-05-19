@@ -2,8 +2,6 @@ package com.fincity.security.service.appregistration;
 
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -53,7 +51,7 @@ public class AppRegistrationIntegrationService
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
 
     public AppRegistrationIntegrationService(AppService appService, CacheService cacheService,
-            AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
+                                             AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService) {
         this.appService = appService;
         this.cacheService = cacheService;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
@@ -81,10 +79,10 @@ public class AppRegistrationIntegrationService
     public Mono<Integer> delete(ULong id) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.read(id),
-                e -> super.delete(id).flatMap(
-                        this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
-                                getCacheKeys(e.getClientId().toString(), e.getAppId().toString(), e.getPlatform().toString()))))
+                        () -> this.read(id),
+                        e -> super.delete(id).flatMap(
+                                this.cacheService.evictFunction(CACHE_NAME_INTEGRATION_PLATFORM,
+                                        getCacheKeys(e.getClientId().toString(), e.getAppId().toString(), e.getPlatform().toString()))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.delete"));
     }
@@ -100,54 +98,36 @@ public class AppRegistrationIntegrationService
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.read(entity.getId()),
+                        () -> this.read(entity.getId()),
 
-                existing -> {
-                    existing.setIntgId(entity.getIntgId());
-                    existing.setIntgSecret(entity.getIntgSecret());
-                    existing.setLoginUri(entity.getLoginUri());
-                    return Mono.just(existing);
-                })
+                        existing -> {
+                            existing.setIntgId(entity.getIntgId());
+                            existing.setIntgSecret(entity.getIntgSecret());
+                            existing.setLoginUri(entity.getLoginUri());
+                            return Mono.just(existing);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.updatableEntity"));
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(LOGIN_URI)) {
-            newFields.put(LOGIN_URI, fields.get(LOGIN_URI));
-        }
-        if (fields.containsKey(INTG_ID)) {
-            newFields.put(INTG_ID, fields.get(INTG_ID));
-        }
-        if (fields.containsKey(INTG_SECRET)) {
-            newFields.put(INTG_SECRET, fields.get(INTG_SECRET));
-        }
-
-        return Mono.just(newFields);
     }
 
     public Mono<AppRegistrationIntegration> getIntegration(SecurityAppRegIntegrationPlatform platform) {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+                        ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-                (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
-                        () -> this.dao.getIntegration(app.getId(),
-                                ULong.valueOf(ca.getLoggedInFromClientId()), platform),
-                        getCacheKeys(ca.getLoggedInFromClientId().toString(), app.getId().toString(), platform.toString())))
+                        (ca, app) -> this.cacheService.cacheValueOrGet(CACHE_NAME_INTEGRATION_PLATFORM,
+                                () -> this.dao.getIntegration(app.getId(),
+                                        ULong.valueOf(ca.getLoggedInFromClientId()), platform),
+                                getCacheKeys(ca.getLoggedInFromClientId().toString(), app.getId().toString(), platform.toString())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         "AppRegistrationIntegrationService.getIntegration"));
     }
 
     public Mono<String> redirectToGoogleAuthConsent(AppRegistrationIntegration appRegIntg, String state,
-            String callBackURL) {
+                                                    String callBackURL) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -172,7 +152,7 @@ public class AppRegistrationIntegrationService
     }
 
     public Mono<String> redirectToMetaAuthConsent(AppRegistrationIntegration appRegIntg, String state,
-            String callBackURL) {
+                                                  String callBackURL) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -195,8 +175,8 @@ public class AppRegistrationIntegrationService
     }
 
     public Mono<ClientRegistrationRequest> getGoogleUserToken(AppRegistrationIntegration appRegIntg,
-            AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
-            ServerHttpRequest request) {
+                                                              AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
+                                                              ServerHttpRequest request) {
 
         String baseTokenURL = "https://oauth2.googleapis.com/token";
         WebClient webClient = WebClient.create();
@@ -222,7 +202,7 @@ public class AppRegistrationIntegrationService
                                 .setExpiresAt(
                                         LocalDateTime.now().plusSeconds(Long
                                                 .parseLong(tokenObj.get(
-                                                        "expires_in")
+                                                                "expires_in")
                                                         .asText())))
                                 .setUsername(userObj.get("email").asText())
                                 .setTokenMetadata(tokenObj)
@@ -244,8 +224,8 @@ public class AppRegistrationIntegrationService
     }
 
     public Mono<ClientRegistrationRequest> getMetaUserToken(AppRegistrationIntegration appRegIntg,
-            AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
-            ServerHttpRequest request) {
+                                                            AppRegistrationIntegrationToken appRegIntgToken, String callBackURL,
+                                                            ServerHttpRequest request) {
 
         String baseTokenURL = "https://graph.facebook.com/v20.0/oauth/access_token";
         WebClient webClient = WebClient.create();
@@ -270,7 +250,7 @@ public class AppRegistrationIntegrationService
                                 .setExpiresAt(
                                         LocalDateTime.now().plusSeconds(Long
                                                 .parseLong(tokenObj.get(
-                                                        "expires_in")
+                                                                "expires_in")
                                                         .asText())))
                                 .setUsername(userObj.get("email").asText())
                                 .setTokenMetadata(tokenObj)

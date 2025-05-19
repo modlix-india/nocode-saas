@@ -1,7 +1,5 @@
 package com.fincity.saas.files.service;
 
-import java.util.Map;
-
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +21,6 @@ public class FilesUploadDownloadService extends
     protected Mono<FilesUploadDownloadDTO> updatableEntity(FilesUploadDownloadDTO entity) {
 
         return Mono.just(entity);
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        return Mono.just(fields);
     }
 
     public Mono<Boolean> updateDone(ULong id) {
