@@ -207,7 +207,7 @@
                         <image>openjdk:alpine</image>
                     </from>
                     <to>
-                        <image>ghcr.io/fincity-india/entity-collector</image>
+                        <image>ghcr.io/fincity-india/entity-processor</image>
                         <tags>
                             <tag>${env.ENVIRONMENT}</tag>
                             <tag>${project.version}</tag>

@@ -1,10 +1,10 @@
 package com.fincity.saas.entity.processor.enums;
 
-import com.fincity.saas.entity.processor.dto.Entity;
-import com.fincity.saas.entity.processor.dto.Model;
+import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductRule;
 import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.ValueTemplate;
 import com.fincity.saas.entity.processor.dto.ValueTemplateRule;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
@@ -18,8 +18,8 @@ import org.jooq.EnumType;
 @Getter
 public enum EntitySeries implements EnumType {
     XXX("XXX", "Unknown", 11, "xxx."),
-    ENTITY("ENTITY", "Entity", 12, "Entity."),
-    MODEL("MODEL", "Model", 13, "Model."),
+    TICKET("TICKET", "Ticket", 12, "Ticket."),
+    OWNER("OWNER", "Owner", 13, "Owner."),
     PRODUCT("PRODUCT", "Product", 14, "Product."),
     VALUE_TEMPLATE("VALUE_TEMPLATE", "Value Template", 15, "ValueTemplate."),
     STAGE("STAGE", "Stage", 16, "Stage."),
@@ -37,8 +37,8 @@ public enum EntitySeries implements EnumType {
 
     private static final Map<EntitySeries, String> LEADZUMP_TOKEN_PREFIX_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getTokenPrefix()),
-            Map.entry(ENTITY, "Deal."),
-            Map.entry(MODEL, "Lead."),
+            Map.entry(TICKET, "Deal."),
+            Map.entry(OWNER, "Lead."),
             Map.entry(PRODUCT, "Project."),
             Map.entry(VALUE_TEMPLATE, "ValueTemplate."),
             Map.entry(STAGE, "Stage."),
@@ -78,8 +78,8 @@ public enum EntitySeries implements EnumType {
     public Class<?> getDtoClass() {
         return switch (this) {
             case XXX -> null;
-            case ENTITY -> Entity.class;
-            case MODEL -> Model.class;
+            case TICKET -> Ticket.class;
+            case OWNER -> Owner.class;
             case PRODUCT -> Product.class;
             case VALUE_TEMPLATE -> ValueTemplate.class;
             case STAGE -> Stage.class;

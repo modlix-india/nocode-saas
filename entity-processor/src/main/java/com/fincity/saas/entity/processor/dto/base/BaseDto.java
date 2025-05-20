@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.util.NameUtil;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -43,14 +44,13 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
 
     public T setName(String name) {
         if (name == null || name.isBlank()) this.name = this.getCode();
-        else this.name = name.trim();
-
+        else this.name = NameUtil.normalize(name);
         return (T) this;
     }
 
     public T setDescription(String description) {
         if (description == null || description.isBlank()) return (T) this;
-        this.description = description.trim();
+        this.description = NameUtil.normalize(description);
         return (T) this;
     }
 

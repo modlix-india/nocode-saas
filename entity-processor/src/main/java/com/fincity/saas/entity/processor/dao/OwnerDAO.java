@@ -1,10 +1,10 @@
 package com.fincity.saas.entity.processor.dao;
 
-import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels.ENTITY_PROCESSOR_MODELS;
+import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_OWNERS;
 
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
-import com.fincity.saas.entity.processor.dto.Model;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorModelsRecord;
+import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Condition;
@@ -12,23 +12,23 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public class ModelDAO extends BaseProcessorDAO<EntityProcessorModelsRecord, Model> {
+public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owner> {
 
-    protected ModelDAO() {
-        super(Model.class, ENTITY_PROCESSOR_MODELS, ENTITY_PROCESSOR_MODELS.ID);
+    protected OwnerDAO() {
+        super(Owner.class, ENTITY_PROCESSOR_OWNERS, ENTITY_PROCESSOR_OWNERS.ID);
     }
 
-    public Mono<Model> readByNumberAndEmail(
+    public Mono<Owner> readByNumberAndEmail(
             String appCode, String clientCode, Integer dialCode, String number, String email) {
         return Mono.from(this.dslContext
-                        .selectFrom(ENTITY_PROCESSOR_MODELS)
-                        .where(getModelIdentifierConditions(appCode, clientCode, dialCode, number, email))
-                        .orderBy(ENTITY_PROCESSOR_MODELS.ID.desc())
+                        .selectFrom(ENTITY_PROCESSOR_OWNERS)
+                        .where(this.getOwnerIdentifierConditions(appCode, clientCode, dialCode, number, email))
+                        .orderBy(ENTITY_PROCESSOR_OWNERS.ID.desc())
                         .limit(1))
-                .map(e -> e.into(Model.class));
+                .map(e -> e.into(Owner.class));
     }
 
-    private List<Condition> getModelIdentifierConditions(
+    private List<Condition> getOwnerIdentifierConditions(
             String appCode, String clientCode, Integer dialCode, String number, String email) {
 
         List<Condition> conditions = new ArrayList<>();
@@ -39,12 +39,12 @@ public class ModelDAO extends BaseProcessorDAO<EntityProcessorModelsRecord, Mode
         List<Condition> phoneEmailConditions = new ArrayList<>();
 
         if (number != null)
-            phoneEmailConditions.add(ENTITY_PROCESSOR_MODELS
+            phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS
                     .DIAL_CODE
                     .eq(dialCode.shortValue())
-                    .and(ENTITY_PROCESSOR_MODELS.PHONE_NUMBER.eq(number)));
+                    .and(ENTITY_PROCESSOR_OWNERS.PHONE_NUMBER.eq(number)));
 
-        if (email != null) phoneEmailConditions.add(ENTITY_PROCESSOR_MODELS.EMAIL.eq(email));
+        if (email != null) phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS.EMAIL.eq(email));
 
         if (!phoneEmailConditions.isEmpty())
             conditions.add(

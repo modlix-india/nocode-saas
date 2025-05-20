@@ -14,7 +14,7 @@ CREATE TABLE `entity_processor`.`entity_processor_value_templates` (
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Value Template was created.',
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this Value Template.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Value Template. Value Template are like value type for product, Entities, model.',
+    `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Value Template. Value Template are like value type for product, Tickets, owner.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Value Template.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Value Template.',
     `VALUE_TEMPLATE_TYPE` ENUM ('ENTITY', 'PRODUCT') NOT NULL DEFAULT 'PRODUCT' COMMENT 'Type of Value Template.',
@@ -81,22 +81,22 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
   COLLATE = `utf8mb4_unicode_ci`;
 
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_models`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_owners`;
 
-CREATE TABLE `entity_processor_models` (
+CREATE TABLE `entity_processor_owners` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent.',
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent.',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Model. Model can be anything which will have entities. For Example, Lead and opportunity, Epic and Task, Account and lead.',
-    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Model.',
-    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Model.',
-    `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Model is assigned.',
-    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this model has.',
-    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this model.',
-    `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this model.',
+    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Owner. Owner can be anything which will have entities. For Example, Lead and opportunity, Epic and Task, Account and lead.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the Owner.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Owner.',
+    `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Owner is assigned.',
+    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this owner has.',
+    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this owner.',
+    `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this owner.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -105,7 +105,7 @@ CREATE TABLE `entity_processor_models` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_MODELS_CODE` (`CODE`)
+    UNIQUE KEY `UK1_OWNERS_CODE` (`CODE`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -121,7 +121,7 @@ CREATE TABLE `entity_processor_products` (
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent.',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Product. Product can be anything for which Entities will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic.',
+    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Product. Product can be anything for which Tickets will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this product.',
     `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Product is assigned.',
@@ -145,28 +145,28 @@ CREATE TABLE `entity_processor_products` (
   COLLATE = `utf8mb4_unicode_ci`;
 
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_entities`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_tickets`;
 
-CREATE TABLE `entity_processor_entities` (
+CREATE TABLE `entity_processor_tickets` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent.',
     `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent.',
     `VERSION` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Version of this row.',
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
-    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Entity. Entity can be anything which will have a single model. For Example, Opportunity is a entity of Lead , Task is a entity of Epic, Lead is entity of Account.',
-    `DESCRIPTION` TEXT NULL COMMENT 'Description for the entity.',
-    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this entity.',
-    `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this entity is assigned.',
-    `STAGE` BIGINT UNSIGNED NULL COMMENT 'Status for this entity.',
-    `STATUS` BIGINT UNSIGNED NULL COMMENT 'Sub Status for this entity.',
-    `MODEL_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Model related to this entity.',
-    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this model has.',
-    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this model.',
-    `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this entity.',
-    `SOURCE` CHAR(32) NOT NULL COMMENT 'Name of source form where we get this entity.',
-    `SUB_SOURCE` CHAR(32) NULL COMMENT 'Name of sub source of source form where we get this entity.',
-    `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product related to this entity.',
+    `NAME` VARCHAR(512) NOT NULL COMMENT 'Name of the Ticket. Ticket can be anything which will have a single owner. For Example, Opportunity is a ticket of Lead , Task is a ticket of Epic, Lead is ticket of Account.',
+    `DESCRIPTION` TEXT NULL COMMENT 'Description for the ticket.',
+    `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this ticket.',
+    `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this ticket is assigned.',
+    `STAGE` BIGINT UNSIGNED NULL COMMENT 'Status for this ticket.',
+    `STATUS` BIGINT UNSIGNED NULL COMMENT 'Sub Status for this ticket.',
+    `OWNER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Owner related to this ticket.',
+    `DIAL_CODE` SMALLINT NULL DEFAULT 91 COMMENT 'Dial code of the phone number this owner has.',
+    `PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number related to this owner.',
+    `EMAIL` VARCHAR(512) NULL COMMENT 'Email related to this ticket.',
+    `SOURCE` CHAR(32) NOT NULL COMMENT 'Name of source form where we get this ticket.',
+    `SUB_SOURCE` CHAR(32) NULL COMMENT 'Name of sub source of source form where we get this ticket.',
+    `PRODUCT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Product related to this ticket.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -175,20 +175,20 @@ CREATE TABLE `entity_processor_entities` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_ENTITIES_CODE` (`CODE`),
-    CONSTRAINT `FK1_ENTITIES_MODEL_ID` FOREIGN KEY (`MODEL_ID`)
-        REFERENCES `ENTITY_PROCESSOR_MODELS` (`ID`)
+    UNIQUE KEY `UK1_TICKETS_CODE` (`CODE`),
+    CONSTRAINT `FK1_TICKETS_OWNER_ID` FOREIGN KEY (`OWNER_ID`)
+        REFERENCES `ENTITY_PROCESSOR_OWNERS` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    CONSTRAINT `FK2_ENTITIES_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
+    CONSTRAINT `FK2_TICKETS_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
         REFERENCES `ENTITY_PROCESSOR_PRODUCTS` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
-    CONSTRAINT `FK3_PRODUCTS_STAGE_ID` FOREIGN KEY (`STAGE`)
+    CONSTRAINT `FK3_TICKETS_STAGE_ID` FOREIGN KEY (`STAGE`)
         REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
-    CONSTRAINT `FK4_PRODUCTS_STATUS_ID` FOREIGN KEY (`STATUS`)
+    CONSTRAINT `FK4_TICKETS_STATUS_ID` FOREIGN KEY (`STATUS`)
         REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE

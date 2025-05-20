@@ -102,7 +102,7 @@ public class EntityProcessorValueTemplatesRecord extends UpdatableRecordImpl<Ent
      * Setter for
      * <code>entity_processor.entity_processor_value_templates.NAME</code>. Name
      * of the Value Template. Value Template are like value type for product,
-     * Entities, model.
+     * Tickets, owner.
      */
     public EntityProcessorValueTemplatesRecord setName(String value) {
         set(4, value);
@@ -113,7 +113,7 @@ public class EntityProcessorValueTemplatesRecord extends UpdatableRecordImpl<Ent
      * Getter for
      * <code>entity_processor.entity_processor_value_templates.NAME</code>. Name
      * of the Value Template. Value Template are like value type for product,
-     * Entities, model.
+     * Tickets, owner.
      */
     public String getName() {
         return (String) get(4);

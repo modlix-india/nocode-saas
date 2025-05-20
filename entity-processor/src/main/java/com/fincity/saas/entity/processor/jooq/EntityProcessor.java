@@ -5,14 +5,14 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
@@ -44,14 +44,9 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
 
     /**
-     * The table <code>entity_processor.entity_processor_entities</code>.
+     * The table <code>entity_processor.entity_processor_owners</code>.
      */
-    public final EntityProcessorEntities ENTITY_PROCESSOR_ENTITIES = EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES;
-
-    /**
-     * The table <code>entity_processor.entity_processor_models</code>.
-     */
-    public final EntityProcessorModels ENTITY_PROCESSOR_MODELS = EntityProcessorModels.ENTITY_PROCESSOR_MODELS;
+    public final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
 
     /**
      * The table <code>entity_processor.entity_processor_product_rules</code>.
@@ -85,6 +80,11 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 
     /**
+     * The table <code>entity_processor.entity_processor_tickets</code>.
+     */
+    public final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
+
+    /**
      * The table
      * <code>entity_processor.entity_processor_value_template_rules</code>.
      */
@@ -112,14 +112,14 @@ public class EntityProcessor extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
-            EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES,
-            EntityProcessorModels.ENTITY_PROCESSOR_MODELS,
+            EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
             EntityProcessorRules.ENTITY_PROCESSOR_RULES,
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
             EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
+            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS,
             EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES,
             EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES
         );

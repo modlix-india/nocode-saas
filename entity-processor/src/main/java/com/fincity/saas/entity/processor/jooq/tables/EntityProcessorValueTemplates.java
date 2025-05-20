@@ -90,9 +90,9 @@ public class EntityProcessorValueTemplates extends TableImpl<EntityProcessorValu
      * The column
      * <code>entity_processor.entity_processor_value_templates.NAME</code>. Name
      * of the Value Template. Value Template are like value type for product,
-     * Entities, model.
+     * Tickets, owner.
      */
-    public final TableField<EntityProcessorValueTemplatesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Value Template. Value Template are like value type for product, Entities, model.");
+    public final TableField<EntityProcessorValueTemplatesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Value Template. Value Template are like value type for product, Tickets, owner.");
 
     /**
      * The column

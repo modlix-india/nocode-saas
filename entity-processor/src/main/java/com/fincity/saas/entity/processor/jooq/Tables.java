@@ -5,14 +5,14 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorEntities;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorModels;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
@@ -29,14 +29,9 @@ public class Tables {
     public static final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
 
     /**
-     * The table <code>entity_processor.entity_processor_entities</code>.
+     * The table <code>entity_processor.entity_processor_owners</code>.
      */
-    public static final EntityProcessorEntities ENTITY_PROCESSOR_ENTITIES = EntityProcessorEntities.ENTITY_PROCESSOR_ENTITIES;
-
-    /**
-     * The table <code>entity_processor.entity_processor_models</code>.
-     */
-    public static final EntityProcessorModels ENTITY_PROCESSOR_MODELS = EntityProcessorModels.ENTITY_PROCESSOR_MODELS;
+    public static final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
 
     /**
      * The table <code>entity_processor.entity_processor_product_rules</code>.
@@ -68,6 +63,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_tickets</code>.
+     */
+    public static final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
     /**
      * The table

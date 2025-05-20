@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import java.io.Serial;
 import lombok.Data;
@@ -13,23 +14,14 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public class ModelRequest extends BaseRequest<ModelRequest> {
+public class TicketRequest extends BaseRequest<TicketRequest> {
 
     @Serial
-    private static final long serialVersionUID = 8432447203359141912L;
+    private static final long serialVersionUID = 3948634318723751023L;
 
+    private Identity productId;
     private PhoneNumber phoneNumber;
     private Email email;
     private String source;
     private String subSource;
-
-    public static ModelRequest of(EntityRequest entityRequest) {
-        return new ModelRequest()
-                .setName(entityRequest.getName())
-                .setDescription(entityRequest.getDescription())
-                .setPhoneNumber(entityRequest.getPhoneNumber())
-                .setEmail(entityRequest.getEmail())
-                .setSource(entityRequest.getSource())
-                .setSubSource(entityRequest.getSubSource());
-    }
 }

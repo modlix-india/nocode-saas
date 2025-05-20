@@ -90,11 +90,11 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column <code>entity_processor.entity_processor_products.NAME</code>.
-     * Name of the Product. Product can be anything for which Entities will be
+     * Name of the Product. Product can be anything for which Tickets will be
      * created. For Example, Projects can be product for Opportunities, Board
      * can be product for Epic.
      */
-    public final TableField<EntityProcessorProductsRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Product. Product can be anything for which Entities will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic.");
+    public final TableField<EntityProcessorProductsRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Product. Product can be anything for which Tickets will be created. For Example, Projects can be product for Opportunities, Board can be product for Epic.");
 
     /**
      * The column
@@ -123,22 +123,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Value Template related to this Product.
      */
     public final TableField<EntityProcessorProductsRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Value Template related to this Product.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_products.DEFAULT_STAGE</code>.
-     * Default stage for this product. This will be value for entity stage if
-     * stage in not inferred.
-     */
-    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STAGE = createField(DSL.name("DEFAULT_STAGE"), SQLDataType.BIGINTUNSIGNED, this, "Default stage for this product. This will be value for entity stage if stage in not inferred.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_products.DEFAULT_STATUS</code>.
-     * Default status for this product. This will be value for entity status if
-     * status in not inferred.
-     */
-    public final TableField<EntityProcessorProductsRecord, ULong> DEFAULT_STATUS = createField(DSL.name("DEFAULT_STATUS"), SQLDataType.BIGINTUNSIGNED, this, "Default status for this product. This will be value for entity status if status in not inferred.");
 
     /**
      * The column
