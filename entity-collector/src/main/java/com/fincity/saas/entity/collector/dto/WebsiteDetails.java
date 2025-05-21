@@ -9,9 +9,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
 
-@EqualsAndHashCode(callSuper = true)
 @Data
-public class WebsiteDetails extends AbstractUpdatableDTO<ULong, ULong> implements Serializable {
+public class WebsiteDetails implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -126270115243553536L;

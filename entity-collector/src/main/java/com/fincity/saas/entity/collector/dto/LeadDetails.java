@@ -1,9 +1,7 @@
 package com.fincity.saas.entity.collector.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import lombok.Data;
-import org.jooq.types.ULong;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -11,7 +9,7 @@ import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-public class LeadDetails extends AbstractUpdatableDTO<ULong, ULong> implements Serializable {
+public class LeadDetails implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -369693871081491900L;

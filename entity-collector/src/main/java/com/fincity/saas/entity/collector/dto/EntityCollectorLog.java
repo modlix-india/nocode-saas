@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.collector.dto;
 
-import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import lombok.Data;
