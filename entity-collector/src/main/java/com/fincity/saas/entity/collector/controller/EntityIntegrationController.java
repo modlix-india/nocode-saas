@@ -16,6 +16,4 @@ import org.springframework.web.bind.annotation.*;
 public class EntityIntegrationController extends AbstractJOOQUpdatableDataController<
         EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO, EntityIntegrationService> {
 
-    private final EntityIntegrationService service;
-
 }

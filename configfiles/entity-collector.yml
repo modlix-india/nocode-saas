@@ -1,8 +1,6 @@
 spring:
   application:
     name: entity-collector
-  freemarker:
-    check-template-location: false
   r2dbc:
     url: ${entity-collector.db.url}
     username: ${entity-collector.db.username}

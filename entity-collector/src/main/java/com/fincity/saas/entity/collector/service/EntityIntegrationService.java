@@ -101,32 +101,31 @@ public class EntityIntegrationService
         });
     }
 
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey("inSource")) {
-            newFields.put("inSource", fields.get("inSource"));
-        }
-        if (fields.containsKey("secondaryTarget")) {
-            newFields.put("secondaryTarget", fields.get("secondaryTarget"));
-        }
-        if (fields.containsKey("primaryTarget")) {
-            newFields.put("primaryTarget", fields.get("primaryTarget"));
-        }
-        if (fields.containsKey("inSourceType")) {
-            newFields.put("inSourceType", fields.get("inSourceType"));
-        }
-        if (fields.containsKey("primaryVerifyToken")) {
-            newFields.put("primaryVerifyToken", fields.get("primaryVerifyToken"));
-        }
-        if (fields.containsKey("secondaryVerifyToken")) {
-            newFields.put("secondaryVerifyToken", fields.get("secondaryVerifyToken"));
-        }
-
-        return Mono.just(newFields);
-    }
+//    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+//
+//        Map<String, Object> newFields = new HashMap<>();
+//
+//        if (fields.containsKey("inSource")) {
+//            newFields.put("inSource", fields.get("inSource"));
+//        }
+//        if (fields.containsKey("secondaryTarget")) {
+//            newFields.put("secondaryTarget", fields.get("secondaryTarget"));
+//        }
+//        if (fields.containsKey("primaryTarget")) {
+//            newFields.put("primaryTarget", fields.get("primaryTarget"));
+//        }
+//        if (fields.containsKey("inSourceType")) {
+//            newFields.put("inSourceType", fields.get("inSourceType"));
+//        }
+//        if (fields.containsKey("primaryVerifyToken")) {
+//            newFields.put("primaryVerifyToken", fields.get("primaryVerifyToken"));
+//        }
+//        if (fields.containsKey("secondaryVerifyToken")) {
+//            newFields.put("secondaryVerifyToken", fields.get("secondaryVerifyToken"));
+//        }
+//
+//        return Mono.just(newFields);
+//    }
 
 
 

@@ -1,11 +1,20 @@
 package com.fincity.saas.entity.collector.dto;
 
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.jooq.types.ULong;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Map;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class WebsiteDetails {
+public class WebsiteDetails extends AbstractUpdatableDTO<ULong, ULong> implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -126270115243553536L;
 
     private String email;
     private String fullName;

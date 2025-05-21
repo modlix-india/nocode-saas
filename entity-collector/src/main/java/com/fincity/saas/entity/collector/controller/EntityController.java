@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/entity-collector/entry")
 @AllArgsConstructor
-public class EntityCollectorController {
+public class EntityController {
 
     public final MetaEntityUtil metaEntityUtil;
     public final EntityCollectorService entityCollectorService;
@@ -32,8 +32,8 @@ public class EntityCollectorController {
     }
 
     @PostMapping("/social/facebook")
-    public Mono<Void> handleFacebookEntity(@RequestBody JsonNode requestBody) {
-        return entityCollectorService.handleMetaEntity(requestBody);
+    public Mono<Void> handleFacebookEntity(@RequestBody JsonNode webhookData) {
+        return entityCollectorService.handleMetaEntity(webhookData);
     }
 
 

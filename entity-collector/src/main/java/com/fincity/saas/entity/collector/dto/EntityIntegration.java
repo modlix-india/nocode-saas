@@ -15,7 +15,7 @@ import java.io.Serial;
 public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
 
     @Serial
-    private static final long serialVersionUID = -1027647179030335307L;
+    private static final long serialVersionUID = -1238829417326110024L;
 
     private String clientCode;
     private String appCode;

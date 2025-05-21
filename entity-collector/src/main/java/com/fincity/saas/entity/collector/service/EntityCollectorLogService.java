@@ -32,30 +32,33 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
         });
     }
 
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-        if (fields.containsKey("outgoingEntityData")) {
-            newFields.put("outgoingEntityData",
-                    fields.get("outgoingEntityData"));
-        }
-        if (fields.containsKey("status")) {
-            newFields.put("status", fields.get("status"));
-        }
-        if (fields.containsKey("statusMessage")) {
-            newFields.put("statusMessage", fields.get("statusMessage"));
-        }
-        if (!newFields.isEmpty()) newFields.put("updatedAt", LocalDateTime.now());
 
-        return Mono.just(newFields);
-    }
+//    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
+//        Map<String, Object> newFields = new HashMap<>();
+//        if (fields.containsKey("outgoingEntityData")) {
+//            newFields.put("outgoingEntityData",
+//                    fields.get("outgoingEntityData"));
+//        }
+//        if (fields.containsKey("status")) {
+//            newFields.put("status", fields.get("status"));
+//        }
+//        if (fields.containsKey("statusMessage")) {
+//            newFields.put("statusMessage", fields.get("statusMessage"));
+//        }
+//        if (!newFields.isEmpty()) newFields.put("updatedAt", LocalDateTime.now());
+//
+//        return Mono.just(newFields);
+//    }
 
     public Mono<EntityCollectorLog> update(ULong logId, Map<String, Object> outgoingEntityData, EntityCollectorLogStatus status, String statusMessage) {
-        EntityCollectorLog updatedLog = new EntityCollectorLog()
-                .setId(logId)
+        EntityCollectorLog updatedLog = (EntityCollectorLog) new EntityCollectorLog()
                 .setOutgoingEntityData(outgoingEntityData)
                 .setStatus(status)
-                .setStatusMessage(statusMessage);
+                .setStatusMessage(statusMessage)
+                .setId(logId);
+
+        System.out.println("updatedLog"+ updatedLog);
+
 
         return super.update(updatedLog);
     }
@@ -76,10 +79,10 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
     }
 
     public Mono<EntityCollectorLog> updateOnError(ULong logId, String statusMessage) {
-        EntityCollectorLog errorLog = new EntityCollectorLog()
-                .setId(logId)
+        EntityCollectorLog errorLog = (EntityCollectorLog) new EntityCollectorLog()
                 .setStatus(EntityCollectorLogStatus.REJECTED)
-                .setStatusMessage(statusMessage);
+                .setStatusMessage(statusMessage)
+                .setId(logId);
         return super.update(errorLog);
     }
 

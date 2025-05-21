@@ -31,7 +31,7 @@ import static org.flywaydb.core.internal.util.ClassUtils.setFieldValue;
 
 @Slf4j
 @Component
-public class MetaEntityUtil {
+public  class MetaEntityUtil {
 
     private static final String ID = "id";
     private static final String NAME = "name";
@@ -98,7 +98,7 @@ public class MetaEntityUtil {
         return fetchMetaGraphData(META_VERSION + adSetId, buildParams(token, BASIC_ENTITY_FIELDS));
     }
 
-    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
+    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token, EntityCollectorLogService logService, ULong logId) {
 
         return FlatMapUtil.flatMapMono(
 
