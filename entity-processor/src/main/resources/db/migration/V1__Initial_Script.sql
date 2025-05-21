@@ -6,9 +6,9 @@ CREATE DATABASE IF NOT EXISTS `entity_processor` DEFAULT CHARACTER SET `UTF8MB4`
 
 USE `entity_processor`;
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_value_templates`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_templates`;
 
-CREATE TABLE `entity_processor`.`entity_processor_value_templates` (
+CREATE TABLE `entity_processor`.`entity_processor_product_templates` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Value Template was created.',
@@ -17,7 +17,7 @@ CREATE TABLE `entity_processor`.`entity_processor_value_templates` (
     `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Value Template. Value Template are like value type for product, Tickets, owner.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Value Template.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Value Template.',
-    `VALUE_TEMPLATE_TYPE` ENUM ('ENTITY', 'PRODUCT') NOT NULL DEFAULT 'PRODUCT' COMMENT 'Type of Value Template.',
+    `PRODUCT_TEMPLATE_TYPE` ENUM ('ENTITY', 'PRODUCT') NOT NULL DEFAULT 'PRODUCT' COMMENT 'Type of Value Template.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',

@@ -50,7 +50,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<Stage> create(StageRequest stageRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> super.valueTemplateService.checkAndUpdateIdentity(stageRequest.getValueTemplateId()),
+                () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getValueTemplateId()),
                 valueTemplateId -> super.create(Stage.ofParent(stageRequest.setValueTemplateId(valueTemplateId))),
                 (valueTemplateId, parentStage) -> stageRequest.getChildren() != null
                         ? this.createChildren(valueTemplateId, stageRequest.getChildren(), parentStage)

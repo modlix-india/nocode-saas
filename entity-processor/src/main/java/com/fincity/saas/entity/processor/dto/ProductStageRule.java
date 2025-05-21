@@ -1,7 +1,8 @@
 package com.fincity.saas.entity.processor.dto;
 
-import com.fincity.saas.entity.processor.dto.rule.base.RuleConfig;
+import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,12 +16,12 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ValueTemplateRule extends RuleConfig<ValueTemplateRule> {
+public class ProductStageRule extends Rule<ProductStageRule> {
 
     @Serial
-    private static final long serialVersionUID = 5282289027862256173L;
+    private static final long serialVersionUID = 3634716140733876197L;
 
-    private ULong valueTemplateId;
+    private ULong productId;
 
     @Override
     public EntitySeries getEntitySeries() {
@@ -29,11 +30,16 @@ public class ValueTemplateRule extends RuleConfig<ValueTemplateRule> {
 
     @Override
     public ULong getEntityId() {
-        return this.getValueTemplateId();
+        return this.getProductId();
     }
 
     @Override
-    public ValueTemplateRule setEntityId(ULong entityId) {
-        return this.setValueTemplateId(entityId);
+    public ProductStageRule setEntityId(ULong entityId) {
+        return this.setProductId(entityId);
+    }
+
+    @Override
+    public ProductStageRule of(RuleRequest ruleRequest) {
+        return null;
     }
 }

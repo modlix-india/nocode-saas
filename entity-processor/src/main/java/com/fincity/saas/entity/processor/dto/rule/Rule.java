@@ -1,8 +1,9 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -10,6 +11,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
 @Data
@@ -17,7 +19,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Rule extends BaseDto<Rule> implements IEntitySeries {
+public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;
@@ -25,23 +27,19 @@ public class Rule extends BaseDto<Rule> implements IEntitySeries {
     @Version
     private int version = 1;
 
+    private ULong stageId;
+    private Integer order;
+    private boolean breakAtFirstMatch = false;
     private boolean isSimple = true;
     private boolean isComplex = false;
 
-    public static Rule of(RuleRequest ruleRequest) {
-        Rule rule = new Rule();
-        if (ruleRequest.getName() != null) {
-            rule.setName(ruleRequest.getName());
-        }
-        if (ruleRequest.getDescription() != null) {
-            rule.setDescription(ruleRequest.getDescription());
-        }
-        rule.setComplex(ruleRequest.isComplex()).setSimple(ruleRequest.isSimple());
-        return rule;
-    }
+    private DistributionType userDistributionType;
+    private UserDistribution userDistribution;
+    private ULong lastAssignedUserId;
 
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.RULE;
-    }
+    public abstract ULong getEntityId();
+
+    public abstract T setEntityId(ULong entityId);
+
+    public abstract T of(RuleRequest ruleRequest);
 }

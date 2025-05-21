@@ -7,7 +7,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
 @Data
@@ -22,6 +21,4 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
 
     @Version
     private int version = 1;
-
-    private ULong currentUserId;
 }

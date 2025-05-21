@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -21,6 +22,8 @@ public class Owner extends BaseProcessorDto<Owner> {
     @Serial
     private static final long serialVersionUID = 3722918782975754023L;
 
+    private ULong currentUserId;
+    private ULong assignedUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;

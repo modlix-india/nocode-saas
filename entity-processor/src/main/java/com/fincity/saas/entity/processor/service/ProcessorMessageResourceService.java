@@ -28,7 +28,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String MODEL_NOT_CREATED = "model_not_created";
     public static final String USER_DISTRIBUTION_MISSING = "user_distribution_missing";
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
-    public static final String VALUE_TEMPLATE_TYPE_MISSING = "value_template_type_missing";
+    public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

@@ -29,7 +29,6 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
 
     private String name = this.code;
     private String description;
-    private ULong addedByUserId;
 
     @JsonIgnore
     private boolean tempActive = Boolean.FALSE;
@@ -51,11 +50,6 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     public T setDescription(String description) {
         if (description == null || description.isBlank()) return (T) this;
         this.description = NameUtil.normalize(description);
-        return (T) this;
-    }
-
-    public T setAddedByUserId(ULong addedByUserId) {
-        this.addedByUserId = addedByUserId;
         return (T) this;
     }
 

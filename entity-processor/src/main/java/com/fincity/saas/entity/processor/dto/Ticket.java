@@ -26,6 +26,8 @@ public class Ticket extends BaseProcessorDto<Ticket> implements IClassConvertor 
     private static final long serialVersionUID = 1639822311147907381L;
 
     private ULong ownerId;
+    private ULong assignedUserId;
+    private ULong currentUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;

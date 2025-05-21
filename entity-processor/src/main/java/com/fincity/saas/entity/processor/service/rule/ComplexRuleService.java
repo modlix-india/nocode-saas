@@ -5,7 +5,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.ComplexRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
@@ -54,8 +53,8 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     }
 
     @Override
-    public Mono<ComplexRule> createForCondition(Rule rule, ComplexCondition condition) {
-        return this.createComplexRuleInternal(rule, condition, null);
+    public Mono<ComplexRule> createForCondition(ULong ruleId, ComplexCondition condition) {
+        return this.createComplexRuleInternal(ruleId, condition, null);
     }
 
     @Override
@@ -85,14 +84,14 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
         });
     }
 
-    public Mono<ComplexRule> createForConditionWithParent(Rule rule, ComplexCondition condition, ULong parentId) {
-        return this.createComplexRuleInternal(rule, condition, parentId);
+    public Mono<ComplexRule> createForConditionWithParent(ULong ruleId, ComplexCondition condition, ULong parentId) {
+        return this.createComplexRuleInternal(ruleId, condition, parentId);
     }
 
-    private Mono<ComplexRule> createComplexRuleInternal(Rule rule, ComplexCondition condition, ULong parentId) {
+    private Mono<ComplexRule> createComplexRuleInternal(ULong ruleId, ComplexCondition condition, ULong parentId) {
         if (condition.isEmpty()) return Mono.empty();
 
-        ComplexRule complexRule = ComplexRule.fromCondition(rule.getId(), condition);
+        ComplexRule complexRule = ComplexRule.fromCondition(ruleId, condition);
 
         if (parentId != null) complexRule.setParentConditionId(parentId);
 
@@ -102,7 +101,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
         return this.create(complexRule).flatMap(cComplexRule -> {
             if (conditions == null || conditions.isEmpty()) return Mono.just(cComplexRule);
 
-            return this.processConditions(rule, conditions, cComplexRule.getId())
+            return this.processConditions(ruleId, conditions, cComplexRule.getId())
                     .then(Mono.just(cComplexRule));
         });
     }
@@ -127,28 +126,29 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
         complexRule.setHasSimpleChild(hasSimpleChild);
     }
 
-    private Flux<Void> processConditions(Rule rule, List<AbstractCondition> conditions, ULong complexRuleId) {
+    private Flux<Void> processConditions(ULong ruleId, List<AbstractCondition> conditions, ULong complexRuleId) {
         return Flux.fromIterable(conditions).index().flatMap(tuple -> {
             AbstractCondition condition = tuple.getT2();
             int index = tuple.getT1().intValue();
 
             if (condition instanceof FilterCondition filterCondition) {
-                return processSimpleCondition(rule, filterCondition, complexRuleId, index);
+                return processSimpleCondition(ruleId, filterCondition, complexRuleId, index);
             } else if (condition instanceof ComplexCondition complexCondition) {
-                return processComplexCondition(rule, complexCondition, complexRuleId);
+                return processComplexCondition(ruleId, complexCondition, complexRuleId);
             }
 
             return Mono.empty();
         });
     }
 
-    private Mono<Void> processComplexCondition(Rule rule, ComplexCondition condition, ULong complexRuleId) {
-        return this.createForConditionWithParent(rule, condition, complexRuleId).then(Mono.empty());
+    private Mono<Void> processComplexCondition(ULong ruleId, ComplexCondition condition, ULong complexRuleId) {
+        return this.createForConditionWithParent(ruleId, condition, complexRuleId)
+                .then(Mono.empty());
     }
 
-    private Mono<Void> processSimpleCondition(Rule rule, FilterCondition condition, ULong complexRuleId, int index) {
+    private Mono<Void> processSimpleCondition(ULong ruleId, FilterCondition condition, ULong complexRuleId, int index) {
         return this.simpleRuleService
-                .createForConditionWithParent(rule, condition, complexRuleId, index)
+                .createForConditionWithParent(ruleId, condition, complexRuleId, index)
                 .then(Mono.empty());
     }
 }

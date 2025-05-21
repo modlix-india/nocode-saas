@@ -29,8 +29,6 @@ public abstract class BaseProcessorService<
                         msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                         ProcessorMessageResourceService.VERSION_MISMATCH);
 
-            existing.setCurrentUserId(entity.getCurrentUserId());
-
             existing.setVersion(existing.getVersion() + 1);
             return Mono.just(existing);
         });
@@ -50,11 +48,7 @@ public abstract class BaseProcessorService<
             cEntity.setAppCode(hasAccess.getT1().getT1());
             cEntity.setClientCode(hasAccess.getT1().getT2());
 
-            if (cEntity.getAddedByUserId() == null)
-                cEntity.setAddedByUserId(hasAccess.getT1().getT3());
-
-            if (cEntity.getCurrentUserId() == null)
-                cEntity.setCurrentUserId(hasAccess.getT1().getT3());
+            cEntity.setCreatedBy(hasAccess.getT1().getT3());
 
             return super.create(cEntity);
         });

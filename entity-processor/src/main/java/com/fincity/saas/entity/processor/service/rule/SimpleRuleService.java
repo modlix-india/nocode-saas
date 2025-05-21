@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.SimpleRuleDAO;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -58,8 +57,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     }
 
     @Override
-    public Mono<SimpleRule> createForCondition(Rule rule, FilterCondition condition) {
-        SimpleRule simpleRule = SimpleRule.fromCondition(rule.getId(), condition);
+    public Mono<SimpleRule> createForCondition(ULong ruleId, FilterCondition condition) {
+        SimpleRule simpleRule = SimpleRule.fromCondition(ruleId, condition);
         return super.create(simpleRule);
     }
 
@@ -73,8 +72,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     }
 
     public Mono<SimpleRule> createForConditionWithParent(
-            Rule rule, FilterCondition condition, ULong parentId, int order) {
-        return this.createForCondition(rule, condition).flatMap(cSimpleRule -> {
+            ULong ruleId, FilterCondition condition, ULong parentId, int order) {
+        return this.createForCondition(ruleId, condition).flatMap(cSimpleRule -> {
             SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
             return simpleComplexRuleRelationService.create(relation).then(Mono.empty());
         });

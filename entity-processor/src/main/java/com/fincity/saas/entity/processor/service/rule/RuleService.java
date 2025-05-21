@@ -9,36 +9,60 @@ import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorRulesRecord;
+import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
-import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.google.gson.JsonElement;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
-public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, RuleDAO> implements IEntitySeries {
+public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
+        extends BaseService<R, D, O> implements IEntitySeries {
 
     private static final String RULE = "rule";
+    protected RuleExecutionService ruleExecutionService;
+    private ComplexRuleService complexRuleService;
+    private SimpleRuleService simpleRuleService;
+    private StageService stageService;
 
-    private final ComplexRuleService complexRuleService;
-    private final SimpleRuleService simpleRuleService;
+    protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
 
-    public RuleService(ComplexRuleService complexRuleService, SimpleRuleService simpleRuleService) {
+    public abstract Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data);
+
+    @Autowired
+    private void setComplexRuleService(ComplexRuleService complexRuleService) {
         this.complexRuleService = complexRuleService;
+    }
+
+    @Autowired
+    private void setSimpleRuleService(SimpleRuleService simpleRuleService) {
         this.simpleRuleService = simpleRuleService;
+    }
+
+    @Autowired
+    private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
+        this.ruleExecutionService = ruleExecutionService;
+    }
+
+    @Autowired
+    private void setStageService(StageService stageService) {
+        this.stageService = stageService;
     }
 
     @Override
@@ -52,7 +76,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
     }
 
     @Override
-    protected Mono<Rule> updatableEntity(Rule rule) {
+    protected Mono<D> updatableEntity(D rule) {
 
         return super.updatableEntity(rule).flatMap(existing -> {
             existing.setComplex(rule.isComplex());
@@ -62,15 +86,7 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
         });
     }
 
-    public Mono<ProcessorResponse> create(RuleRequest ruleRequest) {
-
-        if (ruleRequest.getCondition() == null || ruleRequest.getCondition().isEmpty()) return Mono.empty();
-
-        return this.createInternal(ruleRequest)
-                .map(result -> ProcessorResponse.ofCreated(result.getCode(), this.getEntitySeries()));
-    }
-
-    public Mono<Map<ULong, Integer>> createWithOrder(Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<Map<Integer, D>> createWithOrder(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
 
@@ -82,59 +98,9 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                     if (ruleRequest.getCondition() == null
                             || ruleRequest.getCondition().isEmpty()) return Flux.empty();
 
-                    return this.createInternal(ruleRequest).map(rule -> Map.entry(rule.getId(), order));
+                    return this.createInternal(ruleRequest, order).map(rule -> Map.entry(order, rule));
                 })
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue);
-    }
-
-    public Mono<Map<ULong, Tuple2<Integer, UserDistribution>>> createWithUserDistribution(
-            Map<Integer, RuleRequest> ruleRequests) {
-
-        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
-
-        return Flux.fromIterable(ruleRequests.entrySet())
-                .flatMap(entry -> {
-                    Integer order = entry.getKey();
-                    UserDistribution userDistribution = entry.getValue().getUserDistribution();
-
-                    if (userDistribution == null)
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING,
-                                entry.getValue().getRuleId());
-
-                    RuleRequest ruleRequest = entry.getValue();
-
-                    if (ruleRequest.getCondition() == null
-                            || ruleRequest.getCondition().isEmpty()) return Flux.empty();
-
-                    return this.createInternal(ruleRequest)
-                            .map(rule -> Map.entry(rule.getId(), Tuples.of(order, userDistribution)));
-                })
-                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
-    }
-
-    public Mono<Map<ULong, Integer>> updateWithOrder(Map<Integer, RuleRequest> ruleRequests) {
-
-        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
-
-        return FlatMapUtil.flatMapMono(
-                () -> this.deleteRulesInternal(ruleRequests.values().stream()
-                        .map(RuleRequest::getRuleId)
-                        .toList()),
-                deleted -> this.createWithOrder(ruleRequests));
-    }
-
-    public Mono<Map<ULong, Tuple2<Integer, UserDistribution>>> updateWithUserDistribution(
-            Map<Integer, RuleRequest> ruleRequests) {
-
-        if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
-
-        return FlatMapUtil.flatMapMono(
-                () -> this.deleteRulesInternal(ruleRequests.values().stream()
-                        .map(RuleRequest::getRuleId)
-                        .toList()),
-                deleted -> this.createWithUserDistribution(ruleRequests));
     }
 
     public Mono<Integer> deleteRuleInternal(Identity rule) {
@@ -170,33 +136,53 @@ public class RuleService extends BaseService<EntityProcessorRulesRecord, Rule, R
                                 .toList()));
     }
 
-    private Mono<Rule> createInternal(RuleRequest ruleRequest) {
-
-        Rule rule = Rule.of(ruleRequest);
+    private Mono<D> createInternal(RuleRequest ruleRequest, Integer order) {
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> {
-                    rule.setAppCode(hasAccess.getT1().getT1());
-                    rule.setClientCode(hasAccess.getT1().getT2());
-
-                    if (rule.getAddedByUserId() == null)
-                        rule.setAddedByUserId(hasAccess.getT1().getT3());
-
-                    return super.create(rule);
+                hasAccess -> this.createFromRequest(ruleRequest),
+                (hasAccess, rule) -> stageService.checkAndUpdateIdentity(ruleRequest.getStageId()),
+                (hasAccess, rule, stageId) -> this.updateUserDistribution(ruleRequest, rule),
+                (hasAccess, rule, stageId, uRule) -> {
+                    uRule.setAppCode(hasAccess.getT1().getT1());
+                    uRule.setClientCode(hasAccess.getT1().getT2());
+                    uRule.setOrder(order);
+                    uRule.setStageId(stageId.getULongId());
+                    return super.create(uRule);
                 },
-                (hasAccess, cRule) -> {
+                (hasAccess, rule, stageId, uRule, cRule) -> {
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
-                                .createForCondition(cRule, complexCondition)
+                                .createForCondition(cRule.getId(), complexCondition)
                                 .map(result -> cRule);
 
                     if (rule.isSimple() && ruleRequest.getCondition() instanceof FilterCondition filterCondition)
                         return simpleRuleService
-                                .createForCondition(cRule, filterCondition)
+                                .createForCondition(cRule.getId(), filterCondition)
                                 .map(result -> cRule);
 
                     return Mono.just(cRule);
                 });
+    }
+
+    private Mono<D> updateUserDistribution(RuleRequest ruleRequest, D rule) {
+
+        DistributionType distributionType = ruleRequest.getUserDistributionType();
+
+        if (distributionType == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING);
+
+        if (!ruleRequest.getUserDistribution().isValidForType(distributionType))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_INVALID,
+                    distributionType);
+
+        rule.setUserDistributionType(distributionType);
+        rule.setUserDistribution(ruleRequest.getUserDistribution());
+
+        return Mono.just(rule);
     }
 }

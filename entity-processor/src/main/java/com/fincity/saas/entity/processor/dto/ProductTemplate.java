@@ -3,8 +3,8 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.enums.ValueTemplateType;
-import com.fincity.saas.entity.processor.model.request.ValueTemplateRequest;
+import com.fincity.saas.entity.processor.enums.ProductTemplateType;
+import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,18 +17,18 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ValueTemplate extends BaseDto<ValueTemplate> implements IEntitySeries {
+public class ProductTemplate extends BaseDto<ProductTemplate> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 2361640922389483322L;
 
-    private ValueTemplateType valueTemplateType;
+    private ProductTemplateType productTemplateType;
 
-    public static ValueTemplate of(ValueTemplateRequest valueTemplateRequest) {
-        return new ValueTemplate()
-                .setName(valueTemplateRequest.getName())
-                .setDescription(valueTemplateRequest.getDescription())
-                .setValueTemplateType(valueTemplateRequest.getValueTemplateType());
+    public static ProductTemplate of(ProductTemplateRequest productTemplateRequest) {
+        return new ProductTemplate()
+                .setName(productTemplateRequest.getName())
+                .setDescription(productTemplateRequest.getDescription())
+                .setProductTemplateType(productTemplateRequest.getProductTemplateType());
     }
 
     @Override

@@ -1,19 +1,19 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 
@@ -25,17 +25,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final OwnerService ownerService;
     private final ProductService productService;
     private final StageService stageService;
-    private final ProductRuleService productRuleService;
+    private final ProductStageRuleService productStageRuleService;
 
     public TicketService(
             OwnerService ownerService,
             ProductService productService,
             StageService stageService,
-            ProductRuleService productRuleService) {
+            ProductStageRuleService productStageRuleService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
-        this.productRuleService = productRuleService;
+        this.productStageRuleService = productStageRuleService;
     }
 
     @Override
@@ -50,7 +50,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     @Override
     protected Mono<Ticket> checkEntity(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
-        return this.checkTicket(ticket).flatMap(uEntity -> this.setOwner(accessInfo, uEntity));
+        return this.checkTicket(ticket, accessInfo).flatMap(uEntity -> this.setOwner(accessInfo, uEntity));
     }
 
     @Override
@@ -76,16 +76,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 hasAccess -> this.productService.checkAndUpdateIdentity(ticketRequest.getProductId()),
-                (hasAccess, productIdentity) -> Mono.just(ticketRequest.setProductId(productIdentity)),
-                (hasAccess, productIdentity, req) -> this.productRuleService.getUserAssignment(
-                        hasAccess.getT1().getT1(),
-                        hasAccess.getT1().getT2(),
-                        productIdentity.getULongId(),
-                        Platform.PRE_QUALIFICATION,
-                        this.getEntityTokenPrefix(hasAccess.getT1().getT1()),
-                        ticket.toJson()),
-                (hasAccess, productIdentity, req, userId) -> this.setTicketAssignment(ticket, userId),
-                (hasAccess, productIdentity, req, userId, aTicket) -> super.createInternal(aTicket, hasAccess));
+                (hasAccess, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                (hasAccess, productIdentity, pTicket) -> super.createInternal(pTicket, hasAccess));
     }
 
     public Mono<ProcessorResponse> createResponse(TicketRequest ticketRequest) {
@@ -94,7 +86,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 cTicket -> Mono.just(ProcessorResponse.ofCreated(cTicket.getCode(), this.getEntitySeries())));
     }
 
-    private Mono<Ticket> checkTicket(Ticket ticket) {
+    private Mono<Ticket> checkTicket(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
 
         if (ticket.getProductId() == null)
             return this.msgService.throwMessage(
@@ -103,10 +95,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     productService.getEntityName());
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> this.productService.readById(ticket.getProductId()),
-                (ca, product) -> Mono.just(ticket.setProductId(product.getId())),
-                (ca, product, pTicket) -> this.setDefaultStage(pTicket, product.getValueTemplateId()));
+                () -> this.productService.readById(ticket.getProductId()),
+                product -> this.setDefaultStage(ticket, product.getValueTemplateId()),
+                (product, sTicket) -> productStageRuleService.getUserAssignment(
+                        accessInfo.getT1(),
+                        accessInfo.getT2(),
+                        product.getId(),
+                        sTicket.getStage(),
+                        this.getEntityTokenPrefix(accessInfo.getT1()),
+                        sTicket.toJson()),
+                (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
     }
 
     private Mono<Ticket> setDefaultStage(Ticket ticket, ULong valueTemplateId) {
@@ -131,7 +129,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     private Mono<Ticket> setTicketAssignment(Ticket ticket, ULong userId) {
-        ticket.setAddedByUserId(userId);
+        ticket.setAssignedUserId(userId);
+        return this.setTicketReAssignment(ticket, userId);
+    }
+
+    private Mono<Ticket> setTicketReAssignment(Ticket ticket, ULong userId) {
         ticket.setCurrentUserId(userId);
         return Mono.just(ticket);
     }

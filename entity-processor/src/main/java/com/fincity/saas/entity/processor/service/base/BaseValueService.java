@@ -10,7 +10,7 @@ import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.ValueTemplateService;
+import com.fincity.saas.entity.processor.service.ProductTemplateService;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +33,7 @@ public abstract class BaseValueService<
         extends BaseService<R, D, O> {
 
     private static final String VALUE_ET_KEY = "valueEtKey";
-    protected ValueTemplateService valueTemplateService;
+    protected ProductTemplateService productTemplateService;
 
     public String getValueEtKey() {
         return VALUE_ET_KEY;
@@ -46,8 +46,8 @@ public abstract class BaseValueService<
     public abstract Mono<D> applyOrder(D entity, Tuple3<String, String, ULong> accessInfo);
 
     @Autowired
-    private void setValueTemplateService(ValueTemplateService valueTemplateService) {
-        this.valueTemplateService = valueTemplateService;
+    private void setValueTemplateService(ProductTemplateService productTemplateService) {
+        this.productTemplateService = productTemplateService;
     }
 
     @Override

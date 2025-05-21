@@ -4,7 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
-import com.fincity.saas.entity.processor.dto.ValueTemplate;
+import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -19,17 +19,16 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 
 @Service
-public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO>
-        implements IValueTemplateService {
+public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
 
     private static final String PRODUCT_CACHE = "product";
 
-    private ValueTemplateService valueTemplateService;
+    private ProductTemplateService productTemplateService;
 
     @Lazy
     @Autowired
-    private void setValueTemplateService(ValueTemplateService valueTemplateService) {
-        this.valueTemplateService = valueTemplateService;
+    private void setValueTemplateService(ProductTemplateService productTemplateService) {
+        this.productTemplateService = productTemplateService;
     }
 
     @Override
@@ -50,7 +49,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        return valueTemplateService
+        return productTemplateService
                 .readByIdInternal(product.getValueTemplateId())
                 .map(valueTemplate -> product);
     }
@@ -80,11 +79,10 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         });
     }
 
-    @Override
-    public Mono<ValueTemplate> updateValueTemplate(Identity identity, ValueTemplate valueTemplate) {
-        return FlatMapUtil.flatMapMono(() -> super.readIdentity(identity), product -> {
-            product.setValueTemplateId(valueTemplate.getId());
-            return super.updateInternal(product).map(updated -> valueTemplate);
+    public Mono<ProductTemplate> setProductTemplate(Identity productId, ProductTemplate productTemplate) {
+        return FlatMapUtil.flatMapMono(() -> super.readIdentity(productId), product -> {
+            product.setValueTemplateId(productTemplate.getId());
+            return super.updateInternal(product).map(updated -> productTemplate);
         });
     }
 }

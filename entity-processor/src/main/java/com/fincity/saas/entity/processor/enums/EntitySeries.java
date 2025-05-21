@@ -2,11 +2,11 @@ package com.fincity.saas.entity.processor.enums;
 
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Product;
-import com.fincity.saas.entity.processor.dto.ProductRule;
+import com.fincity.saas.entity.processor.dto.ProductStageRule;
+import com.fincity.saas.entity.processor.dto.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
-import com.fincity.saas.entity.processor.dto.ValueTemplate;
-import com.fincity.saas.entity.processor.dto.ValueTemplateRule;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
@@ -81,15 +81,15 @@ public enum EntitySeries implements EnumType {
             case TICKET -> Ticket.class;
             case OWNER -> Owner.class;
             case PRODUCT -> Product.class;
-            case VALUE_TEMPLATE -> ValueTemplate.class;
+            case VALUE_TEMPLATE -> ProductTemplate.class;
             case STAGE -> Stage.class;
             case RULE -> Rule.class;
             case SIMPLE_RULE -> SimpleRule.class;
             case COMPLEX_RULE -> ComplexRule.class;
             case SIMPLE_COMPLEX_CONDITION_RELATION -> SimpleComplexRuleRelation.class;
             case ENTITY_RULE -> null;
-            case PRODUCT_RULE -> ProductRule.class;
-            case VALUE_TEMPLATE_RULE -> ValueTemplateRule.class;
+            case PRODUCT_RULE -> ProductStageRule.class;
+            case VALUE_TEMPLATE_RULE -> ProductTemplateRule.class;
         };
     }
 
