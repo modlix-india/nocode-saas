@@ -40,9 +40,6 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
                 .setStatusMessage(statusMessage)
                 .setId(logId);
 
-        System.out.println("updatedLog"+ updatedLog);
-
-
         return super.update(updatedLog);
     }
 
@@ -54,7 +51,7 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
                             .setEntityIntegrationId(entityIntegrationId)
                             .setIncomingEntityData(incomingEntityData)
                             .setIpAddress(ipAddress)
-                            .setStatus(EntityCollectorLogStatus.WITH_ERRORS)
+                            .setStatus(EntityCollectorLogStatus.IN_PROGRESS)
                             .setStatusMessage(message);
 
                     return super.create(log).map(EntityCollectorLog::getId);

@@ -48,7 +48,7 @@ public class EntityCollectorConfig extends AbstractJooqBaseConfiguration impleme
                 http,
                 authService,
                 this.objectMapper,
-                "api/entity-collector/entry/**");
+                "api/entity/collector/entry/**");
     }
 
     @Bean

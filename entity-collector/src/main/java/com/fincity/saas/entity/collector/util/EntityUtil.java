@@ -4,6 +4,8 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.LeadDetails;
+import com.fincity.saas.entity.collector.enums.LeadSource;
+import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
 import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
@@ -71,12 +73,12 @@ public class EntityUtil {
                         .then(Mono.empty()));
     }
 
-    public static void populateStaticFields(LeadDetails lead, EntityIntegration integration, String platform, String source, String subSource) {
+    public static void populateStaticFields(LeadDetails lead, EntityIntegration integration, String platform, LeadSource source, LeadSubSource subSource) {
         lead.setClientCode(integration.getClientCode());
         lead.setAppCode(integration.getAppCode());
         lead.setPlatform(platform);
-        lead.setSource(source);
-        lead.setSubSource(subSource);
+        lead.setSource(String.valueOf(source));
+        lead.setSubSource(String.valueOf(subSource));
     }
 
     public static String getClientIpAddress(ServerHttpRequest request) {

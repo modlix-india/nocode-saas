@@ -15,6 +15,8 @@ import org.jooq.Schema;
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityCollectorLogStatus implements EnumType {
 
+    IN_PROGRESS("IN_PROGRESS"),
+
     REJECTED("REJECTED"),
 
     SUCCESS("SUCCESS"),

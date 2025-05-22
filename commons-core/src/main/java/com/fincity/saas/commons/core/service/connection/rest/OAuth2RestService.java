@@ -73,14 +73,7 @@ public class OAuth2RestService extends AbstractRestTokenService {
     private Mono<String> getAccessToken(Connection connection) {
         return FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-//                    if (!ca.isAuthenticated())
-//                        return this.msgService.throwMessage(
-//                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-//                                CoreMessageResourceService.FORBIDDEN_EXECUTION,
-//                                connection.getName());
-                    return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode());
-                },
+                ca -> this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode()),
                 (ca, token) -> {
                     if (token == null) {
                         String grantTypeString =

@@ -87,7 +87,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * The column <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
      * Ip address
      */
-    public final TableField<EntityCollectorLogRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(320), this, "Ip address");
+    public final TableField<EntityCollectorLogRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(45), this, "Ip address");
 
     /**
      * The column

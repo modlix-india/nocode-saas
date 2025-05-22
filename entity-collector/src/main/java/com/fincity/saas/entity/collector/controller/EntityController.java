@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 
 
 @RestController
-@RequestMapping("/api/entity-collector/entry")
+@RequestMapping("/api/entity/collector/entry")
 @AllArgsConstructor
 public class EntityController {
 

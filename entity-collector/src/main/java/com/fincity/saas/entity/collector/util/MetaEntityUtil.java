@@ -10,7 +10,9 @@ import com.fincity.saas.entity.collector.dto.CampaignDetails;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.LeadDetails;
-import com.fincity.saas.entity.collector.enums.LeadFieldType;
+import com.fincity.saas.entity.collector.enums.MetaLeadFieldType;
+import com.fincity.saas.entity.collector.enums.LeadSource;
+import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
 import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +61,6 @@ public  class MetaEntityUtil {
     private static final String AD_FIELDS = "id,name,adset,campaign";
     private static final String BASIC_ENTITY_FIELDS = "id,name";
     private static final String FACEBOOK = "facebook";
-    private static final String SOCIAL_MEDIA = "socialMedia";
 
     private static final WebClient webClient = WebClient.create();
 
@@ -205,14 +206,14 @@ public  class MetaEntityUtil {
             if (CUSTOM.equalsIgnoreCase(type)) {
                 customFieldsNode.put(label, value);
             } else {
-                LeadFieldType fieldType = LeadFieldType.fromType(type);
+                MetaLeadFieldType fieldType = MetaLeadFieldType.fromType(type);
                 if (fieldType != null) {
                     setFieldValue(lead, fieldType.getFieldName(), value);
                 }
             }
         }
 
-        populateStaticFields(lead, integration, FACEBOOK, SOCIAL_MEDIA, FACEBOOK);
+        populateStaticFields(lead, integration, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);
 
         Map<String, String> customFields = mapper.convertValue(
                 customFieldsNode, new TypeReference<Map<String, String>>() {
