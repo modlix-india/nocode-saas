@@ -25,7 +25,7 @@ public class ProductStageRule extends Rule<ProductStageRule> {
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT_RULE;
+        return EntitySeries.PRODUCT_STAGE_RULE;
     }
 
     @Override

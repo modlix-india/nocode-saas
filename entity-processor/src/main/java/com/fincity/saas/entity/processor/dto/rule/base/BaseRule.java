@@ -24,8 +24,19 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> impleme
     @Version
     private int version = 1;
 
-    private ULong ruleId;
+    private ULong productTemplateRuleId;
+    private ULong productStageRuleId;
     private boolean negate = false;
+
+    public T setProductTemplateRuleId(ULong productTemplateRuleId) {
+        this.productTemplateRuleId = productTemplateRuleId;
+        return (T) this;
+    }
+
+    public T setProductStageRuleId(ULong productStageRuleId) {
+        this.productStageRuleId = productStageRuleId;
+        return (T) this;
+    }
 
     public T setNegate(boolean negate) {
         this.negate = negate;

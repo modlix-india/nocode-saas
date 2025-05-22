@@ -116,10 +116,17 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_complex_rules.RULE_ID</code>.
-     * Rule ID related to this Complex Rule.
+     * <code>entity_processor.entity_processor_complex_rules.PRODUCT_TEMPLATE_RULE_ID</code>.
+     * Product Template Rule ID related to this Complex Rule.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, ULong> RULE_ID = createField(DSL.name("RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Rule ID related to this Complex Rule.");
+    public final TableField<EntityProcessorComplexRulesRecord, ULong> PRODUCT_TEMPLATE_RULE_ID = createField(DSL.name("PRODUCT_TEMPLATE_RULE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template Rule ID related to this Complex Rule.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_complex_rules.PRODUCT_STAGE_RULE_ID</code>.
+     * Product Stage Rule ID related to this Complex Rule.
+     */
+    public final TableField<EntityProcessorComplexRulesRecord, ULong> PRODUCT_STAGE_RULE_ID = createField(DSL.name("PRODUCT_STAGE_RULE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Stage Rule ID related to this Complex Rule.");
 
     /**
      * The column

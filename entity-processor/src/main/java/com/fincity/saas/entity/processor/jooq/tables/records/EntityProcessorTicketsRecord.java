@@ -77,30 +77,11 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
-     * of this row.
-     */
-    public EntityProcessorTicketsRecord setVersion(ULong value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
-     * of this row.
-     */
-    public ULong getVersion() {
-        return (ULong) get(3);
-    }
-
-    /**
      * Setter for <code>entity_processor.entity_processor_tickets.CODE</code>.
      * Unique Code to identify this row.
      */
     public EntityProcessorTicketsRecord setCode(String value) {
-        set(4, value);
+        set(3, value);
         return this;
     }
 
@@ -109,7 +90,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(4);
+        return (String) get(3);
     }
 
     /**
@@ -119,7 +100,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Epic, Lead is ticket of Account.
      */
     public EntityProcessorTicketsRecord setName(String value) {
-        set(5, value);
+        set(4, value);
         return this;
     }
 
@@ -130,7 +111,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Epic, Lead is ticket of Account.
      */
     public String getName() {
-        return (String) get(5);
+        return (String) get(4);
     }
 
     /**
@@ -139,7 +120,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Description for the ticket.
      */
     public EntityProcessorTicketsRecord setDescription(String value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -149,79 +130,26 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Description for the ticket.
      */
     public String getDescription() {
-        return (String) get(6);
+        return (String) get(5);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_tickets.ADDED_BY_USER_ID</code>.
-     * User which added this ticket.
+     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
+     * of this row.
      */
-    public EntityProcessorTicketsRecord setAddedByUserId(ULong value) {
-        set(7, value);
+    public EntityProcessorTicketsRecord setVersion(ULong value) {
+        set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_tickets.ADDED_BY_USER_ID</code>.
-     * User which added this ticket.
+     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
+     * of this row.
      */
-    public ULong getAddedByUserId() {
-        return (ULong) get(7);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_tickets.CURRENT_USER_ID</code>.
-     * User to which this ticket is assigned.
-     */
-    public EntityProcessorTicketsRecord setCurrentUserId(ULong value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_tickets.CURRENT_USER_ID</code>.
-     * User to which this ticket is assigned.
-     */
-    public ULong getCurrentUserId() {
-        return (ULong) get(8);
-    }
-
-    /**
-     * Setter for <code>entity_processor.entity_processor_tickets.STAGE</code>.
-     * Status for this ticket.
-     */
-    public EntityProcessorTicketsRecord setStage(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>entity_processor.entity_processor_tickets.STAGE</code>.
-     * Status for this ticket.
-     */
-    public ULong getStage() {
-        return (ULong) get(9);
-    }
-
-    /**
-     * Setter for <code>entity_processor.entity_processor_tickets.STATUS</code>.
-     * Sub Status for this ticket.
-     */
-    public EntityProcessorTicketsRecord setStatus(ULong value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>entity_processor.entity_processor_tickets.STATUS</code>.
-     * Sub Status for this ticket.
-     */
-    public ULong getStatus() {
-        return (ULong) get(10);
+    public ULong getVersion() {
+        return (ULong) get(6);
     }
 
     /**
@@ -230,7 +158,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * related to this ticket.
      */
     public EntityProcessorTicketsRecord setOwnerId(ULong value) {
-        set(11, value);
+        set(7, value);
         return this;
     }
 
@@ -240,7 +168,26 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * related to this ticket.
      */
     public ULong getOwnerId() {
-        return (ULong) get(11);
+        return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.ASSIGNED_USER_ID</code>.
+     * User which added this ticket or user who is assigned to this ticket.
+     */
+    public EntityProcessorTicketsRecord setAssignedUserId(ULong value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.ASSIGNED_USER_ID</code>.
+     * User which added this ticket or user who is assigned to this ticket.
+     */
+    public ULong getAssignedUserId() {
+        return (ULong) get(8);
     }
 
     /**
@@ -249,7 +196,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * code of the phone number this owner has.
      */
     public EntityProcessorTicketsRecord setDialCode(Short value) {
-        set(12, value);
+        set(9, value);
         return this;
     }
 
@@ -259,7 +206,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * code of the phone number this owner has.
      */
     public Short getDialCode() {
-        return (Short) get(12);
+        return (Short) get(9);
     }
 
     /**
@@ -268,7 +215,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Phone number related to this owner.
      */
     public EntityProcessorTicketsRecord setPhoneNumber(String value) {
-        set(13, value);
+        set(10, value);
         return this;
     }
 
@@ -278,7 +225,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Phone number related to this owner.
      */
     public String getPhoneNumber() {
-        return (String) get(13);
+        return (String) get(10);
     }
 
     /**
@@ -286,7 +233,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Email related to this ticket.
      */
     public EntityProcessorTicketsRecord setEmail(String value) {
-        set(14, value);
+        set(11, value);
         return this;
     }
 
@@ -295,7 +242,60 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Email related to this ticket.
      */
     public String getEmail() {
-        return (String) get(14);
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
+     * Product related to this ticket.
+     */
+    public EntityProcessorTicketsRecord setProductId(ULong value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
+     * Product related to this ticket.
+     */
+    public ULong getProductId() {
+        return (ULong) get(12);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tickets.STAGE</code>.
+     * Status for this ticket.
+     */
+    public EntityProcessorTicketsRecord setStage(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.STAGE</code>.
+     * Status for this ticket.
+     */
+    public ULong getStage() {
+        return (ULong) get(13);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tickets.STATUS</code>.
+     * Sub Status for this ticket.
+     */
+    public EntityProcessorTicketsRecord setStatus(ULong value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.STATUS</code>.
+     * Sub Status for this ticket.
+     */
+    public ULong getStatus() {
+        return (ULong) get(14);
     }
 
     /**
@@ -336,30 +336,11 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
-     * Product related to this ticket.
-     */
-    public EntityProcessorTicketsRecord setProductId(ULong value) {
-        set(17, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
-     * Product related to this ticket.
-     */
-    public ULong getProductId() {
-        return (ULong) get(17);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
     public EntityProcessorTicketsRecord setTempActive(Byte value) {
-        set(18, value);
+        set(17, value);
         return this;
     }
 
@@ -369,7 +350,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(18);
+        return (Byte) get(17);
     }
 
     /**
@@ -378,7 +359,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public EntityProcessorTicketsRecord setIsActive(Byte value) {
-        set(19, value);
+        set(18, value);
         return this;
     }
 
@@ -388,7 +369,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(19);
+        return (Byte) get(18);
     }
 
     /**
@@ -397,7 +378,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(20, value);
+        set(19, value);
         return this;
     }
 
@@ -407,7 +388,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(20);
+        return (ULong) get(19);
     }
 
     /**
@@ -416,7 +397,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(21, value);
+        set(20, value);
         return this;
     }
 
@@ -426,7 +407,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -435,7 +416,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(22, value);
+        set(21, value);
         return this;
     }
 
@@ -445,7 +426,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(22);
+        return (ULong) get(21);
     }
 
     /**
@@ -454,7 +435,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(23, value);
+        set(22, value);
         return this;
     }
 
@@ -464,7 +445,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(23);
+        return (LocalDateTime) get(22);
     }
 
     // -------------------------------------------------------------------------
@@ -490,27 +471,26 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong stage, ULong status, ULong ownerId, Short dialCode, String phoneNumber, String email, String source, String subSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
-        setVersion(version);
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
-        setCurrentUserId(currentUserId);
-        setStage(stage);
-        setStatus(status);
+        setVersion(version);
         setOwnerId(ownerId);
+        setAssignedUserId(assignedUserId);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
         setEmail(email);
+        setProductId(productId);
+        setStage(stage);
+        setStatus(status);
         setSource(source);
         setSubSource(subSource);
-        setProductId(productId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

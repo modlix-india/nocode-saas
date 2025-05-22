@@ -5,7 +5,7 @@ import com.fincity.saas.entity.processor.dao.ProductTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplateRulesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
@@ -17,9 +17,9 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ProductTemplateRuleService
-        extends RuleService<EntityProcessorValueTemplateRulesRecord, ProductTemplateRule, ProductTemplateRuleDAO> {
+        extends RuleService<EntityProcessorProductTemplateRulesRecord, ProductTemplateRule, ProductTemplateRuleDAO> {
 
-    private static final String VALUE_TEMPLATE_RULE_CONFIG = "valueTemplateRuleConfig";
+    private static final String PRODUCT_TEMPLATE_RULE = "valueTemplateRule";
 
     private ProductTemplateService productTemplateService;
 
@@ -31,7 +31,7 @@ public class ProductTemplateRuleService
 
     @Override
     protected String getCacheName() {
-        return VALUE_TEMPLATE_RULE_CONFIG;
+        return PRODUCT_TEMPLATE_RULE;
     }
 
     @Override

@@ -77,28 +77,11 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     }
 
     /**
-     * Setter for <code>entity_processor.entity_processor_owners.VERSION</code>.
-     * Version of this row.
-     */
-    public EntityProcessorOwnersRecord setVersion(ULong value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>entity_processor.entity_processor_owners.VERSION</code>.
-     * Version of this row.
-     */
-    public ULong getVersion() {
-        return (ULong) get(3);
-    }
-
-    /**
      * Setter for <code>entity_processor.entity_processor_owners.CODE</code>.
      * Unique Code to identify this row.
      */
     public EntityProcessorOwnersRecord setCode(String value) {
-        set(4, value);
+        set(3, value);
         return this;
     }
 
@@ -107,7 +90,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(4);
+        return (String) get(3);
     }
 
     /**
@@ -116,7 +99,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public EntityProcessorOwnersRecord setName(String value) {
-        set(5, value);
+        set(4, value);
         return this;
     }
 
@@ -126,7 +109,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public String getName() {
-        return (String) get(5);
+        return (String) get(4);
     }
 
     /**
@@ -135,7 +118,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Description for the Owner.
      */
     public EntityProcessorOwnersRecord setDescription(String value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -145,45 +128,24 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Description for the Owner.
      */
     public String getDescription() {
-        return (String) get(6);
+        return (String) get(5);
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Owner.
+     * Setter for <code>entity_processor.entity_processor_owners.VERSION</code>.
+     * Version of this row.
      */
-    public EntityProcessorOwnersRecord setAddedByUserId(ULong value) {
-        set(7, value);
+    public EntityProcessorOwnersRecord setVersion(ULong value) {
+        set(6, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Owner.
+     * Getter for <code>entity_processor.entity_processor_owners.VERSION</code>.
+     * Version of this row.
      */
-    public ULong getAddedByUserId() {
-        return (ULong) get(7);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Owner is assigned.
-     */
-    public EntityProcessorOwnersRecord setCurrentUserId(ULong value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Owner is assigned.
-     */
-    public ULong getCurrentUserId() {
-        return (ULong) get(8);
+    public ULong getVersion() {
+        return (ULong) get(6);
     }
 
     /**
@@ -192,7 +154,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * code of the phone number this owner has.
      */
     public EntityProcessorOwnersRecord setDialCode(Short value) {
-        set(9, value);
+        set(7, value);
         return this;
     }
 
@@ -202,7 +164,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * code of the phone number this owner has.
      */
     public Short getDialCode() {
-        return (Short) get(9);
+        return (Short) get(7);
     }
 
     /**
@@ -211,7 +173,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * number related to this owner.
      */
     public EntityProcessorOwnersRecord setPhoneNumber(String value) {
-        set(10, value);
+        set(8, value);
         return this;
     }
 
@@ -221,7 +183,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * number related to this owner.
      */
     public String getPhoneNumber() {
-        return (String) get(10);
+        return (String) get(8);
     }
 
     /**
@@ -229,7 +191,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Email related to this owner.
      */
     public EntityProcessorOwnersRecord setEmail(String value) {
-        set(11, value);
+        set(9, value);
         return this;
     }
 
@@ -238,6 +200,42 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * Email related to this owner.
      */
     public String getEmail() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_owners.SOURCE</code>.
+     * Source of this owner
+     */
+    public EntityProcessorOwnersRecord setSource(String value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_owners.SOURCE</code>.
+     * Source of this owner
+     */
+    public String getSource() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_owners.SUB_SOURCE</code>. Sub
+     * Source of this owner.
+     */
+    public EntityProcessorOwnersRecord setSubSource(String value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_owners.SUB_SOURCE</code>. Sub
+     * Source of this owner.
+     */
+    public String getSubSource() {
         return (String) get(11);
     }
 
@@ -378,21 +376,21 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorOwnersRecord
      */
-    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, Short dialCode, String phoneNumber, String email, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
-        setVersion(version);
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
-        setCurrentUserId(currentUserId);
+        setVersion(version);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
         setEmail(email);
+        setSource(source);
+        setSubSource(subSource);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

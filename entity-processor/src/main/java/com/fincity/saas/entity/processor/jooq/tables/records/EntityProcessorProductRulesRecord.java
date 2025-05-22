@@ -8,11 +8,11 @@ import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -197,11 +197,49 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_rules.ORDER</code>. Order
+     * of execution of this rule for a stage
+     */
+    public EntityProcessorProductRulesRecord setOrder(UInteger value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rules.ORDER</code>. Order
+     * of execution of this rule for a stage
+     */
+    public UInteger getOrder() {
+        return (UInteger) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public EntityProcessorProductRulesRecord setIsDefault(Byte value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public Byte getIsDefault() {
+        return (Byte) get(10);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_rules.BREAK_AT_FIRST_MATCH</code>.
      * Flag to check if execution should break at first match.
      */
     public EntityProcessorProductRulesRecord setBreakAtFirstMatch(Byte value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -211,87 +249,45 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * Flag to check if execution should break at first match.
      */
     public Byte getBreakAtFirstMatch() {
-        return (Byte) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
-     */
-    public EntityProcessorProductRulesRecord setExecuteOnlyIfAllPreviousMatch(Byte value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
-     */
-    public Byte getExecuteOnlyIfAllPreviousMatch() {
-        return (Byte) get(10);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
-     */
-    public EntityProcessorProductRulesRecord setExecuteOnlyIfAllPreviousNotMatch(Byte value) {
-        set(11, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
-     */
-    public Byte getExecuteOnlyIfAllPreviousNotMatch() {
         return (Byte) get(11);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
+     * <code>entity_processor.entity_processor_product_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public EntityProcessorProductRulesRecord setContinueOnNoMatch(Byte value) {
+    public EntityProcessorProductRulesRecord setIsSimple(Byte value) {
         set(12, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
+     * <code>entity_processor.entity_processor_product_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public Byte getContinueOnNoMatch() {
+    public Byte getIsSimple() {
         return (Byte) get(12);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_rules.RULES</code>. Rules
-     * for this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public EntityProcessorProductRulesRecord setRules(Map value) {
+    public EntityProcessorProductRulesRecord setIsComplex(Byte value) {
         set(13, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_rules.RULES</code>. Rules
-     * for this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public Map getRules() {
-        return (Map) get(13);
+    public Byte getIsComplex() {
+        return (Byte) get(13);
     }
 
     /**
@@ -334,20 +330,20 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * <code>entity_processor.entity_processor_product_rules.LAST_ASSIGNED_USER_ID</code>.
      * Last User id used in this rule.
      */
-    public EntityProcessorProductRulesRecord setLastUsedUserId(ULong value) {
+    public EntityProcessorProductRulesRecord setLastAssignedUserId(ULong value) {
         set(16, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * <code>entity_processor.entity_processor_product_rules.LAST_ASSIGNED_USER_ID</code>.
      * Last User id used in this rule.
      */
-    public ULong getLastUsedUserId() {
+    public ULong getLastAssignedUserId() {
         return (ULong) get(16);
     }
 
@@ -488,7 +484,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductRulesRecord
      */
-    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, ULong stageId, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, JSON userDistributions, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES);
 
         setId(id);
@@ -500,14 +496,14 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
         setAddedByUserId(addedByUserId);
         setProductId(productId);
         setStageId(stageId);
+        setOrder(order);
+        setIsDefault(isDefault);
         setBreakAtFirstMatch(breakAtFirstMatch);
-        setExecuteOnlyIfAllPreviousMatch(executeOnlyIfAllPreviousMatch);
-        setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);
-        setContinueOnNoMatch(continueOnNoMatch);
-        setRules(rules);
+        setIsSimple(isSimple);
+        setIsComplex(isComplex);
         setUserDistributionType(userDistributionType);
         setUserDistributions(userDistributions);
-        setLastUsedUserId(lastUsedUserId);
+        setLastAssignedUserId(lastAssignedUserId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

@@ -77,30 +77,11 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row.
-     */
-    public EntityProcessorProductsRecord setVersion(ULong value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row.
-     */
-    public ULong getVersion() {
-        return (ULong) get(3);
-    }
-
-    /**
      * Setter for <code>entity_processor.entity_processor_products.CODE</code>.
      * Unique Code to identify this row.
      */
     public EntityProcessorProductsRecord setCode(String value) {
-        set(4, value);
+        set(3, value);
         return this;
     }
 
@@ -109,7 +90,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Unique Code to identify this row.
      */
     public String getCode() {
-        return (String) get(4);
+        return (String) get(3);
     }
 
     /**
@@ -119,7 +100,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * can be product for Epic.
      */
     public EntityProcessorProductsRecord setName(String value) {
-        set(5, value);
+        set(4, value);
         return this;
     }
 
@@ -130,7 +111,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * can be product for Epic.
      */
     public String getName() {
-        return (String) get(5);
+        return (String) get(4);
     }
 
     /**
@@ -139,7 +120,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Description for the Product.
      */
     public EntityProcessorProductsRecord setDescription(String value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -149,64 +130,45 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Description for the Product.
      */
     public String getDescription() {
-        return (String) get(6);
+        return (String) get(5);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product.
+     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
+     * of this row.
      */
-    public EntityProcessorProductsRecord setAddedByUserId(ULong value) {
+    public EntityProcessorProductsRecord setVersion(ULong value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
+     * of this row.
+     */
+    public ULong getVersion() {
+        return (ULong) get(6);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template related to this Product.
+     */
+    public EntityProcessorProductsRecord setProductTemplateId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(7);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned.
-     */
-    public EntityProcessorProductsRecord setCurrentUserId(ULong value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned.
-     */
-    public ULong getCurrentUserId() {
-        return (ULong) get(8);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Product.
-     */
-    public EntityProcessorProductsRecord setProductTemplateId(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Product.
+     * Product Template related to this Product.
      */
     public ULong getProductTemplateId() {
-        return (ULong) get(9);
+        return (ULong) get(7);
     }
 
     /**
@@ -215,7 +177,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this product.
      */
     public EntityProcessorProductsRecord setTempActive(Byte value) {
-        set(10, value);
+        set(8, value);
         return this;
     }
 
@@ -225,7 +187,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(10);
+        return (Byte) get(8);
     }
 
     /**
@@ -234,7 +196,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public EntityProcessorProductsRecord setIsActive(Byte value) {
-        set(11, value);
+        set(9, value);
         return this;
     }
 
@@ -244,7 +206,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(11);
+        return (Byte) get(9);
     }
 
     /**
@@ -253,7 +215,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorProductsRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(10, value);
         return this;
     }
 
@@ -263,7 +225,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(10);
     }
 
     /**
@@ -272,7 +234,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(11, value);
         return this;
     }
 
@@ -282,7 +244,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -291,7 +253,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(12, value);
         return this;
     }
 
@@ -301,7 +263,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(12);
     }
 
     /**
@@ -310,7 +272,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(13, value);
         return this;
     }
 
@@ -320,7 +282,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -346,18 +308,16 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong productTemplateId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
-        setVersion(version);
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
-        setCurrentUserId(currentUserId);
+        setVersion(version);
         setProductTemplateId(productTemplateId);
         setTempActive(tempActive);
         setIsActive(isActive);

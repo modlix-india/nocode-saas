@@ -133,27 +133,29 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_stages.ADDED_BY_USER_ID</code>.
-     * User which added this Stage.
+     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
-    public EntityProcessorStagesRecord setAddedByUserId(ULong value) {
+    public EntityProcessorStagesRecord setPlatform(Platform value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_stages.ADDED_BY_USER_ID</code>.
-     * User which added this Stage.
+     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
+    public Platform getPlatform() {
+        return (Platform) get(6);
     }
 
     /**
      * Setter for
      * <code>entity_processor.entity_processor_stages.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Stage.
+     * Product Template related to this Stage.
      */
     public EntityProcessorStagesRecord setProductTemplateId(ULong value) {
         set(7, value);
@@ -163,7 +165,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_stages.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Stage.
+     * Product Template related to this Stage.
      */
     public ULong getProductTemplateId() {
         return (ULong) get(7);
@@ -227,24 +229,20 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     }
 
     /**
-     * Setter for
-     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
-     * POST_QUALIFICATION.
+     * Setter for <code>entity_processor.entity_processor_stages.ORDER</code>.
+     * Order in which this Stage will occur for a given client app.
      */
-    public EntityProcessorStagesRecord setPlatform(Platform value) {
+    public EntityProcessorStagesRecord setOrder(Integer value) {
         set(11, value);
         return this;
     }
 
     /**
-     * Getter for
-     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
-     * POST_QUALIFICATION.
+     * Getter for <code>entity_processor.entity_processor_stages.ORDER</code>.
+     * Order in which this Stage will occur for a given client app.
      */
-    public Platform getPlatform() {
-        return (Platform) get(11);
+    public Integer getOrder() {
+        return (Integer) get(11);
     }
 
     /**
@@ -269,7 +267,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
-     * flag will tell weather this stage will end in a success or not.
+     * flag will tell whether this stage will end in a success or not.
      */
     public EntityProcessorStagesRecord setIsSuccess(Byte value) {
         set(13, value);
@@ -279,7 +277,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
-     * flag will tell weather this stage will end in a success or not.
+     * flag will tell whether this stage will end in a success or not.
      */
     public Byte getIsSuccess() {
         return (Byte) get(13);
@@ -288,7 +286,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
-     * flag will tell weather this stage will end in a failure or not.
+     * flag will tell whether this stage will end in a failure or not.
      */
     public EntityProcessorStagesRecord setIsFailure(Byte value) {
         set(14, value);
@@ -298,27 +296,10 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
-     * flag will tell weather this stage will end in a failure or not.
+     * flag will tell whether this stage will end in a failure or not.
      */
     public Byte getIsFailure() {
         return (Byte) get(14);
-    }
-
-    /**
-     * Setter for <code>entity_processor.entity_processor_stages.ORDER</code>.
-     * Order in which this Stage will occur for a give client app.
-     */
-    public EntityProcessorStagesRecord setOrder(Short value) {
-        set(15, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>entity_processor.entity_processor_stages.ORDER</code>.
-     * Order in which this Stage will occur for a give client app.
-     */
-    public Short getOrder() {
-        return (Short) get(15);
     }
 
     /**
@@ -327,7 +308,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * Temporary active flag for this product.
      */
     public EntityProcessorStagesRecord setTempActive(Byte value) {
-        set(16, value);
+        set(15, value);
         return this;
     }
 
@@ -337,7 +318,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(16);
+        return (Byte) get(15);
     }
 
     /**
@@ -346,7 +327,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public EntityProcessorStagesRecord setIsActive(Byte value) {
-        set(17, value);
+        set(16, value);
         return this;
     }
 
@@ -356,7 +337,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(17);
+        return (Byte) get(16);
     }
 
     /**
@@ -365,7 +346,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public EntityProcessorStagesRecord setCreatedBy(ULong value) {
-        set(18, value);
+        set(17, value);
         return this;
     }
 
@@ -375,7 +356,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(17);
     }
 
     /**
@@ -384,7 +365,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public EntityProcessorStagesRecord setCreatedAt(LocalDateTime value) {
-        set(19, value);
+        set(18, value);
         return this;
     }
 
@@ -394,7 +375,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -403,7 +384,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public EntityProcessorStagesRecord setUpdatedBy(ULong value) {
-        set(20, value);
+        set(19, value);
         return this;
     }
 
@@ -413,7 +394,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(20);
+        return (ULong) get(19);
     }
 
     /**
@@ -422,7 +403,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public EntityProcessorStagesRecord setUpdatedAt(LocalDateTime value) {
-        set(21, value);
+        set(20, value);
         return this;
     }
 
@@ -432,7 +413,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -458,7 +439,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorStagesRecord
      */
-    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Platform platform, StageType stageType, Byte isSuccess, Byte isFailure, Short order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Platform platform, ULong productTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Integer order, StageType stageType, Byte isSuccess, Byte isFailure, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorStages.ENTITY_PROCESSOR_STAGES);
 
         setId(id);
@@ -467,16 +448,15 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
+        setPlatform(platform);
         setProductTemplateId(productTemplateId);
         setIsParent(isParent);
         setParentLevel_0(parentLevel_0);
         setParentLevel_1(parentLevel_1);
-        setPlatform(platform);
+        setOrder(order);
         setStageType(stageType);
         setIsSuccess(isSuccess);
         setIsFailure(isFailure);
-        setOrder(order);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

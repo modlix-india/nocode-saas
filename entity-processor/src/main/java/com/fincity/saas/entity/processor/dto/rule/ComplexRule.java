@@ -30,14 +30,16 @@ public class ComplexRule extends BaseRule<ComplexRule> {
     private boolean hasComplexChild;
     private boolean hasSimpleChild;
 
-    public static ComplexRule fromCondition(ULong ruleId, ComplexCondition condition) {
+    public static ComplexRule fromCondition(ULong ruleId, EntitySeries entitySeries, ComplexCondition condition) {
         ComplexRule complexRule = new ComplexRule()
-                .setRuleId(ruleId)
                 .setNegate(condition.isNegate())
                 .setLogicalOperator(
                         condition.getOperator() == ComplexConditionOperator.AND
                                 ? LogicalOperator.AND
                                 : LogicalOperator.OR);
+
+        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) complexRule.setProductStageRuleId(ruleId);
+        else complexRule.setProductTemplateRuleId(ruleId);
         return complexRule.setName();
     }
 

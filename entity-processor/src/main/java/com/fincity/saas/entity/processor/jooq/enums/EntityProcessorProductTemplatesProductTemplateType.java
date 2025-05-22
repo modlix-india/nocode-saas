@@ -10,14 +10,12 @@ import org.jooq.Schema;
 
 
 /**
- * Type of Value Template.
+ * Type of Product Template.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorProductTemplatesProductTemplateType implements EnumType {
 
-    ENTITY("ENTITY"),
-
-    PRODUCT("PRODUCT");
+    GENERAL("GENERAL");
 
     private final String literal;
 

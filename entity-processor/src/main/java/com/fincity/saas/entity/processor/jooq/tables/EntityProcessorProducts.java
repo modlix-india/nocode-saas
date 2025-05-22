@@ -76,13 +76,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     public final TableField<EntityProcessorProductsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom this notification we sent.");
 
     /**
-     * The column
-     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
-     * of this row.
-     */
-    public final TableField<EntityProcessorProductsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
-
-    /**
      * The column <code>entity_processor.entity_processor_products.CODE</code>.
      * Unique Code to identify this row.
      */
@@ -105,24 +98,17 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_products.ADDED_BY_USER_ID</code>.
-     * User which added this product.
+     * <code>entity_processor.entity_processor_products.VERSION</code>. Version
+     * of this row.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this product.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_products.CURRENT_USER_ID</code>.
-     * User to which this Product is assigned.
-     */
-    public final TableField<EntityProcessorProductsRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Product is assigned.");
+    public final TableField<EntityProcessorProductsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Product.
+     * Product Template related to this Product.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Value Template related to this Product.");
+    public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template related to this Product.");
 
     /**
      * The column

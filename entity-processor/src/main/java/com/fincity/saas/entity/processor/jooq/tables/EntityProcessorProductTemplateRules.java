@@ -4,7 +4,6 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -15,7 +14,6 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -36,6 +34,7 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -71,16 +70,16 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.APP_CODE</code>.
-     * App Code on which this Value Template Rule Config was created.
+     * App Code on which this Product Template Rule Config was created.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Value Template Rule Config was created.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Product Template Rule Config was created.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.CLIENT_CODE</code>.
-     * Client Code who created this Value Template Rule Config.
+     * Client Code who created this Product Template Rule Config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Value Template Rule Config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Product Template Rule Config.");
 
     /**
      * The column
@@ -92,37 +91,44 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.NAME</code>.
-     * Name of the Value Template Rule Config.
+     * Name of the Product Template Rule Config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(64).nullable(false), this, "Name of the Value Template Rule Config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(64).nullable(false), this, "Name of the Product Template Rule Config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.DESCRIPTION</code>.
-     * Description for the Value Template Rule Config.
+     * Description for the Product Template Rule Config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Value Template Rule Config.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_template_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template Rule Config.
-     */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Value Template Rule Config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Product Template Rule Config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template ID related to this Value Template Rule Config.
+     * Product Template ID related to this Product Template Rule Config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template ID related to this Value Template Rule Config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template ID related to this Product Template Rule Config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.STAGE_ID</code>.
-     * Stage Id to which this Value Template rule config is assigned
+     * Stage Id to which this Product Template rule config is assigned
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage Id to which this Value Template rule config is assigned");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage Id to which this Product Template rule config is assigned");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_template_rules.ORDER</code>.
+     * Order of execution of this rule for a stage
+     */
+    public final TableField<EntityProcessorProductTemplateRulesRecord, UInteger> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGERUNSIGNED.nullable(false), this, "Order of execution of this rule for a stage");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_template_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this stage this is default rule or not.");
 
     /**
      * The column
@@ -133,33 +139,17 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH = createField(DSL.name("EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if execution should only happen if all previous rules match.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_SIMPLE = createField(DSL.name("IS_SIMPLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a simple rule or not.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH = createField(DSL.name("EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if execution should only happen if all previous rules do not match.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_template_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
-     */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> CONTINUE_ON_NO_MATCH = createField(DSL.name("CONTINUE_ON_NO_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if execution should continue on no match.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_template_rules.RULES</code>.
-     * Rules for this Value Template Rule Config.
-     */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Map> RULES = createField(DSL.name("RULES"), SQLDataType.JSON, this, "Rules for this Value Template Rule Config.", new JSONMysqlMapConvertor());
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_COMPLEX = createField(DSL.name("IS_COMPLEX"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a complex rule or not.");
 
     /**
      * The column
@@ -177,24 +167,24 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_template_rules.LAST_USED_USER_ID</code>.
+     * <code>entity_processor.entity_processor_product_template_rules.LAST_ASSIGNED_USER_ID</code>.
      * Last User id used in this rule.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> LAST_USED_USER_ID = createField(DSL.name("LAST_USED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this rule.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, ULong> LAST_ASSIGNED_USER_ID = createField(DSL.name("LAST_ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this rule.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
-     * Temporary active flag for this Value Template rule config.
+     * Temporary active flag for this Product Template rule config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Value Template rule config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Product Template rule config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.IS_ACTIVE</code>.
-     * Flag to check if this Value Template rule config is active or not.
+     * Flag to check if this Product Template rule config is active or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Value Template rule config is active or not.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Product Template rule config is active or not.");
 
     /**
      * The column

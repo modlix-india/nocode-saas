@@ -25,7 +25,7 @@ public class ProductTemplateRule extends Rule<ProductTemplateRule> {
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT_RULE;
+        return EntitySeries.PRODUCT_TEMPLATE_RULE;
     }
 
     @Override

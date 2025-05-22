@@ -57,8 +57,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     }
 
     @Override
-    public Mono<SimpleRule> createForCondition(ULong ruleId, FilterCondition condition) {
-        SimpleRule simpleRule = SimpleRule.fromCondition(ruleId, condition);
+    public Mono<SimpleRule> createForCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {
+        SimpleRule simpleRule = SimpleRule.fromCondition(ruleId, entitySeries, condition);
         return super.create(simpleRule);
     }
 
@@ -72,8 +72,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     }
 
     public Mono<SimpleRule> createForConditionWithParent(
-            ULong ruleId, FilterCondition condition, ULong parentId, int order) {
-        return this.createForCondition(ruleId, condition).flatMap(cSimpleRule -> {
+            ULong ruleId, EntitySeries entitySeries, FilterCondition condition, ULong parentId, int order) {
+        return this.createForCondition(ruleId, entitySeries, condition).flatMap(cSimpleRule -> {
             SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
             return simpleComplexRuleRelationService.create(relation).then(Mono.empty());
         });

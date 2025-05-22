@@ -24,7 +24,6 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     @Serial
     private static final long serialVersionUID = 1248302700338268L;
 
-    private ULong ruleId;
     private String field;
     private ComparisonOperator comparisonOperator = ComparisonOperator.EQUALS;
     private Object value;
@@ -34,9 +33,8 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     private boolean isToValueField = false;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
 
-    public static SimpleRule fromCondition(ULong ruleId, FilterCondition condition) {
+    public static SimpleRule fromCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {
         SimpleRule simpleRule = new SimpleRule()
-                .setRuleId(ruleId)
                 .setField(condition.getField())
                 .setComparisonOperator(ComparisonOperator.lookup(condition.getOperator()))
                 .setValue(condition.getValue())
@@ -46,6 +44,9 @@ public class SimpleRule extends BaseRule<SimpleRule> {
                 .setToValueField(condition.isToValueField())
                 .setMatchOperator(ComparisonOperator.lookup(condition.getMatchOperator()))
                 .setNegate(condition.isNegate());
+
+        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) simpleRule.setProductStageRuleId(ruleId);
+        else simpleRule.setProductTemplateRuleId(ruleId);
 
         return simpleRule.setName();
     }

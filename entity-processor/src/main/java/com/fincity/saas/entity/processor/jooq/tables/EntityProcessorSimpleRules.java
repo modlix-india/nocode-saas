@@ -104,13 +104,6 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_simple_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Simple Rule.
-     */
-    public final TableField<EntityProcessorSimpleRulesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Simple Rule.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_simple_rules.VERSION</code>.
      * Version of this Simple Rule.
      */
@@ -118,10 +111,17 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_simple_rules.RULE_ID</code>. Rule
-     * ID related to this Simple Rule.
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_TEMPLATE_RULE_ID</code>.
+     * Product Template Rule ID related to this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, ULong> RULE_ID = createField(DSL.name("RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Rule ID related to this Simple Rule.");
+    public final TableField<EntityProcessorSimpleRulesRecord, ULong> PRODUCT_TEMPLATE_RULE_ID = createField(DSL.name("PRODUCT_TEMPLATE_RULE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template Rule ID related to this Simple Rule.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_STAGE_RULE_ID</code>.
+     * Product Stage Rule ID related to this Simple Rule.
+     */
+    public final TableField<EntityProcessorSimpleRulesRecord, ULong> PRODUCT_STAGE_RULE_ID = createField(DSL.name("PRODUCT_STAGE_RULE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Stage Rule ID related to this Simple Rule.");
 
     /**
      * The column

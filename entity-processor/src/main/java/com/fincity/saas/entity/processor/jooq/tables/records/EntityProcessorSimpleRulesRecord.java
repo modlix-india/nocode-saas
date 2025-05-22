@@ -139,30 +139,11 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_simple_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Simple Rule.
-     */
-    public EntityProcessorSimpleRulesRecord setAddedByUserId(ULong value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_simple_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Simple Rule.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_simple_rules.VERSION</code>.
      * Version of this Simple Rule.
      */
     public EntityProcessorSimpleRulesRecord setVersion(Integer value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -172,25 +153,44 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Version of this Simple Rule.
      */
     public Integer getVersion() {
-        return (Integer) get(7);
+        return (Integer) get(6);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_simple_rules.RULE_ID</code>. Rule
-     * ID related to this Simple Rule.
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_TEMPLATE_RULE_ID</code>.
+     * Product Template Rule ID related to this Simple Rule.
      */
-    public EntityProcessorSimpleRulesRecord setRuleId(ULong value) {
+    public EntityProcessorSimpleRulesRecord setProductTemplateRuleId(ULong value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_TEMPLATE_RULE_ID</code>.
+     * Product Template Rule ID related to this Simple Rule.
+     */
+    public ULong getProductTemplateRuleId() {
+        return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_STAGE_RULE_ID</code>.
+     * Product Stage Rule ID related to this Simple Rule.
+     */
+    public EntityProcessorSimpleRulesRecord setProductStageRuleId(ULong value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_simple_rules.RULE_ID</code>. Rule
-     * ID related to this Simple Rule.
+     * <code>entity_processor.entity_processor_simple_rules.PRODUCT_STAGE_RULE_ID</code>.
+     * Product Stage Rule ID related to this Simple Rule.
      */
-    public ULong getRuleId() {
+    public ULong getProductStageRuleId() {
         return (ULong) get(8);
     }
 
@@ -483,7 +483,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
     /**
      * Create a detached, initialised EntityProcessorSimpleRulesRecord
      */
-    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, Integer version, ULong ruleId, Byte negate, String field, ComparisonOperator comparisonOperator, JSON value, JSON toValue, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, String field, ComparisonOperator comparisonOperator, JSON value, JSON toValue, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES);
 
         setId(id);
@@ -492,9 +492,9 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setVersion(version);
-        setRuleId(ruleId);
+        setProductTemplateRuleId(productTemplateRuleId);
+        setProductStageRuleId(productStageRuleId);
         setNegate(negate);
         setField(field);
         setComparisonOperator(comparisonOperator);

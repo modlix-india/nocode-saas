@@ -251,6 +251,7 @@
                                             <includeExpression>RULES</includeExpression>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>false</genericConverter>
+                                            <ignoreUnused>true</ignoreUnused>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
@@ -283,8 +284,8 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.ValueTemplateType</userType>
-                                            <includeExpression>.*\VALUE_TEMPLATE_TYPE</includeExpression>
+                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType</userType>
+                                            <includeExpression>.*\.PRODUCT_TEMPLATE_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>

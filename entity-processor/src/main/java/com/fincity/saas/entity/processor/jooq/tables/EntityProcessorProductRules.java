@@ -4,7 +4,6 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -15,7 +14,6 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -36,6 +34,7 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -126,6 +125,20 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_product_rules.ORDER</code>. Order
+     * of execution of this rule for a stage
+     */
+    public final TableField<EntityProcessorProductRulesRecord, UInteger> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGERUNSIGNED.nullable(false), this, "Order of execution of this rule for a stage");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public final TableField<EntityProcessorProductRulesRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this stage this is default rule or not.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_product_rules.BREAK_AT_FIRST_MATCH</code>.
      * Flag to check if execution should break at first match.
      */
@@ -133,33 +146,17 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
+     * <code>entity_processor.entity_processor_product_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public final TableField<EntityProcessorProductRulesRecord, Byte> EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH = createField(DSL.name("EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if execution should only happen if all previous rules match.");
+    public final TableField<EntityProcessorProductRulesRecord, Byte> IS_SIMPLE = createField(DSL.name("IS_SIMPLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a simple rule or not.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
+     * <code>entity_processor.entity_processor_product_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public final TableField<EntityProcessorProductRulesRecord, Byte> EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH = createField(DSL.name("EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if execution should only happen if all previous rules do not match.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
-     */
-    public final TableField<EntityProcessorProductRulesRecord, Byte> CONTINUE_ON_NO_MATCH = createField(DSL.name("CONTINUE_ON_NO_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if execution should continue on no match.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_rules.RULES</code>. Rules
-     * for this Product Rule Config.
-     */
-    public final TableField<EntityProcessorProductRulesRecord, Map> RULES = createField(DSL.name("RULES"), SQLDataType.JSON, this, "Rules for this Product Rule Config.", new JSONMysqlMapConvertor());
+    public final TableField<EntityProcessorProductRulesRecord, Byte> IS_COMPLEX = createField(DSL.name("IS_COMPLEX"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a complex rule or not.");
 
     /**
      * The column
@@ -177,10 +174,10 @@ public class EntityProcessorProductRules extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_rules.LAST_USED_USER_ID</code>.
+     * <code>entity_processor.entity_processor_product_rules.LAST_ASSIGNED_USER_ID</code>.
      * Last User id used in this rule.
      */
-    public final TableField<EntityProcessorProductRulesRecord, ULong> LAST_USED_USER_ID = createField(DSL.name("LAST_USED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this rule.");
+    public final TableField<EntityProcessorProductRulesRecord, ULong> LAST_ASSIGNED_USER_ID = createField(DSL.name("LAST_ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this rule.");
 
     /**
      * The column

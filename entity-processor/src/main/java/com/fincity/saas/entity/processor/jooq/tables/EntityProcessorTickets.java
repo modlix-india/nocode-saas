@@ -76,13 +76,6 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom this notification we sent.");
 
     /**
-     * The column
-     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
-     * of this row.
-     */
-    public final TableField<EntityProcessorTicketsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
-
-    /**
      * The column <code>entity_processor.entity_processor_tickets.CODE</code>.
      * Unique Code to identify this row.
      */
@@ -105,29 +98,10 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_tickets.ADDED_BY_USER_ID</code>.
-     * User which added this ticket.
+     * <code>entity_processor.entity_processor_tickets.VERSION</code>. Version
+     * of this row.
      */
-    public final TableField<EntityProcessorTicketsRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this ticket.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_tickets.CURRENT_USER_ID</code>.
-     * User to which this ticket is assigned.
-     */
-    public final TableField<EntityProcessorTicketsRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this ticket is assigned.");
-
-    /**
-     * The column <code>entity_processor.entity_processor_tickets.STAGE</code>.
-     * Status for this ticket.
-     */
-    public final TableField<EntityProcessorTicketsRecord, ULong> STAGE = createField(DSL.name("STAGE"), SQLDataType.BIGINTUNSIGNED, this, "Status for this ticket.");
-
-    /**
-     * The column <code>entity_processor.entity_processor_tickets.STATUS</code>.
-     * Sub Status for this ticket.
-     */
-    public final TableField<EntityProcessorTicketsRecord, ULong> STATUS = createField(DSL.name("STATUS"), SQLDataType.BIGINTUNSIGNED, this, "Sub Status for this ticket.");
+    public final TableField<EntityProcessorTicketsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
 
     /**
      * The column
@@ -135,6 +109,13 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * related to this ticket.
      */
     public final TableField<EntityProcessorTicketsRecord, ULong> OWNER_ID = createField(DSL.name("OWNER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Owner related to this ticket.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.ASSIGNED_USER_ID</code>.
+     * User which added this ticket or user who is assigned to this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> ASSIGNED_USER_ID = createField(DSL.name("ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this ticket or user who is assigned to this ticket.");
 
     /**
      * The column
@@ -157,6 +138,25 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> EMAIL = createField(DSL.name("EMAIL"), SQLDataType.VARCHAR(512), this, "Email related to this ticket.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
+     * Product related to this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product related to this ticket.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tickets.STAGE</code>.
+     * Status for this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> STAGE = createField(DSL.name("STAGE"), SQLDataType.BIGINTUNSIGNED, this, "Status for this ticket.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tickets.STATUS</code>.
+     * Sub Status for this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> STATUS = createField(DSL.name("STATUS"), SQLDataType.BIGINTUNSIGNED, this, "Sub Status for this ticket.");
+
+    /**
      * The column <code>entity_processor.entity_processor_tickets.SOURCE</code>.
      * Name of source form where we get this ticket.
      */
@@ -168,13 +168,6 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * of sub source of source form where we get this ticket.
      */
     public final TableField<EntityProcessorTicketsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this ticket.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_tickets.PRODUCT_ID</code>.
-     * Product related to this ticket.
-     */
-    public final TableField<EntityProcessorTicketsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product related to this ticket.");
 
     /**
      * The column

@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplatesProductTemplateType;
+import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 
 import java.time.LocalDateTime;
@@ -44,7 +44,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_templates.APP_CODE</code>.
-     * App Code on which this Value Template was created.
+     * App Code on which this Product Template was created.
      */
     public EntityProcessorProductTemplatesRecord setAppCode(String value) {
         set(1, value);
@@ -54,7 +54,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_templates.APP_CODE</code>.
-     * App Code on which this Value Template was created.
+     * App Code on which this Product Template was created.
      */
     public String getAppCode() {
         return (String) get(1);
@@ -63,7 +63,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_templates.CLIENT_CODE</code>.
-     * Client Code who created this Value Template.
+     * Client Code who created this Product Template.
      */
     public EntityProcessorProductTemplatesRecord setClientCode(String value) {
         set(2, value);
@@ -73,7 +73,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_templates.CLIENT_CODE</code>.
-     * Client Code who created this Value Template.
+     * Client Code who created this Product Template.
      */
     public String getClientCode() {
         return (String) get(2);
@@ -101,8 +101,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_templates.NAME</code>.
-     * Name of the Value Template. Value Template are like value type for
-     * product, Tickets, owner.
+     * Name of the Product Template.
      */
     public EntityProcessorProductTemplatesRecord setName(String value) {
         set(4, value);
@@ -112,8 +111,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_templates.NAME</code>.
-     * Name of the Value Template. Value Template are like value type for
-     * product, Tickets, owner.
+     * Name of the Product Template.
      */
     public String getName() {
         return (String) get(4);
@@ -122,7 +120,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_templates.DESCRIPTION</code>.
-     * Description for the Value Template.
+     * Description for the Product Template.
      */
     public EntityProcessorProductTemplatesRecord setDescription(String value) {
         set(5, value);
@@ -132,7 +130,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_templates.DESCRIPTION</code>.
-     * Description for the Value Template.
+     * Description for the Product Template.
      */
     public String getDescription() {
         return (String) get(5);
@@ -140,40 +138,21 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_templates.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template.
+     * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_TYPE</code>.
+     * Type of Product Template.
      */
-    public EntityProcessorProductTemplatesRecord setAddedByUserId(ULong value) {
+    public EntityProcessorProductTemplatesRecord setProductTemplateType(ProductTemplateType value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_templates.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_TYPE</code>.
-     * Type of Value Template.
+     * Type of Product Template.
      */
-    public EntityProcessorProductTemplatesRecord setProductTemplateType(EntityProcessorProductTemplatesProductTemplateType value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_TYPE</code>.
-     * Type of Value Template.
-     */
-    public EntityProcessorProductTemplatesProductTemplateType getProductTemplateType() {
-        return (EntityProcessorProductTemplatesProductTemplateType) get(7);
+    public ProductTemplateType getProductTemplateType() {
+        return (ProductTemplateType) get(6);
     }
 
     /**
@@ -182,7 +161,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Temporary active flag for this product.
      */
     public EntityProcessorProductTemplatesRecord setTempActive(Byte value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -192,7 +171,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(8);
+        return (Byte) get(7);
     }
 
     /**
@@ -201,7 +180,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Flag to check if this product is active or not.
      */
     public EntityProcessorProductTemplatesRecord setIsActive(Byte value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -211,7 +190,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Flag to check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(9);
+        return (Byte) get(8);
     }
 
     /**
@@ -220,7 +199,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public EntityProcessorProductTemplatesRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -230,7 +209,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(9);
     }
 
     /**
@@ -239,7 +218,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public EntityProcessorProductTemplatesRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(10, value);
         return this;
     }
 
@@ -249,7 +228,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -258,7 +237,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public EntityProcessorProductTemplatesRecord setUpdatedBy(ULong value) {
-        set(12, value);
+        set(11, value);
         return this;
     }
 
@@ -268,7 +247,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(11);
     }
 
     /**
@@ -277,7 +256,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public EntityProcessorProductTemplatesRecord setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(12, value);
         return this;
     }
 
@@ -287,7 +266,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -313,7 +292,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorProductTemplatesRecord
      */
-    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, EntityProcessorProductTemplatesProductTemplateType productTemplateType, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ProductTemplateType productTemplateType, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES);
 
         setId(id);
@@ -322,7 +301,6 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setProductTemplateType(productTemplateType);
         setTempActive(tempActive);
         setIsActive(isActive);

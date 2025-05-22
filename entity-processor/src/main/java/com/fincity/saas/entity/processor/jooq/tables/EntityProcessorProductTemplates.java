@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplatesProductTemplateType;
@@ -29,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -66,16 +68,16 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
     /**
      * The column
      * <code>entity_processor.entity_processor_product_templates.APP_CODE</code>.
-     * App Code on which this Value Template was created.
+     * App Code on which this Product Template was created.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Value Template was created.");
+    public final TableField<EntityProcessorProductTemplatesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Product Template was created.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_templates.CLIENT_CODE</code>.
-     * Client Code who created this Value Template.
+     * Client Code who created this Product Template.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Value Template.");
+    public final TableField<EntityProcessorProductTemplatesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Product Template.");
 
     /**
      * The column
@@ -87,31 +89,23 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
     /**
      * The column
      * <code>entity_processor.entity_processor_product_templates.NAME</code>.
-     * Name of the Value Template. Value Template are like value type for
-     * product, Tickets, owner.
+     * Name of the Product Template.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Value Template. Value Template are like value type for product, Tickets, owner.");
+    public final TableField<EntityProcessorProductTemplatesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Product Template.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_templates.DESCRIPTION</code>.
-     * Description for the Value Template.
+     * Description for the Product Template.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Value Template.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_templates.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template.
-     */
-    public final TableField<EntityProcessorProductTemplatesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Value Template.");
+    public final TableField<EntityProcessorProductTemplatesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Product Template.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_TYPE</code>.
-     * Type of Value Template.
+     * Type of Product Template.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, EntityProcessorProductTemplatesProductTemplateType> PRODUCT_TEMPLATE_TYPE = createField(DSL.name("PRODUCT_TEMPLATE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("PRODUCT", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductTemplatesProductTemplateType.class), this, "Type of Value Template.");
+    public final TableField<EntityProcessorProductTemplatesRecord, ProductTemplateType> PRODUCT_TEMPLATE_TYPE = createField(DSL.name("PRODUCT_TEMPLATE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("GENERAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductTemplatesProductTemplateType.class), this, "Type of Product Template.", new EnumConverter<EntityProcessorProductTemplatesProductTemplateType, ProductTemplateType>(EntityProcessorProductTemplatesProductTemplateType.class, ProductTemplateType.class));
 
     /**
      * The column

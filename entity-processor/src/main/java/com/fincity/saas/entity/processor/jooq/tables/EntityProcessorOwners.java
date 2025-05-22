@@ -76,12 +76,6 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
     public final TableField<EntityProcessorOwnersRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code to whom this notification we sent.");
 
     /**
-     * The column <code>entity_processor.entity_processor_owners.VERSION</code>.
-     * Version of this row.
-     */
-    public final TableField<EntityProcessorOwnersRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
-
-    /**
      * The column <code>entity_processor.entity_processor_owners.CODE</code>.
      * Unique Code to identify this row.
      */
@@ -102,18 +96,10 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
     public final TableField<EntityProcessorOwnersRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Owner.");
 
     /**
-     * The column
-     * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Owner.
+     * The column <code>entity_processor.entity_processor_owners.VERSION</code>.
+     * Version of this row.
      */
-    public final TableField<EntityProcessorOwnersRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Owner.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Owner is assigned.
-     */
-    public final TableField<EntityProcessorOwnersRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Owner is assigned.");
+    public final TableField<EntityProcessorOwnersRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
 
     /**
      * The column
@@ -134,6 +120,19 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
      * Email related to this owner.
      */
     public final TableField<EntityProcessorOwnersRecord, String> EMAIL = createField(DSL.name("EMAIL"), SQLDataType.VARCHAR(512), this, "Email related to this owner.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_owners.SOURCE</code>.
+     * Source of this owner
+     */
+    public final TableField<EntityProcessorOwnersRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(64).nullable(false), this, "Source of this owner");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_owners.SUB_SOURCE</code>. Sub
+     * Source of this owner.
+     */
+    public final TableField<EntityProcessorOwnersRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(64), this, "Sub Source of this owner.");
 
     /**
      * The column

@@ -90,7 +90,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * The column <code>entity_processor.entity_processor_stages.NAME</code>.
      * Name of the Stage.
      */
-    public final TableField<EntityProcessorStagesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.CHAR(32).nullable(false), this, "Name of the Stage.");
+    public final TableField<EntityProcessorStagesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Stage.");
 
     /**
      * The column
@@ -101,17 +101,18 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_stages.ADDED_BY_USER_ID</code>.
-     * User which added this Stage.
+     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
+     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
+     * POST_QUALIFICATION.
      */
-    public final TableField<EntityProcessorStagesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Stage.");
+    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template related to this Stage.
+     * Product Template related to this Stage.
      */
-    public final TableField<EntityProcessorStagesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Stage.");
+    public final TableField<EntityProcessorStagesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template related to this Stage.");
 
     /**
      * The column
@@ -135,12 +136,10 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     public final TableField<EntityProcessorStagesRecord, ULong> PARENT_LEVEL_1 = createField(DSL.name("PARENT_LEVEL_1"), SQLDataType.BIGINTUNSIGNED, this, "Parent stage level 1 for this stage.");
 
     /**
-     * The column
-     * <code>entity_processor.entity_processor_stages.PLATFORM</code>. Platform
-     * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
-     * POST_QUALIFICATION.
+     * The column <code>entity_processor.entity_processor_stages.ORDER</code>.
+     * Order in which this Stage will occur for a given client app.
      */
-    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("POST_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorStagesRecord, Integer> ORDER = createField(DSL.name("ORDER"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Order in which this Stage will occur for a given client app.");
 
     /**
      * The column
@@ -152,22 +151,16 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
-     * flag will tell weather this stage will end in a success or not.
+     * flag will tell whether this stage will end in a success or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "This flag will tell weather this stage will end in a success or not.");
+    public final TableField<EntityProcessorStagesRecord, Byte> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a success or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
-     * flag will tell weather this stage will end in a failure or not.
+     * flag will tell whether this stage will end in a failure or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "This flag will tell weather this stage will end in a failure or not.");
-
-    /**
-     * The column <code>entity_processor.entity_processor_stages.ORDER</code>.
-     * Order in which this Stage will occur for a give client app.
-     */
-    public final TableField<EntityProcessorStagesRecord, Short> ORDER = createField(DSL.name("ORDER"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.SMALLINT)), this, "Order in which this Stage will occur for a give client app.");
+    public final TableField<EntityProcessorStagesRecord, Byte> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a failure or not.");
 
     /**
      * The column

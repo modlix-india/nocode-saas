@@ -2,11 +2,10 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES;
 
-import org.springframework.stereotype.Component;
-
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ProductTemplateRuleDAO extends RuleDAO<EntityProcessorProductTemplateRulesRecord, ProductTemplateRule> {

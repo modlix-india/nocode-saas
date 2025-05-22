@@ -8,11 +8,11 @@ import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 
 
@@ -46,7 +46,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_template_rules.APP_CODE</code>.
-     * App Code on which this Value Template Rule Config was created.
+     * App Code on which this Product Template Rule Config was created.
      */
     public EntityProcessorProductTemplateRulesRecord setAppCode(String value) {
         set(1, value);
@@ -56,7 +56,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_template_rules.APP_CODE</code>.
-     * App Code on which this Value Template Rule Config was created.
+     * App Code on which this Product Template Rule Config was created.
      */
     public String getAppCode() {
         return (String) get(1);
@@ -65,7 +65,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_template_rules.CLIENT_CODE</code>.
-     * Client Code who created this Value Template Rule Config.
+     * Client Code who created this Product Template Rule Config.
      */
     public EntityProcessorProductTemplateRulesRecord setClientCode(String value) {
         set(2, value);
@@ -75,7 +75,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_template_rules.CLIENT_CODE</code>.
-     * Client Code who created this Value Template Rule Config.
+     * Client Code who created this Product Template Rule Config.
      */
     public String getClientCode() {
         return (String) get(2);
@@ -103,7 +103,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_template_rules.NAME</code>.
-     * Name of the Value Template Rule Config.
+     * Name of the Product Template Rule Config.
      */
     public EntityProcessorProductTemplateRulesRecord setName(String value) {
         set(4, value);
@@ -113,7 +113,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_template_rules.NAME</code>.
-     * Name of the Value Template Rule Config.
+     * Name of the Product Template Rule Config.
      */
     public String getName() {
         return (String) get(4);
@@ -122,7 +122,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_template_rules.DESCRIPTION</code>.
-     * Description for the Value Template Rule Config.
+     * Description for the Product Template Rule Config.
      */
     public EntityProcessorProductTemplateRulesRecord setDescription(String value) {
         set(5, value);
@@ -132,7 +132,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_template_rules.DESCRIPTION</code>.
-     * Description for the Value Template Rule Config.
+     * Description for the Product Template Rule Config.
      */
     public String getDescription() {
         return (String) get(5);
@@ -140,59 +140,78 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template Rule Config.
+     * <code>entity_processor.entity_processor_product_template_rules.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template ID related to this Product Template Rule Config.
      */
-    public EntityProcessorProductTemplateRulesRecord setAddedByUserId(ULong value) {
+    public EntityProcessorProductTemplateRulesRecord setProductTemplateId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Value Template Rule Config.
+     * <code>entity_processor.entity_processor_product_template_rules.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template ID related to this Product Template Rule Config.
      */
-    public ULong getAddedByUserId() {
+    public ULong getProductTemplateId() {
         return (ULong) get(6);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template ID related to this Value Template Rule Config.
+     * <code>entity_processor.entity_processor_product_template_rules.STAGE_ID</code>.
+     * Stage Id to which this Product Template rule config is assigned
      */
-    public EntityProcessorProductTemplateRulesRecord setProductTemplateId(ULong value) {
+    public EntityProcessorProductTemplateRulesRecord setStageId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.PRODUCT_TEMPLATE_ID</code>.
-     * Value Template ID related to this Value Template Rule Config.
+     * <code>entity_processor.entity_processor_product_template_rules.STAGE_ID</code>.
+     * Stage Id to which this Product Template rule config is assigned
      */
-    public ULong getProductTemplateId() {
+    public ULong getStageId() {
         return (ULong) get(7);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.STAGE_ID</code>.
-     * Stage Id to which this Value Template rule config is assigned
+     * <code>entity_processor.entity_processor_product_template_rules.ORDER</code>.
+     * Order of execution of this rule for a stage
      */
-    public EntityProcessorProductTemplateRulesRecord setStageId(ULong value) {
+    public EntityProcessorProductTemplateRulesRecord setOrder(UInteger value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.STAGE_ID</code>.
-     * Stage Id to which this Value Template rule config is assigned
+     * <code>entity_processor.entity_processor_product_template_rules.ORDER</code>.
+     * Order of execution of this rule for a stage
      */
-    public ULong getStageId() {
-        return (ULong) get(8);
+    public UInteger getOrder() {
+        return (UInteger) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_template_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public EntityProcessorProductTemplateRulesRecord setIsDefault(Byte value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_template_rules.IS_DEFAULT</code>.
+     * Flag to tell weather for this stage this is default rule or not.
+     */
+    public Byte getIsDefault() {
+        return (Byte) get(9);
     }
 
     /**
@@ -201,7 +220,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Flag to check if execution should break at first match.
      */
     public EntityProcessorProductTemplateRulesRecord setBreakAtFirstMatch(Byte value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -211,87 +230,45 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Flag to check if execution should break at first match.
      */
     public Byte getBreakAtFirstMatch() {
-        return (Byte) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
-     */
-    public EntityProcessorProductTemplateRulesRecord setExecuteOnlyIfAllPreviousMatch(Byte value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules
-     * match.
-     */
-    public Byte getExecuteOnlyIfAllPreviousMatch() {
         return (Byte) get(10);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public EntityProcessorProductTemplateRulesRecord setExecuteOnlyIfAllPreviousNotMatch(Byte value) {
+    public EntityProcessorProductTemplateRulesRecord setIsSimple(Byte value) {
         set(11, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.EXECUTE_ONLY_IF_ALL_PREVIOUS_NOT_MATCH</code>.
-     * Flag to check if execution should only happen if all previous rules do
-     * not match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_SIMPLE</code>.
+     * Flag to tell weather for this is a simple rule or not.
      */
-    public Byte getExecuteOnlyIfAllPreviousNotMatch() {
+    public Byte getIsSimple() {
         return (Byte) get(11);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public EntityProcessorProductTemplateRulesRecord setContinueOnNoMatch(Byte value) {
+    public EntityProcessorProductTemplateRulesRecord setIsComplex(Byte value) {
         set(12, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.CONTINUE_ON_NO_MATCH</code>.
-     * Flag to check if execution should continue on no match.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_COMPLEX</code>.
+     * Flag to tell weather for this is a complex rule or not.
      */
-    public Byte getContinueOnNoMatch() {
+    public Byte getIsComplex() {
         return (Byte) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.RULES</code>.
-     * Rules for this Value Template Rule Config.
-     */
-    public EntityProcessorProductTemplateRulesRecord setRules(Map value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.RULES</code>.
-     * Rules for this Value Template Rule Config.
-     */
-    public Map getRules() {
-        return (Map) get(13);
     }
 
     /**
@@ -300,7 +277,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * User distribution strategy for this rule.
      */
     public EntityProcessorProductTemplateRulesRecord setUserDistributionType(DistributionType value) {
-        set(14, value);
+        set(13, value);
         return this;
     }
 
@@ -310,7 +287,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * User distribution strategy for this rule.
      */
     public DistributionType getUserDistributionType() {
-        return (DistributionType) get(14);
+        return (DistributionType) get(13);
     }
 
     /**
@@ -319,7 +296,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * User distributions for this rule.
      */
     public EntityProcessorProductTemplateRulesRecord setUserDistributions(JSON value) {
-        set(15, value);
+        set(14, value);
         return this;
     }
 
@@ -329,64 +306,64 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * User distributions for this rule.
      */
     public JSON getUserDistributions() {
-        return (JSON) get(15);
+        return (JSON) get(14);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.LAST_USED_USER_ID</code>.
+     * <code>entity_processor.entity_processor_product_template_rules.LAST_ASSIGNED_USER_ID</code>.
      * Last User id used in this rule.
      */
-    public EntityProcessorProductTemplateRulesRecord setLastUsedUserId(ULong value) {
+    public EntityProcessorProductTemplateRulesRecord setLastAssignedUserId(ULong value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_template_rules.LAST_ASSIGNED_USER_ID</code>.
+     * Last User id used in this rule.
+     */
+    public ULong getLastAssignedUserId() {
+        return (ULong) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
+     * Temporary active flag for this Product Template rule config.
+     */
+    public EntityProcessorProductTemplateRulesRecord setTempActive(Byte value) {
         set(16, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.LAST_USED_USER_ID</code>.
-     * Last User id used in this rule.
+     * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
+     * Temporary active flag for this Product Template rule config.
      */
-    public ULong getLastUsedUserId() {
-        return (ULong) get(16);
+    public Byte getTempActive() {
+        return (Byte) get(16);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
-     * Temporary active flag for this Value Template rule config.
+     * <code>entity_processor.entity_processor_product_template_rules.IS_ACTIVE</code>.
+     * Flag to check if this Product Template rule config is active or not.
      */
-    public EntityProcessorProductTemplateRulesRecord setTempActive(Byte value) {
+    public EntityProcessorProductTemplateRulesRecord setIsActive(Byte value) {
         set(17, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
-     * Temporary active flag for this Value Template rule config.
-     */
-    public Byte getTempActive() {
-        return (Byte) get(17);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_product_template_rules.IS_ACTIVE</code>.
-     * Flag to check if this Value Template rule config is active or not.
-     */
-    public EntityProcessorProductTemplateRulesRecord setIsActive(Byte value) {
-        set(18, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_template_rules.IS_ACTIVE</code>.
-     * Flag to check if this Value Template rule config is active or not.
+     * Flag to check if this Product Template rule config is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(18);
+        return (Byte) get(17);
     }
 
     /**
@@ -395,7 +372,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * ID of the user who created this row.
      */
     public EntityProcessorProductTemplateRulesRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(18, value);
         return this;
     }
 
@@ -405,7 +382,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(18);
     }
 
     /**
@@ -414,7 +391,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Time when this row is created.
      */
     public EntityProcessorProductTemplateRulesRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(19, value);
         return this;
     }
 
@@ -424,7 +401,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(19);
     }
 
     /**
@@ -433,7 +410,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * ID of the user who updated this row.
      */
     public EntityProcessorProductTemplateRulesRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(20, value);
         return this;
     }
 
@@ -443,7 +420,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(20);
     }
 
     /**
@@ -452,7 +429,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Time when this row is updated.
      */
     public EntityProcessorProductTemplateRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(21, value);
         return this;
     }
 
@@ -462,7 +439,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(21);
     }
 
     // -------------------------------------------------------------------------
@@ -488,7 +465,7 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
     /**
      * Create a detached, initialised EntityProcessorProductTemplateRulesRecord
      */
-    public EntityProcessorProductTemplateRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productTemplateId, ULong stageId, Byte breakAtFirstMatch, Byte executeOnlyIfAllPreviousMatch, Byte executeOnlyIfAllPreviousNotMatch, Byte continueOnNoMatch, Map rules, DistributionType userDistributionType, JSON userDistributions, ULong lastUsedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTemplateRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productTemplateId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, JSON userDistributions, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES);
 
         setId(id);
@@ -497,17 +474,16 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setProductTemplateId(productTemplateId);
         setStageId(stageId);
+        setOrder(order);
+        setIsDefault(isDefault);
         setBreakAtFirstMatch(breakAtFirstMatch);
-        setExecuteOnlyIfAllPreviousMatch(executeOnlyIfAllPreviousMatch);
-        setExecuteOnlyIfAllPreviousNotMatch(executeOnlyIfAllPreviousNotMatch);
-        setContinueOnNoMatch(continueOnNoMatch);
-        setRules(rules);
+        setIsSimple(isSimple);
+        setIsComplex(isComplex);
         setUserDistributionType(userDistributionType);
         setUserDistributions(userDistributions);
-        setLastUsedUserId(lastUsedUserId);
+        setLastAssignedUserId(lastAssignedUserId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

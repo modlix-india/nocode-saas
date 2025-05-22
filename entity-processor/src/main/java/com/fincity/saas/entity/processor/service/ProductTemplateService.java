@@ -7,7 +7,7 @@ import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplatesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ProductTemplateService
-        extends BaseService<EntityProcessorValueTemplatesRecord, ProductTemplate, ProductTemplateDAO>
+        extends BaseService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
         implements IEntitySeries {
 
     private static final String PRODUCT_TEMPLATE = "productTemplate";

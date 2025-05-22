@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 public class ProductStageRuleService
         extends RuleService<EntityProcessorProductRulesRecord, ProductStageRule, ProductStageRuleDAO> {
 
-    private static final String PRODUCT_RULE_CONFIG = "productRuleConfig";
+    private static final String PRODUCT_STAGE_RULE = "productStageRule";
 
     private ProductService productService;
     private ProductTemplateRuleService productTemplateRuleService;
@@ -38,12 +38,12 @@ public class ProductStageRuleService
 
     @Override
     protected String getCacheName() {
-        return PRODUCT_RULE_CONFIG;
+        return PRODUCT_STAGE_RULE;
     }
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT_RULE;
+        return EntitySeries.PRODUCT_STAGE_RULE;
     }
 
     @Override

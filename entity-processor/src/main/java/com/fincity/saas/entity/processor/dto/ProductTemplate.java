@@ -33,6 +33,6 @@ public class ProductTemplate extends BaseDto<ProductTemplate> implements IEntity
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.VALUE_TEMPLATE;
+        return EntitySeries.PRODUCT_TEMPLATE;
     }
 }

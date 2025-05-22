@@ -208,12 +208,12 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 (hasAccess, rule, stageId, uRule, cRule) -> {
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
-                                .createForCondition(cRule.getId(), complexCondition)
+                                .createForCondition(cRule.getId(), cRule.getEntitySeries(), complexCondition)
                                 .map(result -> cRule);
 
                     if (rule.isSimple() && ruleRequest.getCondition() instanceof FilterCondition filterCondition)
                         return simpleRuleService
-                                .createForCondition(cRule.getId(), filterCondition)
+                                .createForCondition(cRule.getId(), cRule.getEntitySeries(), filterCondition)
                                 .map(result -> cRule);
 
                     return Mono.just(cRule);
