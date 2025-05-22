@@ -1,21 +1,18 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -50,15 +47,23 @@ public class RuleExecutionService {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
-        return Flux.fromIterable(rules.entrySet())
-                .sort(Map.Entry.comparingByKey())
-                .flatMap(entry -> this.evaluateRule(entry.getValue(), prefix, data)
+        return Flux.fromIterable(rules.keySet())
+                .filter(order -> order != null && order > 0)
+                .sort((o1, o2) -> Integer.compare(o2, o1))
+                .map(rules::get)
+                .flatMap(rule -> this.evaluateRule(rule, prefix, data)
                         .filter(matches -> matches)
-                        .map(matches -> entry.getValue()))
-                .take(1) // Break at first match
+                        .map(matches -> rule))
+                .take(1)
                 .collectList()
                 .flatMap(matchedRules -> {
-                    if (matchedRules.isEmpty()) return Mono.empty();
+                    if (matchedRules.isEmpty()) {
+                        T defaultRule = rules.get(0);
+                        if (defaultRule != null)
+                            return getUsersForDistribution(defaultRule.getUserDistribution())
+                                    .flatMap(userIds -> this.distributeUsers(defaultRule, userIds));
+                        return Mono.empty();
+                    }
 
                     T matchedRule = matchedRules.getFirst();
 

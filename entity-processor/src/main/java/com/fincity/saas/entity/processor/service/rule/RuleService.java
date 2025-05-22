@@ -9,7 +9,6 @@ import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
@@ -17,9 +16,9 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.google.gson.JsonElement;
-
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
@@ -33,6 +32,8 @@ import reactor.core.publisher.Mono;
 @Service
 public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
         extends BaseService<R, D, O> implements IEntitySeries {
+
+    private static final String DEFAULT_KEY = "default";
 
     private static final String RULE = "rule";
     protected RuleExecutionService ruleExecutionService;
@@ -79,6 +80,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected Mono<D> updatableEntity(D rule) {
 
         return super.updatableEntity(rule).flatMap(existing -> {
+            if (existing.getOrder() != 0) existing.setOrder(rule.getOrder());
             existing.setComplex(rule.isComplex());
 
             if (!rule.isComplex()) existing.setSimple(rule.isSimple());
@@ -86,9 +88,55 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         });
     }
 
+    protected Mono<D> getDefault(String appCode, String clientCode, ULong entityId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.readDefaultInternal(appCode, clientCode, entityId),
+                this.getCacheKey(appCode, clientCode, entityId, DEFAULT_KEY));
+    }
+
+    protected Mono<Map<Integer, D>> getRuleWithOrder(String appCode, String clientCode, ULong entityId, ULong stageId) {
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.zip(
+                        this.getRules(appCode, clientCode, entityId, stageId),
+                        this.getDefault(appCode, clientCode, entityId)),
+                tuple -> {
+                    Map<Integer, D> rulesMap = tuple.getT1().stream()
+                            .collect(Collectors.toMap(Rule::getOrder, Function.identity(), (a, b) -> b));
+
+                    rulesMap.put(0, tuple.getT2());
+
+                    return Mono.just(rulesMap);
+                });
+    }
+
+    protected Mono<List<D>> getRules(String appCode, String clientCode, ULong entityId, ULong stageId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.readInternal(appCode, clientCode, entityId, stageId),
+                this.getCacheKey(appCode, clientCode, entityId, stageId));
+    }
+
+    private Mono<List<D>> readInternal(String appCode, String clientCode, ULong entityId, ULong stageId) {
+        return this.dao.getRules(appCode, clientCode, entityId, stageId).collectList();
+    }
+
+    private Mono<D> readDefaultInternal(String appCode, String clientCode, ULong entityId) {
+        return this.dao.getDefaultRule(appCode, clientCode, entityId);
+    }
+
+    public Mono<D> createDefaultRule(RuleRequest ruleRequest) {
+        return this.createInternal(ruleRequest, 0);
+    }
+
     public Mono<Map<Integer, D>> createWithOrder(Map<Integer, RuleRequest> ruleRequests) {
 
         if (ruleRequests == null || ruleRequests.isEmpty()) return Mono.just(Map.of());
+
+        if (!ruleRequests.containsKey(0))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.DEFAULT_RULE_MISSING);
 
         return Flux.fromIterable(ruleRequests.entrySet())
                 .flatMap(entry -> {
@@ -137,6 +185,16 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     }
 
     private Mono<D> createInternal(RuleRequest ruleRequest, Integer order) {
+
+        if (order == 0) ruleRequest.setDefault(Boolean.TRUE).setStageId(null);
+
+        if (order > 0
+                && (ruleRequest.getStageId() == null || ruleRequest.getStageId().isNull()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.STAGE_MISSING);
+
+        if (ruleRequest.isDefault()) ruleRequest.setStageId(null);
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,

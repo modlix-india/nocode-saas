@@ -29,6 +29,7 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
 
     private ULong stageId;
     private Integer order;
+    private boolean isDefault = false;
     private boolean breakAtFirstMatch = false;
     private boolean isSimple = true;
     private boolean isComplex = false;
@@ -42,4 +43,10 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
     public abstract T setEntityId(ULong entityId);
 
     public abstract T of(RuleRequest ruleRequest);
+
+    public T setIsDefault(boolean isDefault) {
+        this.isDefault = isDefault;
+        if (isDefault) this.stageId = null;
+        return (T) this;
+    }
 }

@@ -3,10 +3,13 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
+import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
+import com.google.gson.JsonElement;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -27,14 +30,6 @@ public class ProductTemplateRuleService
     }
 
     @Override
-    protected Mono<ProductTemplateRule> createFromRequest(RuleRequest ruleRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> productTemplateService.checkAndUpdateIdentity(ruleRequest.getEntityId()),
-                productTemplateId -> Mono.just(
-                        new ProductTemplateRule().of(ruleRequest).setEntityId(productTemplateId.getULongId())));
-    }
-
-    @Override
     protected String getCacheName() {
         return VALUE_TEMPLATE_RULE_CONFIG;
     }
@@ -44,31 +39,21 @@ public class ProductTemplateRuleService
         return EntitySeries.VALUE_TEMPLATE_RULE;
     }
 
-    //    @Override
-    //    protected Mono<ULong> getEntityId(String appCode, String clientCode, Identity valueTemplateId) {
-    //        return productTemplateService.readWithAccess(valueTemplateId).map(ProductTemplate::getId);
-    //    }
-    //
-    //    @Override
-    //    protected Mono<ULong> getValueTemplateId(String appCode, String clientCode, Identity entityId) {
-    //        return productTemplateService.readIdentityInternal(entityId).map(ProductTemplate::getId);
-    //    }
-    //
-    //    @Override
-    //    protected Mono<ProductTemplateRule> createNewInstance() {
-    //        return Mono.just(new ProductTemplateRule());
-    //    }
-    //
-    //    @Override
-    //    protected Mono<ULong> getUserAssignment(
-    //            String appCode,
-    //            String clientCode,
-    //            ULong valueTemplateId,
-    //            Platform platform,
-    //            String tokenPrefix,
-    //            JsonElement data) {
-    //        return FlatMapUtil.flatMapMono(
-    //                () -> this.read(appCode, clientCode, valueTemplateId, platform),
-    //                productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, data));
-    //    }
+    @Override
+    protected Mono<ProductTemplateRule> createFromRequest(RuleRequest ruleRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> productTemplateService.checkAndUpdateIdentity(ruleRequest.getEntityId()),
+                productTemplateId -> Mono.just(
+                        new ProductTemplateRule().of(ruleRequest).setEntityId(productTemplateId.getULongId())));
+    }
+
+    @Override
+    public Mono<ULong> getUserAssignment(
+            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
+                productTemplateRules ->
+                        super.ruleExecutionService.executeRules(productTemplateRules, tokenPrefix, data),
+                (productTemplateRules, eRule) -> super.update(eRule).map(Rule::getLastAssignedUserId));
+    }
 }
