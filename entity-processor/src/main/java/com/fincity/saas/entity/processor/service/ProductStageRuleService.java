@@ -69,6 +69,6 @@ public class ProductStageRuleService
         return FlatMapUtil.flatMapMono(
                 () -> productService.readById(entityId),
                 product -> this.productTemplateRuleService.getUserAssignment(
-                        appCode, clientCode, product.getValueTemplateId(), stageId, tokenPrefix, data));
+                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, data));
     }
 }

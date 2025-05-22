@@ -112,7 +112,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for <code>entity_processor.entity_processor_owners.NAME</code>.
-     * Name of the Model. Model can be anything which will have entities. For
+     * Name of the Owner. Owner can be anything which will have entities. For
      * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public EntityProcessorOwnersRecord setName(String value) {
@@ -122,7 +122,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Getter for <code>entity_processor.entity_processor_owners.NAME</code>.
-     * Name of the Model. Model can be anything which will have entities. For
+     * Name of the Owner. Owner can be anything which will have entities. For
      * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
     public String getName() {
@@ -132,7 +132,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_owners.DESCRIPTION</code>.
-     * Description for the Model.
+     * Description for the Owner.
      */
     public EntityProcessorOwnersRecord setDescription(String value) {
         set(6, value);
@@ -142,7 +142,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_owners.DESCRIPTION</code>.
-     * Description for the Model.
+     * Description for the Owner.
      */
     public String getDescription() {
         return (String) get(6);
@@ -151,7 +151,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Model.
+     * User which added this Owner.
      */
     public EntityProcessorOwnersRecord setAddedByUserId(ULong value) {
         set(7, value);
@@ -161,7 +161,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Model.
+     * User which added this Owner.
      */
     public ULong getAddedByUserId() {
         return (ULong) get(7);
@@ -170,7 +170,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Setter for
      * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Model is assigned.
+     * User to which this Owner is assigned.
      */
     public EntityProcessorOwnersRecord setCurrentUserId(ULong value) {
         set(8, value);
@@ -180,7 +180,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Getter for
      * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Model is assigned.
+     * User to which this Owner is assigned.
      */
     public ULong getCurrentUserId() {
         return (ULong) get(8);

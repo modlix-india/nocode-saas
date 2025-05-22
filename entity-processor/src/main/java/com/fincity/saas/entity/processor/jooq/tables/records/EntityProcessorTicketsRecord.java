@@ -226,20 +226,20 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_tickets.MODEL_ID</code>. Model
+     * <code>entity_processor.entity_processor_tickets.OWNER_ID</code>. Owner
      * related to this ticket.
      */
-    public EntityProcessorTicketsRecord setModelId(ULong value) {
+    public EntityProcessorTicketsRecord setOwnerId(ULong value) {
         set(11, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_tickets.MODEL_ID</code>. Model
+     * <code>entity_processor.entity_processor_tickets.OWNER_ID</code>. Owner
      * related to this ticket.
      */
-    public ULong getModelId() {
+    public ULong getOwnerId() {
         return (ULong) get(11);
     }
 
@@ -490,7 +490,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong stage, ULong status, ULong modelId, Short dialCode, String phoneNumber, String email, String source, String subSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong stage, ULong status, ULong ownerId, Short dialCode, String phoneNumber, String email, String source, String subSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -504,7 +504,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setCurrentUserId(currentUserId);
         setStage(stage);
         setStatus(status);
-        setModelId(modelId);
+        setOwnerId(ownerId);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
         setEmail(email);

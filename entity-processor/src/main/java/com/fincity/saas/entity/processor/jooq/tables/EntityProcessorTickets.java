@@ -131,10 +131,10 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_tickets.MODEL_ID</code>. Model
+     * <code>entity_processor.entity_processor_tickets.OWNER_ID</code>. Owner
      * related to this ticket.
      */
-    public final TableField<EntityProcessorTicketsRecord, ULong> MODEL_ID = createField(DSL.name("MODEL_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Model related to this ticket.");
+    public final TableField<EntityProcessorTicketsRecord, ULong> OWNER_ID = createField(DSL.name("OWNER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Owner related to this ticket.");
 
     /**
      * The column

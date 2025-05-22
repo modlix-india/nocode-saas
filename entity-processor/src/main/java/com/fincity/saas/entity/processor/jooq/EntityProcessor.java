@@ -7,14 +7,14 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 import java.util.Arrays;
 import java.util.List;
@@ -54,6 +54,18 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_product_template_rules</code>.
+     */
+    public final EntityProcessorProductTemplateRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES = EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_templates</code>.
+     */
+    public final EntityProcessorProductTemplates ENTITY_PROCESSOR_PRODUCT_TEMPLATES = EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES;
+
+    /**
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
@@ -85,17 +97,6 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
     /**
-     * The table
-     * <code>entity_processor.entity_processor_value_template_rules</code>.
-     */
-    public final EntityProcessorValueTemplateRules ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES = EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES;
-
-    /**
-     * The table <code>entity_processor.entity_processor_value_templates</code>.
-     */
-    public final EntityProcessorValueTemplates ENTITY_PROCESSOR_VALUE_TEMPLATES = EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES;
-
-    /**
      * No further instances allowed
      */
     private EntityProcessor() {
@@ -114,14 +115,14 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES,
+            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES,
+            EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
             EntityProcessorRules.ENTITY_PROCESSOR_RULES,
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
             EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
-            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS,
-            EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES,
-            EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES
+            EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS
         );
     }
 }

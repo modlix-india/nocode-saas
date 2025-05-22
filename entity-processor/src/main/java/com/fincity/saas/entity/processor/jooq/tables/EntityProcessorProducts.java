@@ -119,10 +119,10 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
      * Value Template related to this Product.
      */
-    public final TableField<EntityProcessorProductsRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Value Template related to this Product.");
+    public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Value Template related to this Product.");
 
     /**
      * The column

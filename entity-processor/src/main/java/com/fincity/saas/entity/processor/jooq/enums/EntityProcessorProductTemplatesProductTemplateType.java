@@ -13,7 +13,7 @@ import org.jooq.Schema;
  * Type of Value Template.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum EntityProcessorValueTemplatesValueTemplateType implements EnumType {
+public enum EntityProcessorProductTemplatesProductTemplateType implements EnumType {
 
     ENTITY("ENTITY"),
 
@@ -21,7 +21,7 @@ public enum EntityProcessorValueTemplatesValueTemplateType implements EnumType {
 
     private final String literal;
 
-    private EntityProcessorValueTemplatesValueTemplateType(String literal) {
+    private EntityProcessorProductTemplatesProductTemplateType(String literal) {
         this.literal = literal;
     }
 
@@ -50,7 +50,7 @@ public enum EntityProcessorValueTemplatesValueTemplateType implements EnumType {
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static EntityProcessorValueTemplatesValueTemplateType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(EntityProcessorValueTemplatesValueTemplateType.class, literal);
+    public static EntityProcessorProductTemplatesProductTemplateType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityProcessorProductTemplatesProductTemplateType.class, literal);
     }
 }

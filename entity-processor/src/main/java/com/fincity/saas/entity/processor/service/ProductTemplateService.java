@@ -38,7 +38,7 @@ public class ProductTemplateService
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.VALUE_TEMPLATE;
+        return EntitySeries.PRODUCT_TEMPLATE;
     }
 
     public Mono<ProductTemplate> create(ProductTemplateRequest productTemplateRequest) {
@@ -66,7 +66,8 @@ public class ProductTemplateService
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
                 () -> super.readIdentityInternal(identity),
-                valueTemplate -> this.updateDependentServices(valueTemplate, productTemplateRequest.getProductId()));
+                productTemplate ->
+                        this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()));
     }
 
     public Mono<ProductTemplate> readWithAccess(Identity identity) {
@@ -74,7 +75,7 @@ public class ProductTemplateService
             if (Boolean.FALSE.equals(hasAccess.getT2()))
                 return this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.VALUE_TEMPLATE_FORBIDDEN_ACCESS);
+                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_FORBIDDEN_ACCESS);
 
             return this.readIdentityInternal(identity);
         });

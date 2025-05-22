@@ -94,7 +94,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.readById(ticket.getProductId()),
-                product -> this.setDefaultStage(ticket, product.getValueTemplateId()),
+                product -> this.setDefaultStage(ticket, product.getProductTemplateId()),
                 (product, sTicket) -> productStageRuleService.getUserAssignment(
                         accessInfo.getT1(),
                         accessInfo.getT2(),
@@ -105,11 +105,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
     }
 
-    private Mono<Ticket> setDefaultStage(Ticket ticket, ULong valueTemplateId) {
+    private Mono<Ticket> setDefaultStage(Ticket ticket, ULong productTemplateId) {
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> stageService.getFirstStage(ticket.getAppCode(), ticket.getClientCode(), valueTemplateId),
+                () -> stageService.getFirstStage(ticket.getAppCode(), ticket.getClientCode(), productTemplateId),
                 stage -> stageService.getFirstStatus(
-                        ticket.getAppCode(), ticket.getClientCode(), valueTemplateId, stage.getId()),
+                        ticket.getAppCode(), ticket.getClientCode(), productTemplateId, stage.getId()),
                 (stage, status) -> {
                     ticket.setStatus(status.getId());
                     ticket.setStatus(status.getId());

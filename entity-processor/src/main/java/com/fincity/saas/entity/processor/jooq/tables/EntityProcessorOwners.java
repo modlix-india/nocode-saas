@@ -89,31 +89,31 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
 
     /**
      * The column <code>entity_processor.entity_processor_owners.NAME</code>.
-     * Name of the Model. Model can be anything which will have entities. For
+     * Name of the Owner. Owner can be anything which will have entities. For
      * Example, Lead and opportunity, Epic and Task, Account and lead.
      */
-    public final TableField<EntityProcessorOwnersRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Model. Model can be anything which will have entities. For Example, Lead and opportunity, Epic and Task, Account and lead.");
+    public final TableField<EntityProcessorOwnersRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Owner. Owner can be anything which will have entities. For Example, Lead and opportunity, Epic and Task, Account and lead.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_owners.DESCRIPTION</code>.
-     * Description for the Model.
+     * Description for the Owner.
      */
-    public final TableField<EntityProcessorOwnersRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Model.");
+    public final TableField<EntityProcessorOwnersRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Owner.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_owners.ADDED_BY_USER_ID</code>.
-     * User which added this Model.
+     * User which added this Owner.
      */
-    public final TableField<EntityProcessorOwnersRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Model.");
+    public final TableField<EntityProcessorOwnersRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Owner.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_owners.CURRENT_USER_ID</code>.
-     * User to which this Model is assigned.
+     * User to which this Owner is assigned.
      */
-    public final TableField<EntityProcessorOwnersRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Model is assigned.");
+    public final TableField<EntityProcessorOwnersRecord, ULong> CURRENT_USER_ID = createField(DSL.name("CURRENT_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User to which this Owner is assigned.");
 
     /**
      * The column
@@ -226,7 +226,7 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
 
     @Override
     public List<UniqueKey<EntityProcessorOwnersRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_OWNERS_UK1_MODELS_CODE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_OWNERS_UK1_OWNERS_CODE);
     }
 
     @Override

@@ -11,13 +11,13 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public abstract class BaseValueTemplate<T extends BaseValueTemplate<T>> extends BaseRequest<T> {
+public abstract class BaseProductTemplate<T extends BaseProductTemplate<T>> extends BaseRequest<T> {
 
-    private Identity valueTemplateId;
+    private Identity productTemplateId;
     private Map<Integer, T> children;
 
-    public T setValueTemplateId(Identity valueTemplateId) {
-        this.valueTemplateId = valueTemplateId;
+    public T setProductTemplateId(Identity productTemplateId) {
+        this.productTemplateId = productTemplateId;
         return (T) this;
     }
 }

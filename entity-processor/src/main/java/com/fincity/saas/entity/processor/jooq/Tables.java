@@ -7,14 +7,14 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplateRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorValueTemplates;
 
 
 /**
@@ -37,6 +37,18 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_product_rules</code>.
      */
     public static final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_template_rules</code>.
+     */
+    public static final EntityProcessorProductTemplateRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES = EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_templates</code>.
+     */
+    public static final EntityProcessorProductTemplates ENTITY_PROCESSOR_PRODUCT_TEMPLATES = EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES;
 
     /**
      * The table <code>entity_processor.entity_processor_products</code>.
@@ -68,15 +80,4 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_tickets</code>.
      */
     public static final EntityProcessorTickets ENTITY_PROCESSOR_TICKETS = EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_value_template_rules</code>.
-     */
-    public static final EntityProcessorValueTemplateRules ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES = EntityProcessorValueTemplateRules.ENTITY_PROCESSOR_VALUE_TEMPLATE_RULES;
-
-    /**
-     * The table <code>entity_processor.entity_processor_value_templates</code>.
-     */
-    public static final EntityProcessorValueTemplates ENTITY_PROCESSOR_VALUE_TEMPLATES = EntityProcessorValueTemplates.ENTITY_PROCESSOR_VALUE_TEMPLATES;
 }

@@ -108,10 +108,10 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_stages.VALUE_TEMPLATE_ID</code>.
+     * <code>entity_processor.entity_processor_stages.PRODUCT_TEMPLATE_ID</code>.
      * Value Template related to this Stage.
      */
-    public final TableField<EntityProcessorStagesRecord, ULong> VALUE_TEMPLATE_ID = createField(DSL.name("VALUE_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Stage.");
+    public final TableField<EntityProcessorStagesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Value Template related to this Stage.");
 
     /**
      * The column

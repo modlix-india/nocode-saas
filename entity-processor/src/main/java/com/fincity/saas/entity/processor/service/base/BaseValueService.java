@@ -125,7 +125,7 @@ public abstract class BaseValueService<
                 (hasAccess, vEntity, cEntity) -> {
                     cEntity.setAppCode(hasAccess.getT1().getT1());
                     cEntity.setClientCode(hasAccess.getT1().getT2());
-                    cEntity.setAddedByUserId(hasAccess.getT1().getT3());
+                    cEntity.setCreatedBy(hasAccess.getT1().getT3());
                     cEntity.setIsParent(Boolean.TRUE);
 
                     return super.create(cEntity);
@@ -136,7 +136,7 @@ public abstract class BaseValueService<
         entity.setName(StringUtil.toTitleCase(entity.getName()));
         entity.setAppCode(parentEntity.getAppCode());
         entity.setClientCode(parentEntity.getClientCode());
-        entity.setAddedByUserId(parentEntity.getAddedByUserId());
+        entity.setCreatedBy(parentEntity.getCreatedBy());
         entity.setIsParent(Boolean.FALSE);
         entity.setParentLevel0(parentEntity.getId());
 
@@ -225,19 +225,20 @@ public abstract class BaseValueService<
 
     public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.getAllValues(appCode, clientCode, platform, productTemplateId).map(map -> {
-            TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap =
-                    new TreeMap<>(Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
+        return this.getAllValues(appCode, clientCode, platform, productTemplateId)
+                .map(map -> {
+                    TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap = new TreeMap<>(
+                            Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
 
-            map.forEach((key, value) -> {
-                TreeSet<BaseValue> orderedSet = new TreeSet<>(
-                        Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
-                orderedSet.addAll(value);
-                orderedMap.put(key, orderedSet);
-            });
+                    map.forEach((key, value) -> {
+                        TreeSet<BaseValue> orderedSet = new TreeSet<>(
+                                Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
+                        orderedSet.addAll(value);
+                        orderedMap.put(key, orderedSet);
+                    });
 
-            return orderedMap;
-        });
+                    return orderedMap;
+                });
     }
 
     public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(

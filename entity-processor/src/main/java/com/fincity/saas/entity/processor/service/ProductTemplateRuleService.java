@@ -36,7 +36,7 @@ public class ProductTemplateRuleService
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.VALUE_TEMPLATE_RULE;
+        return EntitySeries.PRODUCT_TEMPLATE_RULE;
     }
 
     @Override

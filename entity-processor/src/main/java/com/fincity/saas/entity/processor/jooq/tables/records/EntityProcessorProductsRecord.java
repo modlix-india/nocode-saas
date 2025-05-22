@@ -192,20 +192,20 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
      * Value Template related to this Product.
      */
-    public EntityProcessorProductsRecord setValueTemplateId(ULong value) {
+    public EntityProcessorProductsRecord setProductTemplateId(ULong value) {
         set(9, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_products.VALUE_TEMPLATE_ID</code>.
+     * <code>entity_processor.entity_processor_products.PRODUCT_TEMPLATE_ID</code>.
      * Value Template related to this Product.
      */
-    public ULong getValueTemplateId() {
+    public ULong getProductTemplateId() {
         return (ULong) get(9);
     }
 
@@ -346,7 +346,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong valueTemplateId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, ULong version, String code, String name, String description, ULong addedByUserId, ULong currentUserId, ULong productTemplateId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -358,7 +358,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setDescription(description);
         setAddedByUserId(addedByUserId);
         setCurrentUserId(currentUserId);
-        setValueTemplateId(valueTemplateId);
+        setProductTemplateId(productTemplateId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

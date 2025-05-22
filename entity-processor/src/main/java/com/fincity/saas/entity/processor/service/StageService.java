@@ -50,21 +50,21 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<Stage> create(StageRequest stageRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getValueTemplateId()),
-                valueTemplateId -> super.create(Stage.ofParent(stageRequest.setValueTemplateId(valueTemplateId))),
-                (valueTemplateId, parentStage) -> stageRequest.getChildren() != null
-                        ? this.createChildren(valueTemplateId, stageRequest.getChildren(), parentStage)
+                () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getProductTemplateId()),
+                productTemplateId -> super.create(Stage.ofParent(stageRequest.setProductTemplateId(productTemplateId))),
+                (productTemplateId, parentStage) -> stageRequest.getChildren() != null
+                        ? this.createChildren(productTemplateId, stageRequest.getChildren(), parentStage)
                         : Mono.just(parentStage));
     }
 
-    private Mono<Stage> createChildren(Identity valueTemplateId, Map<Integer, StageRequest> children, Stage parent) {
+    private Mono<Stage> createChildren(Identity productTemplateId, Map<Integer, StageRequest> children, Stage parent) {
 
         if (children == null || children.isEmpty()) return Mono.just(parent);
 
         return Flux.fromIterable(children.entrySet())
                 .flatMap(childRequest -> super.createChild(
                         Stage.ofChild(
-                                childRequest.getValue().setValueTemplateId(valueTemplateId),
+                                childRequest.getValue().setProductTemplateId(productTemplateId),
                                 childRequest.getKey(),
                                 parent.getPlatform(),
                                 parent.getStageType(),
@@ -75,18 +75,18 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     public Mono<BaseValue> getLatestStageByOrder(
-            String appCode, String clientCode, ULong valueTemplateId, Platform platform) {
-        return super.getAllValuesInOrder(appCode, clientCode, platform, valueTemplateId)
+            String appCode, String clientCode, ULong productTemplateId, Platform platform) {
+        return super.getAllValuesInOrder(appCode, clientCode, platform, productTemplateId)
                 .map(TreeMap::lastKey);
     }
 
-    public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong valueTemplateId) {
-        return super.getAllValuesInOrder(appCode, clientCode, null, valueTemplateId)
+    public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {
+        return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
                 .map(TreeMap::firstKey);
     }
 
-    public Mono<BaseValue> getFirstStatus(String appCode, String clientCode, ULong valueTemplateId, ULong stageId) {
-        return super.getAllValuesInOrder(appCode, clientCode, null, valueTemplateId)
+    public Mono<BaseValue> getFirstStatus(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
+        return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
                 .flatMap(treeMap -> {
                     BaseValue stage = treeMap.keySet().stream()
                             .filter(key -> key.getId().equals(stageId))
