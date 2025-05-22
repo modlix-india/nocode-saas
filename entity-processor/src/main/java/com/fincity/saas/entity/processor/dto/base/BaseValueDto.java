@@ -22,7 +22,7 @@ public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implemen
     private static final long serialVersionUID = 2090745028406660414L;
 
     private Platform platform = Platform.PRE_QUALIFICATION;
-    private ULong valueTemplateId;
+    private ULong productTemplateId;
     private Boolean isParent;
     private ULong parentLevel0;
     private ULong parentLevel1;

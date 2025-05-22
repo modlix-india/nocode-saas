@@ -40,7 +40,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.getLatestStageByOrder(
-                        accessInfo.getT1(), accessInfo.getT2(), entity.getValueTemplateId(), entity.getPlatform()),
+                        accessInfo.getT1(), accessInfo.getT2(), entity.getProductTemplateId(), entity.getPlatform()),
                 latestStage -> {
                     if (latestStage == null) return Mono.just(entity.setOrder(1));
 

@@ -29,7 +29,7 @@ public class Stage extends BaseValueDto<Stage> {
 
     public static Stage ofParent(StageRequest stageRequest) {
         return (Stage) new Stage()
-                .setValueTemplateId(
+                .setProductTemplateId(
                         ULongUtil.valueOf(stageRequest.getValueTemplateId().getId()))
                 .setIsParent(Boolean.TRUE)
                 .setName(stageRequest.getName())
@@ -43,7 +43,7 @@ public class Stage extends BaseValueDto<Stage> {
     public static Stage ofChild(
             StageRequest stageRequest, Integer order, Platform platform, StageType stageType, Stage... parents) {
         return (Stage) new Stage()
-                .setValueTemplateId(
+                .setProductTemplateId(
                         ULongUtil.valueOf(stageRequest.getValueTemplateId().getId()))
                 .setIsParent(Boolean.FALSE)
                 .setParentLevel0(parents[0].getId())

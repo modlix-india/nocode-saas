@@ -60,14 +60,14 @@ public abstract class BaseValueService<
                                 this.getValueEtKey(),
                                 entity.getAppCode(),
                                 entity.getClientCode(),
-                                entity.getValueTemplateId())),
+                                entity.getProductTemplateId())),
                 (baseEvicted, mapEvicted) -> super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
                                 this.getValueIdValueKey(),
                                 entity.getAppCode(),
                                 entity.getClientCode(),
-                                entity.getValueTemplateId())));
+                                entity.getProductTemplateId())));
     }
 
     @Override
@@ -93,7 +93,7 @@ public abstract class BaseValueService<
                                 accessInfo.getT1(),
                                 accessInfo.getT2(),
                                 entity.getPlatform(),
-                                entity.getValueTemplateId(),
+                                entity.getProductTemplateId(),
                                 entity.getParentLevel0(),
                                 entity.getParentLevel1())
                         : Mono.just(Boolean.TRUE),
@@ -101,7 +101,7 @@ public abstract class BaseValueService<
                         accessInfo.getT1(),
                         accessInfo.getT2(),
                         entity.getPlatform(),
-                        entity.getValueTemplateId(),
+                        entity.getProductTemplateId(),
                         entity.getName()),
                 (parentExists, nameExists) -> {
                     if (Boolean.TRUE.equals(nameExists))
@@ -178,32 +178,32 @@ public abstract class BaseValueService<
     }
 
     public Mono<Boolean> existsById(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId, Identity valueEntity) {
+            String appCode, String clientCode, Platform platform, ULong productTemplateId, Identity valueEntity) {
 
         return FlatMapUtil.flatMapMono(
                 () -> this.checkAndUpdateIdentity(valueEntity),
-                identity -> this.existsById(appCode, clientCode, platform, valueTemplateId, identity.getULongId()));
+                identity -> this.existsById(appCode, clientCode, platform, productTemplateId, identity.getULongId()));
     }
 
     protected Mono<Boolean> existsById(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId, ULong... valueEntityIds) {
-        return this.dao.existsById(appCode, clientCode, platform, valueTemplateId, valueEntityIds);
+            String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong... valueEntityIds) {
+        return this.dao.existsById(appCode, clientCode, platform, productTemplateId, valueEntityIds);
     }
 
     protected Mono<Boolean> existsByName(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId, String... names) {
-        return this.dao.existsByName(appCode, clientCode, platform, valueTemplateId, names);
+            String appCode, String clientCode, Platform platform, ULong productTemplateId, String... names) {
+        return this.dao.existsByName(appCode, clientCode, platform, productTemplateId, names);
     }
 
     public Mono<Boolean> isValidParentChild(
             String appCode,
             String clientCode,
             Platform platform,
-            ULong valueTemplateId,
+            ULong productTemplateId,
             ULong parent,
             ULong... children) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.getAllValues(appCode, clientCode, platform, valueTemplateId), valueEntityMap -> {
+                        () -> this.getAllValues(appCode, clientCode, platform, productTemplateId), valueEntityMap -> {
                             BaseValue parentKey = valueEntityMap.keySet().stream()
                                     .filter(k -> k.getId().equals(parent))
                                     .findFirst()
@@ -224,8 +224,8 @@ public abstract class BaseValueService<
     }
 
     public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
-        return this.getAllValues(appCode, clientCode, platform, valueTemplateId).map(map -> {
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
+        return this.getAllValues(appCode, clientCode, platform, productTemplateId).map(map -> {
             TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap =
                     new TreeMap<>(Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
 
@@ -241,19 +241,19 @@ public abstract class BaseValueService<
     }
 
     public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getAllValuesInternal(appCode, clientCode, platform, valueTemplateId),
-                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, platform, valueTemplateId));
+                () -> this.getAllValuesInternal(appCode, clientCode, platform, productTemplateId),
+                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, platform, productTemplateId));
     }
 
     private Mono<Map<BaseValue, Set<BaseValue>>> getAllValuesInternal(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.dao.getAllValues(appCode, clientCode, platform, valueTemplateId, null),
-                        this.getAllValueMap(appCode, clientCode, platform, valueTemplateId)),
+                        this.dao.getAllValues(appCode, clientCode, platform, productTemplateId, null),
+                        this.getAllValueMap(appCode, clientCode, platform, productTemplateId)),
                 tup -> Mono.just(tup.getT1().stream()
                         .collect(Collectors.toMap(
                                 value -> BaseValue.of(value.getId(), value.getName(), value.getOrder()),
@@ -262,13 +262,13 @@ public abstract class BaseValueService<
     }
 
     private Mono<Map<ULong, BaseValue>> getAllValueMap(
-            String appCode, String clientCode, Platform platform, ULong valueTemplateId) {
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao
-                        .getAllValueTemplateIdAndNames(appCode, clientCode, platform, valueTemplateId)
+                        .getAllProductTemplateIdAndNames(appCode, clientCode, platform, productTemplateId)
                         .map(BaseValue::toIdMap),
-                super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, valueTemplateId));
+                super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, productTemplateId));
     }
 
     private Set<BaseValue> getValueChildNamesSet(D valueEntity, Map<ULong, BaseValue> valueEntityMap) {

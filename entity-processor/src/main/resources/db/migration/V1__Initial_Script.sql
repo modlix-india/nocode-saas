@@ -26,7 +26,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_templates` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_VALUE_TEMPLATES_CODE` (`CODE`)
+    UNIQUE KEY `UK1_PRODUCT_TEMPLATES_CODE` (`CODE`)
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
@@ -44,7 +44,7 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
     `NAME` CHAR(32) NOT NULL COMMENT 'Name of the Stage.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Stage.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Stage.',
-    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template related to this Stage.',
+    `PRODUCT_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template related to this Stage.',
     `IS_PARENT` TINYINT NOT NULL DEFAULT 1 NOT NULL COMMENT 'Is this the main Source or not.',
     `PARENT_LEVEL_0` BIGINT UNSIGNED NULL COMMENT 'Parent Stage for this stage.',
     `PARENT_LEVEL_1` BIGINT UNSIGNED NULL COMMENT 'Parent stage level 1 for this stage.',
@@ -62,9 +62,9 @@ CREATE TABLE `entity_processor`.`entity_processor_stages` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_STAGES_CODE` (`CODE`),
-    UNIQUE KEY `UK2_STAGES_NAME` (`APP_CODE`, `CLIENT_CODE`, `VALUE_TEMPLATE_ID`, `NAME`, `PLATFORM`),
-    CONSTRAINT `FK1_STAGES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
-        REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
+    UNIQUE KEY `UK2_STAGES_NAME` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_TEMPLATE_ID`, `NAME`, `PLATFORM`),
+    CONSTRAINT `FK1_STAGES_PRODUCT_TEMPLATE_ID` FOREIGN KEY (`PRODUCT_TEMPLATE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_PRODUCT_TEMPLATES` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
     CONSTRAINT `FK2_STAGES_PARENT_LEVEL_0` FOREIGN KEY (`PARENT_LEVEL_0`)
@@ -125,7 +125,7 @@ CREATE TABLE `entity_processor_products` (
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Product.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this product.',
     `CURRENT_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User to which this Product is assigned.',
-    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Value Template related to this Product.',
+    `PRODUCT_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'Value Template related to this Product.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -135,8 +135,8 @@ CREATE TABLE `entity_processor_products` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_PRODUCTS_CODE` (`CODE`),
-    CONSTRAINT `FK1_PRODUCTS_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
-        REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
+    CONSTRAINT `FK1_PRODUCTS_PRODUCT_TEMPLATE_ID` FOREIGN KEY (`PRODUCT_TEMPLATE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_PRODUCT_TEMPLATES` (`ID`)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 
@@ -344,9 +344,9 @@ CREATE TABLE `entity_processor`.`entity_processor_simple_complex_rule_relations`
   COLLATE = `utf8mb4_unicode_ci`;
 
 
-DROP TABLE IF EXISTS `entity_processor`.`entity_processor_value_template_rules`;
+DROP TABLE IF EXISTS `entity_processor`.`entity_processor_product_template_rules`;
 
-CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
+CREATE TABLE `entity_processor`.`entity_processor_product_template_rules` (
 
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
     `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this Value Template Rule Config was created.',
@@ -355,7 +355,7 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
     `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Value Template Rule Config.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Value Template Rule Config.',
     `ADDED_BY_USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User which added this Value Template Rule Config.',
-    `VALUE_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template ID related to this Value Template Rule Config.',
+    `PRODUCT_TEMPLATE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Value Template ID related to this Value Template Rule Config.',
     `STAGE_ID` BIGINT UNSIGNED NULL COMMENT 'Stage Id to which this Value Template rule config is assigned',
     `BREAK_AT_FIRST_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should break at first match.',
     `EXECUTE_ONLY_IF_ALL_PREVIOUS_MATCH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to check if execution should only happen if all previous rules match.',
@@ -373,13 +373,13 @@ CREATE TABLE `entity_processor`.`entity_processor_value_template_rules` (
     `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
 
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_VALUE_TEMPLATE_RULES_CODE` (`CODE`),
-    UNIQUE KEY `UK2_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `VALUE_TEMPLATE_ID`, `STAGE_ID`),
-    CONSTRAINT `FK1_VALUE_TEMPLATE_RULES_VALUE_TEMPLATE_ID` FOREIGN KEY (`VALUE_TEMPLATE_ID`)
-        REFERENCES `ENTITY_PROCESSOR_VALUE_TEMPLATES` (`ID`)
+    UNIQUE KEY `UK1_PRODUCT_TEMPLATE_RULES_CODE` (`CODE`),
+    UNIQUE KEY `UK2_PRODUCT_TEMPLATE_RULES_PRODUCT_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_TEMPLATE_ID`, `STAGE_ID`),
+    CONSTRAINT `FK1_PRODUCT_TEMPLATE_RULES_PRODUCT_TEMPLATE_ID` FOREIGN KEY (`PRODUCT_TEMPLATE_ID`)
+        REFERENCES `ENTITY_PROCESSOR_PRODUCT_TEMPLATES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
-    CONSTRAINT `FK2_VALUE_TEMPLATE_RULES_STAGE_ID` FOREIGN KEY (`STAGE_ID`)
+    CONSTRAINT `FK2_PRODUCT_TEMPLATE_RULES_STAGE_ID` FOREIGN KEY (`STAGE_ID`)
         REFERENCES `ENTITY_PROCESSOR_STAGES` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
@@ -419,7 +419,7 @@ CREATE TABLE `entity_processor`.`entity_processor_product_rules` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_PRODUCT_RULES_CODE` (`CODE`),
-    UNIQUE KEY `UK2_PRODUCT_RULES_VALUE_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `STAGE_ID`),
+    UNIQUE KEY `UK2_PRODUCT_RULES_PRODUCT_TEMPLATE_ID_STAGE_ID` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `STAGE_ID`),
     CONSTRAINT `FK1_PRODUCT_RULES_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
         REFERENCES `ENTITY_PROCESSOR_PRODUCTS` (`ID`)
         ON DELETE CASCADE

@@ -22,7 +22,7 @@ public class ProductTemplateService
         extends BaseService<EntityProcessorValueTemplatesRecord, ProductTemplate, ProductTemplateDAO>
         implements IEntitySeries {
 
-    private static final String VALUE_TEMPLATE = "valueTemplate";
+    private static final String PRODUCT_TEMPLATE = "productTemplate";
     private ProductService productService;
 
     @Lazy
@@ -33,7 +33,7 @@ public class ProductTemplateService
 
     @Override
     protected String getCacheName() {
-        return VALUE_TEMPLATE;
+        return PRODUCT_TEMPLATE;
     }
 
     @Override
