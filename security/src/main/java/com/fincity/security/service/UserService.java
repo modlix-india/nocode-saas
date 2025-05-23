@@ -297,6 +297,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     private Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
+
+        if (reportingTo == null) return Mono.just(Boolean.TRUE);
+
         return this.dao.canReportTo(clientId, reportingTo, userId);
     }
 
