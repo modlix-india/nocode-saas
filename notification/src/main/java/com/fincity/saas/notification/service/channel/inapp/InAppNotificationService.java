@@ -77,24 +77,6 @@ public class InAppNotificationService
     }
 
     @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        if (fields == null || key == null) return Mono.just(new HashMap<>());
-
-        fields.remove("id");
-        fields.remove(InAppNotification.Fields.code);
-        fields.remove(InAppNotification.Fields.clientCode);
-        fields.remove(InAppNotification.Fields.appCode);
-        fields.remove(InAppNotification.Fields.userId);
-        fields.remove(InAppNotification.Fields.inAppMessage);
-        fields.remove(InAppNotification.Fields.notificationType);
-        fields.remove("createdAt");
-        fields.remove("createdBy");
-
-        return Mono.just(fields);
-    }
-
-    @Override
     public Mono<InAppNotification> saveChannelNotification(
             SendRequest request,
             LocalDateTime triggerTime,
