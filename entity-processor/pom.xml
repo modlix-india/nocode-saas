@@ -13,7 +13,7 @@
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-processor</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>entity-processor</name>
     <description>entity-processor</description>
     <properties>
