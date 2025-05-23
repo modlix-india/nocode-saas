@@ -1,4 +1,4 @@
-FROM openjdk:24-ea-jdk-oracle
+FROM openjdk:21-ea-jdk-oracle
 
 COPY target/entity-processor-1.0.0.jar entity-processor-1.0.0.jar
 

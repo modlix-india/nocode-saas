@@ -14,8 +14,8 @@
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-processor</artifactId>
     <version>1.0.0</version>
-    <name>entity-processor</name>
-    <description>entity-processor</description>
+    <name>Entity Processor</name>
+    <description>A generic server to manage RDBMS Entities</description>
     <properties>
         <base.package>com.fincity.saas</base.package>
         <base.package.dir>com/fincity/saas</base.package.dir>
