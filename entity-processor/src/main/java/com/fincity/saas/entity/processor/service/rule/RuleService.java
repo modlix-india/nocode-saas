@@ -1,5 +1,17 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -15,16 +27,7 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.google.gson.JsonElement;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -73,6 +76,18 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.RULE;
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(D entity) {
+        return FlatMapUtil.flatMapMono(
+                () -> super.evictCache(entity),
+                evicted -> this.evictRulesCache(
+                        entity.getAppCode(), entity.getClientCode(), entity.getEntityId(), entity.getStageId()));
+    }
+
+    private Mono<Boolean> evictRulesCache(String appCode, String clientCode, ULong entityId, ULong stageId) {
+        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(appCode, clientCode, entityId, stageId));
     }
 
     @Override
@@ -150,8 +165,25 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
-    public Mono<Integer> deleteRuleInternal(Identity rule) {
-        return super.readIdentityInternal(rule).flatMap(existing -> super.delete(existing.getId()));
+    public Mono<Map<Integer, D>> updateOrder(Map<Integer, Identity> rules) {
+
+        if (rules == null || rules.isEmpty()) return Mono.just(Map.of());
+
+        return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> Flux.fromIterable(rules.entrySet())
+                .flatMap(entry -> {
+                    Integer order = entry.getKey();
+                    Identity identity = entry.getValue();
+
+                    return FlatMapUtil.flatMapMono(
+                            () -> this.readIdentity(identity),
+                            rule -> {
+                                rule.setOrder(order);
+                                return update(rule);
+                            },
+                            (rule, updatedRule) -> this.evictCache(updatedRule).map(evicted -> updatedRule),
+                            (rule, updatedRule, evictedRule) -> Mono.just(Map.entry(order, evictedRule)));
+                })
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     private Mono<Integer> deleteRulesInternal(List<Identity> rules) {
@@ -217,7 +249,9 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                                 .map(result -> cRule);
 
                     return Mono.just(cRule);
-                });
+                },
+                (hasAccess, rule, stageId, uRule, cRule, conditionRule) ->
+                        this.evictCache(cRule).map(evicted -> conditionRule));
     }
 
     private Mono<D> updateUserDistribution(RuleRequest ruleRequest, D rule) {

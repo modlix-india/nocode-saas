@@ -1,4 +1,4 @@
-FROM openjdk:24-ea-jdk-oracle
+FROM openjdk:21-ea-jdk-oracle
 
 COPY target/entity-collector-1.1.0.jar entity-collector-1.1.0.jar
 
