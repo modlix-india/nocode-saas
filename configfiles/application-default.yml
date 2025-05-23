@@ -58,6 +58,16 @@ core:
     flyway:
       url: jdbc:mysql://localhost:3306/core
 
+entity-processor:
+  mongo:
+    uri: mongodb://root:Kiran%40123@localhost:27017/entity-processor?authSource=admin
+  db:
+    url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
+    username: root
+    password: Vishwas123#
+    flyway:
+      url: jdbc:mysql://localhost:3306/entity_processor
+
 notification:
   db:
     url: r2dbc:mysql://localhost:3306/notification?serverTimezone=UTC

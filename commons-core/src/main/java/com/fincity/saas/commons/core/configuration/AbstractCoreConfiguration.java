@@ -1,7 +1,6 @@
 package com.fincity.saas.commons.core.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.mongo.configuration.IMongoConfiguration;
 import com.fincity.saas.commons.mq.configuration.IMQConfiguration;
@@ -21,8 +20,6 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractCoreConfiguration extends AbstractJooqBaseConfiguration
         implements ISecurityConfiguration, IMQConfiguration, RabbitListenerConfigurer, IMongoConfiguration {
-
-    protected CoreMessageResourceService messageService;
 
     protected AbstractCoreConfiguration(ObjectMapper objectMapper) {
         super(objectMapper);
