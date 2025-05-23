@@ -2,9 +2,10 @@ package com.fincity.saas.entity.processor.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.configuration.AbstractCoreConfiguration;
+import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
+import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -17,7 +18,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
-public class ProcessorConfiguration extends AbstractCoreConfiguration {
+public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
 
     protected ProcessorMessageResourceService processorMessageResourceService;
 
