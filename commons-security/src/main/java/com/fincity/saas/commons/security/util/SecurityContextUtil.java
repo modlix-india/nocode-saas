@@ -28,7 +28,8 @@ public class SecurityContextUtil {
 
     public static Mono<Locale> getUsersLocale() {
 
-        return getUsersContextUser().map(ContextUser::getLocaleCode)
+        return getUsersContextUser()
+                .flatMap(e -> Mono.justOrEmpty(e.getLocaleCode()))
                 .map(Locale::forLanguageTag)
                 .defaultIfEmpty(Locale.ENGLISH);
     }
