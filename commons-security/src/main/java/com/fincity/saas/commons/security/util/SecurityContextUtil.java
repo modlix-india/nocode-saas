@@ -46,7 +46,7 @@ public class SecurityContextUtil {
 
     public static Mono<Tuple2<String, String>> resolveAppAndClientCode(String appCode, String clientCode) {
 
-        if (!StringUtil.safeIsBlank(appCode) && StringUtil.safeIsBlank(clientCode)) {
+        if (!StringUtil.safeIsBlank(appCode) && !StringUtil.safeIsBlank(clientCode)) {
             return Mono.just(Tuples.of(appCode, clientCode));
         }
 

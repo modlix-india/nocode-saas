@@ -63,6 +63,9 @@ jobs:
       - name: Building multi
         working-directory: ./multi
         run: mvn clean install
+      - name: Building entity-processor
+        working-directory: ./entity-processor
+        run: mvn clean install
       - name: Login to OCIR
         uses: docker/login-action@v3
         with:
@@ -140,3 +143,11 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-security-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag prod-security-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-security-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-security-server:latest
+      - name: Pushing Entity Processor Docker Image to OCI
+        working-directory: ./entity-processor
+        run: |
+          docker build -t prod-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag prod-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag prod-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-entity-processor-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-entity-processor-server:latest

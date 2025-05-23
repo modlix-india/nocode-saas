@@ -1,0 +1,69 @@
+package com.fincity.saas.entity.processor.dto.base;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
+import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.util.NameUtil;
+import java.io.Serial;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
+
+@Data
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@FieldNameConstants
+public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong> {
+
+    @Serial
+    private static final long serialVersionUID = 1844345864104376760L;
+
+    public static final int CODE_LENGTH = 22;
+
+    private String code = UniqueUtil.shortUUID();
+
+    private String name = this.code;
+    private String description;
+
+    @JsonIgnore
+    private boolean tempActive = Boolean.FALSE;
+
+    private boolean isActive = Boolean.TRUE;
+
+    public T setCode() {
+        if (this.code != null) return (T) this;
+        this.code = UniqueUtil.shortUUID();
+        return (T) this;
+    }
+
+    public T setName(String name) {
+        if (name == null || name.isBlank()) this.name = this.getCode();
+        else this.name = NameUtil.normalize(name);
+        return (T) this;
+    }
+
+    public T setDescription(String description) {
+        if (description == null || description.isBlank()) return (T) this;
+        this.description = NameUtil.normalize(description);
+        return (T) this;
+    }
+
+    public T setActive(boolean isActive) {
+        this.isActive = isActive;
+        return (T) this;
+    }
+
+    public T setTempActive(boolean tempActive) {
+        this.tempActive = tempActive;
+        return (T) this;
+    }
+
+    public BaseResponse toBaseResponse() {
+        return BaseResponse.of(this.getId(), this.code, this.name);
+    }
+}
