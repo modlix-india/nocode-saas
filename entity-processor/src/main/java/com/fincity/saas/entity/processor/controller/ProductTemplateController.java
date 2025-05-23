@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.controller;
 import com.fincity.saas.entity.processor.controller.base.BaseController;
 import com.fincity.saas.entity.processor.dao.ProductTemplateDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorValueTemplatesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import com.fincity.saas.entity.processor.service.ProductTemplateService;
@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/entity/processor/values/templates")
 public class ProductTemplateController
         extends BaseController<
-                EntityProcessorValueTemplatesRecord, ProductTemplate, ProductTemplateDAO, ProductTemplateService> {
+                EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO, ProductTemplateService> {
 
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<ProductTemplate>> createFromRequest(

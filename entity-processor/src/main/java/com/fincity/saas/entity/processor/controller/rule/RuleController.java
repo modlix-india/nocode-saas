@@ -4,7 +4,9 @@ import com.fincity.saas.entity.processor.controller.base.BaseController;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
@@ -24,31 +25,22 @@ public abstract class RuleController<
                 S extends RuleService<R, D, O>>
         extends BaseController<R, D, O, S> {
 
-    protected S ruleConfigService;
+    protected S ruleService;
 
     @Autowired
-    private void setRuleConfigService(S ruleConfigService) {
-        this.ruleConfigService = ruleConfigService;
+    private void setRuleConfigService(S ruleService) {
+        this.ruleService = ruleService;
     }
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<D>> createFromRequest(@RequestBody T ruleConfigRequest) {
-        return this.ruleConfigService.create(ruleConfigRequest).map(ResponseEntity::ok);
-    }
-
-    @PutMapping(REQ_PATH_ID)
-    public Mono<ResponseEntity<D>> put(
-            @PathVariable(name = PATH_VARIABLE_ID, required = false) final Identity identity,
-            @RequestBody T ruleConfigRequest) {
-
-        if (!identity.isNull()) ruleConfigRequest.setRuleConfigId(identity);
-
-        return this.ruleConfigService.update(ruleConfigRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Map<Integer, D>>> createFromRequest(
+            @RequestBody Map<Integer, RuleRequest> ruleRequests) {
+        return this.ruleService.createWithOrder(ruleRequests).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
-        return this.ruleConfigService.deleteIdentity(identity);
+        return this.ruleService.deleteIdentity(identity);
     }
 }
