@@ -34,10 +34,8 @@ public class ConnectionController
     }
 
     @GetMapping("/oauth/callback")
-    public Mono<ResponseEntity<Void>> oAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {
-        return this.oAuth2RestService
-                .oAuth2Callback(request, response)
-                .then(Mono.just(ResponseEntity.ok().build()));
+    public Mono<Void> oAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {
+        return this.oAuth2RestService.oAuth2Callback(request, response);
     }
 
     @GetMapping("/oauth/revoke")
