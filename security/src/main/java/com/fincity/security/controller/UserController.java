@@ -136,7 +136,7 @@ public class UserController
                 .map(ResponseEntity::ok);
     }
 
-    @PostMapping("/internal/getProfileUsers/{appCode}")
+    @GetMapping("/internal/getProfileUsers/{appCode}")
     public Mono<ResponseEntity<List<ULong>>> getProfileUsers(@PathVariable String appCode, @RequestBody List<ULong> profileIds) {
         return this.userService.getProfileUsers(appCode, profileIds)
                 .map(ResponseEntity::ok);

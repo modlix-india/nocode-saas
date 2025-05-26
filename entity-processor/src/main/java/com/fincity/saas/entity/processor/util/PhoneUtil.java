@@ -51,9 +51,10 @@ public class PhoneUtil {
                         NumberParseException.ErrorType.INVALID_COUNTRY_CODE,
                         StringFormatter.format("Phone Number $ is not valid for $", phoneNumber, region));
 
-            return PhoneNumber.of(
-                    parsedNumber.getCountryCode(),
-                    phoneNumberUtil.format(parsedNumber, PhoneNumberUtil.PhoneNumberFormat.E164));
+            return new PhoneNumber()
+                    .setCountryCode(parsedNumber.getCountryCode())
+                    .setNumber(phoneNumberUtil.format(parsedNumber, PhoneNumberUtil.PhoneNumberFormat.E164));
+
         } catch (NumberParseException e) {
             return null;
         }

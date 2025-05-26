@@ -32,6 +32,8 @@ public class Owner extends BaseProcessorDto<Owner> {
                 .setDialCode(ownerRequest.getPhoneNumber().getCountryCode())
                 .setPhoneNumber(ownerRequest.getPhoneNumber().getNumber())
                 .setEmail(ownerRequest.getEmail().getAddress())
+                .setSource(ownerRequest.getSource())
+                .setSubSource(ownerRequest.getSubSource() != null ? ownerRequest.getSubSource() : null)
                 .setName(ownerRequest.getName())
                 .setDescription(ownerRequest.getDescription());
     }
