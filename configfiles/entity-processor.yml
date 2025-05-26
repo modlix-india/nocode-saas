@@ -18,9 +18,6 @@ spring:
       url: ${entity-processor.db.flyway.url}
       user: ${entity-processor.db.username}
       password: ${entity-processor.db.password}
-    data:
-      mongodb:
-        uri: ${core.mongo.uri}
     boot:
       admin:
         client:
@@ -37,12 +34,6 @@ spring:
             uri: lb://entity/processor
             predicates:
               - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/*/api/entity/processor/**,
-    rabbitmq:
-      host: ${mq.host}
-      port: ${mq.port}
-      username: ${mq.username}
-      password: ${mq.password}
-
 management:
   endpoint:
     flyway:
