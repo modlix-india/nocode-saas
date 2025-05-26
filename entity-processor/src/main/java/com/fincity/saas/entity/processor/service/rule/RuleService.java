@@ -43,7 +43,13 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
 
     public abstract Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data);
+            String appCode,
+            String clientCode,
+            ULong entityId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            JsonElement data);
 
     @Autowired
     private void setComplexRuleService(ComplexRuleService complexRuleService) {

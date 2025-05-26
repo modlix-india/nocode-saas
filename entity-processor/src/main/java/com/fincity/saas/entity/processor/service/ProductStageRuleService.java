@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductStageRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
@@ -55,20 +54,37 @@ public class ProductStageRuleService
 
     @Override
     public Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong entityId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
-                        productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, data),
-                        (productRule, eRule) -> super.update(eRule).map(Rule::getLastAssignedUserId))
-                .switchIfEmpty(
-                        this.getUserAssignmentFromTemplate(appCode, clientCode, entityId, stageId, tokenPrefix, data));
+                        productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
+                        (productRule, eRule) -> super.update(eRule).flatMap(rule -> {
+                            ULong assignedUserId = rule.getLastAssignedUserId();
+                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
+                            return Mono.just(assignedUserId);
+                        }))
+                .switchIfEmpty(this.getUserAssignmentFromTemplate(
+                        appCode, clientCode, entityId, stageId, tokenPrefix, userId, data))
+                .onErrorResume(e -> Mono.empty());
     }
 
     public Mono<ULong> getUserAssignmentFromTemplate(
-            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong entityId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
                 () -> productService.readById(entityId),
                 product -> this.productTemplateRuleService.getUserAssignment(
-                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, data));
+                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, userId, data));
     }
 }
