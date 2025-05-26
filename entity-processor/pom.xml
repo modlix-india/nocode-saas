@@ -84,11 +84,6 @@
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${saas-commons-mq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>
             <version>${saas-commons-security-version}</version>
         </dependency>
