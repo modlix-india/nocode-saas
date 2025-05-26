@@ -51,38 +51,25 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return super.create(Owner.of(ownerRequest));
     }
 
-    public Mono<Ticket> getOrCreateTicketOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
+    public Mono<Owner> getOrCreateTicketOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
 
-        if (ticket.getOwnerId() != null)
-            return FlatMapUtil.flatMapMono(() -> this.readById(ULongUtil.valueOf(ticket.getOwnerId())), model -> {
-                ticket.setOwnerId(model.getId());
-
-                if (model.getDialCode() != null && model.getPhoneNumber() != null) {
-                    ticket.setDialCode(model.getDialCode());
-                    ticket.setPhoneNumber(model.getPhoneNumber());
-                }
-
-                if (model.getEmail() != null) ticket.setEmail(model.getEmail());
-
-                return Mono.just(ticket);
-            });
+        if (ticket.getOwnerId() != null) return this.readById(ULongUtil.valueOf(ticket.getOwnerId()));
 
         return this.getOrCreateTicketPhoneOwner(accessInfo.getT1(), accessInfo.getT2(), ticket);
     }
 
-    public Mono<Ticket> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
+    public Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                 () -> this.dao
                         .readByNumberAndEmail(
                                 appCode, clientCode, ticket.getDialCode(), ticket.getPhoneNumber(), ticket.getEmail())
                         .switchIfEmpty(this.create(Owner.of(ticket))),
-                model -> {
-                    if (model.getId() == null)
+                owner -> {
+                    if (owner.getId() == null)
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.MODEL_NOT_CREATED);
-
-                    return Mono.just(ticket.setOwnerId(model.getId()));
+                    return Mono.just(owner);
                 });
     }
 }
