@@ -37,58 +37,59 @@ public class EntityCollectorService {
     private final ObjectMapper mapper;
     private final IFeignCoreService coreService;
 
-
-    public Mono<Void> handleMetaEntity(JsonNode responseBody) {
+    public Mono<Void> processMetaFormEntity(JsonNode responseBody) {
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> Mono.just(extractMetaPayload(responseBody)),
+                () -> extractMetaPayload(responseBody),
 
-                extractList -> extractList.flatMapMany(Flux::fromIterable)
-                        .flatMap(extract -> processSingleExtract(extract, responseBody))
-                        .then(),
+                extractList -> Flux.fromIterable(extractList)
+                        .flatMap(extract -> FlatMapUtil.flatMapMonoWithNull(
+                                () -> Mono.just(extract),
+
+                                extractPayload -> entityIntegrationService
+                                        .findByInSourceAndType(extractPayload.formId(), EntityIntegrationsInSourceType.FACEBOOK_FORM),
+
+                                (extractPayload, integration) -> entityCollectorLogService.create(
+                                        integration.getId(),
+                                        mapper.convertValue(responseBody, new TypeReference<>() {
+                                        }), null),
+
+                                (extractPayload, integration, logId) -> fetchOAuthToken(
+                                        coreService,
+                                        integration.getClientCode(),
+                                        integration.getAppCode(),
+                                        entityCollectorMessageResponseService,
+                                        entityCollectorLogService,
+                                        logId),
+
+                                (extractPayload, integration, logId, token) -> fetchMetaData(
+                                        extractPayload.leadGenId(),
+                                        extractPayload.formId(),
+                                        token,
+                                        entityCollectorLogService,
+                                        logId),
+
+                                (extractPayload, integration, logId, token, metaData) -> Mono.just(
+                                        normalizeMetaEntity(metaData.getT1(), metaData.getT2(), extractPayload.adId(), token, integration,
+                                                entityCollectorMessageResponseService, entityCollectorLogService, logId)),
+
+                                (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
+                                        normalizedEntity.flatMap(response ->
+                                                entityCollectorMessageResponseService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
+                                                        .flatMap(successMessage ->
+                                                                EntityUtil.sendEntityToTarget(integration, response)
+                                                                        .then(entityCollectorLogService.update(logId,
+                                                                                mapper.convertValue(response, new TypeReference<>() {}),
+                                                                                EntityCollectorLogStatus.SUCCESS,
+                                                                                successMessage))
+                                                        ))
+                        )).then(),
+
                 (extractList, ex) -> Mono.empty()
         );
     }
 
-    private Mono<Void> processSingleExtract(MetaEntityUtil.ExtractPayload extract, JsonNode responseBody) {
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                () -> Mono.just(extract),
-
-                extractPayload -> entityIntegrationService
-                        .findByInSourceAndType(extractPayload.formId(), EntityIntegrationsInSourceType.FACEBOOK_FORM),
-
-                (extractPayload, integration) -> entityCollectorLogService.create(
-                        integration.getId(),
-                        mapper.convertValue(responseBody, new TypeReference<>() {
-                        }), null),
-                (extractPayload, integration, logId) -> fetchOAuthToken(
-                        coreService,
-                        integration.getClientCode(),
-                        integration.getAppCode(), entityCollectorMessageResponseService, entityCollectorLogService, logId),
-                (extractPayload, integration, logId, token) -> fetchMetaData(
-                        extractPayload.leadGenId(),
-                        extractPayload.formId(),
-                        token, entityCollectorLogService, logId),
-                (extractPayload, integration, logId, token, metaData) -> Mono.just(
-
-                        normalizeMetaEntity(metaData.getT1(), metaData.getT2(), extractPayload.adId(), token, integration, entityCollectorMessageResponseService, entityCollectorLogService, logId)),
-
-                (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
-                        normalizedEntity.flatMap(response ->
-                                entityCollectorMessageResponseService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
-                                        .flatMap(successMessage ->
-                                                EntityUtil.sendEntityToTarget(integration, response)
-                                                        .then(entityCollectorLogService.update(logId, mapper.convertValue(response, new TypeReference<>() {
-                                                                }),
-                                                                EntityCollectorLogStatus.SUCCESS,
-                                                                successMessage
-                                                        ))
-                                        ))
-        ).then();
-    }
-
-
-    public Mono<EntityResponse> handleWebsiteEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
+    public Mono<Void> processWebsiteFormEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> Mono.just(getHost(request)),
@@ -109,10 +110,8 @@ public class EntityCollectorService {
                                                                 }),
                                                                 EntityCollectorLogStatus.SUCCESS, successMessage
                                                         ))
-                                                        .thenReturn(response)
-                                        )
-                        )
-        );
+                                                .then()
+                                        )));
     }
 
 }

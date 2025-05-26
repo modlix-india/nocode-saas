@@ -32,14 +32,14 @@ public class EntityController {
     }
 
     @PostMapping("/social/facebook")
-    public Mono<Void> handleFacebookEntity(@RequestBody JsonNode webhookData) {
-        return entityCollectorService.handleMetaEntity(webhookData);
+    public Mono<Void> handleMetaEntity(@RequestBody JsonNode webhookData) {
+        return entityCollectorService.processMetaFormEntity (webhookData);
     }
 
 
     @PostMapping("/website")
-    public Mono<EntityResponse> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
+    public Mono<Void> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
 
-        return entityCollectorService.handleWebsiteEntity(requestBodyMono, request);
+        return entityCollectorService.processWebsiteFormEntity(requestBodyMono, request);
     }
 }

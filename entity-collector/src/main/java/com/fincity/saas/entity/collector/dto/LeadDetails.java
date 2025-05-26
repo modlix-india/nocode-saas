@@ -4,47 +4,21 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fincity.saas.entity.collector.enums.LeadSource;
 import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
-import java.io.Serializable;
-import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-public class LeadDetails implements Serializable {
+@EqualsAndHashCode(callSuper = true)
+@Accessors(chain = true)
+@ToString(callSuper = true)
+public class LeadDetails extends AbstractLeadBase {
 
     @Serial
     private static final long serialVersionUID = -369693871081491900L;
-
-    private String email;
-    private String fullName;
-    private String phone;
-    private String companyName;
-    private String workEmail;
-    private String workPhoneNumber;
-    private String jobTitle;
-    private String militaryStatus;
-    private String relationshipStatus;
-    private String maritalStatus;
-    private String gender;
-    private String dob;
-    private String lastName;
-    private String firstName;
-    private String zipCode;
-    private String postCode;
-    private String country;
-    private String province;
-    private String streetAddress;
-    private String state;
-    private String city;
-    private String whatsappNumber;
-    private String clientCode;
-    private String appCode;
-    private String platform;
-    private String source;
-    private String subSource;
-    private Map<String, String> customFields;
-
 
     public LeadDetails(WebsiteDetails details, EntityIntegration integration) {
 
@@ -71,21 +45,19 @@ public class LeadDetails implements Serializable {
         this.setCity(details.getCity());
         this.setWhatsappNumber(details.getWhatsappNumber());
         this.setSubSource(details.getSubSource());
+        this.setSource(details.getSource());
         this.setCustomFields(details.getCustomFields());
 
         if ("FACEBOOK".equalsIgnoreCase(details.getUtm_source())) {
             populateStaticFields(this, integration, "FACEBOOK", LeadSource.WEBSITE, LeadSubSource.WEBSITE_FORM);
         } else {
-            populateStaticFields(this, integration, "WEBSITE", LeadSource.WEBSITE,  Boolean.parseBoolean(String.valueOf(this.getSubSource()))
-
-                    ? LeadSubSource.valueOf(this.getSubSource()) : LeadSubSource.WEBSITE_FORM);
+            populateStaticFields(this, integration, "WEBSITE", LeadSource.WEBSITE,
+                    Boolean.parseBoolean(String.valueOf(this.getSubSource()))
+                            ? LeadSubSource.valueOf(this.getSubSource()) : LeadSubSource.WEBSITE_FORM);
         }
     }
 
-    public LeadDetails() {
-
-    }
-
+    public LeadDetails() {}
 
     private static void populateStaticFields(
             LeadDetails lead,
@@ -100,5 +72,4 @@ public class LeadDetails implements Serializable {
         lead.setSource(String.valueOf(source));
         lead.setSubSource(String.valueOf(subSource));
     }
-
 }

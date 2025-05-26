@@ -22,8 +22,6 @@ import static com.fincity.saas.entity.collector.util.MetaEntityUtil.buildCampaig
 public class WebsiteEntityUtil {
 
     private static final String FORWARDED_HOST = "X-Forwarded-Host";
-    private static final String WEBSITE = "website";
-    private static final String FACEBOOK = "facebook";
 
 
     public static String getHost(ServerHttpRequest request) {

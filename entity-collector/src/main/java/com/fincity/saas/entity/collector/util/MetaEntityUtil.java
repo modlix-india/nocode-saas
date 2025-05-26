@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.collector.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +34,7 @@ import static org.flywaydb.core.internal.util.ClassUtils.setFieldValue;
 
 @Slf4j
 @Component
-public  class MetaEntityUtil {
+public class MetaEntityUtil {
 
     private static final String ID = "id";
     private static final String NAME = "name";
@@ -68,23 +69,15 @@ public  class MetaEntityUtil {
     private String token;
 
     public static Mono<JsonNode> fetchMetaGraphData(String path, Map<String, String> queryParams) {
-        return webClient.get()
-                .uri(uriBuilder -> {
-                    var builder = uriBuilder.scheme(SCHEME)
-                            .host(META_HOST)
-                            .path(path);
-                    queryParams.forEach(builder::queryParam);
-                    return builder.build();
-                })
-                .retrieve()
-                .bodyToMono(JsonNode.class);
+        return webClient.get().uri(uriBuilder -> {
+            var builder = uriBuilder.scheme(SCHEME).host(META_HOST).path(path);
+            queryParams.forEach(builder::queryParam);
+            return builder.build();
+        }).retrieve().bodyToMono(JsonNode.class);
     }
 
     private static Map<String, String> buildParams(String token, String fields) {
-        return Map.of(
-                ACCESS_TOKEN, token,
-                META_FIELD, fields
-        );
+        return Map.of(ACCESS_TOKEN, token, META_FIELD, fields);
     }
 
     public static Mono<JsonNode> fetchMetaAdDetails(String adId, String token) {
@@ -99,20 +92,19 @@ public  class MetaEntityUtil {
         return fetchMetaGraphData(META_VERSION + adSetId, buildParams(token, BASIC_ENTITY_FIELDS));
     }
 
-    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token, EntityCollectorLogService logService, ULong logId) {
+    public static Mono<Tuple2<JsonNode, JsonNode>> fetchMetaData(String leadGenId, String formId, String token,
+                                                                 EntityCollectorLogService logService, ULong logId) {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> fetchMetaGraphData(META_VERSION + leadGenId,
-                        Map.of(ACCESS_TOKEN, token)),
+                () -> fetchMetaGraphData(META_VERSION + leadGenId, Map.of(ACCESS_TOKEN, token)),
 
                 leadData -> fetchMetaGraphData(META_VERSION + formId,
                         Map.of(ACCESS_TOKEN, token, META_FIELD, META_QUESTION)),
 
-                (leadData, formData) -> Mono.just(Tuples.of(leadData, formData))
-        ).onErrorResume(error ->
-                logService.updateOnError(logId, error.getMessage())
-                        .then(Mono.empty()));
+                (leadData, formData) -> Mono.just(Tuples.of(leadData, formData)))
+                                .onErrorResume(error -> logService.updateOnError(logId, error.getMessage())
+                                        .then(Mono.empty()));
     }
 
     private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails) {
@@ -125,110 +117,120 @@ public  class MetaEntityUtil {
     public static Mono<List<ExtractPayload>> extractMetaPayload(JsonNode payload) {
         return FlatMapUtil.flatMapMono(
 
-                () -> Mono.justOrEmpty(payload)
-                        .filter(p -> p.has(ENTRY)),
+                () -> Mono.justOrEmpty(payload).filter(p -> p.has(ENTRY)),
 
                 validPayload -> {
-                    List<ExtractPayload> resultList  = new ArrayList<>();
+                    List<ExtractPayload> resultList = new ArrayList<>();
 
-                    validPayload.get(ENTRY).forEach(entry ->
-                            entry.path(CHANGES).forEach(change -> {
-                                JsonNode value = change.path(VALUE);
-                                String formId = value.path(FORM_ID).asText(null);
-                                String leadGenId = value.path(LEADGEN_ID).asText(null);
-                                String adId = value.path(AD_ID).asText(null);
+                    validPayload.get(ENTRY).forEach(entry -> entry.path(CHANGES).forEach(change -> {
+                        JsonNode value = change.path(VALUE);
+                        String formId = value.path(FORM_ID).asText(null);
+                        String leadGenId = value.path(LEADGEN_ID).asText(null);
+                        String adId = value.path(AD_ID).asText(null);
 
-                                if (formId != null && leadGenId != null && adId != null) {
-                                    resultList .add(new ExtractPayload(formId, leadGenId, adId));
-                                }
-                            }));
-                    return Mono.justOrEmpty(resultList)
-                            .filter(list -> !list.isEmpty());
-                },
-                (validPayload, resultList) -> Mono.just(resultList)
-        ).defaultIfEmpty(Collections.emptyList());
+                        if (formId != null && leadGenId != null && adId != null) {
+                            resultList.add(new ExtractPayload(formId, leadGenId, adId));
+                        }
+                    }));
+                    return Mono.justOrEmpty(resultList).filter(list -> !list.isEmpty());
+                }, (validPayload, resultList) -> Mono.just(resultList))
+                .defaultIfEmpty(Collections.emptyList());
     }
 
-    public static Mono<EntityResponse> normalizeMetaEntity(JsonNode incomingLead, JsonNode formDetails, String adId, String token, EntityIntegration integration, EntityCollectorMessageResourceService messageService, EntityCollectorLogService logService, ULong logId) {
-        return buildCampaignDetails(adId, token)
-                .flatMap(campaignDetails -> {
-                    LeadDetails leadDetails = buildLeadDetails(incomingLead, formDetails, integration);
-                    return Mono.just(buildEntityResponse(leadDetails, campaignDetails));
-                }).switchIfEmpty(
-                        messageService.getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
-                                .flatMap(msg -> logService.updateOnError(logId, msg)
-                                        .then(Mono.empty()))
-                );
+    public static Mono<EntityResponse> normalizeMetaEntity(
+            JsonNode incomingLead,
+            JsonNode formDetails,
+            String adId,
+            String token,
+            EntityIntegration integration,
+            EntityCollectorMessageResourceService messageService,
+            EntityCollectorLogService logService,
+            ULong logId) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> buildCampaignDetails(adId, token),
+
+                campaignDetails -> buildLeadDetails(incomingLead, formDetails, integration),
+
+                (campaignDetails, leadDetails) -> Mono.just(buildEntityResponse(leadDetails, campaignDetails)),
+
+                (campaignDetails, leadDetails, response) -> Mono.just(response)
+        ).switchIfEmpty(
+                messageService.getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
+                        .flatMap(msg -> logService.updateOnError(logId, msg).then(Mono.empty()))
+        );
     }
+
 
     public static Mono<CampaignDetails> buildCampaignDetails(String adId, String token) {
 
-        return FlatMapUtil.flatMapMono(
-                () -> fetchMetaAdDetails(adId, token),
+        return FlatMapUtil.flatMapMono(() -> fetchMetaAdDetails(adId, token),
                 ad -> fetchMetaCampaignDetails(ad.path(CAMPAIGN).path(ID).asText(), token),
                 (ad, campaign) -> fetchMetaAdSetDetails(ad.path(ADSET).path(ID).asText(), token),
                 (ad, campaign, adSetNode) -> {
-                    CampaignDetails cd = new CampaignDetails();
+                        CampaignDetails cd = new CampaignDetails();
 
-                    cd.setAdId(ad.path(ID).asText());
-                    cd.setAdName(ad.path(NAME).asText());
-                    cd.setCampaignId(campaign.path(ID).asText());
-                    cd.setCampaignName(campaign.path(NAME).asText());
-                    cd.setAdSetId(adSetNode.path(ID).asText());
-                    cd.setAdSetName(adSetNode.path(NAME).asText());
+                        cd.setAdId(ad.path(ID).asText());
+                        cd.setAdName(ad.path(NAME).asText());
+                        cd.setCampaignId(campaign.path(ID).asText());
+                        cd.setCampaignName(campaign.path(NAME).asText());
+                        cd.setAdSetId(adSetNode.path(ID).asText());
+                        cd.setAdSetName(adSetNode.path(NAME).asText());
 
-                    return Mono.just(cd);
-                });
+            return Mono.just(cd);
+        });
     }
 
-    private static LeadDetails buildLeadDetails(JsonNode incomingLead, JsonNode formDetails, EntityIntegration integration) {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode customFieldsNode = JsonNodeFactory.instance.objectNode();
-        LeadDetails lead = new LeadDetails();
+    public static Mono<LeadDetails> buildLeadDetails(JsonNode incomingLead, JsonNode formDetails, EntityIntegration integration) {
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> Mono.just(new ObjectMapper()),
 
-        Map<String, String> typeMapping = new HashMap<>();
-        Map<String, String> labelMapping = new HashMap<>();
+                mapper -> {
+                    ObjectNode leadNode = JsonNodeFactory.instance.objectNode();
+                    ObjectNode customFieldsNode = JsonNodeFactory.instance.objectNode();
+                    Map<String, String> typeMapping = new HashMap<>();
+                    Map<String, String> labelMapping = new HashMap<>();
 
-        for (JsonNode question : formDetails.path(META_QUESTION)) {
-            String key = question.path(KEY).asText();
-            typeMapping.put(key, question.path(TYPE).asText());
-            labelMapping.put(key, question.path(LABEL).asText());
-        }
+                    for (JsonNode question : formDetails.path(META_QUESTION)) {
+                        String key = question.path(KEY).asText();
+                        typeMapping.put(key, question.path(TYPE).asText());
+                        labelMapping.put(key, question.path(LABEL).asText());
+                    }
 
-        for (JsonNode field : incomingLead.path(FIELD_DATA)) {
-            String key = field.path(NAME).asText();
-            String value = field.path(VALUES).isArray() && !field.path(VALUES).isEmpty()
-                    ? field.path(VALUES).get(0).asText() : "";
+                    for (JsonNode field : incomingLead.path(FIELD_DATA)) {
+                        String key = field.path(NAME).asText();
+                        String value = field.path(VALUES).isArray() && !field.path(VALUES).isEmpty()
+                                ? field.path(VALUES).get(0).asText()
+                                : "";
 
-            String type = typeMapping.get(key);
-            String label = labelMapping.get(key);
+                        String type = typeMapping.get(key);
+                        String label = labelMapping.get(key);
 
-            if (CUSTOM.equalsIgnoreCase(type)) {
-                customFieldsNode.put(label, value);
-            } else {
-                MetaLeadFieldType fieldType = MetaLeadFieldType.fromType(type);
-                if (fieldType != null) {
-                    setFieldValue(lead, fieldType.getFieldName(), value);
-                }
-            }
-        }
+                        if (CUSTOM.equalsIgnoreCase(type)) {
+                            customFieldsNode.put(label, value);
+                        } else {
+                            MetaLeadFieldType fieldType = MetaLeadFieldType.fromType(type);
+                            if (fieldType != null) {
+                                leadNode.put(fieldType.getFieldName(), value);
+                            }
+                        }
+                    }
 
-        populateStaticFields(lead, integration, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);
+                    Map<String, String> customFields = mapper.convertValue(customFieldsNode, new TypeReference<Map<String, String>>() {});
+                    LeadDetails lead = mapper.convertValue(leadNode, LeadDetails.class);
+                    lead.setCustomFields(customFields);
+                    populateStaticFields(lead, integration, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);
 
-        Map<String, String> customFields = mapper.convertValue(
-                customFieldsNode, new TypeReference<Map<String, String>>() {
-                });
-        lead.setCustomFields(customFields);
-
-        return lead;
+                    return Mono.just(lead);
+                },
+                (mapper, leadDetails) -> Mono.just(leadDetails)
+        );
     }
 
     public Mono<ResponseEntity<String>> verifyMetaWebhook(String mode, String verifyToken, String challenge) {
-        return Mono.just(
-                SUBSCRIBE.equals(mode) && token.equals(verifyToken)
-                        ? ResponseEntity.ok(challenge)
-                        : ResponseEntity.status(HttpStatus.FORBIDDEN).body("Verification token mismatch")
-        );
+        return Mono.just(SUBSCRIBE.equals(mode) && token.equals(verifyToken)
+                ? ResponseEntity.ok(challenge)
+                : ResponseEntity.status(HttpStatus.FORBIDDEN).body("Verification token mismatch"));
     }
 
     public record ExtractPayload(String formId, String leadGenId, String adId) {

@@ -13,7 +13,7 @@
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-collector</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>entity-collector</name>
+    <name>Entity-Collector</name>
     <description>Fincity SAAS entity-collector server</description>
     <properties>
         <java.version>21</java.version>
