@@ -1,134 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.4</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.4.1</version>
+        <relativePath/>
+        <!-- lookup parent from repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-processor</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>entity-processor</name>
-    <description>entity-processor</description>
+    <version>1.0.0</version>
+    <name>Entity Processor</name>
+    <description>A generic server to manage RDBMS Entities</description>
     <properties>
-        <java.version>24</java.version>
-        <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
+        <base.package>com.fincity.saas</base.package>
+        <base.package.dir>com/fincity/saas</base.package.dir>
+        <com-googlecode-libphonenumber-version>9.0.3</com-googlecode-libphonenumber-version>
+        <database.schema.name>entity_processor</database.schema.name>
+        <feign-reactor.version>4.2.1</feign-reactor.version>
+        <java.version>21</java.version>
+        <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
+        <jooq.package>${base.package}.${server.package}.jooq</jooq.package>
+        <jooq.version>3.20.3</jooq.version>
+        <main.java.dir>src/main/java</main.java.dir>
+        <mysql.jdbc.password>Vishwas123#</mysql.jdbc.password>
+        <mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</mysql.jdbc.url>
+        <mysql.jdbc.user>root</mysql.jdbc.user>
+        <nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
         <nocode-kirun-version>3.7.1</nocode-kirun-version>
-        <saas-commons-version>2.0.0</saas-commons-version>
+        <palantir-java.format.version>2.61.0</palantir-java.format.version>
+        <resources.dir>src/main/resources</resources.dir>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
-        <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
         <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
-        <nocode-flatmap-util-version>1.3.0</nocode-flatmap-util-version>
-        <feign-reactor.version>4.2.1</feign-reactor.version>
-        <jooq.version>3.20.2</jooq.version>
+        <saas-commons-security-version>2.0.0</saas-commons-security-version>
+        <saas-commons-version>2.0.0</saas-commons-version>
+        <server.package>entity.processor</server.package>
+        <server.package.dir>entity/processor</server.package.dir>
+        <spotless.version>2.44.3</spotless.version>
+        <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
+        <test.java.dir>src/test/java</test.java.dir>
     </properties>
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <!-- Spring Cloud Dependencies -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-config</artifactId>
-        </dependency>
-
-        <!-- Database and R2DBC -->
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq-codegen-maven</artifactId>
-            <version>${jooq.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.r2dbc</groupId>
-            <artifactId>r2dbc-pool</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.asyncer</groupId>
-            <artifactId>r2dbc-mysql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
-        </dependency>
-
-        <!-- Monitoring and Metrics -->
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
-
-        <!-- Others -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-        </dependency>
-
-        <!-- Fincity Dependencies -->
-        <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>kirun-java</artifactId>
-            <version>${nocode-kirun-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons</artifactId>
-            <version>${saas-commons-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${saas-commons-mq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-jooq</artifactId>
-            <version>${saas-commons-jooq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-security</artifactId>
-            <version>${saas-commons-security-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${saas-commons-mongo-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>reactor-flatmap-util</artifactId>
-            <version>${nocode-flatmap-util-version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -140,6 +56,122 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>kirun-java</artifactId>
+            <version>${nocode-kirun-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.nocode</groupId>
+            <artifactId>reactor-flatmap-util</artifactId>
+            <version>${nocode-flatmap-util-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons</artifactId>
+            <version>${saas-commons-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-jooq</artifactId>
+            <version>${saas-commons-jooq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mongo</artifactId>
+            <version>${saas-commons-mongo-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-mq</artifactId>
+            <version>${saas-commons-mq-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fincity.saas</groupId>
+            <artifactId>commons-security</artifactId>
+            <version>${saas-commons-security-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>${com-googlecode-libphonenumber-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.asyncer</groupId>
+            <artifactId>r2dbc-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-codegen-maven</artifactId>
+            <version>${jooq.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
     <repositories>
         <repository>
             <id>spring-libs-milestone</id>
@@ -150,24 +182,16 @@
             <url>https://repo.spring.io/libs-snapshot</url>
         </repository>
         <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
         </repository>
     </repositories>
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-maven-plugin</artifactId>
-            </plugin>
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
@@ -177,7 +201,7 @@
                         <image>openjdk:alpine</image>
                     </from>
                     <to>
-                        <image>ghcr.io/fincity-india/entity-collector</image>
+                        <image>ghcr.io/fincity-india/entity-processor</image>
                         <tags>
                             <tag>${env.ENVIRONMENT}</tag>
                             <tag>${project.version}</tag>
@@ -185,6 +209,220 @@
                     </to>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>jooq</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jooq</groupId>
+                        <artifactId>jooq-codegen-maven</artifactId>
+                        <configuration>
+                            <jdbc>
+                                <driver>com.mysql.cj.jdbc.Driver</driver>
+                                <url>${mysql.jdbc.url}</url>
+                                <user>${mysql.jdbc.user}</user>
+                                <password>${mysql.jdbc.password}</password>
+                            </jdbc>
+                            <generator>
+                                <database>
+                                    <includes>${database.schema.name}_.*</includes>
+                                    <inputSchema>${database.schema.name}</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>RULES</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                            <ignoreUnused>true</ignoreUnused>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
+                                            <includeExpression>.*\.PLATFORM</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.StageType</userType>
+                                            <includeExpression>.*\.STAGE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator
+                                            </userType>
+                                            <includeExpression>.*\.LOGICAL_OPERATOR</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator
+                                            </userType>
+                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)
+                                            </includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType
+                                            </userType>
+                                            <includeExpression>.*\DISTRIBUTION_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType
+                                            </userType>
+                                            <includeExpression>.*\.PRODUCT_TEMPLATE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                    </forcedTypes>
+                                </database>
+                                <generate>
+                                    <deprecated>false</deprecated>
+                                    <relations>true</relations>
+                                    <records>true</records>
+                                    <immutablePojos>false</immutablePojos>
+                                    <fluentSetters>true</fluentSetters>
+                                </generate>
+                                <target>
+                                    <packageName>${jooq.package}</packageName>
+                                    <directory>${main.java.dir}</directory>
+                                </target>
+                            </generator>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>javax.xml.bind</groupId>
+                                <artifactId>jaxb-api</artifactId>
+                                <version>2.3.1</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>mysql</groupId>
+                                <artifactId>mysql-connector-java</artifactId>
+                                <version>8.0.29</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.glassfish.jaxb</groupId>
+                                <artifactId>jaxb-runtime</artifactId>
+                                <version>4.0.0</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>spotless</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>${spotless.version}</version>
+                        <configuration>
+                            <java>
+                                <includes>
+                                    <include>${main.java.dir}/**/*.java</include>
+                                    <include>${test.java.dir}/**/*.java</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>${jooq.dir}/**/*.java</exclude>
+                                </excludes>
+                                <palantirJavaFormat>
+                                    <version>${palantir-java.format.version}</version>
+                                    <style>PALANTIR</style>
+                                </palantirJavaFormat>
+                                <importOrder/>
+                                <removeUnusedImports/>
+                                <formatAnnotations/>
+                                <trimTrailingWhitespace/>
+                                <endWithNewline/>
+                                <toggleOffOn/>
+                            </java>
+                            <pom>
+                                <includes>
+                                    <include>pom.xml</include>
+                                </includes>
+                                <sortPom>
+                                    <encoding>UTF-8</encoding>
+                                    <endWithNewline>true</endWithNewline>
+                                    <expandEmptyElements>false</expandEmptyElements>
+                                    <indentAttribute>all</indentAttribute>
+                                    <keepBlankLines>false</keepBlankLines>
+                                    <nrOfIndentSpace>4</nrOfIndentSpace>
+                                    <sortDependencies>scope,groupId,artifactId</sortDependencies>
+                                    <sortDependencyExclusions>groupId,artifactId</sortDependencyExclusions>
+                                    <sortDependencyManagement>groupId,artifactId</sortDependencyManagement>
+                                    <sortExecutions>false</sortExecutions>
+                                    <sortModules>true</sortModules>
+                                    <sortPlugins>groupId,artifactId</sortPlugins>
+                                    <sortProperties>true</sortProperties>
+                                </sortPom>
+                            </pom>
+                            <yaml>
+                                <includes>
+                                    <include>${resources.dir}/*.yml</include>
+                                    <include>${resources.dir}/*.yaml</include>
+                                </includes>
+                                <jackson>
+                                    <features>
+                                        <INDENT_OUTPUT>true</INDENT_OUTPUT>
+                                        <ORDER_MAP_ENTRIES_BY_KEYS>true</ORDER_MAP_ENTRIES_BY_KEYS>
+                                    </features>
+                                    <yamlFeatures>
+                                        <WRITE_DOC_START_MARKER>true</WRITE_DOC_START_MARKER>
+                                        <MINIMIZE_QUOTES>true</MINIMIZE_QUOTES>
+                                        <SPLIT_LINES>true</SPLIT_LINES>
+                                    </yamlFeatures>
+                                </jackson>
+                                <trimTrailingWhitespace/>
+                                <endWithNewline/>
+                            </yaml>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.diffplug.spotless</groupId>
+                                <artifactId>spotless-maven-plugin</artifactId>
+                                <version>${spotless.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>com.palantir.javaformat</groupId>
+                                <artifactId>palantir-java-format</artifactId>
+                                <version>${palantir-java.format.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>check</goal>
+                                    <goal>apply</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

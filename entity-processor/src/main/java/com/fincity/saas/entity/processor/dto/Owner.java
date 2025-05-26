@@ -1,0 +1,52 @@
+package com.fincity.saas.entity.processor.dto;
+
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.model.request.OwnerRequest;
+import com.fincity.saas.entity.processor.util.PhoneUtil;
+import java.io.Serial;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
+
+@Data
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@FieldNameConstants
+public class Owner extends BaseProcessorDto<Owner> {
+
+    @Serial
+    private static final long serialVersionUID = 3722918782975754023L;
+
+    private Integer dialCode = PhoneUtil.getDefaultCallingCode();
+    private String phoneNumber;
+    private String email;
+    private String source;
+    private String subSource;
+
+    public static Owner of(OwnerRequest ownerRequest) {
+        return new Owner()
+                .setDialCode(ownerRequest.getPhoneNumber().getCountryCode())
+                .setPhoneNumber(ownerRequest.getPhoneNumber().getNumber())
+                .setEmail(ownerRequest.getEmail().getAddress())
+                .setName(ownerRequest.getName())
+                .setDescription(ownerRequest.getDescription());
+    }
+
+    public static Owner of(Ticket ticket) {
+        return new Owner()
+                .setDialCode(ticket.getDialCode())
+                .setPhoneNumber(ticket.getPhoneNumber())
+                .setEmail(ticket.getEmail())
+                .setName(ticket.getName())
+                .setDescription(ticket.getDescription());
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.OWNER;
+    }
+}

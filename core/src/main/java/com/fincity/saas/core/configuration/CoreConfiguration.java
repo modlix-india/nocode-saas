@@ -3,6 +3,7 @@ package com.fincity.saas.core.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.configuration.AbstractCoreConfiguration;
+import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
@@ -17,6 +18,8 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class CoreConfiguration extends AbstractCoreConfiguration {
+
+    protected CoreMessageResourceService messageService;
 
     protected CoreConfiguration(ObjectMapper objectMapper) {
         super(objectMapper);
