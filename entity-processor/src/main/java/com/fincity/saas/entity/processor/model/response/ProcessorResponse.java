@@ -22,29 +22,37 @@ public class ProcessorResponse implements Serializable {
 
     private String transId;
     private ProcessorStatus status;
+    private EntitySeries entitySeries;
     private String details;
 
-    private static ProcessorResponse of(String transId, ProcessorStatus status, String details) {
-        return new ProcessorResponse().setTransId(transId).setStatus(status).setDetails(details);
-    }
-
-    private static ProcessorResponse of(String transId, ProcessorStatus status, String... details) {
+    private static ProcessorResponse of(
+            String transId, ProcessorStatus status, EntitySeries entitySeries, String details) {
         return new ProcessorResponse()
                 .setTransId(transId)
                 .setStatus(status)
+                .setDetails(details)
+                .setEntitySeries(entitySeries);
+    }
+
+    private static ProcessorResponse of(
+            String transId, ProcessorStatus status, EntitySeries entitySeries, String... details) {
+        return new ProcessorResponse()
+                .setTransId(transId)
+                .setStatus(status)
+                .setEntitySeries(entitySeries)
                 .setDetails(status.getReasonPhrase(), details);
     }
 
     public static ProcessorResponse ofSuccess(String transId, EntitySeries series, String... details) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.OK), details);
+        return of(transId, ProcessorStatus.of(series, HttpStatus.OK), series, details);
     }
 
     public static ProcessorResponse ofCreated(String transId, EntitySeries series, String... details) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.CREATED), details);
+        return of(transId, ProcessorStatus.of(series, HttpStatus.CREATED), series, details);
     }
 
     public static ProcessorResponse ofBadRequest(String transId, EntitySeries series, String... details) {
-        return of(transId, ProcessorStatus.of(series, HttpStatus.BAD_REQUEST), details);
+        return of(transId, ProcessorStatus.of(series, HttpStatus.BAD_REQUEST), series, details);
     }
 
     public ProcessorResponse setDetails(String detail, String... extraDetails) {

@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
@@ -49,11 +48,23 @@ public class ProductTemplateRuleService
 
     @Override
     public Mono<ULong> getUserAssignment(
-            String appCode, String clientCode, ULong entityId, ULong stageId, String tokenPrefix, JsonElement data) {
+            String appCode,
+            String clientCode,
+            ULong entityId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
-                productTemplateRules ->
-                        super.ruleExecutionService.executeRules(productTemplateRules, tokenPrefix, data),
-                (productTemplateRules, eRule) -> super.update(eRule).map(Rule::getLastAssignedUserId));
+                        () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
+                        productTemplateRules -> super.ruleExecutionService.executeRules(
+                                productTemplateRules, tokenPrefix, userId, data),
+                        (productTemplateRules, eRule) -> super.update(eRule).flatMap(rule -> {
+                            ULong assignedUserId = rule.getLastAssignedUserId();
+                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
+
+                            return Mono.just(assignedUserId);
+                        }))
+                .onErrorResume(e -> Mono.empty());
     }
 }
