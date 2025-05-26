@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 
-@ReactiveFeignClient(name = "security", path = "/api/security/users")
-public interface UserServiceClient {
+@ReactiveFeignClient(name = "security-users", path = "/api/security/users")
+public interface SecurityUserServiceClient {
 
     @PostMapping("/internal/getProfileUsers/{appCode}")
     Mono<List<ULong>> getProfileUsers(@PathVariable String appCode, @RequestBody List<ULong> profileIds);

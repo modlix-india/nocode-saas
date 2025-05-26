@@ -4,7 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.feign.UserServiceClient;
+import com.fincity.saas.entity.processor.feign.SecurityUserServiceClient;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
 import java.util.ArrayList;
@@ -23,17 +23,17 @@ public class RuleExecutionService {
 
     private final SimpleRuleService simpleRuleService;
     private final ComplexRuleService complexRuleService;
-    private final UserServiceClient userServiceClient;
+    private final SecurityUserServiceClient securityUserServiceClient;
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
     public RuleExecutionService(
             SimpleRuleService simpleRuleService,
             ComplexRuleService complexRuleService,
-            UserServiceClient userServiceClient) {
+            SecurityUserServiceClient securityUserServiceClient) {
         this.simpleRuleService = simpleRuleService;
         this.complexRuleService = complexRuleService;
-        this.userServiceClient = userServiceClient;
+        this.securityUserServiceClient = securityUserServiceClient;
     }
 
     private Mono<List<ULong>> getUsersForDistribution(UserDistribution userDistribution) {
@@ -49,7 +49,7 @@ public class RuleExecutionService {
                 && !userDistribution.getProfileIds().isEmpty()) {
             String appCode = userDistribution.getAppCode();
 
-            return this.userServiceClient
+            return this.securityUserServiceClient
                     .getProfileUsers(appCode, userDistribution.getProfileIds())
                     .flatMap(userIds -> {
                         List<ULong> combinedUserIds = new ArrayList<>();
@@ -116,7 +116,6 @@ public class RuleExecutionService {
     }
 
     private <T extends Rule<T>> Mono<T> handleRoundRobin(T rule, List<ULong> userIds) {
-        if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
         TreeSet<ULong> sortedUserIds = new TreeSet<>(userIds);
 

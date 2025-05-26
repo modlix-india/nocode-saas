@@ -49,6 +49,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
+        if (product.getId() == null) return Mono.just(product);
+
         return productTemplateService
                 .readByIdInternal(product.getProductTemplateId())
                 .map(valueTemplate -> product);
@@ -64,7 +66,17 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     }
 
     public Mono<Product> create(ProductRequest productRequest) {
-        return super.create(Product.of(productRequest));
+
+        if (productRequest.getProductTemplateId() == null
+                || productRequest.getProductTemplateId().isNull()) return super.create(Product.of(productRequest));
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.create(Product.of(productRequest)),
+                created -> productTemplateService.readIdentityInternal(productRequest.getProductTemplateId()),
+                (created, productTemplate) -> {
+                    created.setProductTemplateId(productTemplate.getId());
+                    return super.updateInternal(created);
+                });
     }
 
     public Mono<Product> readWithAccess(Identity identity) {
