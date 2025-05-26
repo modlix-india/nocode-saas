@@ -7,7 +7,6 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.Ordered;
-import org.springframework.data.mongodb.repository.config.EnableReactiveMongoRepositories;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.web.reactive.config.EnableWebFlux;
@@ -19,7 +18,6 @@ import reactivefeign.spring.config.EnableReactiveFeignClients;
 @EnableWebFlux
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity(order = Ordered.HIGHEST_PRECEDENCE)
-@EnableReactiveMongoRepositories(basePackages = "com.fincity")
 @EnableFeignClients
 @EnableReactiveFeignClients(basePackages = "com.fincity")
 @EnableCaching
