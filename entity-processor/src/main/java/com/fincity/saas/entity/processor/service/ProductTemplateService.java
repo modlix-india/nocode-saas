@@ -60,7 +60,10 @@ public class ProductTemplateService
 
                     return super.create(productTemplate);
                 },
-                (hasAccess, created) -> this.updateDependentServices(created, productTemplateRequest.getProductId()));
+                (hasAccess, created) -> (productTemplateRequest.getProductId() == null
+                                || productTemplateRequest.getProductId().isNull())
+                        ? Mono.just(created)
+                        : this.updateDependentServices(created, productTemplateRequest.getProductId()));
     }
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
