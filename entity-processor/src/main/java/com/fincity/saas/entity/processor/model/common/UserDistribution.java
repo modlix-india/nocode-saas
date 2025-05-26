@@ -19,6 +19,7 @@ public class UserDistribution implements Serializable {
 
     private List<ULong> profileIds;
     private List<ULong> userIds;
+    private String appCode;
     private Integer percentage;
     private Integer maxLoad;
     private Integer weight;

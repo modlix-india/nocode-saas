@@ -4,8 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+import com.fincity.saas.entity.processor.feign.UserServiceClient;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -21,12 +23,17 @@ public class RuleExecutionService {
 
     private final SimpleRuleService simpleRuleService;
     private final ComplexRuleService complexRuleService;
+    private final UserServiceClient userServiceClient;
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
-    public RuleExecutionService(SimpleRuleService simpleRuleService, ComplexRuleService complexRuleService) {
+    public RuleExecutionService(
+            SimpleRuleService simpleRuleService,
+            ComplexRuleService complexRuleService,
+            UserServiceClient userServiceClient) {
         this.simpleRuleService = simpleRuleService;
         this.complexRuleService = complexRuleService;
+        this.userServiceClient = userServiceClient;
     }
 
     private Mono<List<ULong>> getUsersForDistribution(UserDistribution userDistribution) {
@@ -38,8 +45,25 @@ public class RuleExecutionService {
                 && (userDistribution.getUserIds() == null
                         || userDistribution.getUserIds().isEmpty())) return Mono.empty();
 
-        // TODO: Implement actual logic to fetch users from profiles
-        // For now, return an empty list
+        if (userDistribution.getProfileIds() != null
+                && !userDistribution.getProfileIds().isEmpty()) {
+            String appCode = userDistribution.getAppCode();
+
+            return this.userServiceClient
+                    .getProfileUsers(appCode, userDistribution.getProfileIds())
+                    .flatMap(userIds -> {
+                        List<ULong> combinedUserIds = new ArrayList<>();
+
+                        if (userIds != null && !userIds.isEmpty()) combinedUserIds.addAll(userIds);
+
+                        if (userDistribution.getUserIds() != null
+                                && !userDistribution.getUserIds().isEmpty())
+                            combinedUserIds.addAll(userDistribution.getUserIds());
+
+                        return Mono.just(combinedUserIds);
+                    });
+        }
+
         return Mono.just(userDistribution.getUserIds());
     }
 

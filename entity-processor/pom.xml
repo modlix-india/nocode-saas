@@ -236,8 +236,7 @@
                                     <forcedTypes>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
                                             <includeExpression>RULES</includeExpression>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>false</genericConverter>
@@ -256,30 +255,25 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator</userType>
                                             <includeExpression>.*\.LOGICAL_OPERATOR</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator
-                                            </userType>
-                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)
-                                            </includeExpression>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator</userType>
+                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType</userType>
                                             <includeExpression>.*\DISTRIBUTION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType</userType>
                                             <includeExpression>.*\.PRODUCT_TEMPLATE_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>

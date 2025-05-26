@@ -1,21 +1,18 @@
 package com.fincity.saas.entity.processor.controller.rule;
 
+import com.fincity.saas.entity.processor.controller.base.BaseController;
+import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
+import com.fincity.saas.entity.processor.dto.rule.Rule;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
+import com.fincity.saas.entity.processor.service.rule.RuleService;
 import java.util.Map;
-
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import com.fincity.saas.entity.processor.controller.base.BaseController;
-import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
-import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
-import com.fincity.saas.entity.processor.service.rule.RuleService;
-
 import reactor.core.publisher.Mono;
 
 public abstract class RuleController<
@@ -34,14 +31,12 @@ public abstract class RuleController<
     }
 
     @PostMapping(ORDER_PATH)
-    public Mono<ResponseEntity<Map<Integer, D>>> createWithOrder(
-            @RequestBody Map<Integer, RuleRequest> ruleRequests) {
+    public Mono<ResponseEntity<Map<Integer, D>>> createWithOrder(@RequestBody Map<Integer, RuleRequest> ruleRequests) {
         return this.ruleService.createWithOrder(ruleRequests).map(ResponseEntity::ok);
     }
 
     @PutMapping(ORDER_PATH)
-    public Mono<ResponseEntity<Map<Integer, D>>> updateOrder(
-            @RequestBody Map<Integer, Identity> ruleRequests) {
+    public Mono<ResponseEntity<Map<Integer, D>>> updateOrder(@RequestBody Map<Integer, Identity> ruleRequests) {
         return this.ruleService.updateOrder(ruleRequests).map(ResponseEntity::ok);
     }
 }
