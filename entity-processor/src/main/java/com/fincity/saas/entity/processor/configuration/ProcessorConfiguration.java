@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
-import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -30,7 +29,6 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
     @PostConstruct
     public void initialize() {
         super.initialize();
-        this.objectMapper.registerModule(new KIRuntimeSerializationModule());
         this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(processorMessageResourceService));
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {

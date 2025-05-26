@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/entity/processor/values/templates")
+@RequestMapping("api/entity/processor/products/templates")
 public class ProductTemplateController
         extends BaseController<
                 EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO, ProductTemplateService> {
