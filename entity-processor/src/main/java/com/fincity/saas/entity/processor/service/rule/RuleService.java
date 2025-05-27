@@ -231,13 +231,16 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 hasAccess -> this.createFromRequest(ruleRequest),
-                (hasAccess, rule) -> stageService.checkAndUpdateIdentity(ruleRequest.getStageId()),
+                (hasAccess, rule) -> ruleRequest.isDefault()
+                        ? Mono.just(Identity.ofNull())
+                        : stageService.checkAndUpdateIdentity(ruleRequest.getStageId()),
                 (hasAccess, rule, stageId) -> this.updateUserDistribution(ruleRequest, rule),
                 (hasAccess, rule, stageId, uRule) -> {
                     uRule.setAppCode(hasAccess.getT1().getT1());
                     uRule.setClientCode(hasAccess.getT1().getT2());
                     uRule.setOrder(order);
-                    uRule.setStageId(stageId.getULongId());
+
+                    if (!ruleRequest.isDefault()) uRule.setStageId(stageId.getULongId());
                     return super.create(uRule);
                 },
                 (hasAccess, rule, stageId, uRule, cRule) -> {
