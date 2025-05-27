@@ -77,7 +77,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
     public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean isParent) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.nameField)
+                        .select(this.idField, super.nameField, this.orderField)
                         .from(this.table)
                         .where(DSL.and(this.getBaseValueConditions(
                                 appCode, clientCode, platform, productTemplateId, isParent))))
@@ -88,7 +88,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
     public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.nameField)
+                        .select(this.idField, super.nameField, this.orderField)
                         .from(this.table)
                         .where(DSL.and(
                                 this.getBaseValueConditions(appCode, clientCode, platform, productTemplateId, null))))

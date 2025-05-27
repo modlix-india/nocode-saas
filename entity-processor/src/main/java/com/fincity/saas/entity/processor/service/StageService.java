@@ -76,8 +76,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<BaseValue> getLatestStageByOrder(
             String appCode, String clientCode, ULong productTemplateId, Platform platform) {
-        return super.getAllValuesInOrder(appCode, clientCode, platform, productTemplateId)
-                .map(TreeMap::lastKey);
+        return super.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+                .map(TreeMap::lastKey)
+                .switchIfEmpty(Mono.empty());
     }
 
     public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {

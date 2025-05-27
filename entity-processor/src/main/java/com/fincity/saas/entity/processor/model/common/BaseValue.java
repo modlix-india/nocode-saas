@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.model.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
@@ -14,7 +15,7 @@ import org.jooq.types.ULong;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class BaseValue implements Serializable {
+public class BaseValue implements Serializable, Comparable<BaseValue> {
 
     @Serial
     private static final long serialVersionUID = 1458279752853060502L;
@@ -38,6 +39,18 @@ public class BaseValue implements Serializable {
         return baseValueList.stream().collect(Collectors.toMap(BaseValue::getId, Function.identity(), (a, b) -> b));
     }
 
+    @Override
+    public int compareTo(BaseValue other) {
+        if (this.order != null && other.order != null) {
+            return this.order.compareTo(other.order);
+        }
+        if (this.order == null && other.order == null) {
+            return this.value.getValue().compareTo(other.value.getValue());
+        }
+        return this.order == null ? 1 : -1;
+    }
+
+    @JsonIgnore
     public ULong getId() {
         return this.value.getId();
     }

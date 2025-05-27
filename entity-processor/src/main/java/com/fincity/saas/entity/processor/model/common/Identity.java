@@ -42,6 +42,10 @@ public class Identity implements Serializable {
         return of(null, code);
     }
 
+    public static Identity ofNull() {
+        return of(null, null);
+    }
+
     public boolean isNull() {
         return id == null && code == null;
     }
