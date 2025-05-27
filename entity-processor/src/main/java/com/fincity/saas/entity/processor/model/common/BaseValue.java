@@ -20,19 +20,19 @@ public class BaseValue implements Serializable, Comparable<BaseValue> {
     @Serial
     private static final long serialVersionUID = 1458279752853060502L;
 
-    private IdAndValue<ULong, String> value;
+    private IdAndValue<Identity, String> value;
     private Integer order;
 
-    public static BaseValue of(IdAndValue<ULong, String> value, Integer order) {
+    public static BaseValue of(IdAndValue<Identity, String> value, Integer order) {
         return new BaseValue().setValue(value).setOrder(order);
     }
 
-    public static BaseValue of(ULong id, String name) {
-        return of(IdAndValue.of(id, name), null);
+    public static BaseValue of(ULong id, String code, String name) {
+        return of(IdAndValue.of(Identity.of(id.toBigInteger(), code), name), null);
     }
 
-    public static BaseValue of(ULong id, String name, Integer order) {
-        return of(IdAndValue.of(id, name), order);
+    public static BaseValue of(ULong id, String code, String name, Integer order) {
+        return of(IdAndValue.of(Identity.of(id.toBigInteger(), code), name), order);
     }
 
     public static Map<ULong, BaseValue> toIdMap(List<BaseValue> baseValueList) {
@@ -52,6 +52,11 @@ public class BaseValue implements Serializable, Comparable<BaseValue> {
 
     @JsonIgnore
     public ULong getId() {
-        return this.value.getId();
+        return this.value.getId().getULongId();
+    }
+
+    @JsonIgnore
+    public String getCode() {
+        return this.value.getId().getCode();
     }
 }

@@ -3,12 +3,9 @@ package com.fincity.saas.entity.processor.controller.base;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
-import com.fincity.saas.entity.processor.model.common.BaseValue;
+import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.List;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +24,7 @@ public abstract class BaseValueController<
     public static final String PATH_VALUES_ORDERED = "/values/ordered";
 
     @GetMapping(PATH_VALUES)
-    public Mono<ResponseEntity<Map<BaseValue, Set<BaseValue>>>> getAllValues(
+    public Mono<ResponseEntity<List<BaseValueResponse>>> getAllValues(
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) ULong productTemplateId) {
 
@@ -39,7 +36,7 @@ public abstract class BaseValueController<
     }
 
     @GetMapping(PATH_VALUES_ORDERED)
-    public Mono<ResponseEntity<TreeMap<BaseValue, TreeSet<BaseValue>>>> getValuesInOrder(
+    public Mono<ResponseEntity<List<BaseValueResponse>>> getValuesInOrder(
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) ULong productTemplateId) {
 

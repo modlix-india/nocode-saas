@@ -9,13 +9,17 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -226,13 +230,13 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrderInternal(
+    public Mono<NavigableMap<BaseValue, NavigableSet<BaseValue>>> getAllValuesInOrderInternal(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
                 .flatMap(map -> {
                     if (map == null || map.isEmpty()) return Mono.empty();
 
-                    TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap = new TreeMap<>(
+                    NavigableMap<BaseValue, NavigableSet<BaseValue>> orderedMap = new TreeMap<>(
                             Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
 
                     map.forEach((key, value) -> {
@@ -246,7 +250,7 @@ public abstract class BaseValueService<
                 });
     }
 
-    public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
+    public Mono<NavigableMap<BaseValue, NavigableSet<BaseValue>>> getAllValuesInOrder(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
                 .switchIfEmpty(this.msgService.throwMessage(
@@ -256,21 +260,22 @@ public abstract class BaseValueService<
                         this.getEntityName()));
     }
 
-    public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
-            Platform platform, ULong productTemplateId) {
+    public Mono<List<BaseValueResponse>> getAllValuesInOrder(Platform platform, ULong productTemplateId) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getAllValuesInOrderInternal(
                                 access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
-                .switchIfEmpty(Mono.just(new TreeMap<>()));
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
-    public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(Platform platform, ULong productTemplateId) {
+    public Mono<List<BaseValueResponse>> getAllValues(Platform platform, ULong productTemplateId) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getAllValues(
                                 access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
-                .switchIfEmpty(Mono.just(new HashMap<>()));
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
     public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(
@@ -304,7 +309,7 @@ public abstract class BaseValueService<
         Map<ULong, Set<BaseValue>> parentToChildrenMap = new HashMap<>();
 
         for (D value : values) {
-            BaseValue baseValue = BaseValue.of(value.getId(), value.getName(), value.getOrder());
+            BaseValue baseValue = BaseValue.of(value.getId(), value.getCode(), value.getName(), value.getOrder());
 
             addToParentMap(parentToChildrenMap, value.getParentLevel0(), baseValue);
             addToParentMap(parentToChildrenMap, value.getParentLevel1(), baseValue);
