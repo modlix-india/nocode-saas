@@ -1,14 +1,17 @@
 package com.fincity.saas.entity.processor.model.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+
+import org.jooq.types.ULong;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -35,6 +38,7 @@ public class UserDistribution implements Serializable {
         if (type == null) return false;
 
         return switch (type) {
+            case ROUND_ROBIN -> true;
             case PERCENTAGE -> percentage != null && percentage >= 0 && percentage <= 100;
             case WEIGHTED -> weight != null && weight >= 0;
             case LOAD_BALANCED -> maxLoad != null && maxLoad > 0;
