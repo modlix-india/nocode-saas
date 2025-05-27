@@ -77,22 +77,24 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
     public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean isParent) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.nameField)
+                        .select(this.idField, super.codeField, super.nameField, this.orderField)
                         .from(this.table)
                         .where(DSL.and(this.getBaseValueConditions(
                                 appCode, clientCode, platform, productTemplateId, isParent))))
-                .map(e -> BaseValue.of(e.get(this.idField), e.get(super.nameField), e.get(this.orderField)))
+                .map(e -> BaseValue.of(
+                        e.get(this.idField), e.get(super.codeField), e.get(super.nameField), e.get(this.orderField)))
                 .collectList();
     }
 
     public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.nameField)
+                        .select(this.idField, super.codeField, super.nameField, this.orderField)
                         .from(this.table)
                         .where(DSL.and(
                                 this.getBaseValueConditions(appCode, clientCode, platform, productTemplateId, null))))
-                .map(e -> BaseValue.of(e.get(this.idField), e.get(super.nameField), e.get(this.orderField)))
+                .map(e -> BaseValue.of(
+                        e.get(this.idField), e.get(super.codeField), e.get(super.nameField), e.get(this.orderField)))
                 .collectList();
     }
 

@@ -9,11 +9,17 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -25,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 
 @Service
@@ -223,11 +230,13 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<TreeMap<BaseValue, TreeSet<BaseValue>>> getAllValuesInOrder(
+    public Mono<NavigableMap<BaseValue, NavigableSet<BaseValue>>> getAllValuesInOrderInternal(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
-                .map(map -> {
-                    TreeMap<BaseValue, TreeSet<BaseValue>> orderedMap = new TreeMap<>(
+                .flatMap(map -> {
+                    if (map == null || map.isEmpty()) return Mono.empty();
+
+                    NavigableMap<BaseValue, NavigableSet<BaseValue>> orderedMap = new TreeMap<>(
                             Comparator.comparingInt(BaseValue::getOrder).thenComparing(BaseValue::getId));
 
                     map.forEach((key, value) -> {
@@ -237,8 +246,36 @@ public abstract class BaseValueService<
                         orderedMap.put(key, orderedSet);
                     });
 
-                    return orderedMap;
+                    return Mono.just(orderedMap);
                 });
+    }
+
+    public Mono<NavigableMap<BaseValue, NavigableSet<BaseValue>>> getAllValuesInOrder(
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
+        return this.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        ProcessorMessageResourceService.NO_VALUES_FOUND,
+                        this.getEntityName(),
+                        this.getEntityName()));
+    }
+
+    public Mono<List<BaseValueResponse>> getAllValuesInOrder(Platform platform, ULong productTemplateId) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.getAllValuesInOrderInternal(
+                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
+    }
+
+    public Mono<List<BaseValueResponse>> getAllValues(Platform platform, ULong productTemplateId) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.getAllValues(
+                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
     public Mono<Map<BaseValue, Set<BaseValue>>> getAllValues(
@@ -255,11 +292,46 @@ public abstract class BaseValueService<
                 () -> Mono.zip(
                         this.dao.getAllValues(appCode, clientCode, platform, productTemplateId, null),
                         this.getAllValueMap(appCode, clientCode, platform, productTemplateId)),
-                tup -> Mono.just(tup.getT1().stream()
-                        .collect(Collectors.toMap(
-                                value -> BaseValue.of(value.getId(), value.getName(), value.getOrder()),
-                                value -> this.getValueChildNamesSet(value, tup.getT2()),
-                                (a, b) -> b))));
+                this::processValuesAndBuildHierarchy);
+    }
+
+    private Mono<Map<BaseValue, Set<BaseValue>>> processValuesAndBuildHierarchy(
+            Tuple2<List<D>, Map<ULong, BaseValue>> tuple) {
+        Map<BaseValue, Set<BaseValue>> result = new HashMap<>();
+
+        Map<ULong, Set<BaseValue>> parentToChildrenMap = this.buildParentChildrenMap(tuple.getT1(), result);
+        this.linkParentsWithChildren(result, parentToChildrenMap);
+
+        return Mono.just(result);
+    }
+
+    private Map<ULong, Set<BaseValue>> buildParentChildrenMap(List<D> values, Map<BaseValue, Set<BaseValue>> result) {
+        Map<ULong, Set<BaseValue>> parentToChildrenMap = new HashMap<>();
+
+        for (D value : values) {
+            BaseValue baseValue = BaseValue.of(value.getId(), value.getCode(), value.getName(), value.getOrder());
+
+            addToParentMap(parentToChildrenMap, value.getParentLevel0(), baseValue);
+            addToParentMap(parentToChildrenMap, value.getParentLevel1(), baseValue);
+
+            if (Boolean.TRUE.equals(value.getIsParent()) || !value.hasParentLevels())
+                result.put(baseValue, new HashSet<>());
+        }
+
+        return parentToChildrenMap;
+    }
+
+    private void addToParentMap(Map<ULong, Set<BaseValue>> parentToChildrenMap, ULong parentId, BaseValue childValue) {
+        if (parentId != null)
+            parentToChildrenMap.computeIfAbsent(parentId, k -> new HashSet<>()).add(childValue);
+    }
+
+    private void linkParentsWithChildren(
+            Map<BaseValue, Set<BaseValue>> result, Map<ULong, Set<BaseValue>> parentToChildrenMap) {
+        parentToChildrenMap.forEach((parentId, children) -> result.keySet().stream()
+                .filter(bv -> bv.getId().equals(parentId))
+                .findFirst()
+                .ifPresent(parentValue -> result.get(parentValue).addAll(children)));
     }
 
     private Mono<Map<ULong, BaseValue>> getAllValueMap(
@@ -270,13 +342,5 @@ public abstract class BaseValueService<
                         .getAllProductTemplateIdAndNames(appCode, clientCode, platform, productTemplateId)
                         .map(BaseValue::toIdMap),
                 super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, productTemplateId));
-    }
-
-    private Set<BaseValue> getValueChildNamesSet(D valueEntity, Map<ULong, BaseValue> valueEntityMap) {
-        return Stream.of(valueEntity.getParentLevel0(), valueEntity.getParentLevel1())
-                .filter(Objects::nonNull)
-                .map(valueEntityMap::get)
-                .filter(baseValue -> baseValue.getValue() != null)
-                .collect(Collectors.toSet());
     }
 }

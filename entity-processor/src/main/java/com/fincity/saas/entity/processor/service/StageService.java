@@ -11,7 +11,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.NavigableMap;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -76,13 +76,14 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<BaseValue> getLatestStageByOrder(
             String appCode, String clientCode, ULong productTemplateId, Platform platform) {
-        return super.getAllValuesInOrder(appCode, clientCode, platform, productTemplateId)
-                .map(TreeMap::lastKey);
+        return super.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+                .map(NavigableMap::lastKey)
+                .switchIfEmpty(Mono.empty());
     }
 
     public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {
         return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
-                .map(TreeMap::firstKey);
+                .map(NavigableMap::firstKey);
     }
 
     public Mono<BaseValue> getFirstStatus(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
