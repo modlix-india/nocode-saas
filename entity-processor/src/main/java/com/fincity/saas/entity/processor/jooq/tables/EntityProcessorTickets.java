@@ -115,7 +115,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * <code>entity_processor.entity_processor_tickets.ASSIGNED_USER_ID</code>.
      * User which added this ticket or user who is assigned to this ticket.
      */
-    public final TableField<EntityProcessorTicketsRecord, ULong> ASSIGNED_USER_ID = createField(DSL.name("ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this ticket or user who is assigned to this ticket.");
+    public final TableField<EntityProcessorTicketsRecord, ULong> ASSIGNED_USER_ID = createField(DSL.name("ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "User which added this ticket or user who is assigned to this ticket.");
 
     /**
      * The column

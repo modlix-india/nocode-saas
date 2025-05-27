@@ -1,10 +1,12 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -39,12 +41,16 @@ public class Owner extends BaseProcessorDto<Owner> {
     }
 
     public static Owner of(Ticket ticket) {
-        return new Owner()
+        return (Owner) new Owner()
                 .setDialCode(ticket.getDialCode())
                 .setPhoneNumber(ticket.getPhoneNumber())
                 .setEmail(ticket.getEmail())
+                .setSource(ticket.getSource())
+                .setSubSource(ticket.getSubSource() != null ? ticket.getSubSource() : null)
                 .setName(ticket.getName())
-                .setDescription(ticket.getDescription());
+                .setDescription(ticket.getDescription())
+                .setAppCode(ticket.getAppCode())
+                .setClientCode(ticket.getClientCode());
     }
 
     @Override

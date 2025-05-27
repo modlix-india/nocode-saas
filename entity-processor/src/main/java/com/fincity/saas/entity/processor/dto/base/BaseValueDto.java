@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
@@ -41,16 +42,19 @@ public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implemen
         return !this.isParent;
     }
 
+    @JsonIgnore
     public boolean inFamily(ULong childId) {
         return this.getId().equals(childId) || this.parentLevel0.equals(childId) || this.parentLevel1.equals(childId);
     }
 
+    @JsonIgnore
     public boolean isValidChild(ULong... childIds) {
         return Stream.of(childIds).anyMatch(childId -> this.getId().equals(childId));
     }
 
     // 	These Methods are for JOOQ Compatibility.
     // 	Jooq uses {@code org.jooq.tools.StringUtils.toCamelCase()} to get getter and setter of a Entity
+    @JsonIgnore
     public ULong getParentLevel_0() {
         return this.parentLevel0;
     }
@@ -60,6 +64,7 @@ public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implemen
         return parentLevel0;
     }
 
+    @JsonIgnore
     public ULong getParentLevel_1() {
         return this.parentLevel1;
     }
