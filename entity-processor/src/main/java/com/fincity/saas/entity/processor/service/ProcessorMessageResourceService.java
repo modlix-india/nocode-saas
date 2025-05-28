@@ -29,6 +29,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
     public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
     public static final String STAGE_MISSING = "stage_missing";
+    public static final String STAGE_TYPE_MISSING = "stage_type_missing";
     public static final String DEFAULT_RULE_MISSING = "default_rule_missing";
     public static final String NO_VALUES_FOUND = "no_values_found";
 

@@ -6,10 +6,10 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
+import com.fincity.saas.entity.processor.model.common.ValueContainer;
 
 import java.time.LocalDateTime;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -256,7 +256,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
      * for this Simple Rule.
      */
-    public EntityProcessorSimpleRulesRecord setValue(JSON value) {
+    public EntityProcessorSimpleRulesRecord setValue(ValueContainer value) {
         set(12, value);
         return this;
     }
@@ -266,27 +266,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
      * for this Simple Rule.
      */
-    public JSON getValue() {
-        return (JSON) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
-     */
-    public EntityProcessorSimpleRulesRecord setToValue(JSON value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
-     */
-    public JSON getToValue() {
-        return (JSON) get(13);
+    public ValueContainer getValue() {
+        return (ValueContainer) get(12);
     }
 
     /**
@@ -295,7 +276,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if value is a field.
      */
     public EntityProcessorSimpleRulesRecord setIsValueField(Byte value) {
-        set(14, value);
+        set(13, value);
         return this;
     }
 
@@ -305,7 +286,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if value is a field.
      */
     public Byte getIsValueField() {
-        return (Byte) get(14);
+        return (Byte) get(13);
     }
 
     /**
@@ -314,7 +295,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if to value is a field.
      */
     public EntityProcessorSimpleRulesRecord setIsToValueField(Byte value) {
-        set(15, value);
+        set(14, value);
         return this;
     }
 
@@ -324,7 +305,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if to value is a field.
      */
     public Byte getIsToValueField() {
-        return (Byte) get(15);
+        return (Byte) get(14);
     }
 
     /**
@@ -333,7 +314,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Operator for this Simple Rule.
      */
     public EntityProcessorSimpleRulesRecord setMatchOperator(ComparisonOperator value) {
-        set(16, value);
+        set(15, value);
         return this;
     }
 
@@ -343,7 +324,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Operator for this Simple Rule.
      */
     public ComparisonOperator getMatchOperator() {
-        return (ComparisonOperator) get(16);
+        return (ComparisonOperator) get(15);
     }
 
     /**
@@ -352,7 +333,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Temporary active flag for this Simple Rule.
      */
     public EntityProcessorSimpleRulesRecord setTempActive(Byte value) {
-        set(17, value);
+        set(16, value);
         return this;
     }
 
@@ -362,7 +343,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Temporary active flag for this Simple Rule.
      */
     public Byte getTempActive() {
-        return (Byte) get(17);
+        return (Byte) get(16);
     }
 
     /**
@@ -371,7 +352,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if this Simple Rule is active or not.
      */
     public EntityProcessorSimpleRulesRecord setIsActive(Byte value) {
-        set(18, value);
+        set(17, value);
         return this;
     }
 
@@ -381,7 +362,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Flag to check if this Simple Rule is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(18);
+        return (Byte) get(17);
     }
 
     /**
@@ -390,7 +371,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * ID of the user who created this row.
      */
     public EntityProcessorSimpleRulesRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(18, value);
         return this;
     }
 
@@ -400,7 +381,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(18);
     }
 
     /**
@@ -409,7 +390,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Time when this row is created.
      */
     public EntityProcessorSimpleRulesRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(19, value);
         return this;
     }
 
@@ -419,7 +400,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(19);
     }
 
     /**
@@ -428,7 +409,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * ID of the user who updated this row.
      */
     public EntityProcessorSimpleRulesRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(20, value);
         return this;
     }
 
@@ -438,7 +419,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(20);
     }
 
     /**
@@ -447,7 +428,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Time when this row is updated.
      */
     public EntityProcessorSimpleRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(21, value);
         return this;
     }
 
@@ -457,7 +438,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(21);
     }
 
     // -------------------------------------------------------------------------
@@ -483,7 +464,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
     /**
      * Create a detached, initialised EntityProcessorSimpleRulesRecord
      */
-    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, String field, ComparisonOperator comparisonOperator, JSON value, JSON toValue, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, String field, ComparisonOperator comparisonOperator, ValueContainer value, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES);
 
         setId(id);
@@ -499,7 +480,6 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
         setField(field);
         setComparisonOperator(comparisonOperator);
         setValue(value);
-        setToValue(toValue);
         setIsValueField(isValueField);
         setIsToValueField(isToValueField);
         setMatchOperator(matchOperator);

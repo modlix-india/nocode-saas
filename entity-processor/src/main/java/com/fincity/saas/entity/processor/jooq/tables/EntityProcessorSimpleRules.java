@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesMatchOperator;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
+import com.fincity.saas.entity.processor.model.common.ValueContainer;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -149,14 +151,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
      * for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, JSON> VALUE = createField(DSL.name("VALUE"), SQLDataType.JSON, this, "Value for this Simple Rule.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
-     */
-    public final TableField<EntityProcessorSimpleRulesRecord, JSON> TO_VALUE = createField(DSL.name("TO_VALUE"), SQLDataType.JSON, this, "To value for this Simple Rule.");
+    public final TableField<EntityProcessorSimpleRulesRecord, ValueContainer> VALUE = createField(DSL.name("VALUE"), SQLDataType.JSON, this, "Value for this Simple Rule.", new JSONtoClassConverter<JSON, ValueContainer>(JSON.class, ValueContainer.class));
 
     /**
      * The column

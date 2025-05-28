@@ -30,7 +30,7 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
     private ULong stageId;
     private Integer order;
     private boolean isDefault = false;
-    private boolean breakAtFirstMatch = false;
+    private boolean breakAtFirstMatch = true;
     private boolean isSimple = true;
     private boolean isComplex = false;
 
@@ -42,7 +42,26 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
 
     public abstract T setEntityId(ULong entityId);
 
-    public abstract T of(RuleRequest ruleRequest);
+    public T of(RuleRequest ruleRequest) {
+
+        this.setName(ruleRequest.getName())
+                .setDescription(ruleRequest.getDescription())
+                .setStageId(
+                        ruleRequest.getStageId() != null
+                                ? ruleRequest.getStageId().getULongId()
+                                : null)
+                .setIsDefault(ruleRequest.isDefault())
+                .setBreakAtFirstMatch(ruleRequest.isBreakAtFirstMatch())
+                .setSimple(ruleRequest.isSimple())
+                .setComplex(ruleRequest.isComplex())
+                .setUserDistributionType(ruleRequest.getUserDistributionType())
+                .setUserDistribution(ruleRequest.getUserDistribution());
+
+        if (ruleRequest.getEntityId() != null)
+            this.setEntityId(ruleRequest.getEntityId().getULongId());
+
+        return (T) this;
+    }
 
     public T setIsDefault(boolean isDefault) {
         this.isDefault = isDefault;
