@@ -22,4 +22,15 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private StageType stageType;
     private Boolean isSuccess;
     private Boolean isFailure;
+
+    public boolean isValid() {
+        return stageType != null;
+    }
+
+    public boolean isAllValid() {
+
+        if (!this.isValid()) return false;
+
+        return this.getChildren().values().stream().allMatch(StageRequest::isValid);
+    }
 }

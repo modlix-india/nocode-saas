@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
-import com.fincity.saas.entity.processor.model.common.BaseValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -74,27 +73,23 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .collectList();
     }
 
-    public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
+    public Mono<List<D>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean isParent) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.codeField, super.nameField, this.orderField)
-                        .from(this.table)
+                        .selectFrom(this.table)
                         .where(DSL.and(this.getBaseValueConditions(
                                 appCode, clientCode, platform, productTemplateId, isParent))))
-                .map(e -> BaseValue.of(
-                        e.get(this.idField), e.get(super.codeField), e.get(super.nameField), e.get(this.orderField)))
+                .map(e -> e.into(super.pojoClass))
                 .collectList();
     }
 
-    public Mono<List<BaseValue>> getAllProductTemplateIdAndNames(
+    public Mono<List<D>> getAllProductTemplateIdAndNames(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return Flux.from(this.dslContext
-                        .select(this.idField, super.codeField, super.nameField, this.orderField)
-                        .from(this.table)
+                        .selectFrom(this.table)
                         .where(DSL.and(
                                 this.getBaseValueConditions(appCode, clientCode, platform, productTemplateId, null))))
-                .map(e -> BaseValue.of(
-                        e.get(this.idField), e.get(super.codeField), e.get(super.nameField), e.get(this.orderField)))
+                .map(e -> e.into(super.pojoClass))
                 .collectList();
     }
 

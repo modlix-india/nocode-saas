@@ -6,10 +6,10 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.UInteger;
@@ -314,7 +314,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTIONS</code>.
      * User distributions for this rule.
      */
-    public EntityProcessorProductRulesRecord setUserDistributions(JSON value) {
+    public EntityProcessorProductRulesRecord setUserDistributions(UserDistribution value) {
         set(15, value);
         return this;
     }
@@ -324,8 +324,8 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_rules.USER_DISTRIBUTIONS</code>.
      * User distributions for this rule.
      */
-    public JSON getUserDistributions() {
-        return (JSON) get(15);
+    public UserDistribution getUserDistributions() {
+        return (UserDistribution) get(15);
     }
 
     /**
@@ -484,7 +484,7 @@ public class EntityProcessorProductRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductRulesRecord
      */
-    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, JSON userDistributions, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, UserDistribution userDistributions, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES);
 
         setId(id);

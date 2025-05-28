@@ -6,6 +6,10 @@ import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.io.Serial;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -20,10 +24,10 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong> {
 
+    public static final int CODE_LENGTH = 22;
+
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;
-
-    public static final int CODE_LENGTH = 22;
 
     private String code = UniqueUtil.shortUUID();
 
@@ -34,6 +38,10 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
     private boolean tempActive = Boolean.FALSE;
 
     private boolean isActive = Boolean.TRUE;
+
+    public static <T extends BaseDto<T>> Map<ULong, T> toIdMap(List<T> baseDtoList) {
+        return baseDtoList.stream().collect(Collectors.toMap(BaseDto::getId, Function.identity(), (a, b) -> b));
+    }
 
     public T setCode() {
         if (this.code != null) return (T) this;
