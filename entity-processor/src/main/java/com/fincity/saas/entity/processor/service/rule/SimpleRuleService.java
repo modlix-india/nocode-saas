@@ -48,7 +48,6 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
             existing.setField(entity.getField());
             existing.setComparisonOperator(entity.getComparisonOperator());
             existing.setValue(entity.getValue());
-            existing.setToValue(entity.getToValue());
             existing.setValueField(entity.isValueField());
             existing.setToValueField(entity.isToValueField());
             existing.setMatchOperator(entity.getMatchOperator());

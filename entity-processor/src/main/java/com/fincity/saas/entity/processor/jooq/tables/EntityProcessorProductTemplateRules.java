@@ -4,11 +4,13 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplateRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -163,7 +165,7 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_template_rules.USER_DISTRIBUTIONS</code>.
      * User distributions for this rule.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, JSON> USER_DISTRIBUTIONS = createField(DSL.name("USER_DISTRIBUTIONS"), SQLDataType.JSON, this, "User distributions for this rule.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, UserDistribution> USER_DISTRIBUTIONS = createField(DSL.name("USER_DISTRIBUTIONS"), SQLDataType.JSON, this, "User distributions for this rule.", new JSONtoClassConverter<JSON, UserDistribution>(JSON.class, UserDistribution.class));
 
     /**
      * The column

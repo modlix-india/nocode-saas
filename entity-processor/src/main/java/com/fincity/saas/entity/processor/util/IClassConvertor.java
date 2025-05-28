@@ -6,7 +6,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 public interface IClassConvertor {

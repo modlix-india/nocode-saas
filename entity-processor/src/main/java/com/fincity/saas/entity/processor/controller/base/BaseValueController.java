@@ -24,7 +24,7 @@ public abstract class BaseValueController<
     public static final String PATH_VALUES_ORDERED = "/values/ordered";
 
     @GetMapping(PATH_VALUES)
-    public Mono<ResponseEntity<List<BaseValueResponse>>> getAllValues(
+    public Mono<ResponseEntity<List<BaseValueResponse<D>>>> getAllValues(
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) ULong productTemplateId) {
 
@@ -36,7 +36,7 @@ public abstract class BaseValueController<
     }
 
     @GetMapping(PATH_VALUES_ORDERED)
-    public Mono<ResponseEntity<List<BaseValueResponse>>> getValuesInOrder(
+    public Mono<ResponseEntity<List<BaseValueResponse<D>>>> getValuesInOrder(
             @RequestParam(required = false, defaultValue = "PRE_QUALIFICATION") Platform platform,
             @RequestParam(required = false) ULong productTemplateId) {
 

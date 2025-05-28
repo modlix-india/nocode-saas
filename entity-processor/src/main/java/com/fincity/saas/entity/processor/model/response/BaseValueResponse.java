@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.model.response;
 
-import com.fincity.saas.entity.processor.model.common.BaseValue;
+import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -13,20 +13,22 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BaseValueResponse {
-    private BaseValue parent;
-    private List<BaseValue> child;
+public class BaseValueResponse<T extends BaseValueDto<T>> {
 
-    public static List<BaseValueResponse> toList(Map<BaseValue, Set<BaseValue>> valueMap) {
+    private T parent;
+    private List<T> child;
+
+    public static <T extends BaseValueDto<T>> List<BaseValueResponse<T>> toList(Map<T, Set<T>> valueMap) {
         return valueMap.entrySet().stream()
-                .map(entry -> new BaseValueResponse(
+                .map(entry -> new BaseValueResponse<>(
                         entry.getKey(), entry.getValue().stream().toList()))
                 .toList();
     }
 
-    public static List<BaseValueResponse> toList(NavigableMap<BaseValue, NavigableSet<BaseValue>> valueMap) {
+    public static <T extends BaseValueDto<T>> List<BaseValueResponse<T>> toList(
+            NavigableMap<T, NavigableSet<T>> valueMap) {
         return valueMap.entrySet().stream()
-                .map(entry -> new BaseValueResponse(
+                .map(entry -> new BaseValueResponse<>(
                         entry.getKey(), entry.getValue().stream().toList()))
                 .toList();
     }

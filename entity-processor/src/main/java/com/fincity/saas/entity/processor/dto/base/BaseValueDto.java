@@ -17,7 +17,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implements IEntitySeries {
+public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;

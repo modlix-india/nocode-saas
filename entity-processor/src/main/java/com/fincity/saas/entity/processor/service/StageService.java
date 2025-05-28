@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
-import com.fincity.saas.entity.processor.model.common.BaseValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
@@ -74,29 +73,29 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .then(Mono.just(parent));
     }
 
-    public Mono<BaseValue> getLatestStageByOrder(
+    public Mono<Stage> getLatestStageByOrder(
             String appCode, String clientCode, ULong productTemplateId, Platform platform) {
         return super.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty());
     }
 
-    public Mono<BaseValue> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {
+    public Mono<Stage> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {
         return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
                 .map(NavigableMap::firstKey);
     }
 
-    public Mono<BaseValue> getFirstStatus(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
+    public Mono<Stage> getFirstStatus(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
         return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
-                .flatMap(treeMap -> {
-                    BaseValue stage = treeMap.keySet().stream()
+                .flatMap(navigableMap -> {
+                    Stage stage = navigableMap.keySet().stream()
                             .filter(key -> key.getId().equals(stageId))
                             .findFirst()
                             .orElse(null);
 
-                    if (stage == null || !treeMap.containsKey(stage)) return Mono.empty();
+                    if (stage == null || !navigableMap.containsKey(stage)) return Mono.empty();
 
-                    return Mono.justOrEmpty(treeMap.get(stage).first());
+                    return Mono.justOrEmpty(navigableMap.get(stage).first());
                 });
     }
 
