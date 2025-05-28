@@ -170,7 +170,7 @@ public class ClientPasswordPolicyService
 				.next()
 				.flatMap(matchedPin -> policyBadRequestException(
 						SecurityMessageResourceService.PASSWORD_USER_ERROR,
-						getAuthenticationPasswordType().getName(), passwordPolicy.getPassHistoryCount(),
+						getAuthenticationPasswordType().getName(),
 						getAuthenticationPasswordType().getName()))
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
