@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 
 import java.time.LocalDateTime;
@@ -15,10 +16,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -208,6 +213,39 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
         this(DSL.name("entity_processor_owners"), null);
     }
 
+    public <O extends Record> EntityProcessorOwners(Table<O> path, ForeignKey<O, EntityProcessorOwnersRecord> childPath, InverseForeignKey<O, EntityProcessorOwnersRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_OWNERS);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorOwnersPath extends EntityProcessorOwners implements Path<EntityProcessorOwnersRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorOwnersPath(Table<O> path, ForeignKey<O, EntityProcessorOwnersRecord> childPath, InverseForeignKey<O, EntityProcessorOwnersRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorOwnersPath(Name alias, Table<EntityProcessorOwnersRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorOwnersPath as(String alias) {
+            return new EntityProcessorOwnersPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorOwnersPath as(Name alias) {
+            return new EntityProcessorOwnersPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorOwnersPath as(Table<?> alias) {
+            return new EntityProcessorOwnersPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -226,6 +264,19 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
     @Override
     public List<UniqueKey<EntityProcessorOwnersRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_OWNERS_UK1_OWNERS_CODE);
+    }
+
+    private transient EntityProcessorTicketsPath _entityProcessorTickets;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_tickets</code> table
+     */
+    public EntityProcessorTicketsPath entityProcessorTickets() {
+        if (_entityProcessorTickets == null)
+            _entityProcessorTickets = new EntityProcessorTicketsPath(this, null, Keys.FK1_TICKETS_OWNER_ID.getInverseKey());
+
+        return _entityProcessorTickets;
     }
 
     @Override

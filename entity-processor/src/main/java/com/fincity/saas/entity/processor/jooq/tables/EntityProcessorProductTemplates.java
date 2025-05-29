@@ -8,6 +8,9 @@ import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplatesProductTemplateType;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 
 import java.time.LocalDateTime;
@@ -17,10 +20,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -183,6 +190,39 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
         this(DSL.name("entity_processor_product_templates"), null);
     }
 
+    public <O extends Record> EntityProcessorProductTemplates(Table<O> path, ForeignKey<O, EntityProcessorProductTemplatesRecord> childPath, InverseForeignKey<O, EntityProcessorProductTemplatesRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_PRODUCT_TEMPLATES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorProductTemplatesPath extends EntityProcessorProductTemplates implements Path<EntityProcessorProductTemplatesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorProductTemplatesPath(Table<O> path, ForeignKey<O, EntityProcessorProductTemplatesRecord> childPath, InverseForeignKey<O, EntityProcessorProductTemplatesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorProductTemplatesPath(Name alias, Table<EntityProcessorProductTemplatesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorProductTemplatesPath as(String alias) {
+            return new EntityProcessorProductTemplatesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorProductTemplatesPath as(Name alias) {
+            return new EntityProcessorProductTemplatesPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorProductTemplatesPath as(Table<?> alias) {
+            return new EntityProcessorProductTemplatesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -201,6 +241,46 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
     @Override
     public List<UniqueKey<EntityProcessorProductTemplatesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATES_UK1_PRODUCT_TEMPLATES_CODE);
+    }
+
+    private transient EntityProcessorProductTemplateRulesPath _entityProcessorProductTemplateRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_rules</code>
+     * table
+     */
+    public EntityProcessorProductTemplateRulesPath entityProcessorProductTemplateRules() {
+        if (_entityProcessorProductTemplateRules == null)
+            _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK1_PRODUCT_TEMPLATE_RULES_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorProductTemplateRules;
+    }
+
+    private transient EntityProcessorProductsPath _entityProcessorProducts;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_products</code> table
+     */
+    public EntityProcessorProductsPath entityProcessorProducts() {
+        if (_entityProcessorProducts == null)
+            _entityProcessorProducts = new EntityProcessorProductsPath(this, null, Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorProducts;
+    }
+
+    private transient EntityProcessorStagesPath _entityProcessorStages;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_stages</code> table
+     */
+    public EntityProcessorStagesPath entityProcessorStages() {
+        if (_entityProcessorStages == null)
+            _entityProcessorStages = new EntityProcessorStagesPath(this, null, Keys.FK1_STAGES_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorStages;
     }
 
     @Override
