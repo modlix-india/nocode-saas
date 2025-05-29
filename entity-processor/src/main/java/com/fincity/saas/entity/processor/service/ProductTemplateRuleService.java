@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.dao.ProductTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
@@ -44,6 +45,11 @@ public class ProductTemplateRuleService
                 () -> productTemplateService.checkAndUpdateIdentity(ruleRequest.getEntityId()),
                 productTemplateId -> Mono.just(
                         new ProductTemplateRule().of(ruleRequest).setEntityId(productTemplateId.getULongId())));
+    }
+
+    @Override
+    protected Mono<Identity> getEntityId(RuleRequest ruleRequest) {
+        return productTemplateService.checkAndUpdateIdentity(ruleRequest.getEntityId());
     }
 
     @Override

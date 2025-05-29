@@ -25,6 +25,6 @@ public class SimpleRuleDAO extends BaseRuleDAO<EntityProcessorSimpleRulesRecord,
                         .on(this.idField.eq(ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS.SIMPLE_CONDITION_ID))
                         .where(ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS.COMPLEX_CONDITION_ID.eq(complexRuleId))
                         .and(super.isActiveTrue()))
-                .map(simpleRuleREcord -> simpleRuleREcord.into(pojoClass));
+                .map(simpleRuleRecord -> simpleRuleRecord.into(pojoClass));
     }
 }

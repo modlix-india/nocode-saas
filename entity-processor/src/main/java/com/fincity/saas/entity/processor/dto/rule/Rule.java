@@ -68,4 +68,16 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
         if (isDefault) this.stageId = null;
         return (T) this;
     }
+
+    public T setComplex(boolean isComplex) {
+        this.isComplex = isComplex;
+        if (isComplex) this.isSimple = false;
+        return (T) this;
+    }
+
+    public T setSimple(boolean isSimple) {
+        this.isSimple = isSimple;
+        if (isSimple) this.isComplex = false;
+        return (T) this;
+    }
 }

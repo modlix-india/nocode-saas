@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.model.common.ValueContainer;
-
 import java.io.Serial;
 import java.util.List;
 import lombok.Data;

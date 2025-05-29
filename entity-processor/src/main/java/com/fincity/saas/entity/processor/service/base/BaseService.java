@@ -162,6 +162,15 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         identity.getId()));
     }
 
+    public Mono<D> readIdentityBasicInternal(Identity identity) {
+        if (identity == null || identity.isNull()) return Mono.empty();
+
+        return (identity.isCode()
+                        ? this.readByCode(identity.getCode()).switchIfEmpty(Mono.empty())
+                        : this.readById(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(Mono.empty());
+    }
+
     public Mono<Identity> updateIdentity(Identity identity) {
 
         if (identity.isId()) return Mono.just(identity);
@@ -237,6 +246,11 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 .deleteMultiple(entities.stream().map(AbstractDTO::getId).toList())
                 .flatMap(
                         deleted -> this.evictCaches(Flux.fromIterable(entities)).map(evicted -> deleted));
+    }
+
+    public Mono<Integer> deleteMultiple(Flux<D> entities) {
+        return this.dao.deleteMultiple(entities.map(AbstractDTO::getId)).flatMap(deleted -> this.evictCaches(entities)
+                .map(evicted -> deleted));
     }
 
     public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess() {

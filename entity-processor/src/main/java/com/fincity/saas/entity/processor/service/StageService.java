@@ -95,6 +95,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
                     if (stage == null || !navigableMap.containsKey(stage)) return Mono.empty();
 
+                    if (navigableMap.get(stage) == null
+                            || navigableMap.get(stage).isEmpty()) return Mono.empty();
+
                     return Mono.justOrEmpty(navigableMap.get(stage).first());
                 });
     }
