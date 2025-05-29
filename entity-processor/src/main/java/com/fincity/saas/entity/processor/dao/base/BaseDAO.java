@@ -10,6 +10,7 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
@@ -58,6 +59,10 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         DeleteQuery<R> query = dslContext.deleteQuery(table);
         query.addConditions(this.idField.in(ids));
         return Mono.from(query);
+    }
+
+    public Mono<Integer> deleteMultiple(Flux<ULong> ids) {
+        return ids.collectList().flatMap(this::deleteMultiple);
     }
 
     protected Condition isActiveTrue() {

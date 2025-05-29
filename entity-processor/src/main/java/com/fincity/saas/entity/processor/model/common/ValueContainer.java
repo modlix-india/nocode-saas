@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.model.common;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
 

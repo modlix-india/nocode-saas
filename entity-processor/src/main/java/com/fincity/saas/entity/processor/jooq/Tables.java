@@ -6,7 +6,7 @@ package com.fincity.saas.entity.processor.jooq;
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
@@ -33,9 +33,10 @@ public class Tables {
     public static final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
 
     /**
-     * The table <code>entity_processor.entity_processor_product_rules</code>.
+     * The table
+     * <code>entity_processor.entity_processor_product_stage_rules</code>.
      */
-    public static final EntityProcessorProductRules ENTITY_PROCESSOR_PRODUCT_RULES = EntityProcessorProductRules.ENTITY_PROCESSOR_PRODUCT_RULES;
+    public static final EntityProcessorProductStageRules ENTITY_PROCESSOR_PRODUCT_STAGE_RULES = EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES;
 
     /**
      * The table

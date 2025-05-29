@@ -137,30 +137,11 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_simple_complex_rule_relations.ADDED_BY_USER_ID</code>.
-     * User which added this Relation.
-     */
-    public EntityProcessorSimpleComplexRuleRelationsRecord setAddedByUserId(ULong value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_simple_complex_rule_relations.ADDED_BY_USER_ID</code>.
-     * User which added this Relation.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.VERSION</code>.
      * Version of this Complex Rule.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setVersion(Integer value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -170,7 +151,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Version of this Complex Rule.
      */
     public Integer getVersion() {
-        return (Integer) get(7);
+        return (Integer) get(6);
     }
 
     /**
@@ -179,7 +160,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Complex Rule ID related to this Relation.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setComplexConditionId(ULong value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -189,7 +170,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Complex Rule ID related to this Relation.
      */
     public ULong getComplexConditionId() {
-        return (ULong) get(8);
+        return (ULong) get(7);
     }
 
     /**
@@ -198,7 +179,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Simple Rule ID related to this Relation.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setSimpleConditionId(ULong value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -208,7 +189,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Simple Rule ID related to this Relation.
      */
     public ULong getSimpleConditionId() {
-        return (ULong) get(9);
+        return (ULong) get(8);
     }
 
     /**
@@ -217,7 +198,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Order of the Simple Rule in the Complex Rule.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setOrder(Integer value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -227,7 +208,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Order of the Simple Rule in the Complex Rule.
      */
     public Integer getOrder() {
-        return (Integer) get(10);
+        return (Integer) get(9);
     }
 
     /**
@@ -236,7 +217,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Temporary active flag for this Relation.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setTempActive(Byte value) {
-        set(11, value);
+        set(10, value);
         return this;
     }
 
@@ -246,7 +227,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Temporary active flag for this Relation.
      */
     public Byte getTempActive() {
-        return (Byte) get(11);
+        return (Byte) get(10);
     }
 
     /**
@@ -255,7 +236,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Flag to check if this Relation is active or not.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setIsActive(Byte value) {
-        set(12, value);
+        set(11, value);
         return this;
     }
 
@@ -265,7 +246,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Flag to check if this Relation is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(12);
+        return (Byte) get(11);
     }
 
     /**
@@ -274,7 +255,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * ID of the user who created this row.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(12, value);
         return this;
     }
 
@@ -284,7 +265,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(12);
     }
 
     /**
@@ -293,7 +274,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Time when this row is created.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(13, value);
         return this;
     }
 
@@ -303,7 +284,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(13);
     }
 
     /**
@@ -312,7 +293,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * ID of the user who updated this row.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(14, value);
         return this;
     }
 
@@ -322,7 +303,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(14);
     }
 
     /**
@@ -331,7 +312,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Time when this row is updated.
      */
     public EntityProcessorSimpleComplexRuleRelationsRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(15, value);
         return this;
     }
 
@@ -341,7 +322,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -368,7 +349,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Create a detached, initialised
      * EntityProcessorSimpleComplexRuleRelationsRecord
      */
-    public EntityProcessorSimpleComplexRuleRelationsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, Integer version, ULong complexConditionId, ULong simpleConditionId, Integer order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleComplexRuleRelationsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong complexConditionId, ULong simpleConditionId, Integer order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS);
 
         setId(id);
@@ -377,7 +358,6 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setVersion(version);
         setComplexConditionId(complexConditionId);
         setSimpleConditionId(simpleConditionId);

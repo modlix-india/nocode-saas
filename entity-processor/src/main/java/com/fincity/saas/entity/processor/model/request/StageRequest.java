@@ -24,7 +24,12 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private Boolean isFailure;
 
     public boolean isValid() {
-        return stageType != null;
+
+        if (stageType == null) return false;
+
+        if (stageType.isHasSuccessFailure()) return isSuccess != null || isFailure != null;
+
+        return true;
     }
 
     public boolean isAllValid() {

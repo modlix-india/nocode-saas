@@ -232,7 +232,7 @@
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
-                                            <includeExpression>.*\.USER_DISTRIBUTIONS</includeExpression>
+                                            <includeExpression>.*\.USER_DISTRIBUTION</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.model.common.ValueContainer</userType>

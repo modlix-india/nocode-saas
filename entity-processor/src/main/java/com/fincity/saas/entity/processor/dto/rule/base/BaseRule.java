@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.io.Serial;
 import lombok.Data;
@@ -45,5 +46,10 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> impleme
 
     public T setName() {
         return this.setName(this.getCode());
+    }
+
+    public ULong getRuleId(EntitySeries entitySeries) {
+        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return this.getProductStageRuleId();
+        return this.getProductTemplateRuleId();
     }
 }

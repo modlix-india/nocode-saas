@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
@@ -41,6 +41,8 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     private StageService stageService;
 
     protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
+
+    protected abstract Mono<Identity> getEntityId(RuleRequest ruleRequest);
 
     public abstract Mono<ULong> getUserAssignment(
             String appCode,
@@ -95,12 +97,23 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
     @Override
     protected Mono<D> updatableEntity(D rule) {
-
         return super.updatableEntity(rule).flatMap(existing -> {
-            if (existing.getOrder() != 0) existing.setOrder(rule.getOrder());
-            existing.setComplex(rule.isComplex());
+            if (rule.getOrder() == 0) {
+                existing.setOrder(0);
+                existing.setIsDefault(Boolean.TRUE);
+            }
+            if (rule.getOrder() > 0) existing.setOrder(rule.getOrder());
 
-            if (!rule.isComplex()) existing.setSimple(rule.isSimple());
+            existing.setBreakAtFirstMatch(rule.isBreakAtFirstMatch());
+
+            if (rule.isComplex()) existing.setComplex(Boolean.TRUE);
+
+            if (rule.isSimple()) existing.setSimple(Boolean.TRUE);
+
+            existing.setUserDistributionType(rule.getUserDistributionType());
+            existing.setUserDistribution(rule.getUserDistribution());
+            existing.setLastAssignedUserId(rule.getLastAssignedUserId());
+
             return Mono.just(existing);
         });
     }
@@ -189,33 +202,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 .collectMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    private Mono<Integer> deleteRulesInternal(List<Identity> rules) {
-
-        Map<Boolean, List<Identity>> requestsByType =
-                rules.stream().collect(Collectors.partitioningBy(Identity::isCode));
-
-        List<String> codeList =
-                requestsByType.get(true).stream().map(Identity::getCode).toList();
-
-        List<ULong> idList =
-                requestsByType.get(false).stream().map(Identity::getULongId).toList();
-
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                hasAccess -> codeList.isEmpty()
-                        ? Mono.just(List.of())
-                        : this.readByCodes(codeList).collectList(),
-                (hasAccess, codeRules) -> idList.isEmpty()
-                        ? Mono.just(List.of())
-                        : this.readAllFilter(
-                                        new FilterCondition().setField("ID").setMultiValue(idList))
-                                .collectList(),
-                (hasAccess, codeRules, idRules) -> codeRules.isEmpty() && idRules.isEmpty()
-                        ? Mono.just(0)
-                        : super.deleteMultiple(Stream.concat(codeRules.stream(), idRules.stream())
-                                .toList()));
-    }
-
     private Mono<D> createInternal(RuleRequest ruleRequest, Integer order) {
 
         if (order == 0) ruleRequest.setDefault(Boolean.TRUE).setStageId(null);
@@ -230,34 +216,107 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.createFromRequest(ruleRequest),
-                (hasAccess, rule) -> ruleRequest.isDefault()
-                        ? Mono.just(Identity.ofNull())
-                        : stageService.checkAndUpdateIdentity(ruleRequest.getStageId()),
-                (hasAccess, rule, stageId) -> this.updateUserDistribution(ruleRequest, rule),
-                (hasAccess, rule, stageId, uRule) -> {
-                    uRule.setAppCode(hasAccess.getT1().getT1());
-                    uRule.setClientCode(hasAccess.getT1().getT2());
-                    uRule.setOrder(order);
-
-                    if (!ruleRequest.isDefault()) uRule.setStageId(stageId.getULongId());
-                    return super.create(uRule);
-                },
-                (hasAccess, rule, stageId, uRule, cRule) -> {
+                hasAccess -> ruleRequest.isDefault()
+                        ? Mono.just(ruleRequest)
+                        : stageService
+                                .checkAndUpdateIdentity(ruleRequest.getStageId())
+                                .map(ruleRequest::setStageId),
+                (hasAccess, cRuleRequest) -> this.getRuleFromRequest(hasAccess.getT1(), cRuleRequest, order),
+                (hasAccess, cRuleRequest, rule) -> this.createOrUpdateRule(rule),
+                (hasAccess, cRuleRequest, rule, cRule) -> {
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
-                                .createForCondition(cRule.getId(), cRule.getEntitySeries(), complexCondition)
+                                .createForCondition(
+                                        cRule.getId(), cRule.getEntitySeries(), hasAccess.getT1(), complexCondition)
                                 .map(result -> cRule);
 
                     if (rule.isSimple() && ruleRequest.getCondition() instanceof FilterCondition filterCondition)
                         return simpleRuleService
-                                .createForCondition(cRule.getId(), cRule.getEntitySeries(), filterCondition)
+                                .createForCondition(
+                                        cRule.getId(), cRule.getEntitySeries(), hasAccess.getT1(), filterCondition)
                                 .map(result -> cRule);
 
                     return Mono.just(cRule);
                 },
-                (hasAccess, rule, stageId, uRule, cRule, conditionRule) ->
+                (hasAccess, cRuleRequest, rule, cRule, conditionRule) ->
                         this.evictCache(cRule).map(evicted -> conditionRule));
+    }
+
+    private Mono<D> createOrUpdateRule(D rule) {
+        return rule.getId() != null ? this.update(rule) : this.create(rule);
+    }
+
+    private Mono<D> getRuleFromRequest(Tuple3<String, String, ULong> access, RuleRequest ruleRequest, Integer order) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getOrCreateRule(access, ruleRequest, order),
+                rule -> this.updateUserDistribution(ruleRequest, rule),
+                (rule, uRule) -> {
+                    uRule.setAppCode(access.getT1());
+                    uRule.setClientCode(access.getT2());
+                    uRule.setOrder(order);
+
+                    if (!ruleRequest.isDefault())
+                        uRule.setStageId(ruleRequest.getStageId().getULongId());
+
+                    return Mono.just(uRule);
+                });
+    }
+
+    private Mono<D> getOrCreateRule(Tuple3<String, String, ULong> access, RuleRequest ruleRequest, Integer order) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readIdentityBasicInternal(ruleRequest.getRuleId())
+                        .switchIfEmpty(this.getRule(access, ruleRequest, order))
+                        .switchIfEmpty(this.createFromRequest(ruleRequest)),
+                rule -> {
+                    if (rule.getId() != null)
+                        return this.deleteOldRelations(rule)
+                                .flatMap(result -> this.updateRuleWithRequest(rule, ruleRequest, order));
+
+                    return Mono.just(rule);
+                });
+    }
+
+    private Mono<D> updateRuleWithRequest(D rule, RuleRequest ruleRequest, Integer order) {
+
+        if (rule.getOrder() > 0) rule.setOrder(order);
+
+        rule.setBreakAtFirstMatch(ruleRequest.isBreakAtFirstMatch());
+
+        if (ruleRequest.isComplex()) rule.setComplex(Boolean.TRUE);
+
+        if (ruleRequest.isSimple()) rule.setSimple(Boolean.TRUE);
+
+        rule.setUserDistributionType(ruleRequest.getUserDistributionType());
+        rule.setUserDistribution(ruleRequest.getUserDistribution());
+
+        return Mono.just(rule);
+    }
+
+    private Mono<D> deleteOldRelations(D rule) {
+        if (rule.isComplex())
+            return this.complexRuleService
+                    .deleteRule(rule.getId(), rule.getEntitySeries())
+                    .map(result -> rule);
+
+        if (rule.isSimple())
+            return this.simpleRuleService
+                    .deleteRule(rule.getId(), rule.getEntitySeries())
+                    .map(result -> rule);
+
+        return Mono.just(rule);
+    }
+
+    private Mono<D> getRule(Tuple3<String, String, ULong> access, RuleRequest ruleRequest, Integer order) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getEntityId(ruleRequest),
+                entityId -> this.dao.getRule(
+                        access.getT1(),
+                        access.getT2(),
+                        entityId.getULongId(),
+                        ruleRequest.isDefault()
+                                ? null
+                                : ruleRequest.getStageId().getULongId(),
+                        order));
     }
 
     private Mono<D> updateUserDistribution(RuleRequest ruleRequest, D rule) {

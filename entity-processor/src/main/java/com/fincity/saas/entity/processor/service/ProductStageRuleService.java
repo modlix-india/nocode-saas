@@ -4,7 +4,8 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductStageRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductRulesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductStageRulesRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
@@ -16,7 +17,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ProductStageRuleService
-        extends RuleService<EntityProcessorProductRulesRecord, ProductStageRule, ProductStageRuleDAO> {
+        extends RuleService<EntityProcessorProductStageRulesRecord, ProductStageRule, ProductStageRuleDAO> {
 
     private static final String PRODUCT_STAGE_RULE = "productStageRule";
 
@@ -50,6 +51,11 @@ public class ProductStageRuleService
         return FlatMapUtil.flatMapMono(
                 () -> productService.checkAndUpdateIdentity(ruleRequest.getEntityId()),
                 productId -> Mono.just(new ProductStageRule().of(ruleRequest).setEntityId(productId.getULongId())));
+    }
+
+    @Override
+    protected Mono<Identity> getEntityId(RuleRequest ruleRequest) {
+        return productService.checkAndUpdateIdentity(ruleRequest.getEntityId());
     }
 
     @Override
