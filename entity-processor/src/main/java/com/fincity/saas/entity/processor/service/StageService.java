@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Set;
+
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
@@ -9,11 +17,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStag
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -103,8 +107,29 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 });
     }
 
-    public Mono<List<ULong>> getAllStages(String appCode, String clientCode, ULong productTemplateId) {
-        return super.getAllValueIds(appCode, clientCode, null, productTemplateId);
+    public Mono<ULong> getStage(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
+        return super.getAllValueIds(appCode, clientCode, null, productTemplateId)
+                .flatMap(stageIdsInternal -> {
+                    if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.empty();
+                    if (!stageIdsInternal.contains(stageId)) return Mono.empty();
+                    return Mono.just(stageId);
+                });
+    }
+
+    public Mono<Set<ULong>> getAllStages(
+            String appCode, String clientCode, ULong productTemplateId, ULong... stageIds) {
+        return super.getAllValueIds(appCode, clientCode, null, productTemplateId)
+                .flatMap(stageIdsInternal -> {
+                    if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
+
+                    if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
+
+                    if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
+
+                    stageIdsInternal.retainAll(List.of(stageIds));
+
+                    return Mono.just(stageIdsInternal);
+                });
     }
 
     private Mono<Boolean> updateOrder(Map<Integer, Identity> stageMap) {

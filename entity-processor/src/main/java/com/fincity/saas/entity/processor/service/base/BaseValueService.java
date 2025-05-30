@@ -277,10 +277,10 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
-    public Mono<List<ULong>> getAllValueIds(
+    public Mono<Set<ULong>> getAllValueIds(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
-                .map(map -> map.keySet().stream().map(D::getId).toList());
+                .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
     }
 
     public Mono<Map<D, Set<D>>> getAllValues(

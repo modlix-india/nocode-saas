@@ -10,6 +10,8 @@ import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
 import java.util.List;
+import java.util.Set;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -51,11 +53,19 @@ public class ProductTemplateRuleService
     }
 
     @Override
-    protected Mono<List<ULong>> getStageIds(String appCode, String clientCode, Identity entityId) {
+    protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readIdentityInternal(entityId),
                 productTemplateRule -> super.stageService.getAllStages(
-                        appCode, clientCode, productTemplateRule.getProductTemplateId()));
+                        appCode, clientCode, productTemplateRule.getProductTemplateId(), stageIds.toArray(new ULong[0])));
+    }
+
+    @Override
+    protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readIdentityInternal(entityId),
+                productTemplateRule -> super.stageService.getStage(
+                        appCode, clientCode, productTemplateRule.getProductTemplateId(), stageId));
     }
 
     @Override
