@@ -10,6 +10,8 @@ import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,6 +25,7 @@ public abstract class RuleController<
         extends BaseController<R, D, O, S> {
 
     private static final String ORDER_PATH = REQ_PATH + "/order";
+    private static final String ORDER_PATH_ID = REQ_PATH_ID + "/order";
     protected S ruleService;
 
     @Autowired
@@ -30,13 +33,19 @@ public abstract class RuleController<
         this.ruleService = ruleService;
     }
 
-    @PostMapping(ORDER_PATH)
-    public Mono<ResponseEntity<Map<Integer, D>>> createWithOrder(@RequestBody Map<Integer, RuleRequest> ruleRequests) {
-        return this.ruleService.createWithOrder(ruleRequests).map(ResponseEntity::ok);
+    @PostMapping(ORDER_PATH_ID)
+    public Mono<ResponseEntity<Map<Integer, D>>> createWithOrder(
+            @PathVariable(PATH_VARIABLE_ID) Identity entityId, @RequestBody Map<Integer, RuleRequest> ruleRequests) {
+        return this.ruleService.createWithOrder(entityId, ruleRequests).map(ResponseEntity::ok);
     }
 
     @PutMapping(ORDER_PATH)
     public Mono<ResponseEntity<Map<Integer, D>>> updateOrder(@RequestBody Map<Integer, Identity> ruleRequests) {
         return this.ruleService.updateOrder(ruleRequests).map(ResponseEntity::ok);
+    }
+
+    @GetMapping(ORDER_PATH_ID)
+    public Mono<ResponseEntity<Map<Integer, D>>> getRulesInOrder(@PathVariable(PATH_VARIABLE_ID) Identity entityId) {
+        return this.service.getRuleWithOrder(entityId, null).map(ResponseEntity::ok);
     }
 }

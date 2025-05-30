@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStag
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import org.jooq.types.ULong;
@@ -100,6 +101,10 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
                     return Mono.justOrEmpty(navigableMap.get(stage).first());
                 });
+    }
+
+    public Mono<List<ULong>> getAllStages(String appCode, String clientCode, ULong productTemplateId) {
+        return super.getAllValueIds(appCode, clientCode, null, productTemplateId);
     }
 
     private Mono<Boolean> updateOrder(Map<Integer, Identity> stageMap) {

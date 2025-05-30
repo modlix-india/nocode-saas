@@ -8,7 +8,6 @@ import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-import reactor.core.publisher.Flux;
 
 public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRule<D>> extends BaseDAO<R, D> {
 
@@ -24,13 +23,8 @@ public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRu
         this.productTemplateRuleIdField = flowTable.field(PRODUCT_TEMPLATE_RULE_ID, ULong.class);
     }
 
-    public Flux<D> readByRuleId(ULong ruleId, EntitySeries entitySeries) {
-        return Flux.from(this.dslContext.selectFrom(table).where(this.entitySeriesCondition(ruleId, entitySeries)))
-                .map(ruleRecord -> ruleRecord.into(this.pojoClass));
-    }
-
-    protected Condition entitySeriesCondition(ULong ruleId, EntitySeries entitySeries) {
-        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return productStageRuleIdField.eq(ruleId);
-        return productTemplateRuleIdField.eq(ruleId);
+    protected Condition entitySeriesCondition(ULong entityId, EntitySeries entitySeries) {
+        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return productStageRuleIdField.eq(entityId);
+        return productTemplateRuleIdField.eq(entityId);
     }
 }

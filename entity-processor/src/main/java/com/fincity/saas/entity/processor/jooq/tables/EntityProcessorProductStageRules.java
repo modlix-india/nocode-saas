@@ -114,13 +114,6 @@ public class EntityProcessorProductStageRules extends TableImpl<EntityProcessorP
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_stage_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
-     */
-    public final TableField<EntityProcessorProductStageRulesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Product Rule Config.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_product_stage_rules.PRODUCT_ID</code>.
      * Product Rule ID related to this Product Rule Config.
      */

@@ -26,10 +26,7 @@ public class SimpleComplexRuleRelationDAO
     }
 
     public Flux<SimpleComplexRuleRelation> findByComplexConditionId(ULong complexConditionId) {
-        return Flux.from(dslContext
-                        .selectFrom(table)
-                        .where(complexConditionIdField.eq(complexConditionId))
-                        .orderBy(table.field("ORDER", Integer.class).asc()))
+        return Flux.from(dslContext.selectFrom(table).where(complexConditionIdField.eq(complexConditionId)))
                 .map(rec -> rec.into(pojoClass));
     }
 

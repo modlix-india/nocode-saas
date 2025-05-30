@@ -140,30 +140,11 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_stage_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
-     */
-    public EntityProcessorProductStageRulesRecord setAddedByUserId(ULong value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_stage_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_product_stage_rules.PRODUCT_ID</code>.
      * Product Rule ID related to this Product Rule Config.
      */
     public EntityProcessorProductStageRulesRecord setProductId(ULong value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -173,7 +154,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Product Rule ID related to this Product Rule Config.
      */
     public ULong getProductId() {
-        return (ULong) get(7);
+        return (ULong) get(6);
     }
 
     /**
@@ -182,7 +163,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Stage Id to which this product rule config is assigned
      */
     public EntityProcessorProductStageRulesRecord setStageId(ULong value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -192,7 +173,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Stage Id to which this product rule config is assigned
      */
     public ULong getStageId() {
-        return (ULong) get(8);
+        return (ULong) get(7);
     }
 
     /**
@@ -201,7 +182,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Order of execution of this rule for a stage
      */
     public EntityProcessorProductStageRulesRecord setOrder(UInteger value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -211,7 +192,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Order of execution of this rule for a stage
      */
     public UInteger getOrder() {
-        return (UInteger) get(9);
+        return (UInteger) get(8);
     }
 
     /**
@@ -220,7 +201,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this stage this is default rule or not.
      */
     public EntityProcessorProductStageRulesRecord setIsDefault(Byte value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -230,7 +211,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this stage this is default rule or not.
      */
     public Byte getIsDefault() {
-        return (Byte) get(10);
+        return (Byte) get(9);
     }
 
     /**
@@ -239,7 +220,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to check if execution should break at first match.
      */
     public EntityProcessorProductStageRulesRecord setBreakAtFirstMatch(Byte value) {
-        set(11, value);
+        set(10, value);
         return this;
     }
 
@@ -249,7 +230,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to check if execution should break at first match.
      */
     public Byte getBreakAtFirstMatch() {
-        return (Byte) get(11);
+        return (Byte) get(10);
     }
 
     /**
@@ -258,7 +239,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this is a simple rule or not.
      */
     public EntityProcessorProductStageRulesRecord setIsSimple(Byte value) {
-        set(12, value);
+        set(11, value);
         return this;
     }
 
@@ -268,7 +249,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this is a simple rule or not.
      */
     public Byte getIsSimple() {
-        return (Byte) get(12);
+        return (Byte) get(11);
     }
 
     /**
@@ -277,7 +258,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this is a complex rule or not.
      */
     public EntityProcessorProductStageRulesRecord setIsComplex(Byte value) {
-        set(13, value);
+        set(12, value);
         return this;
     }
 
@@ -287,7 +268,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to tell weather for this is a complex rule or not.
      */
     public Byte getIsComplex() {
-        return (Byte) get(13);
+        return (Byte) get(12);
     }
 
     /**
@@ -296,7 +277,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * User distribution strategy for this rule.
      */
     public EntityProcessorProductStageRulesRecord setUserDistributionType(DistributionType value) {
-        set(14, value);
+        set(13, value);
         return this;
     }
 
@@ -306,7 +287,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * User distribution strategy for this rule.
      */
     public DistributionType getUserDistributionType() {
-        return (DistributionType) get(14);
+        return (DistributionType) get(13);
     }
 
     /**
@@ -315,7 +296,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * User distributions for this rule.
      */
     public EntityProcessorProductStageRulesRecord setUserDistribution(UserDistribution value) {
-        set(15, value);
+        set(14, value);
         return this;
     }
 
@@ -325,7 +306,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * User distributions for this rule.
      */
     public UserDistribution getUserDistribution() {
-        return (UserDistribution) get(15);
+        return (UserDistribution) get(14);
     }
 
     /**
@@ -334,7 +315,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Last User id used in this rule.
      */
     public EntityProcessorProductStageRulesRecord setLastAssignedUserId(ULong value) {
-        set(16, value);
+        set(15, value);
         return this;
     }
 
@@ -344,7 +325,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Last User id used in this rule.
      */
     public ULong getLastAssignedUserId() {
-        return (ULong) get(16);
+        return (ULong) get(15);
     }
 
     /**
@@ -353,7 +334,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Temporary active flag for this product rule config.
      */
     public EntityProcessorProductStageRulesRecord setTempActive(Byte value) {
-        set(17, value);
+        set(16, value);
         return this;
     }
 
@@ -363,7 +344,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Temporary active flag for this product rule config.
      */
     public Byte getTempActive() {
-        return (Byte) get(17);
+        return (Byte) get(16);
     }
 
     /**
@@ -372,7 +353,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to check if this product rule config is active or not.
      */
     public EntityProcessorProductStageRulesRecord setIsActive(Byte value) {
-        set(18, value);
+        set(17, value);
         return this;
     }
 
@@ -382,7 +363,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Flag to check if this product rule config is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(18);
+        return (Byte) get(17);
     }
 
     /**
@@ -391,7 +372,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * ID of the user who created this row.
      */
     public EntityProcessorProductStageRulesRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(18, value);
         return this;
     }
 
@@ -401,7 +382,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(18);
     }
 
     /**
@@ -410,7 +391,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Time when this row is created.
      */
     public EntityProcessorProductStageRulesRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(19, value);
         return this;
     }
 
@@ -420,7 +401,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(19);
     }
 
     /**
@@ -429,7 +410,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * ID of the user who updated this row.
      */
     public EntityProcessorProductStageRulesRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(20, value);
         return this;
     }
 
@@ -439,7 +420,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(20);
     }
 
     /**
@@ -448,7 +429,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Time when this row is updated.
      */
     public EntityProcessorProductStageRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(21, value);
         return this;
     }
 
@@ -458,7 +439,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(21);
     }
 
     // -------------------------------------------------------------------------
@@ -484,7 +465,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
     /**
      * Create a detached, initialised EntityProcessorProductStageRulesRecord
      */
-    public EntityProcessorProductStageRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductStageRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES);
 
         setId(id);
@@ -493,7 +474,6 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setProductId(productId);
         setStageId(stageId);
         setOrder(order);
