@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.List;
+import java.util.Set;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductStageRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
@@ -9,10 +17,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -48,14 +53,33 @@ public class ProductStageRuleService
 
     @Override
     protected Mono<ProductStageRule> createFromRequest(RuleRequest ruleRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> productService.checkAndUpdateIdentity(ruleRequest.getEntityId()),
-                productId -> Mono.just(new ProductStageRule().of(ruleRequest).setEntityId(productId.getULongId())));
+        return Mono.just(new ProductStageRule().of(ruleRequest));
     }
 
     @Override
-    protected Mono<Identity> getEntityId(RuleRequest ruleRequest) {
-        return productService.checkAndUpdateIdentity(ruleRequest.getEntityId());
+    protected Mono<Identity> getEntityId(Identity entityId) {
+        return productService.checkAndUpdateIdentity(entityId);
+    }
+
+    @Override
+    protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readIdentityInternal(entityId),
+                productStageRule -> productService.readById(productStageRule.getEntityId()),
+                (productStageRule, product) -> super.stageService.getAllStages(
+                        appCode,
+                        clientCode,
+                        product.getProductTemplateId(),
+                        stageIds != null ? stageIds.toArray(new ULong[0]) : null));
+    }
+
+    @Override
+    protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readIdentityInternal(entityId),
+                productStageRule -> productService.readById(productStageRule.getEntityId()),
+                (productStageRule, product) ->
+                        super.stageService.getStage(appCode, clientCode, product.getProductTemplateId(), stageId));
     }
 
     @Override

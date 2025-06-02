@@ -57,9 +57,6 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
                 .setUserDistributionType(ruleRequest.getUserDistributionType())
                 .setUserDistribution(ruleRequest.getUserDistribution());
 
-        if (ruleRequest.getEntityId() != null)
-            this.setEntityId(ruleRequest.getEntityId().getULongId());
-
         return (T) this;
     }
 

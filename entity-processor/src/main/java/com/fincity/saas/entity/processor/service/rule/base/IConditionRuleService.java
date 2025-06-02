@@ -11,7 +11,13 @@ public interface IConditionRuleService<
         C extends AbstractCondition, D extends BaseRule<D>, T extends IConditionRuleService<C, D, T>> {
 
     Mono<D> createForCondition(
-            ULong ruleId, EntitySeries entitySeries, Tuple3<String, String, ULong> access, C condition);
+            ULong entityId, EntitySeries entitySeries, Tuple3<String, String, ULong> access, C condition);
 
-    Mono<AbstractCondition> getCondition(ULong ruleId);
+    default Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries) {
+        return Mono.empty();
+    }
+
+    default Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
+        return Mono.empty();
+    }
 }

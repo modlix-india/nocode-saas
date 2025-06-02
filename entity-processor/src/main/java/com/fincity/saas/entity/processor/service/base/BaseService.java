@@ -154,7 +154,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
                                         this.getEntityName(),
                                         identity.getCode()))
-                        : this.readById(ULongUtil.valueOf(identity.getId())))
+                        : this.readById(identity.getULongId()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
