@@ -58,18 +58,43 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
 
     @Override
     public Mono<SimpleRule> createForCondition(
-            ULong ruleId, EntitySeries entitySeries, Tuple3<String, String, ULong> access, FilterCondition condition) {
-        SimpleRule simpleRule = SimpleRule.fromCondition(ruleId, entitySeries, condition);
+            ULong entityId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            FilterCondition condition) {
+        return this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition);
+    }
+
+    public Mono<SimpleRule> createForCondition(
+            ULong entityId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            boolean hasParent,
+            FilterCondition condition) {
+        SimpleRule simpleRule =
+                SimpleRule.fromCondition(entityId, entitySeries, condition).setHasParent(hasParent);
         return super.createInternal(simpleRule, access);
     }
 
     @Override
-    public Mono<AbstractCondition> getCondition(ULong ruleId) {
-        return this.read(ruleId).map(SimpleRule::toCondition);
+    public Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
+
+        if (hasParent) return Mono.empty();
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.getConditionInternal(entityId, entitySeries, hasParent),
+                this.getCacheKey(entityId, entitySeries));
     }
 
-    public Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries) {
-        return this.dao.readByRuleId(ruleId, entitySeries).collectList().flatMap(this::deleteMultiple);
+    private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
+        return this.dao.readByEntityId(entityId, entitySeries, hasParent).map(SimpleRule::toCondition);
+    }
+
+    public Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries, boolean hasParent) {
+        return this.dao
+                .readByEntityId(ruleId, entitySeries, hasParent)
+                .flatMap(simpleRule -> this.delete(simpleRule.getId()));
     }
 
     public Flux<AbstractCondition> getConditionByComplexRule(ULong complexRuleId) {
@@ -91,12 +116,13 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
             FilterCondition condition,
             ULong parentId,
             int order) {
-        return this.createForCondition(ruleId, entitySeries, access, condition).flatMap(cSimpleRule -> {
-            SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
-            return simpleComplexRuleRelationService
-                    .createInternal(relation, access)
-                    .thenReturn(cSimpleRule);
-        });
+        return this.createForCondition(ruleId, entitySeries, access, Boolean.TRUE, condition)
+                .flatMap(cSimpleRule -> {
+                    SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
+                    return simpleComplexRuleRelationService
+                            .createInternal(relation, access)
+                            .thenReturn(cSimpleRule);
+                });
     }
 
     private SimpleComplexRuleRelation createRelation(ULong complexConditionId, ULong simpleConditionId, int order) {

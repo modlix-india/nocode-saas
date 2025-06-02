@@ -194,9 +194,10 @@ public class RuleExecutionService {
                 () -> {
                     if (rule == null) return Mono.empty();
 
-                    if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId());
+                    if (rule.isSimple())
+                        return simpleRuleService.getCondition(rule.getId(), rule.getEntitySeries(), Boolean.FALSE);
 
-                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId());
+                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId(), rule.getEntitySeries());
 
                     return Mono.empty();
                 },

@@ -47,43 +47,41 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     }
 
     @Override
+    protected Mono<Boolean> evictCache(ComplexRule entity) {
+        return super.evictCache(entity);
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.COMPLEX_RULE;
     }
 
-    @Override
-    public Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.dao.readByRuleId(ruleId, entitySeries).collectList(), rules -> {
-                    if (rules == null || rules.isEmpty()) return Mono.just(0);
-
-                    return Flux.fromIterable(rules)
-                            .flatMap(rule -> this.deleteByComplexRuleId(rule.getId()))
-                            .reduce(0, Integer::sum);
-                });
+    public Mono<Integer> deleteRule(ULong entityId, EntitySeries entitySeries) {
+        return this.dao.readByEntityId(entityId, entitySeries).flatMap(this::deleteComplexRule);
     }
 
-    public Mono<Integer> deleteByComplexRuleId(ULong complexRuleId) {
-        return FlatMapUtil.flatMapMono(() -> this.read(complexRuleId), complexRule -> {
-            if (complexRule.isHasComplexChild()) {
-                return FlatMapUtil.flatMapMono(
-                        () -> this.dao.readByParentConditionId(complexRuleId).collectList(), childRules -> {
-                            if (childRules.isEmpty()) return this.deleteComplexRuleAndRelations(complexRule);
+    private Mono<Integer> deleteComplexRule(ComplexRule complexRule) {
+        if (complexRule.isHasComplexChild()) {
+            return FlatMapUtil.flatMapMono(
+                    () -> this.dao.readByParentConditionId(complexRule.getId()).collectList(), childRules -> {
+                        if (childRules.isEmpty()) return this.deleteComplexRuleAndRelations(complexRule);
 
-                            return Flux.fromIterable(childRules)
-                                    .flatMap(childRule -> this.deleteByComplexRuleId(childRule.getId()))
-                                    .reduce(0, Integer::sum)
-                                    .flatMap(count -> deleteComplexRuleAndRelations(complexRule));
-                        });
-            }
+                        return Flux.fromIterable(childRules)
+                                .flatMap(this::deleteComplexRule)
+                                .reduce(0, Integer::sum)
+                                .flatMap(count -> deleteComplexRuleAndRelations(complexRule));
+                    });
+        }
 
-            return this.deleteComplexRuleAndRelations(complexRule);
-        });
+        return this.deleteComplexRuleAndRelations(complexRule);
     }
 
     private Mono<Integer> deleteComplexRuleAndRelations(ComplexRule complexRule) {
 
-        if (!complexRule.isHasSimpleChild()) return this.delete(complexRule.getId());
+        if (!complexRule.isHasSimpleChild())
+            return FlatMapUtil.flatMapMono(
+                    () -> this.delete(complexRule.getId()),
+                    deleted -> this.evictCache(complexRule).map(evicted -> deleted));
 
         return this.simpleComplexRuleRelationService
                 .deleteByComplexRuleId(complexRule.getId())
@@ -103,29 +101,36 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
 
     @Override
     public Mono<ComplexRule> createForCondition(
-            ULong ruleId, EntitySeries entitySeries, Tuple3<String, String, ULong> access, ComplexCondition condition) {
-        return this.createComplexRuleInternal(ruleId, entitySeries, access, condition, null);
+            ULong entityId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            ComplexCondition condition) {
+        return this.createComplexRuleInternal(entityId, entitySeries, access, condition, null);
     }
 
     @Override
-    public Mono<AbstractCondition> getCondition(ULong ruleId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(), () -> this.getConditionInternal(ruleId), this.getCacheKey(ruleId));
+    public Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries) {
+
+        return this.getConditionInternal(entityId, entitySeries);
+//        return this.cacheService.cacheValueOrGet(
+//                this.getCacheName(),
+//                () -> this.getConditionInternal(entityId, entitySeries),
+//                this.getCacheKey(entityId, entitySeries));
     }
 
-    private Mono<AbstractCondition> getConditionInternal(ULong ruleId) {
-        return this.read(ruleId).flatMap(complexRule -> {
+    private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries) {
+        return this.dao.readByEntityId(entityId, entitySeries).flatMap(complexRule -> {
             if (!complexRule.isHasComplexChild() && !complexRule.isHasSimpleChild())
                 return Mono.just(ComplexRule.toCondition(complexRule, List.of()));
 
             Flux<AbstractCondition> complexChildrenConditions = complexRule.isHasComplexChild()
                     ? this.dao
-                            .readByParentConditionId(ruleId)
-                            .flatMap(childRule -> this.getCondition(childRule.getId()))
+                            .readByParentConditionId(complexRule.getId())
+                            .flatMap(childRule -> this.getCondition(childRule.getId(), childRule.getEntitySeries()))
                     : Flux.empty();
 
             Flux<AbstractCondition> simpleChildrenConditions = complexRule.isHasSimpleChild()
-                    ? this.simpleRuleService.getConditionByComplexRule(ruleId)
+                    ? this.simpleRuleService.getConditionByComplexRule(complexRule.getId())
                     : Flux.empty();
 
             return Flux.merge(complexChildrenConditions, simpleChildrenConditions)

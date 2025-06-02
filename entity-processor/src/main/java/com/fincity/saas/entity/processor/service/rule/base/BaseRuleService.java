@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service.rule.base;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
-import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.jooq.UpdatableRecord;
@@ -16,8 +15,6 @@ import reactor.util.function.Tuple3;
 @Service
 public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
         extends BaseService<R, D, O> {
-
-    public abstract Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries);
 
     @Override
     protected Mono<D> updatableEntity(D entity) {

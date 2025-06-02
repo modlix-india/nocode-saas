@@ -31,7 +31,6 @@ public class RuleRequest extends BaseRequest<RuleRequest> implements Serializabl
     private AbstractCondition condition;
     private DistributionType userDistributionType;
     private UserDistribution userDistribution;
-    private Identity entityId;
 
     @JsonIgnore
     public boolean isSimple() {

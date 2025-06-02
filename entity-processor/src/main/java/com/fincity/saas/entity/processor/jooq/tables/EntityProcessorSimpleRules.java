@@ -141,6 +141,13 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
+     * Flag to tell if this rule has a complex parent or not.
+     */
+    public final TableField<EntityProcessorSimpleRulesRecord, Byte> HAS_PARENT = createField(DSL.name("HAS_PARENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell if this rule has a complex parent or not.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_simple_rules.FIELD</code>. Field
      * name for this Simple Rule.
      */

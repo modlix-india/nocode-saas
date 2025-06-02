@@ -152,6 +152,20 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
+     * Flag to tell weather this rule has complex children.
+     */
+    public final TableField<EntityProcessorComplexRulesRecord, Byte> HAS_COMPLEX_CHILD = createField(DSL.name("HAS_COMPLEX_CHILD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather this rule has complex children.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
+     * Flag to tell weather this rule has simple children.
+     */
+    public final TableField<EntityProcessorComplexRulesRecord, Byte> HAS_SIMPLE_CHILD = createField(DSL.name("HAS_SIMPLE_CHILD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather this rule has simple children.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_complex_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Complex Rule.
      */

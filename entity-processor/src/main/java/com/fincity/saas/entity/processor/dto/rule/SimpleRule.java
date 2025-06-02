@@ -25,6 +25,7 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     @Serial
     private static final long serialVersionUID = 1248302700338268L;
 
+    private boolean hasParent = false;
     private String field;
     private ComparisonOperator comparisonOperator = ComparisonOperator.EQUALS;
     private ValueContainer value;
