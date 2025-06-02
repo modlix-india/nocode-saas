@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.List;
+import java.util.Set;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.processor.dao.ProductStageRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
@@ -9,13 +17,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
-import java.util.List;
-import java.util.Set;
 
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -64,8 +66,11 @@ public class ProductStageRuleService
         return FlatMapUtil.flatMapMono(
                 () -> this.readIdentityInternal(entityId),
                 productStageRule -> productService.readById(productStageRule.getEntityId()),
-                (productStageRule, product) ->
-                        super.stageService.getAllStages(appCode, clientCode, product.getProductTemplateId(), stageIds.toArray(new ULong[0])));
+                (productStageRule, product) -> super.stageService.getAllStages(
+                        appCode,
+                        clientCode,
+                        product.getProductTemplateId(),
+                        stageIds != null ? stageIds.toArray(new ULong[0]) : null));
     }
 
     @Override
