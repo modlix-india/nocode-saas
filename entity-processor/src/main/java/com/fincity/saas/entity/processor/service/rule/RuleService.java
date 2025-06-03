@@ -6,7 +6,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
-import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -83,11 +82,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     @Override
     protected String getCacheName() {
         return RULE;
-    }
-
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.RULE;
     }
 
     @Override

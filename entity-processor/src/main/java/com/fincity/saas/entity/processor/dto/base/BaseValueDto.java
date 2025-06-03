@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dto.base;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.model.base.ULongEager;
 import java.io.Serial;
 import java.util.stream.Stream;
 import lombok.Data;
@@ -23,7 +24,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T>
     private static final long serialVersionUID = 2090745028406660414L;
 
     private Platform platform = Platform.PRE_QUALIFICATION;
-    private ULong productTemplateId;
+    private ULongEager productTemplateId;
     private Boolean isParent;
     private ULong parentLevel0;
     private ULong parentLevel1;
@@ -40,6 +41,15 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T>
 
     public boolean isChild() {
         return !this.isParent;
+    }
+
+    public ULong getProductTemplateId() {
+        return this.productTemplateId.getId();
+    }
+
+    public T setProductTemplateId(ULong productTemplateId) {
+        this.productTemplateId = ULongEager.of(productTemplateId);
+        return (T) this;
     }
 
     @JsonIgnore
