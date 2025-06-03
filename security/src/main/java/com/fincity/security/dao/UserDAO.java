@@ -113,7 +113,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private Mono<Short> increaseFailedAttempt(ULong userId) {
         return Mono.from(this.dslContext.update(SECURITY_USER)
-                        .set(SECURITY_USER.NO_FAILED_ATTEMPT, SECURITY_USER.NO_FAILED_ATTEMPT.add(1))
+                        .set(SECURITY_USER.NO_FAILED_ATTEMPT, DSL.when(SECURITY_USER.NO_FAILED_ATTEMPT.isNull(), (short) 1)
+                                .otherwise(SECURITY_USER.NO_FAILED_ATTEMPT.add(1)))
                         .where(SECURITY_USER.ID.eq(userId)))
                 .flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_FAILED_ATTEMPT)
                                 .from(SECURITY_USER)
@@ -123,7 +124,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private Mono<Short> increasePinFailedAttempt(ULong userId) {
         return Mono.from(this.dslContext.update(SECURITY_USER)
-                        .set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, SECURITY_USER.NO_PIN_FAILED_ATTEMPT.add(1))
+                        .set(SECURITY_USER.NO_PIN_FAILED_ATTEMPT, DSL.when(SECURITY_USER.NO_PIN_FAILED_ATTEMPT.isNull(), (short) 1)
+                                .otherwise(SECURITY_USER.NO_PIN_FAILED_ATTEMPT.add(1)))
                         .where(SECURITY_USER.ID.eq(userId)))
                 .flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_PIN_FAILED_ATTEMPT)
                                 .from(SECURITY_USER)
@@ -133,7 +135,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private Mono<Short> increaseOtpFailedAttempt(ULong userId) {
         return Mono.from(this.dslContext.update(SECURITY_USER)
-                        .set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, SECURITY_USER.NO_OTP_FAILED_ATTEMPT.add(1))
+                        .set(SECURITY_USER.NO_OTP_FAILED_ATTEMPT, DSL.when(SECURITY_USER.NO_OTP_FAILED_ATTEMPT.isNull(), (short) 1)
+                                .otherwise(SECURITY_USER.NO_OTP_FAILED_ATTEMPT.add(1)))
                         .where(SECURITY_USER.ID.eq(userId)))
                 .flatMap(updatedRows -> Mono.from(this.dslContext.select(SECURITY_USER.NO_OTP_FAILED_ATTEMPT)
                                 .from(SECURITY_USER)
@@ -176,7 +179,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
     }
 
-    public Mono<Boolean> checkUserExists(ULong clientId, String userName, String emailId, String phoneNumber,
+    public Mono<Boolean> checkUserExists(ULong managingClientId, String userName, String emailId, String phoneNumber,
                                          String typeCode) {
 
         List<Condition> conditions = new ArrayList<>();
@@ -184,7 +187,25 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         if (typeCode != null)
             conditions.add(SECURITY_CLIENT.TYPE_CODE.in(typeCode));
 
-        return this.checkUserExists(clientId, userName, emailId, phoneNumber, conditions);
+        return this.checkUserExists(managingClientId, userName, emailId, phoneNumber, conditions);
+    }
+
+    public Mono<Boolean> checkUserExistsForInvite(ULong clientId, String userName, String emailId, String phoneNumber) {
+
+        List<Condition> conditions = new ArrayList<>();
+
+        if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName))
+            conditions.add(SECURITY_USER.USER_NAME.eq(userName));
+
+        if (!StringUtil.safeIsBlank(emailId) && !User.PLACEHOLDER.equals(emailId))
+            conditions.add(SECURITY_USER.EMAIL_ID.eq(emailId));
+
+        if (!StringUtil.safeIsBlank(phoneNumber) && !User.PLACEHOLDER.equals(phoneNumber))
+            conditions.add(SECURITY_USER.PHONE_NUMBER.eq(phoneNumber));
+
+        conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(conditions))).map(e -> e.value1() > 0);
     }
 
     private Mono<Boolean> checkUserExists(ULong managingClientId, String userName, String emailId, String phoneNumber,
