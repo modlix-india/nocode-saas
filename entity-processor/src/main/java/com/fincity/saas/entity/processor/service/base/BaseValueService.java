@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
@@ -186,7 +187,6 @@ public abstract class BaseValueService<
 
     public Mono<Boolean> existsById(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Identity valueEntity) {
-
         return FlatMapUtil.flatMapMono(
                 () -> this.checkAndUpdateIdentity(valueEntity),
                 identity -> this.existsById(appCode, clientCode, platform, productTemplateId, identity.getULongId()));
@@ -229,6 +229,34 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
+    public Mono<List<BaseValueResponse<D>>> getAllValuesInOrder(Platform platform, ULong productTemplateId) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.getAllValuesInOrderInternal(
+                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
+    }
+
+    public Mono<List<BaseValueResponse<D>>> getAllValues(Platform platform, ULong productTemplateId) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.getAllValues(
+                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
+                .map(BaseValueResponse::toList)
+                .switchIfEmpty(Mono.just(new ArrayList<>()));
+    }
+
+    public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrder(
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
+        return this.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        ProcessorMessageResourceService.NO_VALUES_FOUND,
+                        this.getEntityName(),
+                        this.getEntityName()));
+    }
+
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrderInternal(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
@@ -247,34 +275,6 @@ public abstract class BaseValueService<
 
                     return Mono.just(orderedMap);
                 });
-    }
-
-    public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrder(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                        ProcessorMessageResourceService.NO_VALUES_FOUND,
-                        this.getEntityName(),
-                        this.getEntityName()));
-    }
-
-    public Mono<List<BaseValueResponse<D>>> getAllValuesInOrder(Platform platform, ULong productTemplateId) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.getAllValuesInOrderInternal(
-                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
-                .map(BaseValueResponse::toList)
-                .switchIfEmpty(Mono.just(new ArrayList<>()));
-    }
-
-    public Mono<List<BaseValueResponse<D>>> getAllValues(Platform platform, ULong productTemplateId) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.getAllValues(
-                                access.getT1().getT1(), access.getT1().getT2(), platform, productTemplateId))
-                .map(BaseValueResponse::toList)
-                .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
     public Mono<Set<ULong>> getAllValueIds(

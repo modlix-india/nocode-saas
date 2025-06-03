@@ -91,14 +91,14 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     public Ticket setSource(String source) {
         if (StringUtil.safeIsBlank(source)) return this;
 
-        this.source = NameUtil.normalizeToUpper(source);
+        this.source = NameUtil.normalize(source);
         return this;
     }
 
     public Ticket setSubSource(String subSource) {
         if (StringUtil.safeIsBlank(subSource)) return this;
 
-        this.subSource = NameUtil.normalizeToUpper(subSource);
+        this.subSource = NameUtil.normalize(subSource);
         return this;
     }
 }

@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import java.io.Serial;
+
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
-import java.io.Serial;
+import com.fincity.saas.entity.processor.model.common.Identity;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,6 +21,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     @Serial
     private static final long serialVersionUID = 1704140784725077601L;
 
+    private Identity id;
     private Platform platform;
     private StageType stageType;
     private Boolean isSuccess;

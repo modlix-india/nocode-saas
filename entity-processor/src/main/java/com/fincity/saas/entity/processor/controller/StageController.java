@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
+import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.StageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +19,7 @@ import reactor.core.publisher.Mono;
 public class StageController extends BaseValueController<EntityProcessorStagesRecord, Stage, StageDAO, StageService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Stage>> createFromRequest(@RequestBody StageRequest stageRequest) {
+    public Mono<ResponseEntity<BaseValueResponse<Stage>>> createFromRequest(@RequestBody StageRequest stageRequest) {
         return this.service.create(stageRequest).map(ResponseEntity::ok);
     }
 }
