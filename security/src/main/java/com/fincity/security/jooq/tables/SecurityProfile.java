@@ -17,6 +17,7 @@ import com.fincity.security.jooq.tables.SecurityProfileClientRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityProfileRole.SecurityProfileRolePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
+import com.fincity.security.jooq.tables.SecurityUserInvite.SecurityUserInvitePath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 
@@ -337,6 +338,19 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityDesignation = new SecurityDesignationPath(this, null, Keys.FK5_DESIGNATION_PROFILE_ID.getInverseKey());
 
         return _securityDesignation;
+    }
+
+    private transient SecurityUserInvitePath _securityUserInvite;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_user_invite</code> table
+     */
+    public SecurityUserInvitePath securityUserInvite() {
+        if (_securityUserInvite == null)
+            _securityUserInvite = new SecurityUserInvitePath(this, null, Keys.FK_SECURITY_USER_INVITE_PROFILE.getInverseKey());
+
+        return _securityUserInvite;
     }
 
     /**

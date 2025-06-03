@@ -372,9 +372,12 @@ public class AuthenticationService implements IAuthenticationService {
             User user, T policy, AuthenticationPasswordType passwordType) {
 
         return switch (passwordType) {
-            case PASSWORD -> user.getNoFailedAttempt().compareTo(policy.getNoFailedAttempts());
-            case PIN -> user.getNoPinFailedAttempt().compareTo(policy.getNoFailedAttempts());
-            case OTP -> user.getNoOtpFailedAttempt().compareTo(policy.getNoFailedAttempts());
+            case PASSWORD ->
+                    (user.getNoFailedAttempt() == null ? Short.valueOf((short) 0) : user.getNoFailedAttempt()).compareTo(policy.getNoFailedAttempts());
+            case PIN ->
+                    (user.getNoPinFailedAttempt() == null ? Short.valueOf((short) 0) : user.getNoPinFailedAttempt()).compareTo(policy.getNoFailedAttempts());
+            case OTP ->
+                    (user.getNoOtpFailedAttempt() == null ? Short.valueOf((short) 0) : user.getNoOtpFailedAttempt()).compareTo(policy.getNoFailedAttempts());
         };
     }
 
