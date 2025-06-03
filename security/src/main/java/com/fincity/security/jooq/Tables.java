@@ -44,6 +44,7 @@ import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
+import com.fincity.security.jooq.tables.SecurityUserInvite;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
@@ -256,6 +257,11 @@ public class Tables {
      * The table <code>security.security_user_address</code>.
      */
     public static final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
+
+    /**
+     * The table <code>security.security_user_invite</code>.
+     */
+    public static final SecurityUserInvite SECURITY_USER_INVITE = SecurityUserInvite.SECURITY_USER_INVITE;
 
     /**
      * The table <code>security.security_user_token</code>.

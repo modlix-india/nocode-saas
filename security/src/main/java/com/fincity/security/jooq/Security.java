@@ -44,6 +44,7 @@ import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
+import com.fincity.security.jooq.tables.SecurityUserInvite;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
@@ -272,6 +273,11 @@ public class Security extends SchemaImpl {
     public final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
 
     /**
+     * The table <code>security.security_user_invite</code>.
+     */
+    public final SecurityUserInvite SECURITY_USER_INVITE = SecurityUserInvite.SECURITY_USER_INVITE;
+
+    /**
      * The table <code>security.security_user_token</code>.
      */
     public final SecurityUserToken SECURITY_USER_TOKEN = SecurityUserToken.SECURITY_USER_TOKEN;
@@ -352,6 +358,7 @@ public class Security extends SchemaImpl {
             SecuritySslRequest.SECURITY_SSL_REQUEST,
             SecurityUser.SECURITY_USER,
             SecurityUserAddress.SECURITY_USER_ADDRESS,
+            SecurityUserInvite.SECURITY_USER_INVITE,
             SecurityUserToken.SECURITY_USER_TOKEN,
             SecurityV2Role.SECURITY_V2_ROLE,
             SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION,

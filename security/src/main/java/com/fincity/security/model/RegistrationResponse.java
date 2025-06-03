@@ -14,13 +14,13 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class ClientRegistrationResponse implements Serializable {
+public class RegistrationResponse implements Serializable {
 
-	@Serial
-	private static final long serialVersionUID = 567874378374L;
+    @Serial
+    private static final long serialVersionUID = 567874378374L;
 
-	private Boolean created;
-	private ULong userId;
-	private String redirectURL;
-	private AuthenticationResponse authentication;
+    private Boolean created;
+    private ULong userId;
+    private String redirectURL;
+    private AuthenticationResponse authentication;
 }
