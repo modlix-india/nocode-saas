@@ -112,10 +112,10 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     public Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries) {
 
         return this.getConditionInternal(entityId, entitySeries);
-//        return this.cacheService.cacheValueOrGet(
-//                this.getCacheName(),
-//                () -> this.getConditionInternal(entityId, entitySeries),
-//                this.getCacheKey(entityId, entitySeries));
+        //        return this.cacheService.cacheValueOrGet(
+        //                this.getCacheName(),
+        //                () -> this.getConditionInternal(entityId, entitySeries),
+        //                this.getCacheKey(entityId, entitySeries));
     }
 
     private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries) {
