@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwne
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -20,6 +21,12 @@ import reactor.util.function.Tuple3;
 public class OwnerService extends BaseProcessorService<EntityProcessorOwnersRecord, Owner, OwnerDAO> {
 
     private static final String OWNER_CACHE = "owner";
+
+    private final TicketService ticketService;
+
+    public OwnerService(@Lazy TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
 
     @Override
     protected String getCacheName() {
@@ -38,13 +45,15 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
     @Override
     protected Mono<Owner> updatableEntity(Owner entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setDialCode(entity.getDialCode());
-            existing.setPhoneNumber(entity.getPhoneNumber());
-            existing.setEmail(entity.getEmail());
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setDialCode(entity.getDialCode());
+                    existing.setPhoneNumber(entity.getPhoneNumber());
+                    existing.setEmail(entity.getEmail());
 
-            return Mono.just(existing);
-        });
+                    return Mono.just(existing);
+                })
+                .flatMap(this::updateTickets);
     }
 
     public Mono<Owner> create(OwnerRequest ownerRequest) {
@@ -58,7 +67,11 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return this.getOrCreateTicketPhoneOwner(accessInfo.getT1(), accessInfo.getT2(), ticket);
     }
 
-    public Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
+    private Mono<Owner> updateTickets(Owner owner) {
+        return this.ticketService.updateOwnerTickets(owner).collectList().map(tickets -> owner);
+    }
+
+    private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                 () -> this.dao
                         .readByNumberAndEmail(
