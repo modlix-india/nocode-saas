@@ -4,6 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -22,6 +26,8 @@ import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -85,6 +91,40 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> Mono.justOrEmpty(
                         ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
+    }
+
+    @Override
+    public Mono<D> read(ULong id) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByIdAndAppCodeAndClientCode(
+                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
+    }
+
+    @Override
+    public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return this.hasAccess()
+                .flatMap(accessInfo -> super.readPageFilter(
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
+    }
+
+    @Override
+    public Flux<D> readAllFilter(AbstractCondition condition) {
+        return this.hasAccess()
+                .flatMapMany(hasAccess ->
+                        super.readAllFilter(addAppCodeAndClientCodeToCondition(hasAccess.getT1(), condition)));
+    }
+
+    private AbstractCondition addAppCodeAndClientCodeToCondition(
+            Tuple3<String, String, ULong> access, AbstractCondition condition) {
+        if (condition == null || condition.isEmpty())
+            return ComplexCondition.and(
+                    FilterCondition.make("appCode", access.getT1()).setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make("clientCode", access.getT2()).setOperator(FilterConditionOperator.EQUALS));
+
+        return ComplexCondition.and(
+                condition,
+                FilterCondition.make("appCode", access.getT1()).setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make("clientCode", access.getT2()).setOperator(FilterConditionOperator.EQUALS));
     }
 
     @Override
