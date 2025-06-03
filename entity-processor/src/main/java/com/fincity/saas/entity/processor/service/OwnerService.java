@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwne
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -23,7 +24,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
     private final TicketService ticketService;
 
-    public OwnerService(TicketService ticketService) {
+    public OwnerService(@Lazy TicketService ticketService) {
         this.ticketService = ticketService;
     }
 
@@ -44,13 +45,15 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
     @Override
     protected Mono<Owner> updatableEntity(Owner entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setDialCode(entity.getDialCode());
-            existing.setPhoneNumber(entity.getPhoneNumber());
-            existing.setEmail(entity.getEmail());
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setDialCode(entity.getDialCode());
+                    existing.setPhoneNumber(entity.getPhoneNumber());
+                    existing.setEmail(entity.getEmail());
 
-            return Mono.just(existing);
-        }).flatMap(this::updateTickets);
+                    return Mono.just(existing);
+                })
+                .flatMap(this::updateTickets);
     }
 
     public Mono<Owner> create(OwnerRequest ownerRequest) {
@@ -65,9 +68,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     private Mono<Owner> updateTickets(Owner owner) {
-        return this.ticketService.updateOwnerTickets(owner)
-                .collectList()
-                .map(tickets -> owner);
+        return this.ticketService.updateOwnerTickets(owner).collectList().map(tickets -> owner);
     }
 
     private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {

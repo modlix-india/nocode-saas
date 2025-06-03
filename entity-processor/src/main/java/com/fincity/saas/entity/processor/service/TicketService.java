@@ -14,7 +14,6 @@ import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
@@ -68,8 +67,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Flux<Ticket> updateOwnerTickets(Owner owner) {
-        Flux<Ticket> ticketsFlux = this.dao.getAllOwnerTickets(owner.getId())
-                .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
+        Flux<Ticket> ticketsFlux =
+                this.dao.getAllOwnerTickets(owner.getId()).flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
 
         return this.dao.updateAll(ticketsFlux);
     }

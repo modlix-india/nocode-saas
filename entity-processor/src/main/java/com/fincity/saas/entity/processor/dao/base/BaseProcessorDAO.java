@@ -1,12 +1,10 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
-
 import reactor.core.publisher.Flux;
 
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>

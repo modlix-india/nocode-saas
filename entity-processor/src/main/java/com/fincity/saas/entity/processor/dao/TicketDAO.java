@@ -5,10 +5,8 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicke
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
-
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
-
 import reactor.core.publisher.Flux;
 
 @Component
