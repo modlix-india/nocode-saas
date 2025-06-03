@@ -1,7 +1,11 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+
 import java.util.List;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
@@ -10,8 +14,11 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> {
@@ -32,6 +39,19 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         this.nameField = flowTable.field(NAME, String.class);
         this.tempActiveField = flowTable.field(TEMP_ACTIVE, Boolean.class);
         this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
+    }
+
+    public Mono<D> readByIdAndAppCodeAndClientCode(ULong id, String appCode, String clientCode) {
+        return this.getSelectJointStep()
+                .map(Tuple2::getT1)
+                .flatMap(e -> Mono.from(
+                        e.where(idField.eq(id).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode)))))
+                .switchIfEmpty(Mono.defer(() -> messageResourceService
+                        .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
+                        .map(msg -> {
+                            throw new GenericException(HttpStatus.NOT_FOUND, msg);
+                        })))
+                .map(e -> e.into(this.pojoClass));
     }
 
     public Mono<D> readInternal(ULong id) {
