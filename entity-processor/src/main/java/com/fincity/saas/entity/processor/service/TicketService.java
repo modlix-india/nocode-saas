@@ -11,8 +11,11 @@ import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 
@@ -27,7 +30,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ProductStageRuleService productStageRuleService;
 
     public TicketService(
-            OwnerService ownerService,
+            @Lazy OwnerService ownerService,
             ProductService productService,
             StageService stageService,
             ProductStageRuleService productStageRuleService) {
@@ -56,21 +59,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     @Override
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
+        return super.updatableEntity(ticket).flatMap(existing -> {
+            existing.setStage(ticket.getStage());
+            existing.setStatus(ticket.getStatus());
 
-        return FlatMapUtil.flatMapMono(
-                () -> this.updateOwner(ticket).flatMap(owner -> this.updateTicketFromOwner(ticket, owner)),
-                super::updatableEntity,
-                (uEntity, existing) -> {
-                    existing.setDialCode(ticket.getDialCode());
-                    existing.setPhoneNumber(ticket.getPhoneNumber());
-                    existing.setEmail(ticket.getEmail());
-                    existing.setSource(ticket.getSource());
-                    existing.setSubSource(ticket.getSubSource());
-                    existing.setStage(ticket.getStage());
-                    existing.setStatus(ticket.getStatus());
+            return Mono.just(existing);
+        });
+    }
 
-                    return Mono.just(existing);
-                });
+    public Flux<Ticket> updateOwnerTickets(Owner owner) {
+        Flux<Ticket> ticketsFlux = this.dao.getAllOwnerTickets(owner.getId())
+                .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
+
+        return this.dao.updateAll(ticketsFlux);
     }
 
     public Mono<ProcessorResponse> createOpenResponse(TicketRequest ticketRequest) {
@@ -138,10 +139,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     private Mono<Owner> setOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
         return this.ownerService.getOrCreateTicketOwner(accessInfo, ticket);
-    }
-
-    private Mono<Owner> updateOwner(Ticket ticket) {
-        return this.ownerService.getOrCreateTicketPhoneOwner(ticket.getAppCode(), ticket.getClientCode(), ticket);
     }
 
     private Mono<Ticket> updateTicketFromOwner(Ticket ticket, Owner owner) {

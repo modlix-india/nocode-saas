@@ -21,6 +21,12 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
     private static final String OWNER_CACHE = "owner";
 
+    private final TicketService ticketService;
+
+    public OwnerService(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
     @Override
     protected String getCacheName() {
         return OWNER_CACHE;
@@ -44,7 +50,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
             existing.setEmail(entity.getEmail());
 
             return Mono.just(existing);
-        });
+        }).flatMap(this::updateTickets);
     }
 
     public Mono<Owner> create(OwnerRequest ownerRequest) {
@@ -58,7 +64,13 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return this.getOrCreateTicketPhoneOwner(accessInfo.getT1(), accessInfo.getT2(), ticket);
     }
 
-    public Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
+    private Mono<Owner> updateTickets(Owner owner) {
+        return this.ticketService.updateOwnerTickets(owner)
+                .collectList()
+                .map(tickets -> owner);
+    }
+
+    private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                 () -> this.dao
                         .readByNumberAndEmail(
