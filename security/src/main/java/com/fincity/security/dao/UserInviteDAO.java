@@ -4,10 +4,12 @@ import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
 import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import static com.fincity.security.jooq.Tables.SECURITY_USER_INVITE;
 
+@Component
 public class UserInviteDAO extends AbstractDAO<SecurityUserInviteRecord, ULong, UserInvite> {
 
     public UserInviteDAO() {

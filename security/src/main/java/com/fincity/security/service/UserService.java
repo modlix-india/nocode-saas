@@ -1,5 +1,6 @@
 package com.fincity.security.service;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -950,75 +952,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .sorted().toList());
     }
 
-    public Mono<RegistrationResponse> createWithInvitation(UserRegistrationRequest request, UserInvite userInvite) {
-
-        return FlatMapUtil.flatMapMono(
-
-                        SecurityContextUtil::getUsersContextAuthentication,
-
-                        ca -> this.createWithInvitationInternal(request, userInvite),
-
-                        (ca, createdUser) -> {
-                            Map<String, Object> userEventData = Map.of(
-                                    "client", client,
-                                    "user", user, "token", token, "passwordUsed", passwordUsed);
-
-                            EventQueObject userRegisteredEvent = new EventQueObject()
-                                    .setEventName(EventNames.USER_REGISTERED)
-                                    .setData(userEventData);
-                        }
-                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createWithInvitation"))
-                .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
-    }
-
-    private Mono<User> createWithInvitationInternal(UserRegistrationRequest request, UserInvite userInvite) {
-
-        User user = request.getUser();
-
-        String password = user.getInputPass(request.getPassType());
-        user.setPassword(null);
-        user.setPasswordHashed(false);
-        user.setAccountNonExpired(true);
-        user.setAccountNonLocked(true);
-        user.setCredentialsNonExpired(true);
-
-        if (user.getUserName() == null) user.setUserName(userInvite.getUserName());
-        if (user.getFirstName() == null) user.setFirstName(userInvite.getFirstName());
-        if (user.getLastName() == null) user.setLastName(userInvite.getLastName());
-        if (user.getEmailId() == null) user.setEmailId(userInvite.getEmailId());
-        if (user.getPhoneNumber() == null) user.setPhoneNumber(userInvite.getPhoneNumber());
-
-        user.setClientId(userInvite.getClientId());
-        user.setDesignationId(userInvite.getDesignationId());
-
-
-        return FlatMapUtil.flatMapMono(
-                        () ->
-
-                                this.dao.checkUserExists(user.getClientId(), user.getUserName(), user.getEmailId(),
-                                                user.getPhoneNumber(), null)
-                                        .filter(userExists -> !userExists).map(userExists -> Boolean.FALSE),
-
-                        userExists -> this.dao.create(user),
-
-                        (userExists, createdUser) -> {
-                            this.soxLogService.createLog(createdUser.getId(), CREATE, getSoxObjectName(), "User created");
-
-                            return this.setPassword(createdUser.getId(), createdUser.getId(), password, request.getPassType());
-                        },
-
-                        (userExists, createdUser, passSet) -> (userInvite.getProfileId() != null) ?
-                                profileService.hasAccessToProfiles(user.getClientId(), Set.of(userInvite.getProfileId())) :
-                                Mono.just(Boolean.FALSE),
-
-                        (userExists, createdUser, passSet, hasAddableProfile) -> {
-                            if (!BooleanUtil.safeValueOf(hasAddableProfile)) return Mono.just(createdUser);
-
-                            return this.dao.addProfileToUser(createdUser.getId(), userInvite.getProfileId()).map(e -> createdUser);
-                        }
-                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createWithInvtationInternal"))
-                .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
-    }
 
     // Don't call this method other than from the client service register method
     public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,

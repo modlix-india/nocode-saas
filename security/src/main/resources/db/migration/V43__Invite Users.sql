@@ -21,6 +21,8 @@ CREATE TABLE `security`.`security_user_invite` (
 
    PRIMARY KEY (`ID`),
    UNIQUE KEY (`INVITE_CODE`),
+   UNIQUE KEY (`CLIENT_ID`, `EMAIL_ID`),
+   UNIQUE KEY (`CLIENT_ID`, `PHONE_NUMBER`),
    
    CONSTRAINT `fk_security_user_invite_client` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security`.`security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
    CONSTRAINT `fk_security_user_invite_profile` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security`.`security_profile` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,

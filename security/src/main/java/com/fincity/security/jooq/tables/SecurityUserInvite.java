@@ -76,19 +76,19 @@ public class SecurityUserInvite extends TableImpl<SecurityUserInviteRecord> {
      * The column <code>security.security_user_invite.USER_NAME</code>. User
      * Name to login
      */
-    public final TableField<SecurityUserInviteRecord, String> USER_NAME = createField(DSL.name("USER_NAME"), SQLDataType.CHAR(32).nullable(false).defaultValue(DSL.inline("NONE", SQLDataType.CHAR)), this, "User Name to login");
+    public final TableField<SecurityUserInviteRecord, String> USER_NAME = createField(DSL.name("USER_NAME"), SQLDataType.CHAR(32), this, "User Name to login");
 
     /**
      * The column <code>security.security_user_invite.EMAIL_ID</code>. Email ID
      * to login
      */
-    public final TableField<SecurityUserInviteRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(320).nullable(false).defaultValue(DSL.inline("NONE", SQLDataType.VARCHAR)), this, "Email ID to login");
+    public final TableField<SecurityUserInviteRecord, String> EMAIL_ID = createField(DSL.name("EMAIL_ID"), SQLDataType.VARCHAR(320), this, "Email ID to login");
 
     /**
      * The column <code>security.security_user_invite.PHONE_NUMBER</code>. Phone
      * Number to login
      */
-    public final TableField<SecurityUserInviteRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(32).nullable(false).defaultValue(DSL.inline("NONE", SQLDataType.CHAR)), this, "Phone Number to login");
+    public final TableField<SecurityUserInviteRecord, String> PHONE_NUMBER = createField(DSL.name("PHONE_NUMBER"), SQLDataType.CHAR(32), this, "Phone Number to login");
 
     /**
      * The column <code>security.security_user_invite.FIRST_NAME</code>. First
@@ -209,6 +209,11 @@ public class SecurityUserInvite extends TableImpl<SecurityUserInviteRecord> {
     @Override
     public UniqueKey<SecurityUserInviteRecord> getPrimaryKey() {
         return Keys.KEY_SECURITY_USER_INVITE_PRIMARY;
+    }
+
+    @Override
+    public List<UniqueKey<SecurityUserInviteRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_SECURITY_USER_INVITE_CLIENT_ID, Keys.KEY_SECURITY_USER_INVITE_CLIENT_ID_2, Keys.KEY_SECURITY_USER_INVITE_INVITE_CODE);
     }
 
     @Override

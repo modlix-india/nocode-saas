@@ -33,18 +33,13 @@ public class UserRegistrationRequest implements BasePassword<UserRegistrationReq
 
         User user = new User();
 
-        user.setLocaleCode(this.getLocaleCode());
-        user.setUserName(this.getUserName());
-        user.setEmailId(this.getEmailId());
-        user.setPhoneNumber(this.getPhoneNumber());
-        user.setFirstName(this.getFirstName());
-        user.setLastName(this.getLastName());
-        user.setMiddleName(this.getMiddleName());
-        user.setPassType(this.getPassType());
-
-        user.setPassword(this.getPassword());
-        user.setPin(this.getPin());
-        user.setOtp(this.getOtp());
+        user.setLocaleCode(this.localeCode);
+        user.setUserName(this.userName);
+        user.setEmailId(this.emailId);
+        user.setPhoneNumber(this.phoneNumber);
+        user.setFirstName(this.firstName);
+        user.setLastName(this.lastName);
+        user.setMiddleName(this.middleName);
 
         return user;
     }

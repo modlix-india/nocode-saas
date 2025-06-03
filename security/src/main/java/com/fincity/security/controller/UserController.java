@@ -10,6 +10,7 @@ import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
@@ -148,8 +149,8 @@ public class UserController
     }
 
     @PostMapping("/acceptInvite")
-    public Mono<ResponseEntity<RegistrationResponse>> acceptInvite(@RequestBody UserRegistrationRequest userRequest) {
-        return this.inviteService.acceptInvite(userRequest)
+    public Mono<ResponseEntity<RegistrationResponse>> acceptInvite(@RequestBody UserRegistrationRequest userRequest, ServerHttpRequest request, ServerHttpResponse response) {
+        return this.inviteService.acceptInvite(userRequest, request, response)
                 .map(ResponseEntity::ok);
     }
 
