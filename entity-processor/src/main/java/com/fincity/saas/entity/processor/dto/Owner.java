@@ -1,8 +1,10 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
+import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
 import lombok.Data;
@@ -54,5 +56,19 @@ public class Owner extends BaseProcessorDto<Owner> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.OWNER;
+    }
+
+    public Owner setSource(String source) {
+        if (StringUtil.safeIsBlank(source)) return this;
+
+        this.source = NameUtil.normalize(source);
+        return this;
+    }
+
+    public Owner setSubSource(String subSource) {
+        if (StringUtil.safeIsBlank(subSource)) return this;
+
+        this.subSource = NameUtil.normalize(subSource);
+        return this;
     }
 }
