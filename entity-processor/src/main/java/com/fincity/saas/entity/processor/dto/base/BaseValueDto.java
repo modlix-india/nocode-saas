@@ -13,7 +13,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
 import org.jooq.Table;
 import org.jooq.types.ULong;
 

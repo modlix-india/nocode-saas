@@ -1,5 +1,11 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -9,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
@@ -28,14 +33,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
-
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.util.EagerUtil;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -91,7 +88,8 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         });
     }
 
-    protected Mono<Tuple2<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>, Map<String, Table<?>>>> getSelectJointStepEager() {
+    protected Mono<Tuple2<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>, Map<String, Table<?>>>>
+            getSelectJointStepEager() {
         Map<String, Table<?>> relations = EagerUtil.getRelationMap(this.pojoClass);
 
         List<Field<?>> fields = relations == null || relations.isEmpty()
@@ -158,8 +156,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         map.putAll(camelCaseMap);
 
         Map<String, String> tableNameMap = HashMap.newHashMap(relations.size());
-        relations.forEach((key, value) -> tableNameMap.put(
-                key, EagerUtil.fromJooqField(value.getName())));
+        relations.forEach((key, value) -> tableNameMap.put(key, EagerUtil.fromJooqField(value.getName())));
 
         Map<String, Map<String, Object>> relationGroups = HashMap.newHashMap(relations.size());
 
@@ -218,8 +215,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                         finalQuery.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(rec -> {
                     Map<String, Object> map = rec.intoMap();
-                    if (hasRelations)
-                        processRelatedData(map, relations);
+                    if (hasRelations) processRelatedData(map, relations);
                     return map;
                 })
                 .collectList();

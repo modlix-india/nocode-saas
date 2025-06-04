@@ -21,8 +21,6 @@ public class ReflectionUtil {
                         HttpStatus.BAD_REQUEST, "Unable to access the value of the static field: " + fieldName);
             }
         }
-        throw new GenericException(
-                HttpStatus.BAD_REQUEST, "Field not found in class hierarchy: " + fieldName);
+        throw new GenericException(HttpStatus.BAD_REQUEST, "Field not found in class hierarchy: " + fieldName);
     }
-
 }
