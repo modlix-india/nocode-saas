@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.base.ULongEager;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,16 +20,7 @@ public class ProductTemplateRule extends Rule<ProductTemplateRule> {
     @Serial
     private static final long serialVersionUID = 5282289027862256173L;
 
-    private ULongEager productTemplateId;
-
-    public ULong getProductTemplateId() {
-        return productTemplateId.getId();
-    }
-
-    public ProductTemplateRule setProductTemplateId(ULong productTemplateId) {
-        this.productTemplateId = ULongEager.of(productTemplateId);
-        return this;
-    }
+    private ULong productTemplateId;
 
     @Override
     public EntitySeries getEntitySeries() {

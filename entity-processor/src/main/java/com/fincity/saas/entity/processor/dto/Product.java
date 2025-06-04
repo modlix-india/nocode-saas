@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.base.ULongEager;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -22,19 +21,10 @@ public class Product extends BaseProcessorDto<Product> {
     @Serial
     private static final long serialVersionUID = 8028699089699178352L;
 
-    private ULongEager productTemplateId;
+    private ULong productTemplateId;
 
     public static Product of(ProductRequest productRequest) {
         return new Product().setName(productRequest.getName()).setDescription(productRequest.getDescription());
-    }
-
-    public ULong getProductTemplateId() {
-        return productTemplateId.getId();
-    }
-
-    public Product setProductTemplateId(ULong productTemplateId) {
-        this.productTemplateId = ULongEager.of(productTemplateId);
-        return this;
     }
 
     @Override
