@@ -50,15 +50,21 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
     }
 
     public Mono<Boolean> existsByName(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId, String... valueEntityNames) {
+            String appCode,
+            String clientCode,
+            Platform platform,
+            ULong productTemplateId,
+            ULong entityId,
+            String... valueEntityNames) {
 
         if (valueEntityNames == null || valueEntityNames.length == 0) return Mono.just(Boolean.FALSE);
 
-        return Mono.from(this.dslContext
-                        .selectOne()
-                        .from(this.table)
-                        .where(DSL.and(this.getBaseValueNameConditions(
-                                appCode, clientCode, platform, productTemplateId, null, valueEntityNames))))
+        List<Condition> baseConditions = this.getBaseValueNameConditions(
+                appCode, clientCode, platform, productTemplateId, null, valueEntityNames);
+
+        if (entityId != null) baseConditions.add(this.idField.ne(entityId));
+
+        return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
                 .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }

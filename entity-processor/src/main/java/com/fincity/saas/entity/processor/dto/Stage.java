@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.dto;
 
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
@@ -29,8 +28,7 @@ public class Stage extends BaseValueDto<Stage> {
 
     public static Stage ofParent(StageRequest stageRequest) {
         return (Stage) new Stage()
-                .setProductTemplateId(
-                        ULongUtil.valueOf(stageRequest.getProductTemplateId().getId()))
+                .setProductTemplateId(stageRequest.getProductTemplateId().getULongId())
                 .setIsParent(Boolean.TRUE)
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
@@ -43,8 +41,7 @@ public class Stage extends BaseValueDto<Stage> {
     public static Stage ofChild(
             StageRequest stageRequest, Integer order, Platform platform, StageType stageType, Stage... parents) {
         return (Stage) new Stage()
-                .setProductTemplateId(
-                        ULongUtil.valueOf(stageRequest.getProductTemplateId().getId()))
+                .setProductTemplateId(stageRequest.getProductTemplateId().getULongId())
                 .setIsParent(Boolean.FALSE)
                 .setParentLevel0(parents[0].getId())
                 .setParentLevel1(parents.length > 1 ? parents[1].getParentLevel0() : null)
