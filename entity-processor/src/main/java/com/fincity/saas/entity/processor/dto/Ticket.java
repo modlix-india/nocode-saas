@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.base.ULongEager;
 import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
@@ -36,14 +35,14 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     @Serial
     private static final long serialVersionUID = 1639822311147907381L;
 
-    private ULongEager ownerId;
+    private ULong ownerId;
     private ULong assignedUserId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
     private String email;
-    private ULongEager productId;
-    private ULongEager stage;
-    private ULongEager status;
+    private ULong productId;
+    private ULong stage;
+    private ULong status;
     private String source;
     private String subSource;
 
@@ -58,42 +57,6 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                 .setDescription(ticketRequest.getDescription());
     }
 
-    public ULong getOwnerId() {
-        return ownerId.getId();
-    }
-
-    public Ticket setOwnerId(ULong ownerId) {
-        this.ownerId = ULongEager.of(ownerId);
-        return this;
-    }
-
-    public ULong getProductId() {
-        return productId.getId();
-    }
-
-    public Ticket setProductId(ULong productId) {
-        this.productId = ULongEager.of(productId);
-        return this;
-    }
-
-    public ULong getStage() {
-        return stage.getId();
-    }
-
-    public Ticket setStage(ULong stageId) {
-        this.stage = ULongEager.of(stageId);
-        return this;
-    }
-
-    public ULong getStatus() {
-        return status.getId();
-    }
-
-    public Ticket setStatus(ULong statusId) {
-        this.status = ULongEager.of(statusId);
-        return this;
-    }
-
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TICKET;
@@ -102,14 +65,14 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     public Ticket setSource(String source) {
         if (StringUtil.safeIsBlank(source)) return this;
 
-        this.source = NameUtil.normalizeToUpper(source);
+        this.source = NameUtil.normalize(source);
         return this;
     }
 
     public Ticket setSubSource(String subSource) {
         if (StringUtil.safeIsBlank(subSource)) return this;
 
-        this.subSource = NameUtil.normalizeToUpper(subSource);
+        this.subSource = NameUtil.normalize(subSource);
         return this;
     }
 }

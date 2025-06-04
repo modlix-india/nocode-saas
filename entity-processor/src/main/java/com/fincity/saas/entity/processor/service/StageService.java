@@ -5,19 +5,25 @@ import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
+import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 @Service
 public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO> {
@@ -49,30 +55,130 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 });
     }
 
-    public Mono<Stage> create(StageRequest stageRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getProductTemplateId()),
-                productTemplateId -> super.create(Stage.ofParent(stageRequest.setProductTemplateId(productTemplateId))),
-                (productTemplateId, parentStage) -> stageRequest.getChildren() != null
-                        ? this.createChildren(productTemplateId, stageRequest.getChildren(), parentStage)
-                        : Mono.just(parentStage));
+    public Mono<List<BaseValueResponse<Stage>>> getAllValuesInOrder(
+            Platform platform, StageType stageType, ULong productTemplateId, ULong parentId) {
+        return super.getAllValuesInOrder(platform, productTemplateId, parentId).map(stages -> {
+            if (stageType == null) return stages;
+            return stages.stream()
+                    .filter(stage -> stage.getParent().getStageType().equals(stageType))
+                    .toList();
+        });
     }
 
-    private Mono<Stage> createChildren(Identity productTemplateId, Map<Integer, StageRequest> children, Stage parent) {
+    public Mono<List<BaseValueResponse<Stage>>> getAllValues(
+            Platform platform, StageType stageType, ULong productTemplateId, ULong parentId) {
+        return super.getAllValues(platform, productTemplateId, parentId).map(stages -> {
+            if (stageType == null) return stages;
+            return stages.stream()
+                    .filter(stage -> stage.getParent().getStageType().equals(stageType))
+                    .toList();
+        });
+    }
 
-        if (children == null || children.isEmpty()) return Mono.just(parent);
+    public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
+        return FlatMapUtil.flatMapMono(
+                        () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getProductTemplateId()),
+                        productTemplateId -> {
+                            stageRequest.setProductTemplateId(productTemplateId);
 
-        return Flux.fromIterable(children.entrySet())
-                .flatMap(childRequest -> super.createChild(
-                        Stage.ofChild(
-                                childRequest.getValue().setProductTemplateId(productTemplateId),
-                                childRequest.getKey(),
+                            if (stageRequest.getId() != null
+                                    && stageRequest.getId().getId() != null) {
+                                return super.readIdentity(stageRequest.getId())
+                                        .flatMap(existingStage -> {
+                                            existingStage
+                                                    .setName(stageRequest.getName())
+                                                    .setDescription(stageRequest.getDescription())
+                                                    .setStageType(stageRequest.getStageType())
+                                                    .setIsSuccess(stageRequest.getIsSuccess())
+                                                    .setIsFailure(stageRequest.getIsFailure())
+                                                    .setPlatform(stageRequest.getPlatform());
+
+                                            return super.update(existingStage);
+                                        })
+                                        .switchIfEmpty(super.create(Stage.ofParent(stageRequest)));
+                            } else {
+                                return super.create(Stage.ofParent(stageRequest));
+                            }
+                        },
+                        (productTemplateId, parentStage) -> stageRequest.getChildren() != null
+                                ? this.updateOrCreateChildren(
+                                        productTemplateId, stageRequest.getChildren(), parentStage)
+                                : Mono.just(Tuples.of(parentStage, List.of())))
+                .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()));
+    }
+
+    private Mono<Tuple2<Stage, List<Stage>>> updateOrCreateChildren(
+            Identity productTemplateId, Map<Integer, StageRequest> children, Stage parent) {
+
+        if (children == null || children.isEmpty())
+            return FlatMapUtil.flatMapMono(
+                            () -> super.getValue(
+                                    parent.getAppCode(),
+                                    parent.getClientCode(),
+                                    parent.getPlatform(),
+                                    productTemplateId.getULongId(),
+                                    parent.getId()),
+                            valueEntry -> super.deleteMultiple(valueEntry.getValue()),
+                            (valueEntry, deleted) -> this.evictCache(parent)
+                                    .flatMap(evicted -> Mono.just(Tuples.of(parent, List.<Stage>of()))))
+                    .defaultIfEmpty(Tuples.of(parent, List.of()));
+
+        return FlatMapUtil.flatMapMono(
+                        () -> super.getValue(
+                                parent.getAppCode(),
+                                parent.getClientCode(),
                                 parent.getPlatform(),
-                                parent.getStageType(),
-                                parent),
-                        parent))
-                .collectList()
-                .then(Mono.just(parent));
+                                productTemplateId.getULongId(),
+                                parent.getId()),
+                        valueEntry -> {
+                            Map<ULong, Stage> existingChildrenMap = valueEntry.getValue().stream()
+                                    .collect(Collectors.toMap(Stage::getId, Function.identity()));
+
+                            return Flux.fromIterable(children.entrySet())
+                                    .flatMap(entry -> {
+                                        StageRequest childRequest =
+                                                entry.getValue().setProductTemplateId(productTemplateId);
+                                        Integer order = entry.getKey();
+
+                                        if (childRequest.getId() != null
+                                                && childRequest.getId().getId() != null) {
+                                            ULong childId = childRequest.getId().getULongId();
+                                            Stage existingChild = existingChildrenMap.get(childId);
+
+                                            if (existingChild != null) {
+                                                existingChildrenMap.remove(childId);
+
+                                                existingChild
+                                                        .setName(childRequest.getName())
+                                                        .setDescription(childRequest.getDescription())
+                                                        .setIsSuccess(childRequest.getIsSuccess())
+                                                        .setIsFailure(childRequest.getIsFailure())
+                                                        .setOrder(order);
+
+                                                return super.update(existingChild);
+                                            }
+                                        }
+
+                                        return super.createChild(
+                                                Stage.ofChild(
+                                                        childRequest,
+                                                        order,
+                                                        parent.getPlatform(),
+                                                        parent.getStageType(),
+                                                        parent),
+                                                parent);
+                                    })
+                                    .collectList()
+                                    .flatMap(updatedChildren -> {
+                                        if (!existingChildrenMap.isEmpty())
+                                            return super.deleteMultiple(existingChildrenMap.values())
+                                                    .flatMap(deleted -> this.evictCache(parent))
+                                                    .then(Mono.just(Tuples.of(parent, updatedChildren)));
+                                        return this.evictCache(parent)
+                                                .flatMap(evicted -> Mono.just(Tuples.of(parent, updatedChildren)));
+                                    });
+                        })
+                .defaultIfEmpty(Tuples.of(parent, List.of()));
     }
 
     public Mono<Stage> getLatestStageByOrder(
