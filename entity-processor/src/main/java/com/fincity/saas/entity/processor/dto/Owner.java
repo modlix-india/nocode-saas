@@ -1,14 +1,12 @@
 package com.fincity.saas.entity.processor.dto;
 
-import java.io.Serial;
-
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

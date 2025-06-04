@@ -21,6 +21,7 @@ import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -299,7 +300,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         .map(evicted -> deleted));
     }
 
-    public Mono<Integer> deleteMultiple(List<D> entities) {
+    public Mono<Integer> deleteMultiple(Collection<D> entities) {
         return this.dao
                 .deleteMultiple(entities.stream().map(AbstractDTO::getId).toList())
                 .flatMap(

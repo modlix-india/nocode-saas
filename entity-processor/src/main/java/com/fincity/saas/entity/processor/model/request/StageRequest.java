@@ -1,12 +1,10 @@
 package com.fincity.saas.entity.processor.model.request;
 
-import java.io.Serial;
-
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
 import com.fincity.saas.entity.processor.model.common.Identity;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
