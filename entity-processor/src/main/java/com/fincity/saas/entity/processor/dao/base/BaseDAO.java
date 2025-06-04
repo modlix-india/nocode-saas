@@ -84,6 +84,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStepEager(
             List<String> eagerFields) {
+
         return Mono.just(Tuples.of(
                 dslContext.select(Arrays.asList(table.fields())).from(table),
                 dslContext.select(DSL.count()).from(table)));
