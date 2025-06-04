@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -23,14 +22,12 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -109,21 +106,6 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.hasAccess()
                 .flatMap(accessInfo -> super.readPageFilter(
                         pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
-    }
-
-    public Mono<Page<Map<String, Object>>> readPageFilterAsMap(Pageable pageable, AbstractCondition condition) {
-        return this.hasAccess()
-                .flatMap(accessInfo -> this.dao.readPageFilterAsMap(
-                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
-    }
-
-    public Mono<Page<Map<String, Object>>> readPage(Query query) {
-
-        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
-
-        if (Boolean.FALSE.equals(query.getEager())) return this.readPageFilterAsMap(pageable, query.getCondition());
-
-        return this.readPageFilterAsMap(pageable, query.getCondition());
     }
 
     @Override
