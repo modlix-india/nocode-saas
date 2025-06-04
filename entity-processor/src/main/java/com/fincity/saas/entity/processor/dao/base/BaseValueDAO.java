@@ -89,7 +89,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .collectList();
     }
 
-    public Mono<List<D>> getAllProductTemplateIdAndNames(
+    public Mono<List<D>> getAllProductTemplates(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return Flux.from(this.dslContext
                         .selectFrom(this.table)
