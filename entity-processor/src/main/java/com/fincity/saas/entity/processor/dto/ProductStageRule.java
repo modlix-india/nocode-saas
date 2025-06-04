@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -18,8 +19,7 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class ProductStageRule extends Rule<ProductStageRule> {
 
-    public static final Map<String, String> relationsMap =
-            Map.of(Fields.productId, EntitySeries.PRODUCT.getTableName());
+    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.productId, EntitySeries.PRODUCT.getTable());
 
     @Serial
     private static final long serialVersionUID = 3634716140733876197L;

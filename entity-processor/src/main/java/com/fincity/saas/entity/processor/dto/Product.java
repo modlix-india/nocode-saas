@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -19,8 +20,8 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class Product extends BaseProcessorDto<Product> {
 
-    public static final Map<String, String> relationsMap =
-            Map.of(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTableName());
+    public static final Map<String, Table<?>> relationsMap =
+            Map.of(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
 
     @Serial
     private static final long serialVersionUID = 8028699089699178352L;

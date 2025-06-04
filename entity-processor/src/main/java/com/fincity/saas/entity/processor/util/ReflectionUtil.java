@@ -9,12 +9,20 @@ public class ReflectionUtil {
     private ReflectionUtil() {}
 
     public static <T> T getStaticFieldValue(Class<?> clazz, String fieldName, Class<T> fieldType) {
-        try {
-            Field field = clazz.getDeclaredField(fieldName);
-            return fieldType.cast(field.get(null));
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new GenericException(
-                    HttpStatus.BAD_REQUEST, "Unable to get the value of the static field: " + fieldName);
+        Class<?> currentClass = clazz;
+        while (currentClass != null) {
+            try {
+                Field field = currentClass.getDeclaredField(fieldName);
+                return fieldType.cast(field.get(null));
+            } catch (NoSuchFieldException e) {
+                currentClass = currentClass.getSuperclass();
+            } catch (IllegalAccessException e) {
+                throw new GenericException(
+                        HttpStatus.BAD_REQUEST, "Unable to access the value of the static field: " + fieldName);
+            }
         }
+        throw new GenericException(
+                HttpStatus.BAD_REQUEST, "Field not found in class hierarchy: " + fieldName);
     }
+
 }

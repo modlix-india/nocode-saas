@@ -1,6 +1,10 @@
 package com.fincity.saas.entity.processor.controller.base;
 
+import java.util.Map;
+
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
@@ -8,11 +12,17 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -34,6 +44,9 @@ public abstract class BaseController<
 
     public static final String REQ_PATH = "/req";
     public static final String REQ_PATH_ID = REQ_PATH + "/{" + PATH_VARIABLE_ID + "}";
+
+    public static final String EAGER = "/eager";
+    public static final String EAGER_PATH_QUERY = EAGER + "/query";
 
     @GetMapping(PATH_CODE)
     public Mono<ResponseEntity<D>> getByCode(@PathVariable(PATH_VARIABLE_CODE) final String code) {
@@ -84,5 +97,22 @@ public abstract class BaseController<
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
     public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
         return this.service.deleteIdentity(identity);
+    }
+
+    @GetMapping(EAGER)
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
+        return this.service
+                .readPageFilterEager(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(EAGER_PATH_QUERY)
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(@RequestBody Query query) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service.readPageFilterEager(pageable, query.getCondition()).map(ResponseEntity::ok);
     }
 }

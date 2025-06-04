@@ -1,15 +1,20 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
+import java.util.Map;
 import java.util.stream.Stream;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -18,6 +23,9 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseDto<T> implements IEntitySeries {
+
+    public static final Map<String, Table<?>> relationsMap =
+            Map.of(ProductTemplateRule.Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
 
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;

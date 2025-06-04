@@ -13,6 +13,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -22,15 +23,15 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class Ticket extends BaseProcessorDto<Ticket> {
 
-    public static final Map<String, String> relationsMap = Map.of(
+    public static final Map<String, Table<?>> relationsMap = Map.of(
             Fields.ownerId,
-            EntitySeries.OWNER.getTableName(),
+            EntitySeries.OWNER.getTable(),
             Fields.productId,
-            EntitySeries.PRODUCT.getTableName(),
+            EntitySeries.PRODUCT.getTable(),
             Fields.stage,
-            EntitySeries.STAGE.getTableName(),
+            EntitySeries.STAGE.getTable(),
             Fields.status,
-            EntitySeries.STAGE.getTableName());
+            EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 1639822311147907381L;
