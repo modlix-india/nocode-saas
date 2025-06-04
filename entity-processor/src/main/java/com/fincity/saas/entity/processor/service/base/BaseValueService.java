@@ -74,7 +74,6 @@ public abstract class BaseValueService<
                 (baseEvicted, mapEvicted) -> super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
-                                this.getValueIdValueKey(),
                                 entity.getAppCode(),
                                 entity.getClientCode(),
                                 entity.getPlatform(),
@@ -381,8 +380,8 @@ public abstract class BaseValueService<
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao
-                        .getAllProductTemplateIdAndNames(appCode, clientCode, platform, productTemplateId)
+                        .getAllProductTemplates(appCode, clientCode, platform, productTemplateId)
                         .map(BaseDto::toIdMap),
-                super.getCacheKey(this.getValueIdValueKey(), appCode, clientCode, productTemplateId));
+                super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
 }
