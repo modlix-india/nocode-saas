@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -18,6 +19,8 @@ import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.UserRegistrationRequest;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -202,8 +205,12 @@ public class UserInviteService extends AbstractJOOQDataService<SecurityUserInvit
 
                             return this.userDao.addProfileToUser(createdUser.getId(), userInvite.getProfileId()).map(e -> createdUser);
                         }
-                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.createWithInvtationInternal"))
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.createWithInvitationInternal"))
                 .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "User"));
+    }
+
+    public Mono<Page<UserInvite>> getAllInvitedUsers(Pageable pageable, AbstractCondition condition) {
+        return this.readPageFilter(pageable, condition);
     }
 
 }
