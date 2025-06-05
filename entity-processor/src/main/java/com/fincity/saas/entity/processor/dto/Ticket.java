@@ -7,11 +7,13 @@ import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -20,6 +22,16 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public class Ticket extends BaseProcessorDto<Ticket> {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(
+            Fields.ownerId,
+            EntitySeries.OWNER.getTable(),
+            Fields.productId,
+            EntitySeries.PRODUCT.getTable(),
+            Fields.stage,
+            EntitySeries.STAGE.getTable(),
+            Fields.status,
+            EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 1639822311147907381L;

@@ -22,6 +22,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
@@ -106,6 +107,13 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.hasAccess()
                 .flatMap(accessInfo -> super.readPageFilter(
                         pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(accessInfo -> this.dao.readPageFilterEager(
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), eagerFields));
     }
 
     @Override
