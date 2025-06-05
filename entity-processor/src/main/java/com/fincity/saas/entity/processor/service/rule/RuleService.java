@@ -6,7 +6,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
@@ -31,7 +30,7 @@ import reactor.util.function.Tuple3;
 
 @Service
 public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
-        extends BaseService<R, D, O> implements IEntitySeries {
+        extends BaseService<R, D, O> {
 
     private static final String DEFAULT_KEY = "default";
 
