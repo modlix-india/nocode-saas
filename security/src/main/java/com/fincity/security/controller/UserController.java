@@ -2,12 +2,15 @@ package com.fincity.security.controller;
 
 import java.util.List;
 
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.UserRegistrationRequest;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -157,6 +160,13 @@ public class UserController
     @DeleteMapping("/invite/{code}")
     public Mono<ResponseEntity<Boolean>> rejectInvite(@PathVariable String code) {
         return this.inviteService.deleteUserInvitation(code)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/invites")
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(Pageable pageable,
+                                                                     @RequestParam(required = false) AbstractCondition condition) {
+        return this.inviteService.getAllInvitedUsers(pageable, condition)
                 .map(ResponseEntity::ok);
     }
 
