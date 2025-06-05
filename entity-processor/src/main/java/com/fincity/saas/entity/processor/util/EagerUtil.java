@@ -2,69 +2,59 @@ package com.fincity.saas.entity.processor.util;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jooq.Table;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 public class EagerUtil {
 
+    private static final Map<String, String> fieldNameCache = new ConcurrentHashMap<>();
+    private static final Map<String, String> jooqFieldCache = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Map<String, Tuple2<Table<?>, String>>> relationMapCache =
+            new ConcurrentHashMap<>();
+
     private EagerUtil() {}
 
-    public static Map<String, Table<?>> getRelationMap(Class<?> clazz) {
-        return (Map<String, Table<?>>) ReflectionUtil.getStaticFieldValue(clazz, "relationsMap", Map.class);
+    public static Map<String, Tuple2<Table<?>, String>> getRelationMap(Class<?> clazz) {
+        return relationMapCache.computeIfAbsent(clazz, key -> {
+            Map<String, Table<?>> relations =
+                    (Map<String, Table<?>>) ReflectionUtil.getStaticFieldValue(key, "relationsMap", Map.class);
+            Map<String, Tuple2<Table<?>, String>> result = new LinkedHashMap<>();
+
+            if (relations != null)
+                relations.forEach(
+                        (relationKey, table) -> result.put(relationKey, Tuples.of(table, toJooqField(relationKey))));
+
+            return result;
+        });
     }
 
-    public static String toJooqField(String fieldName) {
-
-        if (fieldName == null || fieldName.isEmpty())
-            throw new IllegalArgumentException("Field name cannot be null or empty.");
-
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (char c : fieldName.toCharArray()) {
-            if (Character.isUpperCase(c)) stringBuilder.append("_");
-            stringBuilder.append(Character.toUpperCase(c));
-        }
-        return stringBuilder.toString();
+    private static String toJooqField(String fieldName) {
+        return jooqFieldCache.computeIfAbsent(
+                fieldName, key -> key.replaceAll("([A-Z])", "_$1").toUpperCase());
     }
 
     public static String fromJooqField(String jooqFieldName) {
         if (jooqFieldName == null || jooqFieldName.isEmpty())
             throw new IllegalArgumentException("Field name cannot be null or empty.");
 
-        StringBuilder stringBuilder = new StringBuilder();
-        boolean toUpperCaseNext = false;
+        return fieldNameCache.computeIfAbsent(jooqFieldName, key -> {
+            StringBuilder stringBuilder = new StringBuilder();
+            boolean toUpperCaseNext = false;
 
-        for (char c : jooqFieldName.toCharArray()) {
-            if (c == '_') {
-                toUpperCaseNext = true;
-            } else if (toUpperCaseNext) {
-                stringBuilder.append(Character.toUpperCase(c));
-                toUpperCaseNext = false;
-            } else {
-                stringBuilder.append(Character.toLowerCase(c));
-            }
-        }
-
-        return stringBuilder.toString();
-    }
-
-    public static Map<String, Object> convertMapKeysToCamelCase(Map<String, Object> input) {
-        Map<String, Object> output = new LinkedHashMap<>();
-
-        for (Map.Entry<String, Object> entry : input.entrySet()) {
-            String key = entry.getKey();
-
-            String[] parts = key.split("\\.");
-
-            StringBuilder transformedKey = new StringBuilder();
-            for (int i = 0; i < parts.length; i++) {
-                String camel = EagerUtil.fromJooqField(parts[i]);
-                if (i > 0) transformedKey.append(".");
-                transformedKey.append(camel);
+            for (char c : key.toCharArray()) {
+                if (c == '_') {
+                    toUpperCaseNext = true;
+                } else if (toUpperCaseNext) {
+                    stringBuilder.append(Character.toUpperCase(c));
+                    toUpperCaseNext = false;
+                } else {
+                    stringBuilder.append(Character.toLowerCase(c));
+                }
             }
 
-            output.put(transformedKey.toString(), entry.getValue());
-        }
-
-        return output;
+            return stringBuilder.toString();
+        });
     }
 }

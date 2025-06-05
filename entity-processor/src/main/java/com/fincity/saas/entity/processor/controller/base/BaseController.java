@@ -101,9 +101,9 @@ public abstract class BaseController<
     @GetMapping(EAGER)
     public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
             Pageable pageable, ServerHttpRequest request) {
-        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
         return this.service
-                .readPageFilterEager(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
+                .readPageFilterEager(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()), null)
                 .map(ResponseEntity::ok);
     }
 
@@ -112,6 +112,8 @@ public abstract class BaseController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-        return this.service.readPageFilterEager(pageable, query.getCondition()).map(ResponseEntity::ok);
+        return this.service
+                .readPageFilterEager(pageable, query.getCondition(), query.getEagerFields())
+                .map(ResponseEntity::ok);
     }
 }

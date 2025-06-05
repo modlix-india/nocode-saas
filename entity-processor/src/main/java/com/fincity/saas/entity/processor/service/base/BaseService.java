@@ -109,10 +109,11 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
     }
 
-    public Mono<Page<Map<String, Object>>> readPageFilterEager(Pageable pageable, AbstractCondition condition) {
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
         return this.hasAccess()
                 .flatMap(accessInfo -> this.dao.readPageFilterEager(
-                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), eagerFields));
     }
 
     @Override
