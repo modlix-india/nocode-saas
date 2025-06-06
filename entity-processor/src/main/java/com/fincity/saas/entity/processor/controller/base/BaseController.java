@@ -2,12 +2,16 @@ package com.fincity.saas.entity.processor.controller.base;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.util.EagerUtil;
+
+import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -26,6 +30,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 public abstract class BaseController<
                 R extends UpdatableRecord<R>,
@@ -46,18 +51,47 @@ public abstract class BaseController<
 
     public static final String EAGER = "/eager";
     public static final String EAGER_PATH_QUERY = EAGER + "/query";
+    public static final String PATH_CODE_EAGER = "/code/{" + PATH_VARIABLE_CODE + "}" + EAGER;
+
+    public static final String PATH_ID_EAGER = PATH_ID + EAGER;
 
     @GetMapping(PATH_CODE)
-    public Mono<ResponseEntity<D>> getByCode(@PathVariable(PATH_VARIABLE_CODE) final String code) {
+    public Mono<ResponseEntity<D>> read(@PathVariable(PATH_VARIABLE_CODE) final String code) {
         return this.service
-                .readByCode(code)
+                .read(code)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @GetMapping(PATH_CODE_EAGER)
+    public Mono<ResponseEntity<Map<String, Object>>> readEager(
+            @PathVariable(PATH_VARIABLE_CODE) final String code, ServerHttpRequest request) {
+
+        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
+
+        return this.service
+                .readEager(code, eagerParams)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @GetMapping(PATH_ID_EAGER)
+    public Mono<ResponseEntity<Map<String, Object>>> readEager(
+            @PathVariable(PATH_VARIABLE_ID) final ULong id, ServerHttpRequest request) {
+
+        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
+
+        return this.service
+                .readEager(id, eagerParams)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @GetMapping(PATH_BASE_ID)
-    public Mono<ResponseEntity<BaseResponse>> getBaseResponseById(@PathVariable(PATH_VARIABLE_ID) final ULong id) {
+    public Mono<ResponseEntity<BaseResponse>> getBaseResponse(@PathVariable(PATH_VARIABLE_ID) final ULong id) {
         return this.service
                 .getBaseResponse(id)
                 .map(ResponseEntity::ok)
@@ -66,8 +100,7 @@ public abstract class BaseController<
     }
 
     @GetMapping(PATH_BASE_CODE)
-    public Mono<ResponseEntity<BaseResponse>> getBaseResponseByCode(
-            @PathVariable(PATH_VARIABLE_CODE) final String code) {
+    public Mono<ResponseEntity<BaseResponse>> getBaseResponse(@PathVariable(PATH_VARIABLE_CODE) final String code) {
         return this.service
                 .getBaseResponse(code)
                 .map(ResponseEntity::ok)
@@ -83,18 +116,18 @@ public abstract class BaseController<
 
     @DeleteMapping(PATH_CODE)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    public Mono<Integer> delete(@PathVariable(PATH_VARIABLE_CODE) final String code) {
+    public Mono<Integer> deleteByCode(@PathVariable(PATH_VARIABLE_CODE) final String code) {
         return this.service.deleteByCode(code);
     }
 
     @GetMapping(REQ_PATH_ID)
-    public Mono<ResponseEntity<D>> getFromRequest(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+    public Mono<ResponseEntity<D>> readIdentity(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
         return this.service.readIdentity(identity).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    public Mono<Integer> deleteFromRequest(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+    public Mono<Integer> deleteIdentity(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
         return this.service.deleteIdentity(identity);
     }
 
@@ -102,8 +135,10 @@ public abstract class BaseController<
     public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
+
+        Tuple2<AbstractCondition, List<String>> eagerParams = EagerUtil.getEagerConditions(request.getQueryParams());
         return this.service
-                .readPageFilterEager(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()), null)
+                .readPageFilterEager(pageable, eagerParams.getT1(), eagerParams.getT2())
                 .map(ResponseEntity::ok);
     }
 
