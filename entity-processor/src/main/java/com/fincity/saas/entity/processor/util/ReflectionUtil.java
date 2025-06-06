@@ -23,4 +23,19 @@ public class ReflectionUtil {
         }
         throw new GenericException(HttpStatus.BAD_REQUEST, "Field not found in class hierarchy: " + fieldName);
     }
+
+    public static <T> T getStaticFieldValueNoError(Class<?> clazz, String fieldName, Class<T> fieldType) {
+        Class<?> currentClass = clazz;
+        while (currentClass != null) {
+            try {
+                Field field = currentClass.getDeclaredField(fieldName);
+                return fieldType.cast(field.get(null));
+            } catch (NoSuchFieldException e) {
+                currentClass = currentClass.getSuperclass();
+            } catch (IllegalAccessException e) {
+                return null;
+            }
+        }
+        return null;
+    }
 }

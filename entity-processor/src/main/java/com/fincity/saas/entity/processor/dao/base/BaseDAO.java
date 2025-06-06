@@ -8,9 +8,8 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,17 +63,68 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
     }
 
+    private <T, V> Mono<T> objectNotFoundError(V value) {
+        return messageResourceService
+                .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), value)
+                .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
+    }
+
     public Mono<D> readByIdAndAppCodeAndClientCode(ULong id, String appCode, String clientCode) {
+        return this.readSingleRecordByIdentity(idField, id, appCode, clientCode);
+    }
+
+    public Mono<D> readByCodeAndAppCodeAndClientCode(String code, String appCode, String clientCode) {
+        return this.readSingleRecordByIdentity(codeField, code, appCode, clientCode);
+    }
+
+    private <V> Mono<D> readSingleRecordByIdentity(
+            Field<V> identityField, V identity, String appCode, String clientCode) {
         return this.getSelectJointStep()
                 .map(Tuple2::getT1)
-                .flatMap(e -> Mono.from(
-                        e.where(idField.eq(id).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode)))))
-                .switchIfEmpty(Mono.defer(() -> messageResourceService
-                        .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
-                        .map(msg -> {
-                            throw new GenericException(HttpStatus.NOT_FOUND, msg);
-                        })))
+                .flatMap(select -> Mono.from(select.where(
+                        identityField.eq(identity).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode)))))
+                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)))
+                .map(rec -> rec.into(this.pojoClass));
+    }
+
+    public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
+            ULong id, String appCode, String clientCode, List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, eagerFields);
+    }
+
+    public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
+            String code, String appCode, String clientCode, List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(codeField, code, appCode, clientCode, eagerFields);
+    }
+
+    private <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
+            Field<V> identityField, V identity, String appCode, String clientCode, List<String> eagerFields) {
+
+        return this.getSelectJointStepEager(eagerFields)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+
+                    return Mono.from(selectJoinStepTuple
+                                    .getT1()
+                                    .where(identityField
+                                            .eq(identity)
+                                            .and(appCodeField.eq(appCode))
+                                            .and(clientCodeField.eq(clientCode))))
+                            .map(rec -> processRelatedData(rec.intoMap(), relations));
+                })
+                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
+    }
+
+    public Mono<D> readInternal(ULong id) {
+        return Mono.from(this.dslContext.selectFrom(this.table).where(this.idField.eq(id)))
                 .map(e -> e.into(this.pojoClass));
+    }
+
+    public Mono<D> readInternal(String code) {
+        return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
+                .map(result -> result.into(this.pojoClass));
     }
 
     @SuppressWarnings("unchecked")
@@ -89,7 +139,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                         .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
                         .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                return listAsMap(pageable, filteredQueries, relations);
+                return this.listAsMap(pageable, filteredQueries, relations);
             });
         });
     }
@@ -143,7 +193,9 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
         Set<String> eagerFieldSet = eagerFields == null || eagerFields.isEmpty()
                 ? null
-                : eagerFields.stream().map(super::convertToJOOQFieldName).collect(Collectors.toSet());
+                : eagerFields.stream()
+                        .map(super::convertToJOOQFieldName)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
 
         for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
             Table<?> relationTable = entry.getValue().getT1();
@@ -154,6 +206,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                 fields.addAll(aliasedFields.values());
             } else {
                 eagerFieldSet.stream()
+                        .map(eagerField -> tableAlias + "." + eagerField)
                         .filter(aliasedFields::containsKey)
                         .map(aliasedFields::get)
                         .forEach(fields::add);
@@ -165,7 +218,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
     private Map<String, Field<?>> getAliasedFields(Table<?> table, String tableAlias) {
         return tableAliasedFieldsCache.computeIfAbsent(Tuples.of(table, tableAlias), tuple -> {
-            Map<String, Field<?>> map = new HashMap<>();
+            Map<String, Field<?>> map = new LinkedHashMap<>();
             Arrays.stream(tuple.getT1().fields()).forEach(field -> {
                 String fieldName = field.getName();
                 String aliasedFieldName = tuple.getT2() + "." + fieldName;
@@ -182,13 +235,12 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         Set<String> validAliases =
                 relations.values().stream().map(Tuple2::getT2).collect(Collectors.toSet());
 
-        Map<String, Map<String, Object>> relationGroups = HashMap.newHashMap(relations.size());
         Map<String, Object> convertedMap = LinkedHashMap.newLinkedHashMap(recordMap.size());
+        Map<String, Map<String, Object>> relationGroups = LinkedHashMap.newLinkedHashMap(relations.size());
 
-        Iterator<Map.Entry<String, Object>> iterator = recordMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, Object> entry = iterator.next();
+        for (Map.Entry<String, Object> entry : recordMap.entrySet()) {
             String key = entry.getKey();
+            Object value = entry.getValue();
 
             int dotIndex = key.indexOf('.');
             if (dotIndex > 0) {
@@ -197,15 +249,12 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                     String nestedField = EagerUtil.fromJooqField(key.substring(dotIndex + 1));
                     relationGroups
                             .computeIfAbsent(alias, k -> new LinkedHashMap<>())
-                            .put(nestedField, entry.getValue());
-
-                    iterator.remove();
+                            .put(nestedField, value);
                     continue;
                 }
             }
 
-            convertedMap.put(EagerUtil.fromJooqField(key), entry.getValue());
-            iterator.remove();
+            convertedMap.put(EagerUtil.fromJooqField(key), value);
         }
 
         relationGroups.entrySet().stream()
@@ -234,28 +283,13 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         SelectJoinStep<Record> baseQuery = selectJoinStepTuple.getT1();
         SelectLimitStep<Record> finalQuery = orderBy.isEmpty() ? baseQuery : baseQuery.orderBy(orderBy);
 
-        boolean hasRelations = relations != null && !relations.isEmpty();
-
         Mono<List<Map<String, Object>>> recordsList = Flux.from(
                         finalQuery.limit(pageable.getPageSize()).offset(pageable.getOffset()))
-                .map(rec -> hasRelations ? processRelatedData(rec.intoMap(), relations) : rec.intoMap())
+                .map(rec -> processRelatedData(rec.intoMap(), relations))
                 .collectList();
 
         return Mono.zip(recordsList, recordsCount)
                 .map(tuple -> PageableExecutionUtils.getPage(tuple.getT1(), pageable, tuple::getT2));
-    }
-
-    public Mono<D> readInternal(ULong id) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(this.idField.eq(id))
-                        .limit(1))
-                .map(e -> e.into(this.pojoClass));
-    }
-
-    public Mono<D> readByCode(String code) {
-        return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
-                .map(result -> result.into(this.pojoClass));
     }
 
     public Mono<Integer> deleteByCode(String code) {
