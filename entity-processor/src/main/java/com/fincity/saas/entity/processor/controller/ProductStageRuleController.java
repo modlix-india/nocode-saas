@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("api/entity/processor/products/rules")
+@RequestMapping("api/entity/processor/products/stages/rules")
 public class ProductStageRuleController
         extends RuleController<
                 EntityProcessorProductStageRulesRecord,

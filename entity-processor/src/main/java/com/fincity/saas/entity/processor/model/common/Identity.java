@@ -89,9 +89,9 @@ public class Identity implements Serializable {
 
     @Override
     public String toString() {
-        if (isNull()) return "Identity{null}";
-        if (isCode()) return "Identity{code='" + code + "'}";
-        if (isId()) return "Identity{id=" + id + "}";
+        if (isNull()) return "null";
+        if (isCode()) return code;
+        if (isId()) return id.toString();
         return "Identity{id=" + id + ", code='" + code + "'}";
     }
 

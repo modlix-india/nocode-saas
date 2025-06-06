@@ -48,6 +48,10 @@ public abstract class RuleController<
     @GetMapping(ORDER_PATH_ID)
     public Mono<ResponseEntity<Map<Integer, RuleResponse<D>>>> getRuleResponseWithOrder(
             @PathVariable(PATH_VARIABLE_ID) Identity entityId) {
-        return this.service.getRuleResponseWithOrder(entityId, null).map(ResponseEntity::ok);
+        return this.service
+                .getRuleResponseWithOrder(entityId, null)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 }
