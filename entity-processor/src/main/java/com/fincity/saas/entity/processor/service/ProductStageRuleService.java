@@ -59,11 +59,15 @@ public class ProductStageRuleService
     }
 
     @Override
+    protected String getEntityRefName() {
+        return productService.getEntityName();
+    }
+
+    @Override
     protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readIdentityInternal(entityId),
-                productStageRule -> productService.readById(productStageRule.getEntityId()),
-                (productStageRule, product) -> super.stageService.getAllStages(
+                () -> productService.readIdentityInternal(entityId),
+                product -> super.stageService.getAllStages(
                         appCode,
                         clientCode,
                         product.getProductTemplateId(),
@@ -73,10 +77,8 @@ public class ProductStageRuleService
     @Override
     protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readIdentityInternal(entityId),
-                productStageRule -> productService.readById(productStageRule.getEntityId()),
-                (productStageRule, product) ->
-                        super.stageService.getStage(appCode, clientCode, product.getProductTemplateId(), stageId));
+                () -> productService.readIdentityInternal(entityId),
+                product -> super.stageService.getStage(appCode, clientCode, product.getProductTemplateId(), stageId));
     }
 
     @Override

@@ -169,7 +169,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
             Table<?> aliasedTable = relatedTable.as(tableAlias);
 
-            Field<ULong> fieldInMainTable = this.table.field(super.convertToJOOQFieldName(relationKey), ULong.class);
+            Field<ULong> fieldInMainTable = this.table.field(EagerUtil.toJooqField(relationKey), ULong.class);
             Field<ULong> idFieldInRelatedTable = aliasedTable.field("ID", ULong.class);
 
             if (fieldInMainTable != null && idFieldInRelatedTable != null) {
@@ -193,9 +193,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
         Set<String> eagerFieldSet = eagerFields == null || eagerFields.isEmpty()
                 ? null
-                : eagerFields.stream()
-                        .map(super::convertToJOOQFieldName)
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
+                : eagerFields.stream().map(EagerUtil::toJooqField).collect(Collectors.toCollection(LinkedHashSet::new));
 
         for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
             Table<?> relationTable = entry.getValue().getT1();
@@ -243,7 +241,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
             Object value = entry.getValue();
 
             int dotIndex = key.indexOf('.');
-            if (dotIndex > 0) {
+            if (dotIndex > 0 && value != null) {
                 String alias = key.substring(0, dotIndex);
                 if (validAliases.contains(alias)) {
                     String nestedField = EagerUtil.fromJooqField(key.substring(dotIndex + 1));
@@ -254,7 +252,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                 }
             }
 
-            convertedMap.put(EagerUtil.fromJooqField(key), value);
+            if (value != null) convertedMap.put(EagerUtil.fromJooqField(key), value);
         }
 
         relationGroups.entrySet().stream()

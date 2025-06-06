@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.util;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.ConditionUtil;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jooq.Table;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -41,9 +39,9 @@ public class EagerUtil {
         });
     }
 
-    private static String toJooqField(String fieldName) {
+    public static String toJooqField(String fieldName) {
         return jooqFieldCache.computeIfAbsent(
-                fieldName, key -> key.replaceAll("([A-Z])", "_$1").toUpperCase());
+                fieldName, key -> key.replaceAll("[A-Z0-9]", "_$0").toUpperCase());
     }
 
     public static String fromJooqField(String jooqFieldName) {
@@ -51,21 +49,20 @@ public class EagerUtil {
             throw new IllegalArgumentException("Field name cannot be null or empty.");
 
         return fieldNameCache.computeIfAbsent(jooqFieldName, key -> {
-            StringBuilder stringBuilder = new StringBuilder();
-            boolean toUpperCaseNext = false;
+            StringBuilder sb = new StringBuilder(key.length());
+            boolean upperNext = false;
 
-            for (char c : key.toCharArray()) {
+            for (int i = 0; i < key.length(); i++) {
+                char c = key.charAt(i);
                 if (c == '_') {
-                    toUpperCaseNext = true;
-                } else if (toUpperCaseNext) {
-                    stringBuilder.append(Character.toUpperCase(c));
-                    toUpperCaseNext = false;
+                    upperNext = true;
                 } else {
-                    stringBuilder.append(Character.toLowerCase(c));
+                    sb.append(upperNext ? Character.toUpperCase(c) : Character.toLowerCase(c));
+                    upperNext = false;
                 }
             }
 
-            return stringBuilder.toString();
+            return sb.toString();
         });
     }
 

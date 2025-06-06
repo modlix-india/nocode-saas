@@ -19,7 +19,8 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class ProductStageRule extends Rule<ProductStageRule> {
 
-    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.productId, EntitySeries.PRODUCT.getTable());
+    public static final Map<String, Table<?>> relationsMap = Map.of(
+            Fields.productId, EntitySeries.PRODUCT.getTable(), Rule.Fields.stageId, EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 3634716140733876197L;
