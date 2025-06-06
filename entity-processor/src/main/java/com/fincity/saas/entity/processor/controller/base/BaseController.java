@@ -3,14 +3,12 @@ package com.fincity.saas.entity.processor.controller.base;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.EagerUtil;
-
 import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;

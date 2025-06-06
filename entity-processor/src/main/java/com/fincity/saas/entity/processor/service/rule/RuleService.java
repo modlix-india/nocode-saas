@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -43,6 +44,8 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
 
     protected abstract Mono<Identity> getEntityId(Identity entityId);
+
+    protected abstract String getEntityRefName();
 
     protected abstract Mono<Set<ULong>> getStageIds(
             String appCode, String clientCode, Identity entityId, List<ULong> stageIds);
@@ -149,10 +152,13 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
     public Mono<Map<Integer, RuleResponse<D>>> getRuleResponseWithOrder(Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                hasAccess -> this.getEntityId(entityId),
-                (hasAccess, entity) -> this.getRuleResponseWithOrder(
-                        hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), entity, stageIds));
+                        super::hasAccess,
+                        hasAccess -> this.getEntityId(entityId),
+                        (hasAccess, entity) -> this.getRuleResponseWithOrder(
+                                hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), entity, stageIds))
+                .switchIfEmpty(super.msgService
+                        .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.getEntityRefName(), entityId)
+                        .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg))));
     }
 
     private Mono<Map<Integer, RuleResponse<D>>> getRuleResponseWithOrder(

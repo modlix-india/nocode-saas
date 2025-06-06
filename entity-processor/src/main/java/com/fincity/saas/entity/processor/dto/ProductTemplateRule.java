@@ -19,8 +19,11 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class ProductTemplateRule extends Rule<ProductTemplateRule> {
 
-    public static final Map<String, Table<?>> relationsMap =
-            Map.of(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
+    public static final Map<String, Table<?>> relationsMap = Map.of(
+            Fields.productTemplateId,
+            EntitySeries.PRODUCT_TEMPLATE.getTable(),
+            Rule.Fields.stageId,
+            EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 5282289027862256173L;
