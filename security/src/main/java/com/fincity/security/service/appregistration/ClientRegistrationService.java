@@ -470,9 +470,7 @@ public class ClientRegistrationService {
                                        String otp) {
 
         if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
-
-            if (ca.isAuthenticated())
-                return Mono.just(Boolean.TRUE);
+            return Mono.just(Boolean.TRUE);
 
         OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
                 .setPhoneNumber(phoneNumber).setPurpose(OtpPurpose.REGISTRATION).setOtp(otp);
