@@ -4,6 +4,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
+import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -44,18 +45,22 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
 
     public T of(RuleRequest ruleRequest) {
 
-        this.setName(ruleRequest.getName())
-                .setDescription(ruleRequest.getDescription())
+        RuleInfoRequest ruleInfoRequest = ruleRequest.getRule();
+
+        if (ruleInfoRequest == null) return (T) this;
+
+        this.setName(ruleInfoRequest.getName())
+                .setDescription(ruleInfoRequest.getDescription())
                 .setStageId(
-                        ruleRequest.getStageId() != null
-                                ? ruleRequest.getStageId().getULongId()
+                        ruleInfoRequest.getStageId() != null
+                                ? ruleInfoRequest.getStageId().getULongId()
                                 : null)
-                .setIsDefault(ruleRequest.isDefault())
-                .setBreakAtFirstMatch(ruleRequest.isBreakAtFirstMatch())
+                .setIsDefault(ruleInfoRequest.isDefault())
+                .setBreakAtFirstMatch(ruleInfoRequest.isBreakAtFirstMatch())
                 .setSimple(ruleRequest.isSimple())
                 .setComplex(ruleRequest.isComplex())
-                .setUserDistributionType(ruleRequest.getUserDistributionType())
-                .setUserDistribution(ruleRequest.getUserDistribution());
+                .setUserDistributionType(ruleInfoRequest.getUserDistributionType())
+                .setUserDistribution(ruleInfoRequest.getUserDistribution());
 
         return (T) this;
     }
