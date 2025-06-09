@@ -22,6 +22,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
@@ -101,11 +102,52 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
     }
 
+    public Mono<D> read(String code) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByCodeAndAppCodeAndClientCode(
+                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
+    }
+
+    public Mono<Map<String, Object>> readEager(ULong id, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByIdAndAppCodeAndClientCodeEager(
+                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
+    }
+
+    public Mono<Map<String, Object>> readEager(String code, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByCodeAndAppCodeAndClientCodeEager(
+                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
+    }
+
+    public Mono<D> readById(ULong id) {
+        return this.dao
+                .readInternal(id)
+                .flatMap(value -> value != null
+                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), id)
+                        : Mono.empty());
+    }
+
+    public Mono<D> readByCode(String code) {
+        return this.dao
+                .readInternal(code)
+                .flatMap(value -> value != null
+                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
+                        : Mono.empty());
+    }
+
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return this.hasAccess()
                 .flatMap(accessInfo -> super.readPageFilter(
                         pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(accessInfo -> this.dao.readPageFilterEager(
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), eagerFields));
     }
 
     @Override
@@ -138,22 +180,6 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
             existing.setActive(entity.isActive());
             return Mono.just(existing);
         });
-    }
-
-    public Mono<D> readById(ULong id) {
-        return this.dao
-                .readInternal(id)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), id)
-                        : Mono.empty());
-    }
-
-    public Mono<D> readByCode(String code) {
-        return this.dao
-                .readByCode(code)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
-                        : Mono.empty());
     }
 
     public Flux<D> readByCodes(List<String> codes) {

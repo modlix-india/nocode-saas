@@ -23,50 +23,47 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import java.util.Map;
 import lombok.Getter;
 import org.jooq.EnumType;
+import org.jooq.Table;
 
 @Getter
 public enum EntitySeries implements EnumType {
     XXX("XXX", "Unknown", 11, "xxx.", null),
-    TICKET("TICKET", "Ticket", 12, "Ticket.", EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.getName()),
-    OWNER("OWNER", "Owner", 13, "Owner.", EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS.getName()),
-    PRODUCT("PRODUCT", "Product", 14, "Product.", EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.getName()),
+    TICKET("TICKET", "Ticket", 12, "Ticket.", EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS),
+    OWNER("OWNER", "Owner", 13, "Owner.", EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS),
+    PRODUCT("PRODUCT", "Product", 14, "Product.", EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS),
     PRODUCT_TEMPLATE(
             "PRODUCT_TEMPLATE",
             "Product Template",
             15,
             "ProductTemplate.",
-            EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES.getName()),
-    STAGE("STAGE", "Stage", 16, "Stage.", EntityProcessorStages.ENTITY_PROCESSOR_STAGES.getName()),
+            EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES),
+    STAGE("STAGE", "Stage", 16, "Stage.", EntityProcessorStages.ENTITY_PROCESSOR_STAGES),
     SIMPLE_RULE(
-            "SIMPLE_RULE",
-            "Simple Rule",
-            18,
-            "SimpleRule.",
-            EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES.getName()),
+            "SIMPLE_RULE", "Simple Rule", 18, "SimpleRule.", EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES),
     COMPLEX_RULE(
             "COMPLEX_RULE",
             "Complex Rule",
             19,
             "ComplexRule.",
-            EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.getName()),
+            EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES),
     SIMPLE_COMPLEX_CONDITION_RELATION(
             "SIMPLE_COMPLEX_CONDITION_RELATION",
             "Simple Complex Condition Relation",
             20,
             "SimpleComplexConditionRelation.",
-            EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS.getName()),
+            EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS),
     PRODUCT_STAGE_RULE(
             "PRODUCT_STAGE_RULE",
             "Product Stage Rule",
             22,
             "ProductStageRule.",
-            EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.getName()),
+            EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES),
     PRODUCT_TEMPLATE_RULE(
             "PRODUCT_TEMPLATE_RULE",
             "Product Template Rule",
             23,
             "ProductTemplateRule.",
-            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES.getName());
+            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES);
 
     private static final Map<EntitySeries, String> LEADZUMP_TOKEN_PREFIX_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getTokenPrefix()),
@@ -80,18 +77,19 @@ public enum EntitySeries implements EnumType {
             Map.entry(SIMPLE_COMPLEX_CONDITION_RELATION, SIMPLE_COMPLEX_CONDITION_RELATION.getTokenPrefix()),
             Map.entry(PRODUCT_STAGE_RULE, "ProjectStageRule."),
             Map.entry(PRODUCT_TEMPLATE_RULE, "ProjectTemplateRule."));
+
     private final String literal;
     private final String displayName;
     private final int value;
     private final String tokenPrefix;
-    private final String tableName;
+    private final Table<?> table;
 
-    EntitySeries(String literal, String displayName, int value, String tokenPrefix, String tableName) {
+    EntitySeries(String literal, String displayName, int value, String tokenPrefix, Table<?> table) {
         this.literal = literal;
         this.displayName = displayName;
         this.value = value;
         this.tokenPrefix = tokenPrefix;
-        this.tableName = tableName;
+        this.table = table;
     }
 
     public static EntitySeries lookupLiteral(String literal) {

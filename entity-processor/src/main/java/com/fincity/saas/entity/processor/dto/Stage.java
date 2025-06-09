@@ -6,11 +6,13 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 
 @Data
 @Accessors(chain = true)
@@ -18,6 +20,14 @@ import lombok.experimental.FieldNameConstants;
 @ToString(callSuper = true)
 @FieldNameConstants
 public class Stage extends BaseValueDto<Stage> {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(
+            ProductTemplateRule.Fields.productTemplateId,
+            EntitySeries.PRODUCT_TEMPLATE.getTable(),
+            BaseValueDto.Fields.parentLevel0,
+            EntitySeries.STAGE.getTable(),
+            BaseValueDto.Fields.parentLevel1,
+            EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 6408080312498009507L;

@@ -52,6 +52,11 @@ public class ProductTemplateRuleService
     }
 
     @Override
+    protected String getEntityRefName() {
+        return productTemplateService.getEntityName();
+    }
+
+    @Override
     protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
                 () -> productTemplateService.readIdentityInternal(entityId),

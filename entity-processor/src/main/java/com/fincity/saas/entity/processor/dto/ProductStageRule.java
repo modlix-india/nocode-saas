@@ -3,11 +3,13 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -16,6 +18,9 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public class ProductStageRule extends Rule<ProductStageRule> {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(
+            Fields.productId, EntitySeries.PRODUCT.getTable(), Rule.Fields.stageId, EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 3634716140733876197L;
