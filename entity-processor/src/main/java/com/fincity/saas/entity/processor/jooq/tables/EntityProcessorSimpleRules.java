@@ -4,12 +4,17 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesMatchOperator;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations.EntityProcessorSimpleComplexRuleRelationsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
+import com.fincity.saas.entity.processor.model.common.ValueContainer;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -18,11 +23,15 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -132,6 +141,13 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
+     * Flag to tell if this rule has a complex parent or not.
+     */
+    public final TableField<EntityProcessorSimpleRulesRecord, Byte> HAS_PARENT = createField(DSL.name("HAS_PARENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell if this rule has a complex parent or not.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_simple_rules.FIELD</code>. Field
      * name for this Simple Rule.
      */
@@ -149,14 +165,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
      * for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, JSON> VALUE = createField(DSL.name("VALUE"), SQLDataType.JSON, this, "Value for this Simple Rule.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
-     */
-    public final TableField<EntityProcessorSimpleRulesRecord, JSON> TO_VALUE = createField(DSL.name("TO_VALUE"), SQLDataType.JSON, this, "To value for this Simple Rule.");
+    public final TableField<EntityProcessorSimpleRulesRecord, ValueContainer> VALUE = createField(DSL.name("VALUE"), SQLDataType.JSON, this, "Value for this Simple Rule.", new JSONtoClassConverter<JSON, ValueContainer>(JSON.class, ValueContainer.class));
 
     /**
      * The column
@@ -255,6 +264,39 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
         this(DSL.name("entity_processor_simple_rules"), null);
     }
 
+    public <O extends Record> EntityProcessorSimpleRules(Table<O> path, ForeignKey<O, EntityProcessorSimpleRulesRecord> childPath, InverseForeignKey<O, EntityProcessorSimpleRulesRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_SIMPLE_RULES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorSimpleRulesPath extends EntityProcessorSimpleRules implements Path<EntityProcessorSimpleRulesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorSimpleRulesPath(Table<O> path, ForeignKey<O, EntityProcessorSimpleRulesRecord> childPath, InverseForeignKey<O, EntityProcessorSimpleRulesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorSimpleRulesPath(Name alias, Table<EntityProcessorSimpleRulesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorSimpleRulesPath as(String alias) {
+            return new EntityProcessorSimpleRulesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorSimpleRulesPath as(Name alias) {
+            return new EntityProcessorSimpleRulesPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorSimpleRulesPath as(Table<?> alias) {
+            return new EntityProcessorSimpleRulesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -273,6 +315,52 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
     @Override
     public List<UniqueKey<EntityProcessorSimpleRulesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_SIMPLE_RULES_UK1_SIMPLE_RULES_CODE);
+    }
+
+    @Override
+    public List<ForeignKey<EntityProcessorSimpleRulesRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_SIMPLE_RULES_PRODUCT_TEMPLATE_RULE_ID, Keys.FK2_SIMPLE_RULES_PRODUCT_STAGE_RULE_ID);
+    }
+
+    private transient EntityProcessorProductTemplateRulesPath _entityProcessorProductTemplateRules;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_product_template_rules</code>
+     * table.
+     */
+    public EntityProcessorProductTemplateRulesPath entityProcessorProductTemplateRules() {
+        if (_entityProcessorProductTemplateRules == null)
+            _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, Keys.FK1_SIMPLE_RULES_PRODUCT_TEMPLATE_RULE_ID, null);
+
+        return _entityProcessorProductTemplateRules;
+    }
+
+    private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_product_stage_rules</code> table.
+     */
+    public EntityProcessorProductStageRulesPath entityProcessorProductStageRules() {
+        if (_entityProcessorProductStageRules == null)
+            _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, Keys.FK2_SIMPLE_RULES_PRODUCT_STAGE_RULE_ID, null);
+
+        return _entityProcessorProductStageRules;
+    }
+
+    private transient EntityProcessorSimpleComplexRuleRelationsPath _entityProcessorSimpleComplexRuleRelations;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_simple_complex_rule_relations</code>
+     * table
+     */
+    public EntityProcessorSimpleComplexRuleRelationsPath entityProcessorSimpleComplexRuleRelations() {
+        if (_entityProcessorSimpleComplexRuleRelations == null)
+            _entityProcessorSimpleComplexRuleRelations = new EntityProcessorSimpleComplexRuleRelationsPath(this, null, Keys.FK2_RELATIONS_SIMPLE_CONDITION_ID.getInverseKey());
+
+        return _entityProcessorSimpleComplexRuleRelations;
     }
 
     @Override

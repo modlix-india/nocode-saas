@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
+import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -10,8 +11,10 @@ import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 
@@ -26,7 +29,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ProductStageRuleService productStageRuleService;
 
     public TicketService(
-            OwnerService ownerService,
+            @Lazy OwnerService ownerService,
             ProductService productService,
             StageService stageService,
             ProductStageRuleService productStageRuleService) {
@@ -48,23 +51,43 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     @Override
     protected Mono<Ticket> checkEntity(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
-        return this.checkTicket(ticket, accessInfo).flatMap(uEntity -> this.setOwner(accessInfo, uEntity));
+        return this.checkTicket(ticket, accessInfo)
+                .flatMap(uEntity -> this.setOwner(accessInfo, uEntity))
+                .flatMap(owner -> this.updateTicketFromOwner(ticket, owner));
     }
 
     @Override
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
-
-        return FlatMapUtil.flatMapMono(() -> this.updateOwner(ticket), super::updatableEntity, (uEntity, existing) -> {
-            existing.setDialCode(ticket.getDialCode());
-            existing.setPhoneNumber(ticket.getPhoneNumber());
-            existing.setEmail(ticket.getEmail());
-            existing.setSource(ticket.getSource());
-            existing.setSubSource(ticket.getSubSource());
+        return super.updatableEntity(ticket).flatMap(existing -> {
             existing.setStage(ticket.getStage());
             existing.setStatus(ticket.getStatus());
 
             return Mono.just(existing);
         });
+    }
+
+    public Flux<Ticket> updateOwnerTickets(Owner owner) {
+        Flux<Ticket> ticketsFlux =
+                this.dao.getAllOwnerTickets(owner.getId()).flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
+
+        return this.dao.updateAll(ticketsFlux);
+    }
+
+    public Mono<ProcessorResponse> createOpenResponse(TicketRequest ticketRequest) {
+
+        Ticket ticket = Ticket.of(ticketRequest);
+
+        if (ticketRequest.getProductId() == null || ticketRequest.getProductId().isNull())
+            return super.hasPublicAccess()
+                    .flatMap(access -> setOwner(access.getT1(), ticket))
+                    .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()));
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasPublicAccess,
+                        hasAccess -> productService.updateIdentity(ticketRequest.getProductId()),
+                        (hasAccess, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                        (hasAccess, productIdentity, pTicket) -> super.createInternal(pTicket, hasAccess))
+                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
@@ -78,12 +101,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 (hasAccess, productIdentity, pTicket) -> super.createInternal(pTicket, hasAccess));
     }
 
-    public Mono<ProcessorResponse> createResponse(TicketRequest ticketRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.create(ticketRequest),
-                cTicket -> Mono.just(ProcessorResponse.ofCreated(cTicket.getCode(), this.getEntitySeries())));
-    }
-
     private Mono<Ticket> checkTicket(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
 
         if (ticket.getProductId() == null)
@@ -92,42 +109,55 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     productService.getEntityName());
 
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.productService.readById(ticket.getProductId()),
-                product -> this.setDefaultStage(ticket, product.getProductTemplateId()),
+                product -> this.setDefaultStage(
+                        ticket, accessInfo.getT1(), accessInfo.getT2(), product.getProductTemplateId()),
                 (product, sTicket) -> productStageRuleService.getUserAssignment(
                         accessInfo.getT1(),
                         accessInfo.getT2(),
                         product.getId(),
                         sTicket.getStage(),
                         this.getEntityTokenPrefix(accessInfo.getT1()),
+                        accessInfo.getT3(),
                         sTicket.toJson()),
                 (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
     }
 
-    private Mono<Ticket> setDefaultStage(Ticket ticket, ULong productTemplateId) {
+    private Mono<Ticket> setDefaultStage(Ticket ticket, String appCode, String clientCode, ULong productTemplateId) {
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> stageService.getFirstStage(ticket.getAppCode(), ticket.getClientCode(), productTemplateId),
-                stage -> stageService.getFirstStatus(
-                        ticket.getAppCode(), ticket.getClientCode(), productTemplateId, stage.getId()),
+                () -> stageService.getFirstStage(appCode, clientCode, productTemplateId),
+                stage -> stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
                 (stage, status) -> {
-                    ticket.setStatus(status.getId());
-                    ticket.setStatus(status.getId());
+                    ticket.setStage(stage.getId());
+                    if (status != null) ticket.setStatus(status.getId());
 
                     return Mono.just(ticket);
                 });
     }
 
-    private Mono<Ticket> setOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
+    private Mono<Owner> setOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
         return this.ownerService.getOrCreateTicketOwner(accessInfo, ticket);
     }
 
-    private Mono<Ticket> updateOwner(Ticket ticket) {
-        return this.ownerService.getOrCreateTicketPhoneOwner(ticket.getAppCode(), ticket.getClientCode(), ticket);
+    private Mono<Ticket> updateTicketFromOwner(Ticket ticket, Owner owner) {
+        ticket.setOwnerId(owner.getId());
+
+        if (owner.getDialCode() != null && owner.getPhoneNumber() != null) {
+            ticket.setDialCode(owner.getDialCode());
+            ticket.setPhoneNumber(owner.getPhoneNumber());
+        }
+
+        if (owner.getEmail() != null) ticket.setEmail(owner.getEmail());
+
+        return Mono.just(ticket);
     }
 
     private Mono<Ticket> setTicketAssignment(Ticket ticket, ULong userId) {
-        ticket.setAssignedUserId(userId);
+        // Only set assignedUserId if userId is not null and not 0
+        if (userId != null && !userId.equals(ULong.valueOf(0))) {
+            ticket.setAssignedUserId(userId);
+        }
         return Mono.just(ticket);
     }
 }

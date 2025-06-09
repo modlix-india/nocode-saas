@@ -138,30 +138,11 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_complex_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Complex Rule.
-     */
-    public EntityProcessorComplexRulesRecord setAddedByUserId(ULong value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_complex_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Complex Rule.
-     */
-    public ULong getAddedByUserId() {
-        return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
      * <code>entity_processor.entity_processor_complex_rules.VERSION</code>.
      * Version of this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setVersion(Integer value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -171,7 +152,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Version of this Complex Rule.
      */
     public Integer getVersion() {
-        return (Integer) get(7);
+        return (Integer) get(6);
     }
 
     /**
@@ -180,7 +161,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Product Template Rule ID related to this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setProductTemplateRuleId(ULong value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -190,7 +171,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Product Template Rule ID related to this Complex Rule.
      */
     public ULong getProductTemplateRuleId() {
-        return (ULong) get(8);
+        return (ULong) get(7);
     }
 
     /**
@@ -199,7 +180,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Product Stage Rule ID related to this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setProductStageRuleId(ULong value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -209,7 +190,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Product Stage Rule ID related to this Complex Rule.
      */
     public ULong getProductStageRuleId() {
-        return (ULong) get(9);
+        return (ULong) get(8);
     }
 
     /**
@@ -218,7 +199,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * to check if this Complex Rule is negative.
      */
     public EntityProcessorComplexRulesRecord setNegate(Byte value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -228,7 +209,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * to check if this Complex Rule is negative.
      */
     public Byte getNegate() {
-        return (Byte) get(10);
+        return (Byte) get(9);
     }
 
     /**
@@ -237,7 +218,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Parent Rule ID for this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setParentConditionId(ULong value) {
-        set(11, value);
+        set(10, value);
         return this;
     }
 
@@ -247,7 +228,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Parent Rule ID for this Complex Rule.
      */
     public ULong getParentConditionId() {
-        return (ULong) get(11);
+        return (ULong) get(10);
     }
 
     /**
@@ -256,7 +237,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Logical operator for this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setLogicalOperator(LogicalOperator value) {
-        set(12, value);
+        set(11, value);
         return this;
     }
 
@@ -266,7 +247,45 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Logical operator for this Complex Rule.
      */
     public LogicalOperator getLogicalOperator() {
-        return (LogicalOperator) get(12);
+        return (LogicalOperator) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
+     * Flag to tell weather this rule has complex children.
+     */
+    public EntityProcessorComplexRulesRecord setHasComplexChild(Byte value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
+     * Flag to tell weather this rule has complex children.
+     */
+    public Byte getHasComplexChild() {
+        return (Byte) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
+     * Flag to tell weather this rule has simple children.
+     */
+    public EntityProcessorComplexRulesRecord setHasSimpleChild(Byte value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
+     * Flag to tell weather this rule has simple children.
+     */
+    public Byte getHasSimpleChild() {
+        return (Byte) get(13);
     }
 
     /**
@@ -275,7 +294,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Complex Rule.
      */
     public EntityProcessorComplexRulesRecord setTempActive(Byte value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -285,7 +304,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Complex Rule.
      */
     public Byte getTempActive() {
-        return (Byte) get(13);
+        return (Byte) get(14);
     }
 
     /**
@@ -294,7 +313,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Complex Rule is active or not.
      */
     public EntityProcessorComplexRulesRecord setIsActive(Byte value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -304,7 +323,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Complex Rule is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(14);
+        return (Byte) get(15);
     }
 
     /**
@@ -313,7 +332,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public EntityProcessorComplexRulesRecord setCreatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -323,7 +342,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -332,7 +351,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public EntityProcessorComplexRulesRecord setCreatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -342,7 +361,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -351,7 +370,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public EntityProcessorComplexRulesRecord setUpdatedBy(ULong value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -361,7 +380,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(18);
     }
 
     /**
@@ -370,7 +389,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public EntityProcessorComplexRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -380,7 +399,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -406,7 +425,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorComplexRulesRecord
      */
-    public EntityProcessorComplexRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, ULong parentConditionId, LogicalOperator logicalOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorComplexRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, ULong parentConditionId, LogicalOperator logicalOperator, Byte hasComplexChild, Byte hasSimpleChild, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES);
 
         setId(id);
@@ -415,13 +434,14 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setVersion(version);
         setProductTemplateRuleId(productTemplateRuleId);
         setProductStageRuleId(productStageRuleId);
         setNegate(negate);
         setParentConditionId(parentConditionId);
         setLogicalOperator(logicalOperator);
+        setHasComplexChild(hasComplexChild);
+        setHasSimpleChild(hasSimpleChild);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

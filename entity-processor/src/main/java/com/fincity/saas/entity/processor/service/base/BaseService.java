@@ -4,6 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -16,12 +20,16 @@ import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -88,15 +96,28 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     @Override
-    protected Mono<D> updatableEntity(D entity) {
+    public Mono<D> read(ULong id) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByIdAndAppCodeAndClientCode(
+                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
+    }
 
-        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
-            existing.setName(entity.getName());
-            existing.setDescription(entity.getDescription());
-            existing.setTempActive(entity.isTempActive());
-            existing.setActive(entity.isActive());
-            return Mono.just(existing);
-        });
+    public Mono<D> read(String code) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByCodeAndAppCodeAndClientCode(
+                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
+    }
+
+    public Mono<Map<String, Object>> readEager(ULong id, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByIdAndAppCodeAndClientCodeEager(
+                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
+    }
+
+    public Mono<Map<String, Object>> readEager(String code, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(hasAccess -> this.dao.readByCodeAndAppCodeAndClientCodeEager(
+                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
     }
 
     public Mono<D> readById(ULong id) {
@@ -109,10 +130,56 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
 
     public Mono<D> readByCode(String code) {
         return this.dao
-                .readByCode(code)
+                .readInternal(code)
                 .flatMap(value -> value != null
                         ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
                         : Mono.empty());
+    }
+
+    @Override
+    public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return this.hasAccess()
+                .flatMap(accessInfo -> super.readPageFilter(
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition)));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(accessInfo -> this.dao.readPageFilterEager(
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), eagerFields));
+    }
+
+    @Override
+    public Flux<D> readAllFilter(AbstractCondition condition) {
+        return this.hasAccess()
+                .flatMapMany(hasAccess ->
+                        super.readAllFilter(addAppCodeAndClientCodeToCondition(hasAccess.getT1(), condition)));
+    }
+
+    private AbstractCondition addAppCodeAndClientCodeToCondition(
+            Tuple3<String, String, ULong> access, AbstractCondition condition) {
+        if (condition == null || condition.isEmpty())
+            return ComplexCondition.and(
+                    FilterCondition.make("appCode", access.getT1()).setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make("clientCode", access.getT2()).setOperator(FilterConditionOperator.EQUALS));
+
+        return ComplexCondition.and(
+                condition,
+                FilterCondition.make("appCode", access.getT1()).setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make("clientCode", access.getT2()).setOperator(FilterConditionOperator.EQUALS));
+    }
+
+    @Override
+    protected Mono<D> updatableEntity(D entity) {
+
+        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
+            existing.setName(entity.getName());
+            existing.setDescription(entity.getDescription());
+            existing.setTempActive(entity.isTempActive());
+            existing.setActive(entity.isActive());
+            return Mono.just(existing);
+        });
     }
 
     public Flux<D> readByCodes(List<String> codes) {
@@ -154,12 +221,21 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
                                         this.getEntityName(),
                                         identity.getCode()))
-                        : this.readById(ULongUtil.valueOf(identity.getId())))
+                        : this.readById(identity.getULongId()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.getEntityName(),
                         identity.getId()));
+    }
+
+    public Mono<D> readIdentityBasicInternal(Identity identity) {
+        if (identity == null || identity.isNull()) return Mono.empty();
+
+        return (identity.isCode()
+                        ? this.readByCode(identity.getCode()).switchIfEmpty(Mono.empty())
+                        : this.readById(ULongUtil.valueOf(identity.getId())))
+                .switchIfEmpty(Mono.empty());
     }
 
     public Mono<Identity> updateIdentity(Identity identity) {
@@ -232,11 +308,16 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         .map(evicted -> deleted));
     }
 
-    public Mono<Integer> deleteMultiple(List<D> entities) {
+    public Mono<Integer> deleteMultiple(Collection<D> entities) {
         return this.dao
                 .deleteMultiple(entities.stream().map(AbstractDTO::getId).toList())
                 .flatMap(
                         deleted -> this.evictCaches(Flux.fromIterable(entities)).map(evicted -> deleted));
+    }
+
+    public Mono<Integer> deleteMultiple(Flux<D> entities) {
+        return this.dao.deleteMultiple(entities.map(AbstractDTO::getId)).flatMap(deleted -> this.evictCaches(entities)
+                .map(evicted -> deleted));
     }
 
     public Mono<Tuple2<Tuple3<String, String, ULong>, Boolean>> hasAccess() {

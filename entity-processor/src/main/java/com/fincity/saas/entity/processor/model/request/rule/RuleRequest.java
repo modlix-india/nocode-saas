@@ -24,13 +24,13 @@ public class RuleRequest extends BaseRequest<RuleRequest> implements Serializabl
     @Serial
     private static final long serialVersionUID = 7191923870859289798L;
 
+    private Identity ruleId;
     private Identity stageId;
     private boolean isDefault = false;
     private boolean breakAtFirstMatch = false;
     private AbstractCondition condition;
     private DistributionType userDistributionType;
     private UserDistribution userDistribution;
-    private Identity entityId;
 
     @JsonIgnore
     public boolean isSimple() {

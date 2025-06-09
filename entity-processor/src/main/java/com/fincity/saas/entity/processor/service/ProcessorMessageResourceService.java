@@ -18,7 +18,6 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String LOGIN_REQUIRED = "login_required";
     public static final String INVALID_CHILD_FOR_PARENT = "invalid_child_for_parent";
     public static final String NAME_MISSING = "name_missing";
-    public static final String INVALID_NAME_FOR_ENTITY = "invalid_name_for_entity";
     public static final String DUPLICATE_NAME_FOR_ENTITY = "duplicate_name_for_entity";
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
     public static final String IDENTITY_MISSING = "identity_missing";
@@ -30,7 +29,11 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
     public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
     public static final String STAGE_MISSING = "stage_missing";
+    public static final String TEMPLATE_STAGE_MISSING = "template_stage_missing";
+    public static final String TEMPLATE_STAGE_INVALID = "template_stage_invalid";
+    public static final String STAGE_TYPE_MISSING = "stage_type_missing";
     public static final String DEFAULT_RULE_MISSING = "default_rule_missing";
+    public static final String NO_VALUES_FOUND = "no_values_found";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

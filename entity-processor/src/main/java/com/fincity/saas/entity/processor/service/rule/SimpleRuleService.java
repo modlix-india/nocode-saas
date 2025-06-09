@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 @Service
 public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRulesRecord, SimpleRule, SimpleRuleDAO>
@@ -48,7 +49,6 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
             existing.setField(entity.getField());
             existing.setComparisonOperator(entity.getComparisonOperator());
             existing.setValue(entity.getValue());
-            existing.setToValue(entity.getToValue());
             existing.setValueField(entity.isValueField());
             existing.setToValueField(entity.isToValueField());
             existing.setMatchOperator(entity.getMatchOperator());
@@ -57,26 +57,72 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     }
 
     @Override
-    public Mono<SimpleRule> createForCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {
-        SimpleRule simpleRule = SimpleRule.fromCondition(ruleId, entitySeries, condition);
-        return super.create(simpleRule);
+    public Mono<SimpleRule> createForCondition(
+            ULong entityId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            FilterCondition condition) {
+        return this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition);
+    }
+
+    public Mono<SimpleRule> createForCondition(
+            ULong entityId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            boolean hasParent,
+            FilterCondition condition) {
+        SimpleRule simpleRule =
+                SimpleRule.fromCondition(entityId, entitySeries, condition).setHasParent(hasParent);
+        return super.createInternal(simpleRule, access);
     }
 
     @Override
-    public Mono<AbstractCondition> getCondition(ULong ruleId) {
-        return this.read(ruleId).map(SimpleRule::toCondition);
+    public Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
+
+        if (hasParent) return Mono.empty();
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.getConditionInternal(entityId, entitySeries, hasParent),
+                this.getCacheKey(entityId, entitySeries));
+    }
+
+    private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
+        return this.dao.readByEntityId(entityId, entitySeries, hasParent).map(SimpleRule::toCondition);
+    }
+
+    public Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries, boolean hasParent) {
+        return this.dao
+                .readByEntityId(ruleId, entitySeries, hasParent)
+                .flatMap(simpleRule -> this.delete(simpleRule.getId()));
     }
 
     public Flux<AbstractCondition> getConditionByComplexRule(ULong complexRuleId) {
         return this.dao.readByComplexRuleId(complexRuleId).map(SimpleRule::toCondition);
     }
 
+    public Flux<SimpleRule> getSimpleRulesByComplexRuleId(ULong complexRuleId) {
+        return this.dao.readByComplexRuleId(complexRuleId);
+    }
+
+    public Mono<Integer> deleteByComplexRuleId(ULong complexRuleId) {
+        return super.deleteMultiple(this.getSimpleRulesByComplexRuleId(complexRuleId));
+    }
+
     public Mono<SimpleRule> createForConditionWithParent(
-            ULong ruleId, EntitySeries entitySeries, FilterCondition condition, ULong parentId, int order) {
-        return this.createForCondition(ruleId, entitySeries, condition).flatMap(cSimpleRule -> {
-            SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
-            return simpleComplexRuleRelationService.create(relation).then(Mono.empty());
-        });
+            ULong ruleId,
+            EntitySeries entitySeries,
+            Tuple3<String, String, ULong> access,
+            FilterCondition condition,
+            ULong parentId,
+            int order) {
+        return this.createForCondition(ruleId, entitySeries, access, Boolean.TRUE, condition)
+                .flatMap(cSimpleRule -> {
+                    SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
+                    return simpleComplexRuleRelationService
+                            .createInternal(relation, access)
+                            .thenReturn(cSimpleRule);
+                });
     }
 
     private SimpleComplexRuleRelation createRelation(ULong complexConditionId, ULong simpleConditionId, int order) {

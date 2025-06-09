@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,4 +16,6 @@ public class ProductRequest extends BaseRequest<ProductRequest> {
 
     @Serial
     private static final long serialVersionUID = 6940756756706631631L;
+
+    private Identity productTemplateId;
 }

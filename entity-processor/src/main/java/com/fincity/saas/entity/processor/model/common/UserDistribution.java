@@ -19,6 +19,7 @@ public class UserDistribution implements Serializable {
 
     private List<ULong> profileIds;
     private List<ULong> userIds;
+    private String appCode;
     private Integer percentage;
     private Integer maxLoad;
     private Integer weight;
@@ -34,6 +35,7 @@ public class UserDistribution implements Serializable {
         if (type == null) return false;
 
         return switch (type) {
+            case ROUND_ROBIN -> true;
             case PERCENTAGE -> percentage != null && percentage >= 0 && percentage <= 100;
             case WEIGHTED -> weight != null && weight >= 0;
             case LOAD_BALANCED -> maxLoad != null && maxLoad > 0;

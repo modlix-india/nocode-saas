@@ -30,7 +30,7 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
     private ULong stageId;
     private Integer order;
     private boolean isDefault = false;
-    private boolean breakAtFirstMatch = false;
+    private boolean breakAtFirstMatch = true;
     private boolean isSimple = true;
     private boolean isComplex = false;
 
@@ -42,11 +42,39 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
 
     public abstract T setEntityId(ULong entityId);
 
-    public abstract T of(RuleRequest ruleRequest);
+    public T of(RuleRequest ruleRequest) {
+
+        this.setName(ruleRequest.getName())
+                .setDescription(ruleRequest.getDescription())
+                .setStageId(
+                        ruleRequest.getStageId() != null
+                                ? ruleRequest.getStageId().getULongId()
+                                : null)
+                .setIsDefault(ruleRequest.isDefault())
+                .setBreakAtFirstMatch(ruleRequest.isBreakAtFirstMatch())
+                .setSimple(ruleRequest.isSimple())
+                .setComplex(ruleRequest.isComplex())
+                .setUserDistributionType(ruleRequest.getUserDistributionType())
+                .setUserDistribution(ruleRequest.getUserDistribution());
+
+        return (T) this;
+    }
 
     public T setIsDefault(boolean isDefault) {
         this.isDefault = isDefault;
         if (isDefault) this.stageId = null;
+        return (T) this;
+    }
+
+    public T setComplex(boolean isComplex) {
+        this.isComplex = isComplex;
+        if (isComplex) this.isSimple = false;
+        return (T) this;
+    }
+
+    public T setSimple(boolean isSimple) {
+        this.isSimple = isSimple;
+        if (isSimple) this.isComplex = false;
         return (T) this;
     }
 }

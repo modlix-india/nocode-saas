@@ -1,21 +1,28 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dto.*;
+import com.fincity.security.model.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +41,7 @@ import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -45,11 +53,6 @@ import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.model.AuthenticationIdentifierType;
-import com.fincity.security.model.AuthenticationPasswordType;
-import com.fincity.security.model.AuthenticationRequest;
-import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -949,6 +952,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .sorted().toList());
     }
 
+
     // Don't call this method other than from the client service register method
     public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                             User user, AuthenticationPasswordType passwordType) {
@@ -1189,5 +1193,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
         return this.profileService.assignedProfiles(userId, appId);
+    }
+
+    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
+        return this.appService.getAppByCode(appCode).flatMap(app -> this.getProfileUsers(app.getId(), profileIds));
+    }
+
+    public Mono<List<ULong>> getProfileUsers(ULong appId, List<ULong> profiles) {
+        return this.profileService.getUsersForProfiles(appId, profiles);
     }
 }
