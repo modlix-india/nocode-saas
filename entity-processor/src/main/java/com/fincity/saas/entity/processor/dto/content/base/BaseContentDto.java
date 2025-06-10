@@ -1,14 +1,18 @@
 package com.fincity.saas.entity.processor.dto.content.base;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
+
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -25,4 +29,6 @@ public class BaseContentDto<T extends BaseContentDto<T>> extends BaseDto<T> impl
 
     private String content;
     private String hasAttachment;
+    private ULong ownerId;
+    private ULong ticketId;
 }
