@@ -1,19 +1,25 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import java.io.Serial;
+import java.util.Map;
+
+import org.jooq.Table;
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
+
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -21,6 +27,8 @@ import org.springframework.data.annotation.Version;
 @ToString(callSuper = true)
 @FieldNameConstants
 public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEntitySeries {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.stageId, EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;

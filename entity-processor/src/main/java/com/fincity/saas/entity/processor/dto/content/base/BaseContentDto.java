@@ -28,7 +28,7 @@ public class BaseContentDto<T extends BaseContentDto<T>> extends BaseDto<T> impl
     private int version = 1;
 
     private String content;
-    private String hasAttachment;
+    private Boolean hasAttachment;
     private ULong ownerId;
     private ULong ticketId;
 }
