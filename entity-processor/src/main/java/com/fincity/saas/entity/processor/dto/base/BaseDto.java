@@ -52,13 +52,13 @@ public class BaseDto<T extends BaseDto<T>> extends AbstractFlowUpdatableDTO<ULon
 
     public T setName(String name) {
         if (name == null || name.isBlank()) this.name = this.getCode();
-        else this.name = NameUtil.normalize(name);
+        else this.name = name;
         return (T) this;
     }
 
     public T setDescription(String description) {
         if (description == null || description.isBlank()) return (T) this;
-        this.description = NameUtil.normalize(description);
+        this.description = description;
         return (T) this;
     }
 

@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
@@ -12,6 +11,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import com.fincity.saas.entity.processor.util.NameUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -122,7 +122,7 @@ public abstract class BaseValueService<
                                 entity.getName(),
                                 entity.getEntityName());
 
-                    entity.setName(StringUtil.toTitleCase(entity.getName()));
+                    entity.setName(NameUtil.normalize(entity.getName()));
                     return Mono.just(entity);
                 });
     }
@@ -146,7 +146,7 @@ public abstract class BaseValueService<
     }
 
     public Mono<D> createChild(D entity, D parentEntity) {
-        entity.setName(StringUtil.toTitleCase(entity.getName()));
+        entity.setName(NameUtil.normalize(entity.getName()));
         entity.setAppCode(parentEntity.getAppCode());
         entity.setClientCode(parentEntity.getClientCode());
         entity.setCreatedBy(parentEntity.getCreatedBy());
