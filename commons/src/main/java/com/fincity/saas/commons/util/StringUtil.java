@@ -2,6 +2,9 @@ package com.fincity.saas.commons.util;
 
 public class StringUtil {
 
+    private StringUtil() {
+    }
+
     public static String safeValueOf(Object obj, String... defaultValue) {
 
         if (obj == null) {
@@ -15,9 +18,6 @@ public class StringUtil {
         }
 
         return obj.toString();
-    }
-
-    private StringUtil() {
     }
 
     public static boolean safeIsBlank(Object object) {
@@ -104,6 +104,8 @@ public class StringUtil {
 
         char[] chars = str.trim().toCharArray();
         boolean newWord = true;
+
+        chars[0] = Character.toUpperCase(chars[0]);
 
         for (int i = 0; i < chars.length; i++) {
             if (!Character.isSpaceChar(chars[i])) {

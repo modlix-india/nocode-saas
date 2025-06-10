@@ -88,13 +88,24 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
-            ULong id, String appCode, String clientCode, List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, tableFields, eager,  eagerFields);
+            ULong id,
+            String appCode,
+            String clientCode,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, tableFields, eager, eagerFields);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
-            String code, String appCode, String clientCode, List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(codeField, code, appCode, clientCode, tableFields, eager, eagerFields);
+            String code,
+            String appCode,
+            String clientCode,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(
+                codeField, code, appCode, clientCode, tableFields, eager, eagerFields);
     }
 
     private <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
@@ -135,7 +146,11 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
     @SuppressWarnings("unchecked")
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
-            Pageable pageable, AbstractCondition condition, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
         return getSelectJointStepEager(tableFields, eager, eagerFields).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
@@ -163,8 +178,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         SelectJoinStep<Record1<Integer>> countQuery =
                 dslContext.select(DSL.count()).from(this.table);
 
-        if (Boolean.FALSE.equals(eager))
-            return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
+        if (Boolean.FALSE.equals(eager)) return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
 
         if ((relations == null || relations.isEmpty()))
             return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));

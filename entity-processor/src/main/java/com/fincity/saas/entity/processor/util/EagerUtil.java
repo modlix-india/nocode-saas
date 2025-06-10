@@ -1,19 +1,16 @@
 package com.fincity.saas.entity.processor.util;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.jooq.Table;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ConditionUtil;
-
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.jooq.Table;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple4;
 import reactor.util.function.Tuples;
