@@ -88,19 +88,25 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
-            ULong id, String appCode, String clientCode, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, eagerFields);
+            ULong id, String appCode, String clientCode, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, tableFields, eager,  eagerFields);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
-            String code, String appCode, String clientCode, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(codeField, code, appCode, clientCode, eagerFields);
+            String code, String appCode, String clientCode, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(codeField, code, appCode, clientCode, tableFields, eager, eagerFields);
     }
 
     private <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
-            Field<V> identityField, V identity, String appCode, String clientCode, List<String> eagerFields) {
+            Field<V> identityField,
+            V identity,
+            String appCode,
+            String clientCode,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
 
-        return this.getSelectJointStepEager(eagerFields)
+        return this.getSelectJointStepEager(tableFields, eager, eagerFields)
                 .flatMap(tuple -> {
                     Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
                             tuple.getT1();
@@ -129,8 +135,8 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
     @SuppressWarnings("unchecked")
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
-            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
-        return getSelectJointStepEager(eagerFields).flatMap(tuple -> {
+            Pageable pageable, AbstractCondition condition, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return getSelectJointStepEager(tableFields, eager, eagerFields).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
@@ -148,18 +154,19 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
                     Tuple2<
                             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
                             Map<String, Tuple2<Table<?>, String>>>>
-            getSelectJointStepEager(List<String> eagerFields) {
+            getSelectJointStepEager(List<String> tableFields, Boolean eager, List<String> eagerFields) {
         Map<String, Tuple2<Table<?>, String>> relations = EagerUtil.getRelationMap(this.pojoClass);
 
-        List<Field<?>> fields = relations == null || relations.isEmpty()
-                ? Arrays.asList(this.table.fields())
-                : this.getEagerFields(eagerFields, this.table, relations);
+        List<Field<?>> fields = this.getEagerFields(tableFields, eager, eagerFields, this.table, relations);
 
         SelectJoinStep<Record> recordQuery = dslContext.select(fields).from(this.table);
         SelectJoinStep<Record1<Integer>> countQuery =
                 dslContext.select(DSL.count()).from(this.table);
 
-        if (relations == null || relations.isEmpty())
+        if (Boolean.FALSE.equals(eager))
+            return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
+
+        if ((relations == null || relations.isEmpty()))
             return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
 
         for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
@@ -183,11 +190,30 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), relations));
     }
 
-    private List<Field<?>> getEagerFields(
-            List<String> eagerFields, Table<?> mainTable, Map<String, Tuple2<Table<?>, String>> relations) {
+    private List<Field<?>> getTableFields(List<String> fields, Table<?> mainTable) {
+        List<Field<?>> cachedFields =
+                tableFieldsCache.computeIfAbsent(mainTable, table -> Arrays.asList(table.fields()));
 
-        List<Field<?>> fields =
-                new ArrayList<>(tableFieldsCache.computeIfAbsent(mainTable, table -> Arrays.asList(table.fields())));
+        if (fields == null || fields.isEmpty()) return new ArrayList<>(cachedFields);
+
+        Set<String> fieldSet =
+                fields.stream().map(EagerUtil::toJooqField).collect(Collectors.toCollection(LinkedHashSet::new));
+
+        return cachedFields.stream()
+                .filter(field -> fieldSet.contains(field.getName()))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private List<Field<?>> getEagerFields(
+            List<String> mainTableFields,
+            Boolean eager,
+            List<String> eagerFields,
+            Table<?> mainTable,
+            Map<String, Tuple2<Table<?>, String>> relations) {
+
+        List<Field<?>> fields = this.getTableFields(mainTableFields, mainTable);
+
+        if (Boolean.FALSE.equals(eager)) return fields;
 
         if (relations == null || relations.isEmpty()) return fields;
 

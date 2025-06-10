@@ -1,16 +1,8 @@
 package com.fincity.saas.entity.processor.controller.base;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dao.base.BaseDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.model.base.BaseResponse;
-import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.service.base.BaseService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
+
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -27,8 +19,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.entity.processor.dao.base.BaseDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.util.EagerUtil;
+
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple4;
 
 public abstract class BaseController<
                 R extends UpdatableRecord<R>,
@@ -66,10 +69,12 @@ public abstract class BaseController<
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_CODE) final String code, ServerHttpRequest request) {
 
+        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
         List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
+        List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(code, eagerParams)
+                .readEager(code, fieldParams, eager, eagerParams)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -79,10 +84,12 @@ public abstract class BaseController<
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_ID) final ULong id, ServerHttpRequest request) {
 
+        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
         List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
+        List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(id, eagerParams)
+                .readEager(id, fieldParams, eager, eagerParams)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -134,9 +141,11 @@ public abstract class BaseController<
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple2<AbstractCondition, List<String>> eagerParams = EagerUtil.getEagerConditions(request.getQueryParams());
+        Tuple4<AbstractCondition, List<String>, Boolean, List<String>> eagerParams =
+                EagerUtil.getEagerConditions(request.getQueryParams());
         return this.service
-                .readPageFilterEager(pageable, eagerParams.getT1(), eagerParams.getT2())
+                .readPageFilterEager(
+                        pageable, eagerParams.getT1(), eagerParams.getT2(), eagerParams.getT3(), eagerParams.getT4())
                 .map(ResponseEntity::ok);
     }
 
@@ -146,7 +155,8 @@ public abstract class BaseController<
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
         return this.service
-                .readPageFilterEager(pageable, query.getCondition(), query.getEagerFields())
+                .readPageFilterEager(
+                        pageable, query.getCondition(), query.getFields(), query.getEager(), query.getEagerFields())
                 .map(ResponseEntity::ok);
     }
 }

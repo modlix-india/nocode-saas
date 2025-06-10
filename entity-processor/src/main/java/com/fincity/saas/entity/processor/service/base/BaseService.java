@@ -108,16 +108,16 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2()));
     }
 
-    public Mono<Map<String, Object>> readEager(ULong id, List<String> eagerFields) {
+    public Mono<Map<String, Object>> readEager(ULong id, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.hasAccess()
                 .flatMap(hasAccess -> this.dao.readByIdAndAppCodeAndClientCodeEager(
-                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
+                        id, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), tableFields, eager, eagerFields));
     }
 
-    public Mono<Map<String, Object>> readEager(String code, List<String> eagerFields) {
+    public Mono<Map<String, Object>> readEager(String code, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.hasAccess()
                 .flatMap(hasAccess -> this.dao.readByCodeAndAppCodeAndClientCodeEager(
-                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), eagerFields));
+                        code, hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), tableFields, eager, eagerFields));
     }
 
     public Mono<D> readById(ULong id) {
@@ -144,10 +144,10 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
-            Pageable pageable, AbstractCondition condition, List<String> eagerFields) {
+            Pageable pageable, AbstractCondition condition, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.hasAccess()
                 .flatMap(accessInfo -> this.dao.readPageFilterEager(
-                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), eagerFields));
+                        pageable, addAppCodeAndClientCodeToCondition(accessInfo.getT1(), condition), tableFields, eager, eagerFields));
     }
 
     @Override

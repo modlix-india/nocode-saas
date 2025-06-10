@@ -1,22 +1,29 @@
 package com.fincity.saas.entity.processor.util;
 
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.util.ConditionUtil;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.jooq.Table;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ConditionUtil;
+
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple4;
 import reactor.util.function.Tuples;
 
 public class EagerUtil {
 
     private static final String RELATIONS_MAP = "relationsMap";
+    private static final String EAGER = "eager";
     private static final String EAGER_FIELD = "eagerField";
+    private static final String FIELD = "field";
 
     private static final Map<String, String> fieldNameCache = new ConcurrentHashMap<>();
     private static final Map<String, String> jooqFieldCache = new ConcurrentHashMap<>();
@@ -70,19 +77,37 @@ public class EagerUtil {
         return multiValueMap.containsKey(EAGER_FIELD) ? multiValueMap.get(EAGER_FIELD) : List.of();
     }
 
-    public static Tuple2<AbstractCondition, List<String>> getEagerConditions(Map<String, List<String>> multiValueMap) {
+    public static Boolean getIsEagerParams(Map<String, List<String>> multiValueMap) {
+        return multiValueMap.containsKey(EAGER)
+                ? BooleanUtil.parse(multiValueMap.get(EAGER).getFirst())
+                : Boolean.FALSE;
+    }
 
-        if (multiValueMap.isEmpty()) return Tuples.of(new ComplexCondition().setConditions(List.of()), List.of());
+    public static List<String> getFieldParams(Map<String, List<String>> multiValueMap) {
+        return multiValueMap.containsKey(FIELD) ? multiValueMap.get(FIELD) : List.of();
+    }
+
+    public static Tuple4<AbstractCondition, List<String>, Boolean, List<String>> getEagerConditions(
+            Map<String, List<String>> multiValueMap) {
+
+        if (multiValueMap.isEmpty())
+            return Tuples.of(new ComplexCondition().setConditions(List.of()), List.of(), Boolean.TRUE, List.of());
 
         MultiValueMap<String, String> copyMap = new LinkedMultiValueMap<>(multiValueMap);
 
-        List<String> eagerFields = getEagerParams(copyMap);
+        List<String> tableFields = getFieldParams(copyMap);
+        copyMap.remove(FIELD);
+
+        Boolean eager = getIsEagerParams(copyMap);
+        copyMap.remove(EAGER);
+
+        List<String> eagerFields = Boolean.TRUE.equals(eager) ? getEagerParams(copyMap) : List.of();
         copyMap.remove(EAGER_FIELD);
 
         AbstractCondition condition = ConditionUtil.parameterMapToMap(copyMap);
 
         if (condition == null) condition = new ComplexCondition().setConditions(List.of());
 
-        return Tuples.of(condition, eagerFields);
+        return Tuples.of(condition, tableFields, eager, eagerFields);
     }
 }
