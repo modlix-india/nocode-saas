@@ -469,7 +469,7 @@ public class ClientRegistrationService {
     private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
                                        String otp) {
 
-        if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
+        if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION) || SecurityContextUtil.hasAuthority("Authorities.Client_CREATE", ca.getAuthorities()))
             return Mono.just(Boolean.TRUE);
 
         OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
