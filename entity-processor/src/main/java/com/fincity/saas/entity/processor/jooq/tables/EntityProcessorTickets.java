@@ -6,9 +6,11 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 
 import java.time.LocalDateTime;
@@ -360,6 +362,32 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
             _fk4TicketsStatusId = new EntityProcessorStagesPath(this, Keys.FK4_TICKETS_STATUS_ID, null);
 
         return _fk4TicketsStatusId;
+    }
+
+    private transient EntityProcessorNotesPath _entityProcessorNotes;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_notes</code> table
+     */
+    public EntityProcessorNotesPath entityProcessorNotes() {
+        if (_entityProcessorNotes == null)
+            _entityProcessorNotes = new EntityProcessorNotesPath(this, null, Keys.FK3_NOTES_TICKET_ID.getInverseKey());
+
+        return _entityProcessorNotes;
+    }
+
+    private transient EntityProcessorTasksPath _entityProcessorTasks;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_tasks</code> table
+     */
+    public EntityProcessorTasksPath entityProcessorTasks() {
+        if (_entityProcessorTasks == null)
+            _entityProcessorTasks = new EntityProcessorTasksPath(this, null, Keys.FK3_TASKS_TICKET_ID.getInverseKey());
+
+        return _entityProcessorTasks;
     }
 
     @Override

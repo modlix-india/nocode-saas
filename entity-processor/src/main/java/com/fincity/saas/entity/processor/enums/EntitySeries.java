@@ -7,10 +7,14 @@ import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.content.Note;
+import com.fincity.saas.entity.processor.dto.content.Task;
+import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
@@ -19,6 +23,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import java.util.Map;
 import lombok.Getter;
@@ -63,7 +69,10 @@ public enum EntitySeries implements EnumType {
             "Product Template Rule",
             23,
             "ProductTemplateRule.",
-            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES);
+            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES),
+    TASK("TASK", "Task", 24, "Task.", EntityProcessorTasks.ENTITY_PROCESSOR_TASKS),
+    TASK_TYPE("TASK_TYPE", "TaskType", 24, "TaskType.", EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES),
+    NOTE("NOTE", "Note", 24, "Note.", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES);
 
     private static final Map<EntitySeries, String> LEADZUMP_TOKEN_PREFIX_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getTokenPrefix()),
@@ -76,7 +85,10 @@ public enum EntitySeries implements EnumType {
             Map.entry(COMPLEX_RULE, COMPLEX_RULE.getTokenPrefix()),
             Map.entry(SIMPLE_COMPLEX_CONDITION_RELATION, SIMPLE_COMPLEX_CONDITION_RELATION.getTokenPrefix()),
             Map.entry(PRODUCT_STAGE_RULE, "ProjectStageRule."),
-            Map.entry(PRODUCT_TEMPLATE_RULE, "ProjectTemplateRule."));
+            Map.entry(PRODUCT_TEMPLATE_RULE, "ProjectTemplateRule."),
+            Map.entry(TASK, "Task."),
+            Map.entry(TASK_TYPE, "TaskType."),
+            Map.entry(NOTE, "Note."));
 
     private final String literal;
     private final String displayName;
@@ -119,6 +131,9 @@ public enum EntitySeries implements EnumType {
             case SIMPLE_COMPLEX_CONDITION_RELATION -> SimpleComplexRuleRelation.class;
             case PRODUCT_STAGE_RULE -> ProductStageRule.class;
             case PRODUCT_TEMPLATE_RULE -> ProductTemplateRule.class;
+            case TASK -> Task.class;
+            case TASK_TYPE -> TaskType.class;
+            case NOTE -> Note.class;
         };
     }
 

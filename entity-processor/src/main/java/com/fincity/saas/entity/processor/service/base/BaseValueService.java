@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -46,10 +45,6 @@ public abstract class BaseValueService<
 
     public String getValueEtKey() {
         return VALUE_ET_KEY;
-    }
-
-    public String getValueIdValueKey() {
-        return IdAndValue.ID_CACHE_KEY;
     }
 
     public abstract Mono<D> applyOrder(D entity, Tuple3<String, String, ULong> accessInfo);

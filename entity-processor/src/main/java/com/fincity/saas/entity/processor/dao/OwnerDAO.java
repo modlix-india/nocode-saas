@@ -53,7 +53,7 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
                             : phoneEmailConditions.getFirst());
 
         // we always need Active product entities
-        conditions.add(this.isActiveTrue());
+        conditions.add(super.isActiveTrue());
 
         return conditions;
     }
