@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.model.request.content;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;

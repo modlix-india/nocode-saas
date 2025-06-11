@@ -1,8 +1,7 @@
 package com.fincity.saas.entity.processor.enums.content;
 
-import org.jooq.EnumType;
-
 import lombok.Getter;
+import org.jooq.EnumType;
 
 @Getter
 public enum TaskPriority implements EnumType {

@@ -1,11 +1,9 @@
 package com.fincity.saas.entity.processor.model.request.content;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -25,4 +23,14 @@ public abstract class BaseContentRequest<T extends BaseContentRequest<T>> extend
     private Boolean hasAttachment;
     private Identity ownerId;
     private Identity ticketId;
+
+    public T setOwnerId(Identity ownerId) {
+        this.ownerId = ownerId;
+        return (T) this;
+    }
+
+    public T setTicketId(Identity ticketId) {
+        this.ticketId = ticketId;
+        return (T) this;
+    }
 }

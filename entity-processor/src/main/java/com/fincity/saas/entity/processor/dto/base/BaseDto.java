@@ -5,7 +5,6 @@ import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.util.IClassConvertor;
-import com.fincity.saas.entity.processor.util.NameUtil;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;

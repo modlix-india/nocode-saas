@@ -1,10 +1,5 @@
 package com.fincity.saas.entity.processor.enums;
 
-import java.util.Map;
-
-import org.jooq.EnumType;
-import org.jooq.Table;
-
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
@@ -31,8 +26,10 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
-
+import java.util.Map;
 import lombok.Getter;
+import org.jooq.EnumType;
+import org.jooq.Table;
 
 @Getter
 public enum EntitySeries implements EnumType {
