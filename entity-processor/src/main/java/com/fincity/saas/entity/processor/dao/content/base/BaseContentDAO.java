@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dao.content.base;
 
-import com.fincity.saas.entity.processor.dao.base.BaseDAO;
+import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import org.jooq.Field;
@@ -10,7 +10,7 @@ import org.jooq.types.ULong;
 
 public abstract class BaseContentDAO<
                 Q extends BaseContentRequest<Q>, R extends UpdatableRecord<R>, D extends BaseContentDto<Q, D>>
-        extends BaseDAO<R, D> {
+        extends BaseUpdatableDAO<R, D> {
 
     private static final String CONTENT = "CONTENT";
     private static final String HAS_ATTACHMENT = "HAS_ATTACHMENT";

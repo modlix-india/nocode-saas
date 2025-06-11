@@ -17,7 +17,7 @@ import reactor.util.function.Tuple3;
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseUpdatableService<R, D, O> {
 
     protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
 

@@ -5,7 +5,7 @@ import com.fincity.saas.entity.processor.dao.rule.SimpleComplexRuleRelationDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleComplexRuleRelationsRecord;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -14,7 +14,7 @@ import reactor.util.function.Tuple3;
 
 @Service
 public class SimpleComplexRuleRelationService
-        extends BaseService<
+        extends BaseUpdatableService<
                 EntityProcessorSimpleComplexRuleRelationsRecord,
                 SimpleComplexRuleRelation,
                 SimpleComplexRuleRelationDAO> {

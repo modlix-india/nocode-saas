@@ -3,11 +3,11 @@ package com.fincity.saas.entity.processor.controller.base;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dao.base.BaseDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +32,9 @@ import reactor.util.function.Tuple4;
 
 public abstract class BaseController<
                 R extends UpdatableRecord<R>,
-                D extends BaseDto<D>,
-                O extends BaseDAO<R, D>,
-                S extends BaseService<R, D, O>>
+                D extends BaseUpdatableDto<D>,
+                O extends BaseUpdatableDAO<R, D>,
+                S extends BaseUpdatableService<R, D, O>>
         extends AbstractJOOQUpdatableDataController<R, ULong, D, O, S> {
 
     public static final String PATH_BASE = "/base";

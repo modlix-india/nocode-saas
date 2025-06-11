@@ -13,7 +13,7 @@ import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.rule.RuleResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.google.gson.JsonElement;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +31,7 @@ import reactor.util.function.Tuple3;
 
 @Service
 public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseUpdatableService<R, D, O> {
 
     private static final String DEFAULT_KEY = "default";
 
