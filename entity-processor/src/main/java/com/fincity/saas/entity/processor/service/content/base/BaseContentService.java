@@ -8,18 +8,20 @@ import com.fincity.saas.entity.processor.model.request.content.BaseContentReques
 import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple3;
 
 public abstract class BaseContentService<
                 Q extends BaseContentRequest<Q>,
                 R extends UpdatableRecord<R>,
                 D extends BaseContentDto<Q, D>,
                 O extends BaseContentDAO<Q, R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseUpdatableService<R, D, O> {
 
     private TicketService ticketService;
 
@@ -35,6 +37,24 @@ public abstract class BaseContentService<
     @Autowired
     protected void setOwnerService(OwnerService ownerService) {
         this.ownerService = ownerService;
+    }
+
+    @Override
+    public Mono<D> create(D entity) {
+        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+    }
+
+    public Mono<D> createPublic(D entity) {
+        return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+    }
+
+    protected Mono<D> createInternal(D entity, Tuple3<String, String, ULong> access) {
+        entity.setAppCode(access.getT1());
+        entity.setClientCode(access.getT2());
+
+        entity.setCreatedBy(access.getT3());
+
+        return super.create(entity);
     }
 
     @Override

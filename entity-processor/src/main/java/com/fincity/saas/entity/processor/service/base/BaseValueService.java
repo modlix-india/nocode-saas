@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -38,7 +38,7 @@ import reactor.util.function.Tuple3;
 @Service
 public abstract class BaseValueService<
                 R extends UpdatableRecord<R>, D extends BaseValueDto<D>, O extends BaseValueDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseUpdatableService<R, D, O> {
 
     private static final String VALUE_ET_KEY = "valueEtKey";
     protected ProductTemplateService productTemplateService;
@@ -376,7 +376,7 @@ public abstract class BaseValueService<
                 this.getCacheName(),
                 () -> this.dao
                         .getAllProductTemplates(appCode, clientCode, platform, productTemplateId)
-                        .map(BaseDto::toIdMap),
+                        .map(BaseUpdatableDto::toIdMap),
                 super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
 }
