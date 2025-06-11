@@ -15,7 +15,8 @@ import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseValueDto<D>> extends BaseDAO<R, D> {
+public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseValueDto<D>>
+        extends BaseUpdatableDAO<R, D> {
 
     private static final String PRODUCT_TEMPLATE_ID = "PRODUCT_TEMPLATE_ID";
     private static final String IS_PARENT = "IS_PARENT";

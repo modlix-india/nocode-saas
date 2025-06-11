@@ -6,11 +6,13 @@ import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -19,6 +21,8 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public class Task extends BaseContentDto<TaskRequest, Task> {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.taskTypeId, EntitySeries.TASK.getTable());
 
     @Serial
     private static final long serialVersionUID = 2984521500368594815L;

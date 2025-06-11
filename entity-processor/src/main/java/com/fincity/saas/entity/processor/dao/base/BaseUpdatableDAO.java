@@ -4,7 +4,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
+public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> {
 
     private static final String CODE = "CODE";
@@ -55,7 +55,7 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
     protected final Field<Boolean> tempActiveField;
     protected final Field<Boolean> isActiveField;
 
-    protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
+    protected BaseUpdatableDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
         this.codeField = flowTable.field(CODE, String.class);
         this.nameField = flowTable.field(NAME, String.class);

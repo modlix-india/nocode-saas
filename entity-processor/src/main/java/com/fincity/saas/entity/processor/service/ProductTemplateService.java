@@ -10,7 +10,7 @@ import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ProductTemplateService
-        extends BaseService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
+        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
         implements IEntitySeries {
 
     private static final String PRODUCT_TEMPLATE = "productTemplate";

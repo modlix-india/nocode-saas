@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
@@ -17,7 +17,7 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ProductTemplate extends BaseDto<ProductTemplate> implements IEntitySeries {
+public class ProductTemplate extends BaseUpdatableDto<ProductTemplate> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 2361640922389483322L;

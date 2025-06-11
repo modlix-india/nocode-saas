@@ -155,9 +155,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     private Mono<Ticket> setTicketAssignment(Ticket ticket, ULong userId) {
         // Only set assignedUserId if userId is not null and not 0
-        if (userId != null && !userId.equals(ULong.valueOf(0))) {
-            ticket.setAssignedUserId(userId);
-        }
+        if (userId != null && !userId.equals(ULong.valueOf(0))) ticket.setAssignedUserId(userId);
+
         return Mono.just(ticket);
     }
 }

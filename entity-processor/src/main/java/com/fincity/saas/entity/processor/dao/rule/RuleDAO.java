@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dao.rule;
 
-import com.fincity.saas.entity.processor.dao.base.BaseDAO;
+import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +13,7 @@ import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class RuleDAO<R extends UpdatableRecord<R>, D extends Rule<D>> extends BaseDAO<R, D> {
+public abstract class RuleDAO<R extends UpdatableRecord<R>, D extends Rule<D>> extends BaseUpdatableDAO<R, D> {
 
     private static final String STAGE_ID = "STAGE_ID";
     private static final String IS_DEFAULT = "IS_DEFAULT";
