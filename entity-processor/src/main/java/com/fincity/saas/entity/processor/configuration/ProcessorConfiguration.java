@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
-import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -21,15 +20,15 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
 
     protected ProcessorMessageResourceService processorMessageResourceService;
 
-    protected ProcessorConfiguration(ObjectMapper objectMapper) {
+    protected ProcessorConfiguration(ProcessorMessageResourceService messageResourceService, ObjectMapper objectMapper) {
         super(objectMapper);
+        this.processorMessageResourceService = messageResourceService;
     }
 
     @Override
     @PostConstruct
     public void initialize() {
-        super.initialize();
-        this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(processorMessageResourceService));
+        super.initialize(processorMessageResourceService);
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null) log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);

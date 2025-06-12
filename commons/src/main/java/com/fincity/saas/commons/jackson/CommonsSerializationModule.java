@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.jackson;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -15,36 +16,43 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 
 public class CommonsSerializationModule extends SimpleModule {
 
-	private static final long serialVersionUID = 6242981337057158018L;
+    @Serial
+    private static final long serialVersionUID = 6242981337057158018L;
 
-	public CommonsSerializationModule() {
+    public CommonsSerializationModule() {
 
-		super();
+        super();
 
-		this.addDeserializer(LocalDateTime.class, new StdDeserializer<LocalDateTime>((Class<?>) null) {
+        this.addDeserializer(LocalDateTime.class, new StdDeserializer<>(LocalDateTime.class) {
 
-			private static final long serialVersionUID = 4146504589335966256L;
+            @Serial
+            private static final long serialVersionUID = 4146504589335966256L;
 
-			@Override
-			public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            @Override
+            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 
-				long inst = p.getValueAsLong();
-				return LocalDateTime.ofEpochSecond(inst, 0, ZoneOffset.UTC);
-			}
-		});
+                if (p.currentToken().isNumeric())
+                    return LocalDateTime.ofEpochSecond(p.getLongValue(), 0, ZoneOffset.UTC);
 
-		this.addSerializer(LocalDateTime.class, new StdSerializer<LocalDateTime>((Class<LocalDateTime>) null) {
+                LocalDateTime ldt = LocalDateTime.parse(p.getValueAsString());
+                long epochSeconds = ldt.toEpochSecond(ZoneOffset.UTC);
+                return LocalDateTime.ofEpochSecond(epochSeconds, 0, ZoneOffset.UTC);
+            }
+        });
 
-			private static final long serialVersionUID = -3480737241961681306L;
+        this.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
 
-			@Override
-			public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
-					throws IOException {
+            @Serial
+            private static final long serialVersionUID = -3480737241961681306L;
 
-				gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
-			}
-		});
+            @Override
+            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
 
-		this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
-	}
+                gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
+            }
+        });
+
+        this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
+    }
 }
