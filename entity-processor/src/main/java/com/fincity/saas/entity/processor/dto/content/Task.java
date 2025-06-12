@@ -43,9 +43,18 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
         return new Task()
                 .setContent(taskRequest.getContent())
                 .setHasAttachment(taskRequest.getHasAttachment())
-                .setOwnerId(taskRequest.getOwnerId().getULongId())
-                .setTicketId(taskRequest.getTicketId().getULongId())
-                .setTaskTypeId(taskRequest.getTaskTypeId().getULongId())
+                .setOwnerId(
+                        taskRequest.getOwnerId() != null
+                                ? taskRequest.getOwnerId().getULongId()
+                                : null)
+                .setTicketId(
+                        taskRequest.getTicketId() != null
+                                ? taskRequest.getTicketId().getULongId()
+                                : null)
+                .setTaskTypeId(
+                        taskRequest.getTaskTypeId() != null
+                                ? taskRequest.getTaskTypeId().getULongId()
+                                : null)
                 .setDueDate(taskRequest.getDueDate())
                 .setTaskPriority(taskRequest.getTaskPriority())
                 .setHasReminder(taskRequest.getHasReminder())

@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskTypeDAO;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -33,41 +34,44 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Flux<TaskType> create(List<TaskTypeRequest> taskTypeRequests) {
-
-        if (taskTypeRequests == null || taskTypeRequests.isEmpty()) return Flux.empty();
-
         return super.hasAccess().flatMapMany(access -> {
-            String[] names =
-                    taskTypeRequests.stream().map(TaskTypeRequest::getName).toArray(String[]::new);
+            List<String> names =
+                    taskTypeRequests.stream().map(TaskTypeRequest::getName).toList();
 
-            return this.existsByName(access.getT1().getT1(), access.getT1().getT2(), names)
-                    .flatMapMany(exists -> Boolean.TRUE.equals(exists)
-                            ? this.msgService.throwMessage(
+            return this.existsByName(access.getT1().getT1(), access.getT1().getT2(), names.toArray(new String[0]))
+                    .flatMapMany(exists -> {
+                        if (Boolean.TRUE.equals(exists))
+                            return this.msgService.throwMessage(
                                     msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                     ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                     String.join(", ", names),
-                                    this.getEntityName())
-                            : Flux.fromIterable(taskTypeRequests)
-                                    .flatMap(req -> this.createInternal(TaskType.of(req), access.getT1())));
+                                    this.getEntityName());
+
+                        return Flux.fromIterable(taskTypeRequests)
+                                .flatMap(req -> this.createInternal(TaskType.of(req), access.getT1()));
+                    });
         });
     }
 
     public Mono<TaskType> create(TaskTypeRequest taskTypeRequest) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                hasAccess -> this.existsByName(
-                        hasAccess.getT1().getT1(), hasAccess.getT1().getT2(), taskTypeRequest.getName()),
-                (hasAccess, exists) -> Boolean.TRUE.equals(exists)
+                super::hasAccess, hasAccess -> this.createInternal(hasAccess.getT1(), taskTypeRequest));
+    }
+
+    public Mono<TaskType> createInternal(Tuple3<String, String, ULong> access, TaskTypeRequest taskTypeRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.existsByName(access.getT1(), access.getT2(), taskTypeRequest.getName()),
+                exists -> Boolean.TRUE.equals(exists)
                         ? this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 taskTypeRequest.getName(),
                                 this.getEntityName())
-                        : this.createInternal(TaskType.of(taskTypeRequest), hasAccess.getT1()));
+                        : this.createInternal(TaskType.of(taskTypeRequest), access));
     }
 
     public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
-        return this.dao.existsByName(appCode, clientCode, names);
+        return this.dao.existsByName(appCode, clientCode, names).flatMap(BooleanUtil::safeValueOfWithEmpty);
     }
 
     @Override

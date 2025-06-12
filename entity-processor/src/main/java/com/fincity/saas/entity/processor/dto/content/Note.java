@@ -26,7 +26,17 @@ public class Note extends BaseContentDto<NoteRequest, Note> {
     }
 
     @Override
-    public Note of(NoteRequest baseContentRequest) {
-        return null;
+    public Note of(NoteRequest noteRequest) {
+        return new Note()
+                .setContent(noteRequest.getContent())
+                .setHasAttachment(noteRequest.getHasAttachment())
+                .setOwnerId(
+                        noteRequest.getOwnerId() != null
+                                ? noteRequest.getOwnerId().getULongId()
+                                : null)
+                .setTicketId(
+                        noteRequest.getTicketId() != null
+                                ? noteRequest.getTicketId().getULongId()
+                                : null);
     }
 }

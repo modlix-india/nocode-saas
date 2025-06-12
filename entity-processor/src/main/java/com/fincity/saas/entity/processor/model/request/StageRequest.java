@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import java.io.Serial;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private StageType stageType;
     private Boolean isSuccess;
     private Boolean isFailure;
+    private LocalDateTime sa;
 
     public boolean isValid() {
 
