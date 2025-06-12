@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskTypeDAO;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
