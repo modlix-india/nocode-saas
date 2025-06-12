@@ -34,6 +34,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String STAGE_TYPE_MISSING = "stage_type_missing";
     public static final String DEFAULT_RULE_MISSING = "default_rule_missing";
     public static final String NO_VALUES_FOUND = "no_values_found";
+    public static final String CONTENT_MISSING = "content_missing";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
