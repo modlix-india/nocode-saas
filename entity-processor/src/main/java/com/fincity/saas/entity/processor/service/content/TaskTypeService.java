@@ -34,11 +34,14 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Flux<TaskType> create(List<TaskTypeRequest> taskTypeRequests) {
-        return super.hasAccess().flatMapMany(access -> {
-            List<String> names =
-                    taskTypeRequests.stream().map(TaskTypeRequest::getName).toList();
 
-            return this.existsByName(access.getT1().getT1(), access.getT1().getT2(), names.toArray(new String[0]))
+        if (taskTypeRequests == null || taskTypeRequests.isEmpty()) return Flux.empty();
+
+        return super.hasAccess().flatMapMany(access -> {
+            String[] names =
+                    taskTypeRequests.stream().map(TaskTypeRequest::getName).toArray(String[]::new);
+
+            return this.existsByName(access.getT1().getT1(), access.getT1().getT2(), names)
                     .flatMapMany(exists -> {
                         if (Boolean.TRUE.equals(exists))
                             return this.msgService.throwMessage(
@@ -71,7 +74,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
-        return this.dao.existsByName(appCode, clientCode, names).flatMap(BooleanUtil::safeValueOfWithEmpty);
+        return this.dao.existsByName(appCode, clientCode, names);
     }
 
     @Override
