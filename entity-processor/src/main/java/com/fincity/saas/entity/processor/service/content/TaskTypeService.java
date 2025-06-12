@@ -42,17 +42,14 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                     taskTypeRequests.stream().map(TaskTypeRequest::getName).toArray(String[]::new);
 
             return this.existsByName(access.getT1().getT1(), access.getT1().getT2(), names)
-                    .flatMapMany(exists -> {
-                        if (Boolean.TRUE.equals(exists))
-                            return this.msgService.throwMessage(
+                    .flatMapMany(exists -> Boolean.TRUE.equals(exists)
+                            ? this.msgService.throwMessage(
                                     msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                     ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                     String.join(", ", names),
-                                    this.getEntityName());
-
-                        return Flux.fromIterable(taskTypeRequests)
-                                .flatMap(req -> this.createInternal(TaskType.of(req), access.getT1()));
-                    });
+                                    this.getEntityName())
+                            : Flux.fromIterable(taskTypeRequests)
+                                    .flatMap(req -> this.createInternal(TaskType.of(req), access.getT1())));
         });
     }
 
