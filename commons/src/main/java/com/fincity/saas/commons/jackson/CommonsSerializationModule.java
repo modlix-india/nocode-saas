@@ -30,14 +30,8 @@ public class CommonsSerializationModule extends SimpleModule {
 
             @Override
             public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-
-                if (p.currentToken().isNumeric())
                     return LocalDateTime.ofEpochSecond(p.getLongValue(), 0, ZoneOffset.UTC);
-
-                LocalDateTime ldt = LocalDateTime.parse(p.getValueAsString());
-                long epochSeconds = ldt.toEpochSecond(ZoneOffset.UTC);
-                return LocalDateTime.ofEpochSecond(epochSeconds, 0, ZoneOffset.UTC);
-            }
+      }
         });
 
         this.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
