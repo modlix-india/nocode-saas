@@ -105,6 +105,20 @@ public abstract class BaseContentService<
                 });
     }
 
+    @Override
+    public Mono<D> update(D entity) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> this.updateInternal(hasAccess.getT1(), entity));
+    }
+
+    public Mono<D> updateInternal(Tuple3<String, String, ULong> access, D entity) {
+        if (!entity.getCreatedBy().equals(access.getT3()))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    ProcessorMessageResourceService.TASK_FORBIDDEN_ACCESS);
+
+        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
+    }
+
     public Mono<D> create(Q contentRequest) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,

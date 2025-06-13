@@ -274,11 +274,106 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
+     * to tell, is the task Completed
+     */
+    public EntityProcessorTasksRecord setIsCompleted(Byte value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
+     * to tell, is the task Completed
+     */
+    public Byte getIsCompleted() {
+        return (Byte) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tasks.COMPLETED_DATE</code>.
+     * Timestamp when this task was Completed
+     */
+    public EntityProcessorTasksRecord setCompletedDate(LocalDateTime value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.COMPLETED_DATE</code>.
+     * Timestamp when this task was Completed
+     */
+    public LocalDateTime getCompletedDate() {
+        return (LocalDateTime) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
+     * to tell, is the task Cancelled
+     */
+    public EntityProcessorTasksRecord setIsCancelled(Byte value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
+     * to tell, is the task Cancelled
+     */
+    public Byte getIsCancelled() {
+        return (Byte) get(16);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tasks.CANCELLED_DATE</code>.
+     * Timestamp when this task was Cancelled
+     */
+    public EntityProcessorTasksRecord setCancelledDate(LocalDateTime value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.CANCELLED_DATE</code>.
+     * Timestamp when this task was Cancelled
+     */
+    public LocalDateTime getCancelledDate() {
+        return (LocalDateTime) get(17);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
+     * Message
+     */
+    public EntityProcessorTasksRecord setIsDelayed(Byte value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
+     * Message
+     */
+    public Byte getIsDelayed() {
+        return (Byte) get(18);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */
     public EntityProcessorTasksRecord setHasReminder(Byte value) {
-        set(14, value);
+        set(19, value);
         return this;
     }
 
@@ -288,7 +383,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Whether this task has a reminder set.
      */
     public Byte getHasReminder() {
-        return (Byte) get(14);
+        return (Byte) get(19);
     }
 
     /**
@@ -297,7 +392,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * reminder date and time for this task.
      */
     public EntityProcessorTasksRecord setNextReminder(LocalDateTime value) {
-        set(15, value);
+        set(20, value);
         return this;
     }
 
@@ -307,7 +402,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * reminder date and time for this task.
      */
     public LocalDateTime getNextReminder() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -316,7 +411,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Temporary active flag for this task.
      */
     public EntityProcessorTasksRecord setTempActive(Byte value) {
-        set(16, value);
+        set(21, value);
         return this;
     }
 
@@ -326,7 +421,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Temporary active flag for this task.
      */
     public Byte getTempActive() {
-        return (Byte) get(16);
+        return (Byte) get(21);
     }
 
     /**
@@ -335,7 +430,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * check if this task is active or not.
      */
     public EntityProcessorTasksRecord setIsActive(Byte value) {
-        set(17, value);
+        set(22, value);
         return this;
     }
 
@@ -345,7 +440,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * check if this task is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(17);
+        return (Byte) get(22);
     }
 
     /**
@@ -354,7 +449,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public EntityProcessorTasksRecord setCreatedBy(ULong value) {
-        set(18, value);
+        set(23, value);
         return this;
     }
 
@@ -364,7 +459,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(18);
+        return (ULong) get(23);
     }
 
     /**
@@ -373,7 +468,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public EntityProcessorTasksRecord setCreatedAt(LocalDateTime value) {
-        set(19, value);
+        set(24, value);
         return this;
     }
 
@@ -383,7 +478,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(24);
     }
 
     /**
@@ -392,7 +487,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public EntityProcessorTasksRecord setUpdatedBy(ULong value) {
-        set(20, value);
+        set(25, value);
         return this;
     }
 
@@ -402,7 +497,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(20);
+        return (ULong) get(25);
     }
 
     /**
@@ -411,7 +506,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public EntityProcessorTasksRecord setUpdatedAt(LocalDateTime value) {
-        set(21, value);
+        set(26, value);
         return this;
     }
 
@@ -421,7 +516,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(26);
     }
 
     // -------------------------------------------------------------------------
@@ -447,7 +542,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
     /**
      * Create a detached, initialised EntityProcessorTasksRecord
      */
-    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ULong ownerId, ULong ticketId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Byte hasReminder, LocalDateTime nextReminder, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ULong ownerId, ULong ticketId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Byte isCompleted, LocalDateTime completedDate, Byte isCancelled, LocalDateTime cancelledDate, Byte isDelayed, Byte hasReminder, LocalDateTime nextReminder, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTasks.ENTITY_PROCESSOR_TASKS);
 
         setId(id);
@@ -464,6 +559,11 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
         setTaskTypeId(taskTypeId);
         setDueDate(dueDate);
         setTaskPriority(taskPriority);
+        setIsCompleted(isCompleted);
+        setCompletedDate(completedDate);
+        setIsCancelled(isCancelled);
+        setCancelledDate(cancelledDate);
+        setIsDelayed(isDelayed);
         setHasReminder(hasReminder);
         setNextReminder(nextReminder);
         setTempActive(tempActive);

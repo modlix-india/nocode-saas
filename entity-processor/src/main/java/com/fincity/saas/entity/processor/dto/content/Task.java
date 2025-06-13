@@ -30,7 +30,12 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
     private ULong taskTypeId;
     private LocalDateTime dueDate;
     private TaskPriority taskPriority;
-    private Boolean hasReminder;
+    private boolean isCompleted;
+    private LocalDateTime completedDate;
+    private boolean isCancelled;
+    private LocalDateTime cancelledDate;
+    private boolean isDelayed;
+    private boolean hasReminder;
     private LocalDateTime nextReminder;
 
     @Override
