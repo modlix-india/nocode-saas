@@ -22,7 +22,16 @@ import reactor.core.publisher.Mono;
 public class TaskController
         extends BaseContentController<TaskRequest, EntityProcessorTasksRecord, Task, TaskDAO, TaskService> {
 
-    @PutMapping(REQ_PATH_ID + "/complete")
+    @PutMapping(REQ_PATH_ID + "/reminder")
+    public Mono<ResponseEntity<Task>> setReminder(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity,
+            @RequestParam(name = "reminderDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                    LocalDateTime reminderDate) {
+
+        return this.service.setReminder(identity, reminderDate).map(ResponseEntity::ok);
+    }
+
+    @PutMapping(REQ_PATH_ID + "/completed")
     public Mono<ResponseEntity<Task>> setTaskCompleted(
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
             @RequestParam(name = "completed", defaultValue = "true") Boolean isCompleted,

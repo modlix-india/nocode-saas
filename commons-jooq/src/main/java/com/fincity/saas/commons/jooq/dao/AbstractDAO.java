@@ -1,28 +1,27 @@
 package com.fincity.saas.commons.jooq.dao;
 
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
-import com.fincity.saas.commons.model.condition.*;
-import org.jooq.*;
+import org.jooq.Condition;
+import org.jooq.DSLContext;
+import org.jooq.DataType;
+import org.jooq.DeleteQuery;
+import org.jooq.Field;
 import org.jooq.Record;
-import org.jooq.conf.ParamType;
+import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
+import org.jooq.SortField;
+import org.jooq.SortOrder;
+import org.jooq.Table;
+import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
-import org.jooq.types.UInteger;
-import org.jooq.types.ULong;
-import org.jooq.types.UNumber;
-import org.jooq.types.UShort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,15 +30,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
-import org.springframework.r2dbc.core.DatabaseClient;
-import org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec;
-import org.springframework.r2dbc.core.Parameter;
-import org.springframework.transaction.ReactiveTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 import io.r2dbc.spi.Row;
@@ -53,11 +52,6 @@ import reactor.util.function.Tuples;
 public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>> {
 
     private static final String OBJECT_NOT_FOUND = AbstractMessageService.OBJECT_NOT_FOUND;
-    
-    private static final Map<Class<?>, Function<UNumber, Tuple2<Object, Class<?>>>> CONVERTERS = Map.of(ULong.class,
-            x -> Tuples.of(x == null ? x : x.toBigInteger(), BigInteger.class), UInteger.class,
-            x -> Tuples.of(x == null ? x : x.longValue(), Long.class), UShort.class,
-            x -> Tuples.of(x == null ? x : x.intValue(), Integer.class));
 
     protected final Class<D> pojoClass;
 
@@ -68,12 +62,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     @Autowired // NOSONAR
     protected AbstractMessageService messageResourceService;
-
-    @Autowired // NOSONAR
-    protected DatabaseClient dbClient;
-
-    @Autowired // NOSONAR
-    protected ReactiveTransactionManager transactionManager;
 
     protected final Table<R> table;
     protected final Field<I> idField;
@@ -87,7 +75,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     public Mono<Page<D>> readPage(Pageable pageable) {
-
         return getSelectJointStep().flatMap(tup -> this.list(pageable, tup));
     }
 
@@ -99,27 +86,26 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                                 .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition)))));
     }
 
-    protected Mono<Page<D>> list(Pageable pageable,
-                                 Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple) {
+    protected Mono<Page<D>> list(
+            Pageable pageable, Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple) {
         List<SortField<?>> orderBy = new ArrayList<>();
 
-        pageable.getSort()
-                .forEach(order -> {
-                    Field<?> field = this.getField(order.getProperty());
-                    if (field != null)
-                        orderBy.add(field.sort(order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
-                });
+        pageable.getSort().forEach(order -> {
+            Field<?> field = this.getField(order.getProperty());
+            if (field != null)
+                orderBy.add(field.sort(order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
+        });
 
-        final Mono<Integer> recordsCount = Mono.from(selectJoinStepTuple.getT2())
-                .map(Record1::value1);
+        final Mono<Integer> recordsCount =
+                Mono.from(selectJoinStepTuple.getT2()).map(Record1::value1);
 
         SelectJoinStep<Record> selectJoinStep = selectJoinStepTuple.getT1();
         if (!orderBy.isEmpty()) {
             selectJoinStep.orderBy(orderBy);
         }
 
-        Mono<List<D>> recordsList = Flux.from(selectJoinStep.limit(pageable.getPageSize())
-                        .offset(pageable.getOffset()))
+        Mono<List<D>> recordsList = Flux.from(
+                        selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(e -> e.into(this.pojoClass))
                 .collectList();
 
@@ -148,7 +134,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 .toUpperCase();
     }
 
-    @SuppressWarnings("unchecked")
     public Mono<D> create(D pojo) {
 
         pojo.setId(null);
@@ -185,13 +170,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         if (condition == null)
             return Mono.just(DSL.noCondition());
 
-        Mono<Condition> cond = null;
-        if (condition instanceof ComplexCondition cc)
-            cond = complexConditionFilter(cc);
-        else
-            cond = Mono.just(filterConditionFilter((FilterCondition) condition));
-
-        return cond.map(c -> condition.isNegate() ? c.not() : c);
+        return (condition instanceof ComplexCondition cc ? this.complexConditionFilter(cc)
+                : Mono.just(this.filterConditionFilter((FilterCondition) condition)))
+                .map(c -> condition.isNegate() ? c.not() : c);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -264,21 +245,20 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
             return List.of();
 
         int from = 0;
-        String iValue = obValue.toString()
-                .trim();
+        String iValue = obValue.toString().trim();
 
         List<Object> obj = new ArrayList<>();
-        for (int i = 0; i < iValue.length(); i++) { // NOSONAR
+        for (int i = 0; i <= iValue.length(); i++) { // NOSONAR
             // Having multiple continue statements is not confusing
 
-            if (iValue.charAt(i) != ',')
+            if (i < iValue.length() && iValue.charAt(i) != ',')
                 continue;
 
-            if (i != 0 && iValue.charAt(i - 1) == '\\')
+            if (i > 0 && iValue.charAt(i - 1) == '\\')
                 continue;
 
-            String str = iValue.substring(from, i)
-                    .trim();
+            String str = iValue.substring(from, i).trim();
+
             if (str.isEmpty())
                 continue;
 
@@ -287,7 +267,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         }
 
         return obj;
-
     }
 
     private Object fieldValue(Field<?> field, Object value) {
