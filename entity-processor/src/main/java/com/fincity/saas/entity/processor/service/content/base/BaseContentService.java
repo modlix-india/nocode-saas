@@ -111,7 +111,7 @@ public abstract class BaseContentService<
     }
 
     public Mono<D> updateInternal(Tuple3<String, String, ULong> access, D entity) {
-        if (entity.getCreatedBy().equals(access.getT3()))
+        if (!entity.getCreatedBy().equals(access.getT3()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                     ProcessorMessageResourceService.TASK_FORBIDDEN_ACCESS);

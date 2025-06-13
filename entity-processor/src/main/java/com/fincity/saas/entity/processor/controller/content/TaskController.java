@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono;
 public class TaskController
         extends BaseContentController<TaskRequest, EntityProcessorTasksRecord, Task, TaskDAO, TaskService> {
 
-    @PutMapping(REQ_PATH_ID + "/complete")
+    @PutMapping(REQ_PATH_ID + "/completed")
     public Mono<ResponseEntity<Task>> setTaskCompleted(
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
             @RequestParam(name = "completed", defaultValue = "true") Boolean isCompleted,

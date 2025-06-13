@@ -11,7 +11,6 @@ import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -65,7 +64,8 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
         if (contentRequest.getDueDate() != null && contentRequest.getDueDate().isBefore(LocalDateTime.now()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.DUE_DATE_IN_PAST);
+                    ProcessorMessageResourceService.DATE_IN_PAST,
+                    "Due");
 
         return Mono.just(new Task().of(contentRequest));
     }
@@ -120,15 +120,15 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                                 ProcessorMessageResourceService.TASK_ALREADY_CANCELLED,
                                 taskIdentity.toString());
 
-                    if (!isCompletion
-                            && !Objects.equals(
-                                    task.getCreatedBy(), hasAccess.getT1().getT3()))
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                ProcessorMessageResourceService.TASK_FORBIDDEN_ACCESS,
-                                taskIdentity.toString());
+                    LocalDateTime now = LocalDateTime.now();
 
-                    LocalDateTime date = statusDate != null ? statusDate : LocalDateTime.now();
+                    if (statusDate != null && statusDate.isBefore(now))
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.DATE_IN_PAST,
+                                "Status");
+
+                    LocalDateTime date = statusDate != null ? statusDate : now;
 
                     if (task.getDueDate() != null && task.getDueDate().isBefore(date)) task.setIsDelayed(Boolean.TRUE);
 
