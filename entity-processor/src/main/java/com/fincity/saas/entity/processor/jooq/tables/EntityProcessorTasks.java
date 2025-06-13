@@ -157,6 +157,41 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
+     * to tell, is the task Completed
+     */
+    public final TableField<EntityProcessorTasksRecord, Byte> IS_COMPLETED = createField(DSL.name("IS_COMPLETED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Completed");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.COMPLETED_DATE</code>.
+     * Timestamp when this task was Completed
+     */
+    public final TableField<EntityProcessorTasksRecord, LocalDateTime> COMPLETED_DATE = createField(DSL.name("COMPLETED_DATE"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when this task was Completed");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
+     * to tell, is the task Cancelled
+     */
+    public final TableField<EntityProcessorTasksRecord, Byte> IS_CANCELLED = createField(DSL.name("IS_CANCELLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Cancelled");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CANCELLED_DATE</code>.
+     * Timestamp when this task was Cancelled
+     */
+    public final TableField<EntityProcessorTasksRecord, LocalDateTime> CANCELLED_DATE = createField(DSL.name("CANCELLED_DATE"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when this task was Cancelled");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
+     * Message
+     */
+    public final TableField<EntityProcessorTasksRecord, Byte> IS_DELAYED = createField(DSL.name("IS_DELAYED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Error Message");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */

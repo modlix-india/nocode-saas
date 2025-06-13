@@ -35,6 +35,10 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String DEFAULT_RULE_MISSING = "default_rule_missing";
     public static final String NO_VALUES_FOUND = "no_values_found";
     public static final String CONTENT_MISSING = "content_missing";
+    public static final String DUE_DATE_IN_PAST = "due_date_in_past";
+    public static final String TASK_FORBIDDEN_ACCESS = "task_forbidden_access";
+    public static final String TASK_ALREADY_COMPLETED = "task_already_completed";
+    public static final String TASK_ALREADY_CANCELLED = "task_already_cancelled";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
