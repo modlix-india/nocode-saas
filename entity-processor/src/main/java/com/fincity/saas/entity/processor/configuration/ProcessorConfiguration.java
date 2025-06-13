@@ -20,7 +20,8 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
 
     protected ProcessorMessageResourceService processorMessageResourceService;
 
-    protected ProcessorConfiguration(ProcessorMessageResourceService messageResourceService, ObjectMapper objectMapper) {
+    protected ProcessorConfiguration(
+            ProcessorMessageResourceService messageResourceService, ObjectMapper objectMapper) {
         super(objectMapper);
         this.processorMessageResourceService = messageResourceService;
     }
