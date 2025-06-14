@@ -154,7 +154,7 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                     ProcessorMessageResourceService.TASK_ALREADY_CANCELLED,
                     task.getId());
 
-        if (statusDate == null || statusDate.isBefore(LocalDateTime.now()))
+        if (statusDate != null && statusDate.isBefore(LocalDateTime.now()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.DATE_IN_PAST,
