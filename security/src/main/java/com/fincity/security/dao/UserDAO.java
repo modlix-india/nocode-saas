@@ -7,22 +7,17 @@ import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
 import static com.fincity.security.jooq.tables.SecurityPastPins.*;
 import static com.fincity.security.jooq.tables.SecurityUser.*;
-import static com.fincity.security.jooq.tables.SecurityV2Role.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.fincity.saas.commons.util.*;
-import com.fincity.security.dto.RoleV2;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
-import org.jooq.Record3;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectLimitPercentStep;
 import org.jooq.TableField;
@@ -37,26 +32,18 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.SecurityApp;
-import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecurityUser;
-import com.fincity.security.jooq.tables.SecurityV2Role;
-import com.fincity.security.jooq.tables.SecurityV2RolePermission;
-import com.fincity.security.jooq.tables.SecurityV2RoleRole;
 import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.service.SecurityMessageResourceService;
-import com.fincity.security.util.AuthoritiesNameUtil;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
@@ -496,5 +483,48 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                             .reduce(Boolean::logicalAnd);
                 }
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
+    }
+
+    public Mono<ULong> findUserAcrossApps(String userName, String clientCode, AuthenticationIdentifierType authenticationIdentifierType,
+                                          SecurityUserStatusCode[] userStatusCodes) {
+
+        List<Condition> conditions = new ArrayList<>();
+
+        if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName)) {
+            TableField<SecurityUserRecord, String> userIdentificationField;
+
+            switch (authenticationIdentifierType) {
+                case PHONE_NUMBER -> userIdentificationField = SECURITY_USER.PHONE_NUMBER;
+                case EMAIL_ID -> userIdentificationField = SECURITY_USER.EMAIL_ID;
+                default -> userIdentificationField = SECURITY_USER.USER_NAME;
+            }
+            conditions.add(userIdentificationField.eq(userName));
+        }
+
+        if (userStatusCodes != null && userStatusCodes.length > 0)
+            conditions.add(SECURITY_USER.STATUS_CODE.in(userStatusCodes));
+
+        conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));
+
+        return Mono.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER)
+                .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.CODE.eq(clientCode))
+                .leftJoin(SECURITY_CLIENT_HIERARCHY).on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+                .where(DSL.and(conditions)).limit(1))
+                .map(Record1::value1);
+
+    }
+
+    public Mono<Boolean> checkUserExistsAcrossApps(String username, String email, String phoneNumber) {
+
+        List<Condition> conditions = new ArrayList<>(getUserAvailabilityConditions(username, email, phoneNumber));
+
+        // Exclude deleted users
+        conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+        return Mono.from(
+                        this.dslContext.selectCount()
+                                .from(SECURITY_USER)
+                                .where(DSL.and(conditions)))
+                .map(e -> e.value1() > 0);
     }
 }

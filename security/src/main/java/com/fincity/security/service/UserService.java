@@ -121,29 +121,45 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
     }
 
-    public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
-                                                                        String clientCode, String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
-        return this.findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
+    public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(
+            String userName,
+            ULong userId,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType) {
+        return this.findUserNClient(
+                userName,
+                userId,
+                clientCode,
+                appCode,
+                authenticationIdentifierType,
                 this.getNonDeletedUserStatusCodes());
     }
 
-    public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode,
-                                                              String appCode, AuthenticationIdentifierType authenticationIdentifierType,
-                                                              SecurityUserStatusCode... userStatusCodes) {
+    public Mono<Tuple3<Client, Client, User>> findUserNClient(
+            String userName,
+            ULong userId,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityUserStatusCode... userStatusCodes) {
 
         return FlatMapUtil.flatMapMono(
 
                         () -> this.dao
-                                .getUsersBy(userName, userId, clientCode, appCode, authenticationIdentifierType,
+                                .getUsersBy(
+                                        userName,
+                                        userId,
+                                        clientCode,
+                                        appCode,
+                                        authenticationIdentifierType,
                                         userStatusCodes)
                                 .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.getFirst()))
                                 .flatMap(user -> this.setAllAuthorities(appCode, user)),
-
                         user -> this.clientService.getActiveClient(user.getClientId()),
-
-                        (user, uClient) -> uClient.getCode().equals(clientCode) ? Mono.just(uClient)
+                        (user, uClient) -> uClient.getCode().equals(clientCode)
+                                ? Mono.just(uClient)
                                 : this.clientService.getClientBy(clientCode),
-
                         (user, uClient, mClient) -> Mono.just(Tuples.of(mClient, uClient, user)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
     }
@@ -223,8 +239,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     public SecurityUserStatusCode[] getNonDeletedUserStatusCodes() {
-        return new SecurityUserStatusCode[]{SecurityUserStatusCode.ACTIVE, SecurityUserStatusCode.INACTIVE,
-                SecurityUserStatusCode.LOCKED, SecurityUserStatusCode.PASSWORD_EXPIRED};
+        return new SecurityUserStatusCode[] {
+            SecurityUserStatusCode.ACTIVE,
+            SecurityUserStatusCode.INACTIVE,
+            SecurityUserStatusCode.LOCKED,
+            SecurityUserStatusCode.PASSWORD_EXPIRED
+        };
     }
 
     @Override
@@ -1000,7 +1020,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
 
-    private Mono<Boolean> addDesignation(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDesignation(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                          ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1035,7 +1055,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDesignation"));
     }
 
-    private Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                           ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1051,7 +1071,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
     }
 
-    private Mono<Boolean> addDefaultProfiles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDefaultProfiles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                              ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1201,5 +1221,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<ULong>> getProfileUsers(ULong appId, List<ULong> profiles) {
         return this.profileService.getUsersForProfiles(appId, profiles);
+    }
+
+    public Mono<ULong> findUserAcrossApps(
+            String userName, String clientCode, AuthenticationIdentifierType authenticationIdentifierType) {
+        return this.dao.findUserAcrossApps(
+                userName, clientCode, authenticationIdentifierType, this.getNonDeletedUserStatusCodes());
+    }
+
+    public Mono<Boolean> checkUserExistsAcrossApps(
+            String userName, String email, String phoneNumber) {
+
+        if (userName == null && email == null && phoneNumber == null)
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.dao.checkUserExists(
+                        ULong.valueOf(ca.getLoggedInFromClientId()), userName, email, phoneNumber, null));
     }
 }

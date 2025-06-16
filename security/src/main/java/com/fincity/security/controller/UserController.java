@@ -170,4 +170,15 @@ public class UserController
                 .map(ResponseEntity::ok);
     }
 
+    @GetMapping("/exists")
+    public Mono<ResponseEntity<Boolean>> exists(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phoneNumber) {
+
+        return this.service
+                .checkUserExistsAcrossApps(username, email, phoneNumber)
+                .map(ResponseEntity::ok);
+    }
+
 }

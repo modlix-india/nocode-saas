@@ -95,6 +95,7 @@ public class AuthenticationController {
                         (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
 
                         (ca, ca2, client) -> Mono.just(new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
+                                .setVerifiedAppCode(ca.getVerifiedAppCode())
                                 .setLoggedInClientCode(ca.getLoggedInFromClientCode())
                                 .setLoggedInClientId(ca.getLoggedInFromClientId())
                                 .setAccessToken(ca.getAccessToken())

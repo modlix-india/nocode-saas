@@ -141,4 +141,11 @@ public class ClientController
                 .map(ResponseEntity::ok);
     }
 
+    @PostMapping("/appRegister")
+    public Mono<ResponseEntity<Boolean>> registerApp(
+            @RequestParam String appCode, @RequestParam ULong clientId, @RequestParam ULong userId) {
+        return this.clientRegistrationService
+                .registerApp(appCode, clientId, userId)
+                .map(ResponseEntity::ok);
+	}
 }

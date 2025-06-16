@@ -203,9 +203,9 @@ public class ClientRegistrationService {
                         return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(),
                                 ULong.valueOf(ca.getLoggedInFromClientId())).map(TokenObject::getToken);
 
-                    return Mono.just("");
-                },
-                (ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client),
+					return Mono.just("");
+				},
+				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
 
                 (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
                         .createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
@@ -547,11 +547,11 @@ public class ClientRegistrationService {
         };
     }
 
-    private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {
+	private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client, String appCode) {
 
         return FlatMapUtil.flatMapMono(
 
-                        () -> this.appService.getAppByCode(ca.getUrlAppCode()),
+				() -> this.appService.getAppByCode(appCode),
 
                         app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
 
@@ -773,8 +773,54 @@ public class ClientRegistrationService {
 
                 (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 
-                (ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain, urlPrefix,
-                                user, auth.getAccessToken(), user.getInputPass(passType))
-                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.evokeRegistrationEvents")));
-    }
+				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain, urlPrefix,
+						user, auth.getAccessToken(), user.getInputPass(passType))
+						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
+	}
+
+    public Mono<Boolean> registerApp(String appCode, ULong clientId, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.appService.getAppByCode(appCode),
+                        (ca, app) -> {
+                            return this.clientService.read(clientId);
+                        },
+                        (ca, app, client) -> this.clientService.addClientRegistrationObjects(
+                                app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
+                        (ca, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
+                                app.getAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded) ->
+                                this.addFilesAccessPath(ca, client, appCode),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
+                                this.userService.addDefaultProfiles(
+                                        app.getId(),
+                                        app.getClientId(),
+                                        ULong.valueOf(ca.getLoggedInFromClientId()),
+                                        client,
+                                        userId),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
+                                this.userService.addDefaultRoles(
+                                        app.getId(),
+                                        app.getClientId(),
+                                        ULong.valueOf(ca.getLoggedInFromClientId()),
+                                        client,
+                                        userId),
+                        (ca,
+                                app,
+                                client,
+                                restrictedProfileAdded,
+                                appAccAdded,
+                                filePathAdded,
+                                userProfileAdded,
+                                userRoleAdded) -> this.userService.addDesignation(
+                                app.getId(),
+                                app.getClientId(),
+                                ULong.valueOf(ca.getLoggedInFromClientId()),
+                                client,
+                                userId))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE));
+	}
 }
