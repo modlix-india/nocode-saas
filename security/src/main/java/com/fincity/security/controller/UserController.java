@@ -169,5 +169,10 @@ public class UserController
         return this.inviteService.getAllInvitedUsers(pageable, condition)
                 .map(ResponseEntity::ok);
     }
+    
+    @GetMapping("/internal" + PATH_ID)
+    public Mono<ResponseEntity<User>> getUser(@PathVariable ULong id) {
+        return this.service.readById(id).map(ResponseEntity::ok);
+    }
 
 }

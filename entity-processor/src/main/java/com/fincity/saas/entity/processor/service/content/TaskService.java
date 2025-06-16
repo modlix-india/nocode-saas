@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTasksRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
@@ -39,11 +40,11 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
     }
 
     @Override
-    protected Mono<TaskRequest> updateIdentities(TaskRequest taskRequest) {
-        return super.updateIdentities(taskRequest).flatMap(updated -> {
+    protected Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
+        return super.updateIdentities(access, taskRequest).flatMap(updated -> {
             if (updated.getTaskTypeId() != null)
                 return taskTypeService
-                        .checkAndUpdateIdentity(updated.getTaskTypeId())
+                        .checkAndUpdateIdentityWithAccess(access, updated.getTaskTypeId())
                         .map(updated::setTaskTypeId);
 
             return Mono.just(updated);
@@ -76,16 +77,16 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
             existing.setDueDate(entity.getDueDate());
             existing.setTaskPriority(entity.getTaskPriority());
 
+            LocalDateTime now = LocalDateTime.now();
+
             if (entity.isCompleted()) {
                 existing.setCompleted(Boolean.TRUE);
-                existing.setCompletedDate(
-                        entity.getCompletedDate() != null ? entity.getCompletedDate() : LocalDateTime.now());
+                existing.setCompletedDate(entity.getCompletedDate() != null ? entity.getCompletedDate() : now);
             }
 
             if (entity.isCancelled()) {
                 existing.setCancelled(Boolean.TRUE);
-                existing.setCancelledDate(
-                        entity.getCancelledDate() != null ? entity.getCancelledDate() : LocalDateTime.now());
+                existing.setCancelledDate(entity.getCancelledDate() != null ? entity.getCancelledDate() : now);
             }
 
             existing.setDelayed(entity.isDelayed());
@@ -99,13 +100,13 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
     public Mono<Task> setReminder(Identity taskIdentity, LocalDateTime reminderDate) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.readIdentityInternal(taskIdentity),
-                (hasAccess, task) -> this.checkTaskStatus(task, reminderDate, "Reminder"),
-                (hasAccess, task, vTask) -> {
+                access -> this.readIdentityWithAccess(access, taskIdentity),
+                (access, task) -> this.checkTaskStatus(task, reminderDate, LocalDateTime.now(), "Reminder"),
+                (access, task, vTask) -> {
                     vTask.setHasReminder(Boolean.TRUE);
                     vTask.setNextReminder(reminderDate);
 
-                    return this.updateInternal(hasAccess.getT1(), vTask);
+                    return this.updateInternal(access, vTask);
                 });
     }
 
@@ -119,12 +120,15 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
 
     private Mono<Task> setTaskStatus(
             Identity taskIdentity, Boolean status, LocalDateTime statusDate, boolean isCompletion) {
+
+        LocalDateTime now = LocalDateTime.now();
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.readIdentityInternal(taskIdentity),
-                (hasAccess, task) -> this.checkTaskStatus(task, statusDate, "Status"),
-                (hasAccess, task, vTask) -> {
-                    LocalDateTime date = statusDate != null ? statusDate : LocalDateTime.now();
+                access -> this.readIdentityWithAccess(access, taskIdentity),
+                (access, task) -> this.checkTaskStatus(task, statusDate, now, "Status"),
+                (access, task, vTask) -> {
+                    LocalDateTime date = statusDate != null ? statusDate : now;
 
                     if (vTask.getDueDate() != null && vTask.getDueDate().isBefore(date)) vTask.setDelayed(Boolean.TRUE);
 
@@ -136,11 +140,11 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                         vTask.setCancelledDate(date);
                     }
 
-                    return this.updateInternal(hasAccess.getT1(), vTask);
+                    return this.updateInternal(access, vTask);
                 });
     }
 
-    private Mono<Task> checkTaskStatus(Task task, LocalDateTime statusDate, String statusName) {
+    private Mono<Task> checkTaskStatus(Task task, LocalDateTime statusDate, LocalDateTime now, String statusName) {
 
         if (task.isCompleted())
             return this.msgService.throwMessage(
@@ -154,7 +158,7 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                     ProcessorMessageResourceService.TASK_ALREADY_CANCELLED,
                     task.getId());
 
-        if (statusDate != null && statusDate.isBefore(LocalDateTime.now()))
+        if (statusDate != null && statusDate.isBefore(now))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.DATE_IN_PAST,

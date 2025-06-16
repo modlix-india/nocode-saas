@@ -4,17 +4,16 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 public abstract class BaseContentService<
                 Q extends BaseContentRequest<Q>,
@@ -41,18 +40,18 @@ public abstract class BaseContentService<
 
     @Override
     public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
     public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
-    protected Mono<D> createInternal(D entity, Tuple3<String, String, ULong> access) {
-        entity.setAppCode(access.getT1());
-        entity.setClientCode(access.getT2());
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
 
-        entity.setCreatedBy(access.getT3());
+        entity.setCreatedBy(access.getUserId());
 
         return super.create(entity);
     }
@@ -78,7 +77,7 @@ public abstract class BaseContentService<
         });
     }
 
-    protected Mono<Q> updateIdentities(Q contentRequest) {
+    protected Mono<Q> updateIdentities(ProcessorAccess access, Q contentRequest) {
 
         if (contentRequest.getTicketId() == null && contentRequest.getOwnerId() == null)
             return this.msgService.throwMessage(
@@ -90,7 +89,7 @@ public abstract class BaseContentService<
                 () -> {
                     if (contentRequest.getTicketId() != null)
                         return this.ticketService
-                                .checkAndUpdateIdentity(contentRequest.getTicketId())
+                                .checkAndUpdateIdentityWithAccess(access, contentRequest.getTicketId())
                                 .map(contentRequest::setTicketId);
 
                     return Mono.just(contentRequest);
@@ -98,7 +97,7 @@ public abstract class BaseContentService<
                 tRequest -> {
                     if (tRequest.getOwnerId() != null)
                         return this.ownerService
-                                .checkAndUpdateIdentity(tRequest.getOwnerId())
+                                .checkAndUpdateIdentityWithAccess(access, tRequest.getOwnerId())
                                 .map(tRequest::setOwnerId);
 
                     return Mono.just(tRequest);
@@ -107,11 +106,11 @@ public abstract class BaseContentService<
 
     @Override
     public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> this.updateInternal(hasAccess.getT1(), entity));
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
     }
 
-    public Mono<D> updateInternal(Tuple3<String, String, ULong> access, D entity) {
-        if (!entity.getCreatedBy().equals(access.getT3()))
+    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
+        if (!entity.getCreatedBy().equals(access.getUserId()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                     ProcessorMessageResourceService.TASK_FORBIDDEN_ACCESS);
@@ -122,9 +121,9 @@ public abstract class BaseContentService<
     public Mono<D> create(Q contentRequest) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.updateIdentities(contentRequest),
-                (hasAccess, uRequest) -> this.createContent(uRequest),
-                (hasAccess, uRequest, content) ->
+                access -> this.updateIdentities(access, contentRequest),
+                (access, uRequest) -> this.createContent(uRequest),
+                (access, uRequest, content) ->
                         content.isTicketContent() ? this.createTicketContent(content) : createOwnerContent(content));
     }
 

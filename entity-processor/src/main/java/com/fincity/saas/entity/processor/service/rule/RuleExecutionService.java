@@ -1,10 +1,11 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-import com.fincity.saas.entity.processor.feign.SecurityUserServiceClient;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
 import java.util.ArrayList;
@@ -25,17 +26,17 @@ public class RuleExecutionService {
 
     private final SimpleRuleService simpleRuleService;
     private final ComplexRuleService complexRuleService;
-    private final SecurityUserServiceClient securityUserServiceClient;
+    private final IFeignSecurityService securityService;
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
     public RuleExecutionService(
             SimpleRuleService simpleRuleService,
             ComplexRuleService complexRuleService,
-            SecurityUserServiceClient securityUserServiceClient) {
+            IFeignSecurityService securityService) {
         this.simpleRuleService = simpleRuleService;
         this.complexRuleService = complexRuleService;
-        this.securityUserServiceClient = securityUserServiceClient;
+        this.securityService = securityService;
     }
 
     private Mono<List<ULong>> getUsersForDistribution(UserDistribution userDistribution) {
@@ -51,12 +52,14 @@ public class RuleExecutionService {
                 && !userDistribution.getProfileIds().isEmpty()) {
             String appCode = userDistribution.getAppCode();
 
-            return this.securityUserServiceClient
-                    .getProfileUsers(appCode, userDistribution.getProfileIds())
+            return this.securityService
+                    .getProfileUsers(appCode, userDistribution.getProfileIdsInt())
                     .flatMap(userIds -> {
                         List<ULong> combinedUserIds = new ArrayList<>();
 
-                        if (userIds != null && !userIds.isEmpty()) combinedUserIds.addAll(userIds);
+                        if (userIds != null && !userIds.isEmpty())
+                            combinedUserIds.addAll(
+                                    userIds.stream().map(ULongUtil::valueOf).toList());
 
                         if (userDistribution.getUserIds() != null
                                 && !userDistribution.getUserIds().isEmpty())

@@ -7,10 +7,9 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 
-public abstract class BaseServiceDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
-        extends AbstractFlowDAO<R, ULong, D> {
+public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>> extends AbstractFlowDAO<R, ULong, D> {
 
-    protected BaseServiceDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
+    protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
     }
 }

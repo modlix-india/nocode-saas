@@ -2,11 +2,13 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -16,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO> {
@@ -27,16 +28,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ProductService productService;
     private final StageService stageService;
     private final ProductStageRuleService productStageRuleService;
+    private final ActivityService activityService;
 
     public TicketService(
             @Lazy OwnerService ownerService,
             ProductService productService,
             StageService stageService,
-            ProductStageRuleService productStageRuleService) {
+            ProductStageRuleService productStageRuleService,
+            ActivityService activityService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
         this.productStageRuleService = productStageRuleService;
+        this.activityService = activityService;
     }
 
     @Override
@@ -50,9 +54,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     @Override
-    protected Mono<Ticket> checkEntity(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
-        return this.checkTicket(ticket, accessInfo)
-                .flatMap(uEntity -> this.setOwner(accessInfo, uEntity))
+    protected Mono<Ticket> checkEntity(Ticket ticket, ProcessorAccess access) {
+        return this.checkTicket(ticket, access)
+                .flatMap(uEntity -> this.setOwner(access, uEntity))
                 .flatMap(owner -> this.updateTicketFromOwner(ticket, owner));
     }
 
@@ -79,14 +83,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         if (ticketRequest.getProductId() == null || ticketRequest.getProductId().isNull())
             return super.hasPublicAccess()
-                    .flatMap(access -> setOwner(access.getT1(), ticket))
+                    .flatMap(access -> setOwner(access, ticket))
                     .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()));
 
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
-                        hasAccess -> productService.updateIdentity(ticketRequest.getProductId()),
-                        (hasAccess, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
-                        (hasAccess, productIdentity, pTicket) -> super.createInternal(pTicket, hasAccess))
+                        access -> productService.updateIdentity(ticketRequest.getProductId()),
+                        (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                        (access, productIdentity, pTicket) -> super.createInternal(access, pTicket))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
     }
 
@@ -96,12 +100,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.productService.checkAndUpdateIdentity(ticketRequest.getProductId()),
-                (hasAccess, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
-                (hasAccess, productIdentity, pTicket) -> super.createInternal(pTicket, hasAccess));
+                access -> this.productService.checkAndUpdateIdentityWithAccess(access, ticketRequest.getProductId()),
+                (access, productIdentity) -> this.checkDuplicate(
+                                access.getAppCode(), access.getClientCode(), ticketRequest),
+                (access, productIdentity, isDuplicate) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                (access, productIdentity, isDuplicate, pTicket, created) ->
+                        this.activityService.acCreate(created).thenReturn(created));
     }
 
-    private Mono<Ticket> checkTicket(Ticket ticket, Tuple3<String, String, ULong> accessInfo) {
+    private Mono<Ticket> checkTicket(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getProductId() == null)
             return this.msgService.throwMessage(
@@ -112,14 +120,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.productService.readById(ticket.getProductId()),
                 product -> this.setDefaultStage(
-                        ticket, accessInfo.getT1(), accessInfo.getT2(), product.getProductTemplateId()),
+                        ticket, access.getAppCode(), access.getClientCode(), product.getProductTemplateId()),
                 (product, sTicket) -> productStageRuleService.getUserAssignment(
-                        accessInfo.getT1(),
-                        accessInfo.getT2(),
+                        access.getAppCode(),
+                        access.getClientCode(),
                         product.getId(),
                         sTicket.getStage(),
-                        this.getEntityTokenPrefix(accessInfo.getT1()),
-                        accessInfo.getT3(),
+                        this.getEntityPrefix(access.getAppCode()),
+                        access.getUserId(),
                         sTicket.toJson()),
                 (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
     }
@@ -136,8 +144,31 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 });
     }
 
-    private Mono<Owner> setOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
-        return this.ownerService.getOrCreateTicketOwner(accessInfo, ticket);
+    private Mono<Boolean> checkDuplicate(String appCode, String clientCode, TicketRequest ticketRequest) {
+        return this.dao
+                .readByNumberAndEmail(
+                        appCode,
+                        clientCode,
+                        ticketRequest.getProductId().getULongId(),
+                        ticketRequest.getPhoneNumber().getCountryCode(),
+                        ticketRequest.getPhoneNumber().getNumber(),
+                        ticketRequest.getEmail().getAddress())
+                .flatMap(existing -> {
+                    if (existing.getId() != null)
+                        return activityService
+                                .acReInquiry(existing, ticketRequest)
+                                .then(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.DUPLICATE_TICKET,
+                                        this.getEntityPrefix(appCode),
+                                        existing.getCode(),
+                                        this.getEntityPrefix(appCode)));
+                    return Mono.just(Boolean.FALSE);
+                });
+    }
+
+    private Mono<Owner> setOwner(ProcessorAccess access, Ticket ticket) {
+        return this.ownerService.getOrCreateTicketOwner(access, ticket);
     }
 
     private Mono<Ticket> updateTicketFromOwner(Ticket ticket, Owner owner) {

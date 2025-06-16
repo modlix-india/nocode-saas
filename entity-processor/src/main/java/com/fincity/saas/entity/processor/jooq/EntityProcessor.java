@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq;
 
 
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -39,6 +40,11 @@ public class EntityProcessor extends SchemaImpl {
      * The reference instance of <code>entity_processor</code>
      */
     public static final EntityProcessor ENTITY_PROCESSOR = new EntityProcessor();
+
+    /**
+     * The table <code>entity_processor.entity_processor_activities</code>.
+     */
+    public final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 
     /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
@@ -125,6 +131,7 @@ public class EntityProcessor extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,

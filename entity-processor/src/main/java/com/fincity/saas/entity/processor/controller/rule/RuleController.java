@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.controller.rule;
 
-import com.fincity.saas.entity.processor.controller.base.BaseController;
+import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.rule.RuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -23,7 +23,7 @@ public abstract class RuleController<
                 D extends Rule<D>,
                 O extends RuleDAO<R, D>,
                 S extends RuleService<R, D, O>>
-        extends BaseController<R, D, O, S> {
+        extends BaseUpdatableController<R, D, O, S> {
 
     private static final String ORDER_PATH = REQ_PATH + "/order";
     private static final String ORDER_PATH_ID = REQ_PATH_ID + "/order";
