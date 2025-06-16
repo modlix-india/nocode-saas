@@ -55,6 +55,7 @@ import com.fincity.security.service.appregistration.AppRegistrationIntegrationTo
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 
 @Service
 public class AuthenticationService implements IAuthenticationService {
@@ -202,6 +203,33 @@ public class AuthenticationService implements IAuthenticationService {
                 .log();
     }
 
+    public Mono<AuthenticationResponse> authenticateUserForHavingApp(
+            AuthenticationRequest authRequest,
+            String clientCode,
+            ServerHttpRequest request,
+            ServerHttpResponse response) {
+
+        // Get userId either from authRequest or by calling userService
+        Mono<ULong> userIdMono = authRequest.getUserId() != null
+                ? Mono.just(authRequest.getUserId())
+                : this.userService.findUserAcrossApps(authRequest.getUserName(), clientCode, authRequest.getIdentifierType());
+
+        return userIdMono
+                .flatMap(this.profileService::getUserAppHavingProfile)
+                .flatMap(this.appService::getAppById)
+                .flatMap(app -> {
+                    // Modify the request headers to include the app code
+                    ServerHttpRequest modifiedRequest = request.mutate()
+                            .header(AppService.AC, app.getAppCode())
+                            .build();
+
+                    // Call authenticate with the modified request
+                    return this.authenticate(authRequest, modifiedRequest, response);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateUserForHavingApp"))
+                .switchIfEmpty(Mono.defer(() -> this.authError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND)));
+    }
+
     public Mono<AuthenticationResponse> authenticate(
             AuthenticationRequest authRequest, ServerHttpRequest request, ServerHttpResponse response) {
 
@@ -216,35 +244,48 @@ public class AuthenticationService implements IAuthenticationService {
             return this.authError(SecurityMessageResourceService.UNKNOWN_ERROR);
         }
 
-        return FlatMapUtil.flatMapMono(
-                        () -> this.userService
-                                .findNonDeletedUserNClient(
-                                        authRequest.getUserName(),
-                                        authRequest.getUserId(),
-                                        clientCode,
-                                        appCode,
-                                        authRequest.getIdentifierType())
-                                .flatMap(tup -> this.profileService
-                                        .checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+        Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNClient(
+                authRequest.getUserName(),
+                authRequest.getUserId(),
+                clientCode,
+                appCode,
+                authRequest.getIdentifierType());
+
+        return userClientMono
+                .flatMap(userTup -> FlatMapUtil.flatMapMono(
+                                () -> Mono.just(userTup).flatMap(tup -> this.profileService
+                                        .checkIfUserHasAnyProfile(
+                                                tup.getT3().getId(), appCode)
                                         .flatMap(e -> {
                                             if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
                                             return Mono.empty();
                                         })),
-                        tup -> this.userService
-                                .checkUserAndClient(tup, clientCode)
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
-                        (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(
-                                tup.getT2().getId(), appCode, passwordType),
-                        (tup, linCCheck, user, policy) ->
-                                this.checkPassword(authRequest.getInputPass(), appCode, user, policy, passwordType),
-                        (tup, linCCheck, user, policy, passwordChecked) -> this.resetUserAttempts(user, passwordType),
-                        (tup, linCCheck, user, policy, passwordChecked, attemptsReset) ->
-                                logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, user, tup.getT2(), tup.getT1()))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate"))
-                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED));
+                                tup -> this.userService
+                                        .checkUserAndClient(tup, clientCode)
+                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
+                                (tup, linCCheck, user) -> this.clientService.getClientAppPolicy(
+                                        tup.getT2().getId(), appCode, passwordType),
+                                (tup, linCCheck, user, policy) -> this.checkPassword(
+                                        authRequest.getInputPass(), appCode, user, policy, passwordType),
+                                (tup, linCCheck, user, policy, passwordChecked) ->
+                                        this.resetUserAttempts(user, passwordType),
+                                (tup, linCCheck, user, policy, passwordChecked, attemptsReset) -> logAndMakeToken(
+                                        authRequest.isRememberMe(),
+                                        authRequest.isCookie(),
+                                        request,
+                                        response,
+                                        appCode,
+                                        user,
+                                        tup.getT2(),
+                                        tup.getT1()))
+                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate")))
+                .switchIfEmpty(
+                        // If findNonDeletedUserNClient returns empty, try authenticateUserForHavingApp
+                        Mono.defer(() -> this.authenticateUserForHavingApp(authRequest, clientCode, request, response))
+                                .switchIfEmpty(Mono.defer(() ->
+                                        this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))));
     }
-
     public Mono<AuthenticationResponse> authenticateWSocial(
             AuthenticationRequest authRequest, ServerHttpRequest request, ServerHttpResponse response) {
 
@@ -259,16 +300,18 @@ public class AuthenticationService implements IAuthenticationService {
         if (authRequest.getIdentifierType() == null)
             authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
 
-        return FlatMapUtil.flatMapMono(
-                        () -> this.userService
-                                .findNonDeletedUserNClient(
-                                        authRequest.getUserName(),
-                                        authRequest.getUserId(),
-                                        clientCode,
-                                        appCode,
-                                        authRequest.getIdentifierType())
-                                .flatMap(tup -> this.profileService
-                                        .checkIfUserHasAnyProfile(tup.getT3().getId(), appCode)
+        Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNClient(
+                authRequest.getUserName(),
+                authRequest.getUserId(),
+                clientCode,
+                appCode,
+                authRequest.getIdentifierType());
+
+        return userClientMono
+                .flatMap(userTup -> FlatMapUtil.flatMapMono(
+                                () -> Mono.just(userTup).flatMap(tup -> this.profileService
+                                        .checkIfUserHasAnyProfile(
+                                                tup.getT3().getId(), appCode)
                                         .flatMap(e -> {
                                             if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
                                             return Mono.empty();
@@ -289,10 +332,13 @@ public class AuthenticationService implements IAuthenticationService {
                             return this.integrationTokenDao.update(appRegIntgToken);
                         },
                         (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) ->
-                                logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, user, tup.getT2(), tup.getT1()))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWSocial"))
-                .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))
-                .log();
+                                logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, appCode, user, tup.getT2(), tup.getT1()))
+                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate")))
+                .switchIfEmpty(
+                        // If findNonDeletedUserNClient returns empty, try authenticateUserForHavingApp
+                        Mono.defer(() -> this.authenticateUserForHavingApp(authRequest, clientCode, request, response))
+                                .switchIfEmpty(Mono.defer(() ->
+                                        this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))));
     }
 
     private Mono<User> checkUserStatus(User user) {
@@ -425,11 +471,12 @@ public class AuthenticationService implements IAuthenticationService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
     }
 
-    private Mono<AuthenticationResponse> logAndMakeToken(
+    private Mono<AuthenticationResponse>  logAndMakeToken(
             boolean rememberMe,
             boolean isCookie,
             ServerHttpRequest request,
             ServerHttpResponse response,
+            String appCode,
             User user,
             Client client,
             Client linClient) {
@@ -442,6 +489,7 @@ public class AuthenticationService implements IAuthenticationService {
                 isCookie,
                 request,
                 response,
+                appCode,
                 user,
                 client,
                 linClient);
@@ -452,6 +500,7 @@ public class AuthenticationService implements IAuthenticationService {
             boolean isCookie,
             ServerHttpRequest request,
             ServerHttpResponse response,
+            String appCode,
             User user,
             Client client,
             Client linClient) {
@@ -478,6 +527,7 @@ public class AuthenticationService implements IAuthenticationService {
                 .port(port)
                 .loggedInClientId(linClient.getId().toBigInteger())
                 .loggedInClientCode(linClient.getCode())
+                .appCode(appCode)
                 .build());
 
         if (isCookie)
@@ -501,6 +551,7 @@ public class AuthenticationService implements IAuthenticationService {
                 .map(t -> new AuthenticationResponse()
                         .setUser(user.toContextUser())
                         .setClient(client)
+                        .setVerifiedAppCode(appCode)
                         .setLoggedInClientCode(linClient.getCode())
                         .setLoggedInClientId(linClient.getId().toBigInteger())
                         .setAccessToken(token.getT1())
@@ -537,7 +588,7 @@ public class AuthenticationService implements IAuthenticationService {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
                         return this.userService
                                 .getUserAuthorities(
-                                        appCode,
+                                        ca.getVerifiedAppCode(),
                                         ULong.valueOf(ca.getUser().getClientId()),
                                         ULong.valueOf(ca.getUser().getId()))
                                 .map(ca.getUser()::setStringAuthorities)
@@ -617,7 +668,8 @@ public class AuthenticationService implements IAuthenticationService {
                                     finToken,
                                     LocalDateTime.now().plusYears(1),
                                     clientCode,
-                                    reqAppCode)))
+                                    reqAppCode,
+                                    appCode)))
                     .contextWrite(Context.of(
                             LogUtil.METHOD_NAME, "AuthenticationService.getAuthenticationIfNotInCache [Basic]"))
                     .map(Authentication.class::cast)
@@ -663,7 +715,8 @@ public class AuthenticationService implements IAuthenticationService {
                                 tokenObject.getToken(),
                                 tokenObject.getExpiresAt(),
                                 null,
-                                null)))
+                                null,
+                                claims.getAppCode())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeSpringAuthentication"));
     }
 
@@ -707,10 +760,12 @@ public class AuthenticationService implements IAuthenticationService {
                 "",
                 LocalDateTime.MAX,
                 null,
+                null,
                 null));
     }
 
     private Mono<JWTClaims> checkTokenOrigin(ServerHttpRequest request, JWTClaims jwtClaims) {
+
 
         String host = request.getURI().getHost();
 
@@ -869,7 +924,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
                         (userId, tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
                         (userId, tup, linCCheck, user) ->
-                                logAndMakeToken(false, false, request, response, user, tup.getT2(), tup.getT1()))
+                                logAndMakeToken(false, false, request, response, appCode, user, tup.getT2(), tup.getT1()))
                 .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWithOneTimeToken"));
     }
