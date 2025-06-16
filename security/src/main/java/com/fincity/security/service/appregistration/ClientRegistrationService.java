@@ -820,7 +820,7 @@ public class ClientRegistrationService {
                                 client,
                                 userId))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
-                        msg -> new GenericException(HttpStatus.EXPECTATION_FAILED, msg),
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
                         SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE));
 	}
 }
