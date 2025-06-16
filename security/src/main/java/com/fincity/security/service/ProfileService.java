@@ -473,4 +473,13 @@ public class ProfileService
                 .collectList()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
     }
+
+    public Mono<ULong> getUserAppHavingProfile(ULong userId) {
+
+        if (userId == null) return Mono.empty();
+
+        return  this.dao.getUserAppHavingProfile(userId);
+
+    }
+
 }
