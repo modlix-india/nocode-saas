@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleRulesRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.base.IConditionRuleService;
 import org.jooq.types.ULong;
@@ -16,7 +17,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRulesRecord, SimpleRule, SimpleRuleDAO>
@@ -58,22 +58,19 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
 
     @Override
     public Mono<SimpleRule> createForCondition(
-            ULong entityId,
-            EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
-            FilterCondition condition) {
+            ULong entityId, EntitySeries entitySeries, ProcessorAccess access, FilterCondition condition) {
         return this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition);
     }
 
     public Mono<SimpleRule> createForCondition(
             ULong entityId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             boolean hasParent,
             FilterCondition condition) {
         SimpleRule simpleRule =
                 SimpleRule.fromCondition(entityId, entitySeries, condition).setHasParent(hasParent);
-        return super.createInternal(simpleRule, access);
+        return super.createInternal(access, simpleRule);
     }
 
     @Override
@@ -112,7 +109,7 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     public Mono<SimpleRule> createForConditionWithParent(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             FilterCondition condition,
             ULong parentId,
             int order) {
@@ -120,7 +117,7 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
                 .flatMap(cSimpleRule -> {
                     SimpleComplexRuleRelation relation = this.createRelation(parentId, cSimpleRule.getId(), order);
                     return simpleComplexRuleRelationService
-                            .createInternal(relation, access)
+                            .createInternal(access, relation)
                             .thenReturn(cSimpleRule);
                 });
     }

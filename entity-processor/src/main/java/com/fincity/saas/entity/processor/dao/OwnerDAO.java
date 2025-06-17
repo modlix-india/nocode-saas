@@ -21,11 +21,11 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
     public Mono<Owner> readByNumberAndEmail(
             String appCode, String clientCode, Integer dialCode, String number, String email) {
         return Mono.from(this.dslContext
-                        .selectFrom(ENTITY_PROCESSOR_OWNERS)
+                        .selectFrom(this.table)
                         .where(this.getOwnerIdentifierConditions(appCode, clientCode, dialCode, number, email))
-                        .orderBy(ENTITY_PROCESSOR_OWNERS.ID.desc())
+                        .orderBy(this.idField.desc())
                         .limit(1))
-                .map(e -> e.into(Owner.class));
+                .map(e -> e.into(this.pojoClass));
     }
 
     private List<Condition> getOwnerIdentifierConditions(

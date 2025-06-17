@@ -15,7 +15,7 @@ public interface IEntitySeries {
     }
 
     @JsonIgnore
-    default String getEntityTokenPrefix(String appCode) {
-        return this.getEntitySeries().getTokenPrefix(appCode);
+    default String getEntityPrefix(String appCode) {
+        return this.getEntitySeries().getPrefix(appCode);
     }
 }

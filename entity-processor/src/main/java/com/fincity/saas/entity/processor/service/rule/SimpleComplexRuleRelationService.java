@@ -5,12 +5,12 @@ import com.fincity.saas.entity.processor.dao.rule.SimpleComplexRuleRelationDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleComplexRuleRelationsRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public class SimpleComplexRuleRelationService
@@ -33,16 +33,15 @@ public class SimpleComplexRuleRelationService
 
     @Override
     public Mono<SimpleComplexRuleRelation> create(SimpleComplexRuleRelation entity) {
-        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
-    public Mono<SimpleComplexRuleRelation> createInternal(
-            SimpleComplexRuleRelation entity, Tuple3<String, String, ULong> access) {
+    public Mono<SimpleComplexRuleRelation> createInternal(ProcessorAccess access, SimpleComplexRuleRelation entity) {
 
-        entity.setAppCode(access.getT1());
-        entity.setClientCode(access.getT2());
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
 
-        entity.setCreatedBy(access.getT3());
+        entity.setCreatedBy(access.getUserId());
 
         return super.create(entity);
     }

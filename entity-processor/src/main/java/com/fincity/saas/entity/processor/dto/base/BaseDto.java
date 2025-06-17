@@ -25,7 +25,7 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
 
     private String code = UniqueUtil.shortUUID();
 
-    private String name;
+    private String name = this.code;
     private String description;
 
     public T setCode() {

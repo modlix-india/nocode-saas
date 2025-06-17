@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq;
 
 
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -24,6 +25,11 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * The table <code>entity_processor.entity_processor_activities</code>.
+     */
+    public static final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 
     /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.

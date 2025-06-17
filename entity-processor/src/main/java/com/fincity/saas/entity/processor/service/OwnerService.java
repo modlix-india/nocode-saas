@@ -8,14 +8,13 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public class OwnerService extends BaseProcessorService<EntityProcessorOwnersRecord, Owner, OwnerDAO> {
@@ -39,7 +38,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     @Override
-    protected Mono<Owner> checkEntity(Owner entity, Tuple3<String, String, ULong> accessInfo) {
+    protected Mono<Owner> checkEntity(Owner entity, ProcessorAccess access) {
         return Mono.just(entity);
     }
 
@@ -60,11 +59,11 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return super.create(Owner.of(ownerRequest));
     }
 
-    public Mono<Owner> getOrCreateTicketOwner(Tuple3<String, String, ULong> accessInfo, Ticket ticket) {
+    public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getOwnerId() != null) return this.readById(ULongUtil.valueOf(ticket.getOwnerId()));
 
-        return this.getOrCreateTicketPhoneOwner(accessInfo.getT1(), accessInfo.getT2(), ticket);
+        return this.getOrCreateTicketPhoneOwner(access.getAppCode(), access.getClientCode(), ticket);
     }
 
     private Mono<Owner> updateTickets(Owner owner) {
@@ -81,7 +80,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                     if (owner.getId() == null)
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.MODEL_NOT_CREATED);
+                                ProcessorMessageResourceService.OWNER_NOT_CREATED);
                     return Mono.just(owner);
                 });
     }

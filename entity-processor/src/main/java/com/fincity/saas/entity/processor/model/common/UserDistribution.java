@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import lombok.Data;
@@ -46,5 +47,9 @@ public class UserDistribution implements Serializable {
                         && hybridWeights.values().stream().allMatch(w -> w >= 0);
             default -> false;
         };
+    }
+
+    public List<BigInteger> getProfileIdsInt() {
+        return profileIds.stream().map(ULong::toBigInteger).toList();
     }
 }
