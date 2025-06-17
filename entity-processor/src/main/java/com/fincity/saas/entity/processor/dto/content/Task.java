@@ -22,7 +22,8 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public class Task extends BaseContentDto<TaskRequest, Task> {
 
-    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.taskTypeId, EntitySeries.TASK.getTable());
+    public static final Map<String, Table<?>> relationsMap =
+            Map.of(Fields.taskTypeId, EntitySeries.TASK_TYPE.getTable());
 
     @Serial
     private static final long serialVersionUID = 2984521500368594815L;

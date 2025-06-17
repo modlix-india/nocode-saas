@@ -54,13 +54,13 @@ public class ProductTemplateService
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> {
-                    productTemplate.setAppCode(hasAccess.getT1().getT1());
-                    productTemplate.setClientCode(hasAccess.getT1().getT2());
+                access -> {
+                    productTemplate.setAppCode(access.getAppCode());
+                    productTemplate.setClientCode(access.getClientCode());
 
                     return super.create(productTemplate);
                 },
-                (hasAccess, created) -> (productTemplateRequest.getProductId() == null
+                (access, created) -> (productTemplateRequest.getProductId() == null
                                 || productTemplateRequest.getProductId().isNull())
                         ? Mono.just(created)
                         : this.updateDependentServices(created, productTemplateRequest.getProductId()));
@@ -68,20 +68,9 @@ public class ProductTemplateService
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> super.readIdentityInternal(identity),
+                () -> super.readIdentityWithAccess(identity),
                 productTemplate ->
                         this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()));
-    }
-
-    public Mono<ProductTemplate> readWithAccess(Identity identity) {
-        return super.hasAccess().flatMap(hasAccess -> {
-            if (Boolean.FALSE.equals(hasAccess.getT2()))
-                return this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_FORBIDDEN_ACCESS);
-
-            return this.readIdentityInternal(identity);
-        });
     }
 
     private Mono<ProductTemplate> updateDependentServices(ProductTemplate productTemplate, Identity productId) {

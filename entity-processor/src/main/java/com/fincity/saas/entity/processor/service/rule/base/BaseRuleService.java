@@ -3,14 +3,13 @@ package com.fincity.saas.entity.processor.service.rule.base;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
@@ -31,18 +30,18 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
 
     @Override
     public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
     public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess.getT1()));
+        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
-    protected Mono<D> createInternal(D entity, Tuple3<String, String, ULong> access) {
-        entity.setAppCode(access.getT1());
-        entity.setClientCode(access.getT2());
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
 
-        entity.setCreatedBy(access.getT3());
+        entity.setCreatedBy(access.getUserId());
 
         return super.create(entity);
     }

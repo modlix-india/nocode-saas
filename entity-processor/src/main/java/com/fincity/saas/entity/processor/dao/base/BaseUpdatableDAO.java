@@ -69,24 +69,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
     }
 
-    public Mono<D> readByIdAndAppCodeAndClientCode(ULong id, String appCode, String clientCode) {
-        return this.readSingleRecordByIdentity(idField, id, appCode, clientCode);
-    }
-
-    public Mono<D> readByCodeAndAppCodeAndClientCode(String code, String appCode, String clientCode) {
-        return this.readSingleRecordByIdentity(codeField, code, appCode, clientCode);
-    }
-
-    private <V> Mono<D> readSingleRecordByIdentity(
-            Field<V> identityField, V identity, String appCode, String clientCode) {
-        return this.getSelectJointStep()
-                .map(Tuple2::getT1)
-                .flatMap(select -> Mono.from(select.where(
-                        identityField.eq(identity).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode)))))
-                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)))
-                .map(rec -> rec.into(this.pojoClass));
-    }
-
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
             ULong id,
             String appCode,
@@ -141,6 +123,20 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
 
     public Mono<D> readInternal(String code) {
         return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
+                .map(result -> result.into(this.pojoClass));
+    }
+
+    public Mono<D> readInternal(String appCode, String clientCode, ULong id) {
+        return Mono.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(this.idField.eq(id).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode))))
+                .map(e -> e.into(this.pojoClass));
+    }
+
+    public Mono<D> readInternal(String appCode, String clientCode, String code) {
+        return Mono.from(this.dslContext
+                        .selectFrom(this.table)
+                        .where(codeField.eq(code).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode))))
                 .map(result -> result.into(this.pojoClass));
     }
 

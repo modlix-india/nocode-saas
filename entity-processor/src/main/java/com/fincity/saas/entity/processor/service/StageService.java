@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
@@ -41,13 +41,16 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
-    public Mono<Stage> applyOrder(Stage entity, Tuple3<String, String, ULong> accessInfo) {
+    public Mono<Stage> applyOrder(Stage entity, ProcessorAccess access) {
 
         if (entity.isChild()) return Mono.just(entity);
 
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.getLatestStageByOrder(
-                        accessInfo.getT1(), accessInfo.getT2(), entity.getProductTemplateId(), entity.getPlatform()),
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        entity.getProductTemplateId(),
+                        entity.getPlatform()),
                 latestStage -> {
                     if (latestStage == null) return Mono.just(entity.setOrder(1));
 
@@ -77,13 +80,15 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
         return FlatMapUtil.flatMapMono(
-                        () -> super.productTemplateService.checkAndUpdateIdentity(stageRequest.getProductTemplateId()),
-                        productTemplateId -> {
+                        super::hasAccess,
+                        access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
+                                access, stageRequest.getProductTemplateId()),
+                        (access, productTemplateId) -> {
                             stageRequest.setProductTemplateId(productTemplateId);
 
                             if (stageRequest.getId() != null
                                     && stageRequest.getId().getId() != null) {
-                                return super.readIdentity(stageRequest.getId())
+                                return super.readIdentityWithAccess(access, stageRequest.getId())
                                         .flatMap(existingStage -> {
                                             existingStage
                                                     .setName(stageRequest.getName())
@@ -100,7 +105,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                 return super.create(Stage.ofParent(stageRequest));
                             }
                         },
-                        (productTemplateId, parentStage) -> stageRequest.getChildren() != null
+                        (access, productTemplateId, parentStage) -> stageRequest.getChildren() != null
                                 ? this.updateOrCreateChildren(
                                         productTemplateId, stageRequest.getChildren(), parentStage)
                                 : Mono.just(Tuples.of(parentStage, List.of())))
@@ -233,13 +238,5 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
                     return Mono.just(stageIdsInternal);
                 });
-    }
-
-    private Mono<Boolean> updateOrder(Map<Integer, Identity> stageMap) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, hasAccess -> Flux.fromIterable(stageMap.entrySet())
-                .flatMap(entry ->
-                        super.readIdentityInternal(entry.getValue()).map(stage -> stage.setOrder(entry.getKey())))
-                .flatMap(super::updateInternal)
-                .then(Mono.just(Boolean.TRUE)));
     }
 }

@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dao.rule.ComplexRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.base.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.base.IConditionRuleService;
 import java.util.List;
@@ -17,7 +18,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple3;
 
 @Service
 public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
@@ -101,10 +101,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
 
     @Override
     public Mono<ComplexRule> createForCondition(
-            ULong entityId,
-            EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
-            ComplexCondition condition) {
+            ULong entityId, EntitySeries entitySeries, ProcessorAccess access, ComplexCondition condition) {
         return this.createComplexRuleInternal(entityId, entitySeries, access, condition, null);
     }
 
@@ -140,7 +137,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     private Flux<Void> processConditions(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             List<AbstractCondition> conditions,
             ULong complexRuleId) {
         return Flux.fromIterable(conditions).index().flatMap(tuple -> {
@@ -160,7 +157,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     private Mono<Void> processSimpleCondition(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             FilterCondition condition,
             ULong complexRuleId,
             int index) {
@@ -172,7 +169,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     private Mono<Void> processComplexCondition(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             ComplexCondition condition,
             ULong complexRuleId) {
         return this.createForConditionWithParent(ruleId, entitySeries, access, condition, complexRuleId)
@@ -182,7 +179,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     private Mono<ComplexRule> createForConditionWithParent(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             ComplexCondition condition,
             ULong parentId) {
         return this.createComplexRuleInternal(ruleId, entitySeries, access, condition, parentId);
@@ -191,7 +188,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     private Mono<ComplexRule> createComplexRuleInternal(
             ULong ruleId,
             EntitySeries entitySeries,
-            Tuple3<String, String, ULong> access,
+            ProcessorAccess access,
             ComplexCondition condition,
             ULong parentId) {
         if (condition.isEmpty()) return Mono.empty();
@@ -203,7 +200,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
         List<AbstractCondition> conditions = condition.getConditions();
         this.addChildrenInfo(complexRule, conditions);
 
-        return this.createInternal(complexRule, access).flatMap(cComplexRule -> {
+        return this.createInternal(access, complexRule).flatMap(cComplexRule -> {
             if (conditions == null || conditions.isEmpty()) return Mono.just(cComplexRule);
 
             return this.processConditions(ruleId, entitySeries, access, conditions, cComplexRule.getId())
