@@ -1,16 +1,13 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.jooq.EnumType;
-
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
-
 import lombok.Getter;
+import org.jooq.EnumType;
 
 @Getter
 public enum ActivityAction implements EnumType {

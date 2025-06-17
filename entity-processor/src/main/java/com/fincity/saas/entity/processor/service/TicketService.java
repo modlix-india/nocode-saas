@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -101,8 +100,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.productService.checkAndUpdateIdentityWithAccess(access, ticketRequest.getProductId()),
-                (access, productIdentity) -> this.checkDuplicate(
-                                access.getAppCode(), access.getClientCode(), ticketRequest),
+                (access, productIdentity) ->
+                        this.checkDuplicate(access.getAppCode(), access.getClientCode(), ticketRequest),
                 (access, productIdentity, isDuplicate) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
                 (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
                 (access, productIdentity, isDuplicate, pTicket, created) ->
