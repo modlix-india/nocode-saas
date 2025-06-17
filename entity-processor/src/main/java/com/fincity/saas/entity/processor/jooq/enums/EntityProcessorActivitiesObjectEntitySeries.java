@@ -10,7 +10,7 @@ import org.jooq.Schema;
 
 
 /**
- * Entity Series of the object.
+ * Entity Series of the object associated with this Activity. 
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorActivitiesObjectEntitySeries implements EnumType {
@@ -43,7 +43,7 @@ public enum EntityProcessorActivitiesObjectEntitySeries implements EnumType {
 
     NOTE("NOTE"),
 
-    ACTIVITY("ACTIVITY");
+    Activity("Activity");
 
     private final String literal;
 

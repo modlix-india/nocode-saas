@@ -17,16 +17,22 @@ public class ActivityObject implements Serializable {
 
     private EntitySeries entitySeries;
     private ULong id;
+    private String comment;
     private Map<String, Object> data;
 
-    public static ActivityObject of(EntitySeries entitySeries, ULong id, Map<String, Object> data) {
-        return new ActivityObject().setEntitySeries(entitySeries).setId(id).setData(data);
+    public static ActivityObject of(EntitySeries entitySeries, ULong id, String comment, Map<String, Object> data) {
+        return new ActivityObject()
+                .setEntitySeries(entitySeries)
+                .setId(id)
+                .setComment(comment)
+                .setData(data);
     }
 
-    public static ActivityObject ofTicket(ULong id, Map<String, Object> data) {
+    public static ActivityObject ofTicket(ULong id, String comment, Map<String, Object> data) {
         return new ActivityObject()
                 .setEntitySeries(EntitySeries.TICKET)
                 .setId(id)
+                .setComment(comment)
                 .setData(data);
     }
 

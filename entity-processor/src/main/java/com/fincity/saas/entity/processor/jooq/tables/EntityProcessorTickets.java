@@ -373,7 +373,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      */
     public EntityProcessorActivitiesPath entityProcessorActivities() {
         if (_entityProcessorActivities == null)
-            _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK2_ACTIVITIES_TICKET_ID.getInverseKey());
+            _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK1_ACTIVITIES_TICKET_ID.getInverseKey());
 
         return _entityProcessorActivities;
     }

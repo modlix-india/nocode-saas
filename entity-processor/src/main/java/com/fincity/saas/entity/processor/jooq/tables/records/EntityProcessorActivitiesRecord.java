@@ -44,7 +44,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.APP_CODE</code>. App
-     * Code on which this task type was created.
+     * Code on which this Activity was created.
      */
     public EntityProcessorActivitiesRecord setAppCode(String value) {
         set(1, value);
@@ -54,7 +54,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.APP_CODE</code>. App
-     * Code on which this task type was created.
+     * Code on which this Activity was created.
      */
     public String getAppCode() {
         return (String) get(1);
@@ -63,7 +63,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.CLIENT_CODE</code>.
-     * Client Code who created this task type.
+     * Client Code who created this Activity.
      */
     public EntityProcessorActivitiesRecord setClientCode(String value) {
         set(2, value);
@@ -73,7 +73,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.CLIENT_CODE</code>.
-     * Client Code who created this task type.
+     * Client Code who created this Activity.
      */
     public String getClientCode() {
         return (String) get(2);
@@ -101,7 +101,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.NAME</code>. Name of
-     * the Task Type.
+     * the Activity.
      */
     public EntityProcessorActivitiesRecord setName(String value) {
         set(4, value);
@@ -111,7 +111,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.NAME</code>. Name of
-     * the Task Type.
+     * the Activity.
      */
     public String getName() {
         return (String) get(4);
@@ -120,7 +120,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.DESCRIPTION</code>.
-     * Description for the Task Type.
+     * Description for the Activity.
      */
     public EntityProcessorActivitiesRecord setDescription(String value) {
         set(5, value);
@@ -130,7 +130,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.DESCRIPTION</code>.
-     * Description for the Task Type.
+     * Description for the Activity.
      */
     public String getDescription() {
         return (String) get(5);
@@ -139,7 +139,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.TICKET_ID</code>.
-     * Ticket related to this task.
+     * Ticket related to this Activity.
      */
     public EntityProcessorActivitiesRecord setTicketId(ULong value) {
         set(6, value);
@@ -149,7 +149,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.TICKET_ID</code>.
-     * Ticket related to this task.
+     * Ticket related to this Activity.
      */
     public ULong getTicketId() {
         return (ULong) get(6);
@@ -157,135 +157,173 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
-     * Date of the activity.
+     * <code>entity_processor.entity_processor_activities.TASK_ID</code>. Task
+     * related to this Activity.
      */
-    public EntityProcessorActivitiesRecord setActivityDate(LocalDateTime value) {
+    public EntityProcessorActivitiesRecord setTaskId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
-     * Date of the activity.
+     * <code>entity_processor.entity_processor_activities.TASK_ID</code>. Task
+     * related to this Activity.
      */
-    public LocalDateTime getActivityDate() {
-        return (LocalDateTime) get(7);
+    public ULong getTaskId() {
+        return (ULong) get(7);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
-     * Action performed on the object.
+     * <code>entity_processor.entity_processor_activities.COMMENT</code>.
+     * Comment on this Activity.
      */
-    public EntityProcessorActivitiesRecord setActivityAction(ActivityAction value) {
+    public EntityProcessorActivitiesRecord setComment(String value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
-     * Action performed on the object.
+     * <code>entity_processor.entity_processor_activities.COMMENT</code>.
+     * Comment on this Activity.
      */
-    public ActivityAction getActivityAction() {
-        return (ActivityAction) get(8);
+    public String getComment() {
+        return (String) get(8);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object.
+     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
+     * Date of the Activity.
      */
-    public EntityProcessorActivitiesRecord setObjectEntitySeries(EntitySeries value) {
+    public EntityProcessorActivitiesRecord setActivityDate(LocalDateTime value) {
         set(9, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object.
+     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
+     * Date of the Activity.
      */
-    public EntitySeries getObjectEntitySeries() {
-        return (EntitySeries) get(9);
+    public LocalDateTime getActivityDate() {
+        return (LocalDateTime) get(9);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_ID</code>.
-     * Object id of OBJECT_ENTITY_SERIES on which activity is performed
+     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
+     * Activity Action categories for this Activity.
      */
-    public EntityProcessorActivitiesRecord setObjectId(ULong value) {
+    public EntityProcessorActivitiesRecord setActivityAction(ActivityAction value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_ID</code>.
-     * Object id of OBJECT_ENTITY_SERIES on which activity is performed
+     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
+     * Activity Action categories for this Activity.
      */
-    public ULong getObjectId() {
-        return (ULong) get(10);
+    public ActivityAction getActivityAction() {
+        return (ActivityAction) get(10);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
-     * Object data of OBJECT_ENTITY_SERIES on which activity is performed
+     * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
+     * Entity Series of the object associated with this Activity. 
      */
-    public EntityProcessorActivitiesRecord setObjectData(JSON value) {
+    public EntityProcessorActivitiesRecord setObjectEntitySeries(EntitySeries value) {
         set(11, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
-     * Object data of OBJECT_ENTITY_SERIES on which activity is performed
+     * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
+     * Entity Series of the object associated with this Activity. 
      */
-    public JSON getObjectData() {
-        return (JSON) get(11);
+    public EntitySeries getObjectEntitySeries() {
+        return (EntitySeries) get(11);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
-     * Temporary active flag for this task type.
+     * <code>entity_processor.entity_processor_activities.OBJECT_ID</code>.
+     * Object id of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public EntityProcessorActivitiesRecord setTempActive(Byte value) {
+    public EntityProcessorActivitiesRecord setObjectId(ULong value) {
         set(12, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
-     * Temporary active flag for this task type.
+     * <code>entity_processor.entity_processor_activities.OBJECT_ID</code>.
+     * Object id of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public Byte getTempActive() {
-        return (Byte) get(12);
+    public ULong getObjectId() {
+        return (ULong) get(12);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
-     * to check if this task type is active or not.
+     * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
+     * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public EntityProcessorActivitiesRecord setIsActive(Byte value) {
+    public EntityProcessorActivitiesRecord setObjectData(JSON value) {
         set(13, value);
         return this;
     }
 
     /**
      * Getter for
+     * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
+     * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
+     */
+    public JSON getObjectData() {
+        return (JSON) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
+     * Temporary active flag for this Activity.
+     */
+    public EntityProcessorActivitiesRecord setTempActive(Byte value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
+     * Temporary active flag for this Activity.
+     */
+    public Byte getTempActive() {
+        return (Byte) get(14);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
-     * to check if this task type is active or not.
+     * to check if this Activity is active or not.
+     */
+    public EntityProcessorActivitiesRecord setIsActive(Byte value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
+     * to check if this Activity is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(13);
+        return (Byte) get(15);
     }
 
     /**
@@ -294,7 +332,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public EntityProcessorActivitiesRecord setCreatedBy(ULong value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -304,7 +342,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(16);
     }
 
     /**
@@ -313,7 +351,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public EntityProcessorActivitiesRecord setCreatedAt(LocalDateTime value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -323,7 +361,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -332,7 +370,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who updated this row.
      */
     public EntityProcessorActivitiesRecord setUpdatedBy(ULong value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -342,7 +380,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(18);
     }
 
     /**
@@ -351,7 +389,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is updated.
      */
     public EntityProcessorActivitiesRecord setUpdatedAt(LocalDateTime value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -361,7 +399,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -387,7 +425,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Create a detached, initialised EntityProcessorActivitiesRecord
      */
-    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, LocalDateTime activityDate, ActivityAction activityAction, EntitySeries objectEntitySeries, ULong objectId, JSON objectData, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, ULong taskId, String comment, LocalDateTime activityDate, ActivityAction activityAction, EntitySeries objectEntitySeries, ULong objectId, JSON objectData, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES);
 
         setId(id);
@@ -397,6 +435,8 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
         setName(name);
         setDescription(description);
         setTicketId(ticketId);
+        setTaskId(taskId);
+        setComment(comment);
         setActivityDate(activityDate);
         setActivityAction(activityAction);
         setObjectEntitySeries(objectEntitySeries);

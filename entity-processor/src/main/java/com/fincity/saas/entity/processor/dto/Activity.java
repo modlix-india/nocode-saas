@@ -27,8 +27,9 @@ public class Activity extends BaseDto<Activity> {
     @Serial
     private static final long serialVersionUID = 4705602267455594423L;
 
-    private String descriptionCode;
     private ULong ticketId;
+    private ULong taskId;
+    private String comment;
     private LocalDateTime activityDate;
     private ActivityAction activityAction;
     private ULong actorId;
@@ -40,6 +41,7 @@ public class Activity extends BaseDto<Activity> {
         return new Activity()
                 .setTicketId(ticketId)
                 .setActivityAction(action)
+                .setComment(object.getComment())
                 .setObjectEntitySeries(object.getEntitySeries())
                 .setObjectId(object.getId())
                 .setObjectData(object.getData());

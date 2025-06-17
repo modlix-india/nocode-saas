@@ -10,7 +10,7 @@ import org.jooq.Schema;
 
 
 /**
- * Action performed on the object.
+ * Activity Action categories for this Activity.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorActivitiesActivityAction implements EnumType {

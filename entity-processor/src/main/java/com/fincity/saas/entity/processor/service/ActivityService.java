@@ -85,12 +85,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         });
     }
 
-    private Mono<Void> createActivityInternal(ActivityAction action, Map<String, Object> context) {
-        return this.createActivityInternal(action, null, context);
+    private Mono<Void> createActivityInternal(ActivityAction action, String comment, Map<String, Object> context) {
+        return this.createActivityInternal(action, null, comment, context);
     }
 
     private Mono<Void> createActivityInternal(
-            ActivityAction action, LocalDateTime createOn, Map<String, Object> context) {
+            ActivityAction action, LocalDateTime createOn, String comment, Map<String, Object> context) {
         if (!context.containsKey("ticketId")) return Mono.empty();
         ULong ticketId = ULongUtil.valueOf(context.get("ticketId"));
         if (ticketId == null || ticketId.longValue() <= 0) return Mono.empty();
@@ -116,7 +116,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                             String message = action.formatMessage(mutableContext);
 
                             Activity activity = Activity.of(
-                                            ticketId, action, ActivityObject.ofTicket(ticketId, mutableContext))
+                                            ticketId,
+                                            action,
+                                            ActivityObject.ofTicket(ticketId, comment, mutableContext))
                                     .setActivityDate(activityDate)
                                     .setDescription(message)
                                     .setActorId(actor.getId());
@@ -127,8 +129,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acCreate(Ticket ticket) {
+        return this.acCreate(ticket, null);
+    }
+
+    public Mono<Void> acCreate(Ticket ticket, String comment) {
         return this.createActivityInternal(
                 ActivityAction.CREATE,
+                comment,
                 Map.of(
                         "ticketId",
                         ticket.getId(),
@@ -139,9 +146,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acReInquiry(Ticket ticket, TicketRequest ticketRequest) {
+        return this.acReInquiry(ticket, null, ticketRequest);
+    }
 
+    public Mono<Void> acReInquiry(Ticket ticket, String comment, TicketRequest ticketRequest) {
         return this.createActivityInternal(
                 ActivityAction.RE_INQUIRY,
+                comment,
                 Map.of(
                         "ticketId",
                         ticket.getId(),
@@ -151,40 +162,43 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 : Map.of("source", ticketRequest.getSource())));
     }
 
-    public Mono<Void> acQualify(ULong ticketId) {
-        return this.createActivityInternal(ActivityAction.QUALIFY, Map.of("ticketId", ticketId));
+    public Mono<Void> acQualify(ULong ticketId, String comment) {
+        return this.createActivityInternal(ActivityAction.QUALIFY, comment, Map.of("ticketId", ticketId));
     }
 
-    public Mono<Void> acDisqualify(ULong ticketId) {
-        return this.createActivityInternal(ActivityAction.DISQUALIFY, Map.of("ticketId", ticketId));
+    public Mono<Void> acDisqualify(ULong ticketId, String comment) {
+        return this.createActivityInternal(ActivityAction.DISQUALIFY, comment, Map.of("ticketId", ticketId));
     }
 
-    public Mono<Void> acDiscard(ULong ticketId) {
-        return this.createActivityInternal(ActivityAction.DISCARD, Map.of("ticketId", ticketId));
+    public Mono<Void> acDiscard(ULong ticketId, String comment) {
+        return this.createActivityInternal(ActivityAction.DISCARD, comment, Map.of("ticketId", ticketId));
     }
 
-    public Mono<Void> acImport(ULong ticketId, String source) {
+    public Mono<Void> acImport(ULong ticketId, String comment, String source) {
         return this.createActivityInternal(
                 ActivityAction.IMPORT,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "source", source));
     }
 
-    public Mono<Void> acStatusCreate(ULong ticketId, ULong statusId) {
+    public Mono<Void> acStatusCreate(ULong ticketId, String comment, ULong statusId) {
         return FlatMapUtil.flatMapMono(
                 () -> this.stageService.readByIdInternal(statusId),
                 status -> this.createActivityInternal(
                         ActivityAction.STATUS_CREATE,
+                        comment,
                         Map.of("ticketId", ticketId, "status", IdAndValue.of(status.getId(), status.getName()))));
     }
 
-    public Mono<Void> acStageUpdate(ULong ticketId, ULong oldStageId, ULong newStageId) {
+    public Mono<Void> acStageUpdate(ULong ticketId, String comment, ULong oldStageId, ULong newStageId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
                         this.stageService.readByIdInternal(oldStageId), this.stageService.readByIdInternal(newStageId)),
                 stages -> this.createActivityInternal(
                         ActivityAction.STAGE_UPDATE,
+                        comment,
                         Map.of(
                                 "ticketId", ticketId,
                                 "oldStage",
@@ -197,180 +211,201 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 stages.getT2().getName()))));
     }
 
-    public Mono<Void> acTaskCreate(Task task) {
+    public Mono<Void> acTaskCreate(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.TASK_CREATE,
                 task.getCreatedAt(),
+                comment,
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
-    public Mono<Void> acTaskComplete(Task task) {
+    public Mono<Void> acTaskComplete(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.TASK_COMPLETE,
                 task.getCompletedDate(),
+                comment,
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
-    public Mono<Void> acTaskDelete(Task task, LocalDateTime deletedDate) {
+    public Mono<Void> acTaskDelete(Task task, String comment, LocalDateTime deletedDate) {
         return this.createActivityInternal(
                 ActivityAction.TASK_DELETE,
                 deletedDate,
+                comment,
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
-    public Mono<Void> acReminderSet(Task task) {
+    public Mono<Void> acReminderSet(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.REMINDER_SET,
                 task.getNextReminder(),
+                comment,
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "reminderDate", task.getNextReminder(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
-    public Mono<Void> acDocumentUpload(ULong ticketId, String file) {
+    public Mono<Void> acDocumentUpload(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
                 ActivityAction.DOCUMENT_UPLOAD,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "file", file));
     }
 
-    public Mono<Void> acDocumentDownload(ULong ticketId, String file) {
+    public Mono<Void> acDocumentDownload(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
                 ActivityAction.DOCUMENT_DOWNLOAD,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "file", file));
     }
 
-    public Mono<Void> acDocumentDelete(ULong ticketId, String file) {
+    public Mono<Void> acDocumentDelete(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
                 ActivityAction.DOCUMENT_DELETE,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "file", file));
     }
 
-    public Mono<Void> acNoteAdd(Note note) {
+    public Mono<Void> acNoteAdd(Note note, String comment) {
         return this.createActivityInternal(
                 ActivityAction.NOTE_ADD,
                 note.getCreatedAt(),
+                comment,
                 Map.of(
                         "ticketId", note.getTicketId(),
                         "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
-    public Mono<Void> acNoteDelete(Note note, LocalDateTime deletedDate) {
+    public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
         return this.createActivityInternal(
                 ActivityAction.NOTE_DELETE,
                 deletedDate,
+                comment,
                 Map.of(
                         "ticketId", note.getTicketId(),
                         "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
-    public Mono<Void> acAssign(ULong ticketId, String newUser) {
+    public Mono<Void> acAssign(ULong ticketId, String comment, String newUser) {
         return this.createActivityInternal(
                 ActivityAction.ASSIGN,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "newUser", newUser));
     }
 
-    public Mono<Void> acReassign(ULong ticketId, String oldUser, String newUser) {
+    public Mono<Void> acReassign(ULong ticketId, String comment, String oldUser, String newUser) {
         return this.createActivityInternal(
                 ActivityAction.REASSIGN,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "oldUser", oldUser,
                         "newUser", newUser));
     }
 
-    public Mono<Void> acReassignSystem(ULong ticketId, String oldUser, String newUser) {
+    public Mono<Void> acReassignSystem(ULong ticketId, String comment, String oldUser, String newUser) {
         return this.createActivityInternal(
                 ActivityAction.REASSIGN_SYSTEM,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "oldUser", oldUser,
                         "newUser", newUser));
     }
 
-    public Mono<Void> acOwnerShipTransfer(ULong ticketId, String oldOwner, String newOwner) {
+    public Mono<Void> acOwnerShipTransfer(ULong ticketId, String comment, String oldOwner, String newOwner) {
         return this.createActivityInternal(
                 ActivityAction.OWNERSHIP_TRANSFER,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "oldOwner", oldOwner,
                         "newOwner", newOwner));
     }
 
-    public Mono<Void> acCallLog(ULong ticketId, String customer) {
+    public Mono<Void> acCallLog(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
                 ActivityAction.CALL_LOG,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "customer", customer));
     }
 
-    public Mono<Void> acWhatsapp(ULong ticketId, String customer) {
+    public Mono<Void> acWhatsapp(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
                 ActivityAction.WHATSAPP,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "customer", customer));
     }
 
-    public Mono<Void> acEmailSent(ULong ticketId, String email) {
+    public Mono<Void> acEmailSent(ULong ticketId, String comment, String email) {
         return this.createActivityInternal(
                 ActivityAction.EMAIL_SENT,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "email", email));
     }
 
-    public Mono<Void> acSmsSent(ULong ticketId, String customer) {
+    public Mono<Void> acSmsSent(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
                 ActivityAction.SMS_SENT,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "customer", customer));
     }
 
-    public Mono<Void> acFieldUpdate(ULong ticketId, String fields) {
+    public Mono<Void> acFieldUpdate(ULong ticketId, String comment, String fields) {
         return this.createActivityInternal(
                 ActivityAction.FIELD_UPDATE,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "fields", fields));
     }
 
-    public Mono<Void> acCustomFieldUpdate(ULong ticketId, String field, String value) {
+    public Mono<Void> acCustomFieldUpdate(ULong ticketId, String comment, String field, String value) {
         return this.createActivityInternal(
                 ActivityAction.CUSTOM_FIELD_UPDATE,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "field", field,
                         "value", value));
     }
 
-    public Mono<Void> acLocationUpdate(ULong ticketId, String location) {
+    public Mono<Void> acLocationUpdate(ULong ticketId, String comment, String location) {
         return this.createActivityInternal(
                 ActivityAction.LOCATION_UPDATE,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "location", location));
     }
 
-    public Mono<Void> acOther(ULong ticketId, String action) {
+    public Mono<Void> acOther(ULong ticketId, String comment, String action) {
         return this.createActivityInternal(
                 ActivityAction.OTHER,
+                comment,
                 Map.of(
                         "ticketId", ticketId,
                         "action", action));

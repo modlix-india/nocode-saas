@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesActivityAction;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesObjectEntitySeries;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 
@@ -75,16 +76,16 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.APP_CODE</code>. App
-     * Code on which this task type was created.
+     * Code on which this Activity was created.
      */
-    public final TableField<EntityProcessorActivitiesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this task type was created.");
+    public final TableField<EntityProcessorActivitiesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Activity was created.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.CLIENT_CODE</code>.
-     * Client Code who created this task type.
+     * Client Code who created this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this task type.");
+    public final TableField<EntityProcessorActivitiesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Activity.");
 
     /**
      * The column
@@ -96,72 +97,86 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.NAME</code>. Name of
-     * the Task Type.
+     * the Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Task Type.");
+    public final TableField<EntityProcessorActivitiesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the Activity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.DESCRIPTION</code>.
-     * Description for the Task Type.
+     * Description for the Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Task Type.");
+    public final TableField<EntityProcessorActivitiesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Activity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.TICKET_ID</code>.
-     * Ticket related to this task.
+     * Ticket related to this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Ticket related to this task.");
+    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Ticket related to this Activity.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
-     * Date of the activity.
+     * <code>entity_processor.entity_processor_activities.TASK_ID</code>. Task
+     * related to this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> ACTIVITY_DATE = createField(DSL.name("ACTIVITY_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Date of the activity.");
+    public final TableField<EntityProcessorActivitiesRecord, ULong> TASK_ID = createField(DSL.name("TASK_ID"), SQLDataType.BIGINTUNSIGNED, this, "Task related to this Activity.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
-     * Action performed on the object.
+     * <code>entity_processor.entity_processor_activities.COMMENT</code>.
+     * Comment on this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Action performed on the object.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, String> COMMENT = createField(DSL.name("COMMENT"), SQLDataType.CLOB, this, "Comment on this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
+     * Date of the Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> ACTIVITY_DATE = createField(DSL.name("Activity_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Date of the Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
+     * Activity Action categories for this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("Activity_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Activity Action categories for this Activity.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object.
+     * Entity Series of the object associated with this Activity. 
      */
-    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorActivitiesObjectEntitySeries.class), this, "Entity Series of the object.", new EnumConverter<EntityProcessorActivitiesObjectEntitySeries, EntitySeries>(EntityProcessorActivitiesObjectEntitySeries.class, EntitySeries.class));
+    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorActivitiesObjectEntitySeries.class), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<EntityProcessorActivitiesObjectEntitySeries, EntitySeries>(EntityProcessorActivitiesObjectEntitySeries.class, EntitySeries.class));
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.OBJECT_ID</code>.
-     * Object id of OBJECT_ENTITY_SERIES on which activity is performed
+     * Object id of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public final TableField<EntityProcessorActivitiesRecord, ULong> OBJECT_ID = createField(DSL.name("OBJECT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Object id of OBJECT_ENTITY_SERIES on which activity is performed");
+    public final TableField<EntityProcessorActivitiesRecord, ULong> OBJECT_ID = createField(DSL.name("OBJECT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Object id of OBJECT_ENTITY_SERIES on which Activity is performed");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
-     * Object data of OBJECT_ENTITY_SERIES on which activity is performed
+     * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public final TableField<EntityProcessorActivitiesRecord, JSON> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which activity is performed");
+    public final TableField<EntityProcessorActivitiesRecord, JSON> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which Activity is performed");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
-     * Temporary active flag for this task type.
+     * Temporary active flag for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this task type.");
+    public final TableField<EntityProcessorActivitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Activity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
-     * to check if this task type is active or not.
+     * to check if this Activity is active or not.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this task type is active or not.");
+    public final TableField<EntityProcessorActivitiesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Activity is active or not.");
 
     /**
      * The column
@@ -278,7 +293,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<ForeignKey<EntityProcessorActivitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK2_ACTIVITIES_TICKET_ID);
+        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID);
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
@@ -289,9 +304,22 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      */
     public EntityProcessorTicketsPath entityProcessorTickets() {
         if (_entityProcessorTickets == null)
-            _entityProcessorTickets = new EntityProcessorTicketsPath(this, Keys.FK2_ACTIVITIES_TICKET_ID, null);
+            _entityProcessorTickets = new EntityProcessorTicketsPath(this, Keys.FK1_ACTIVITIES_TICKET_ID, null);
 
         return _entityProcessorTickets;
+    }
+
+    private transient EntityProcessorTasksPath _entityProcessorTasks;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_tasks</code> table.
+     */
+    public EntityProcessorTasksPath entityProcessorTasks() {
+        if (_entityProcessorTasks == null)
+            _entityProcessorTasks = new EntityProcessorTasksPath(this, Keys.FK2_ACTIVITIES_TASK_ID, null);
+
+        return _entityProcessorTasks;
     }
 
     @Override
