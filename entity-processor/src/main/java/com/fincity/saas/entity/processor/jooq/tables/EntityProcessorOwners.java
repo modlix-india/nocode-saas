@@ -6,6 +6,8 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 
@@ -266,6 +268,19 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_OWNERS_UK1_OWNERS_CODE);
     }
 
+    private transient EntityProcessorNotesPath _entityProcessorNotes;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_notes</code> table
+     */
+    public EntityProcessorNotesPath entityProcessorNotes() {
+        if (_entityProcessorNotes == null)
+            _entityProcessorNotes = new EntityProcessorNotesPath(this, null, Keys.FK1_NOTES_OWNER_ID.getInverseKey());
+
+        return _entityProcessorNotes;
+    }
+
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
 
     /**
@@ -277,6 +292,19 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
             _entityProcessorTickets = new EntityProcessorTicketsPath(this, null, Keys.FK1_TICKETS_OWNER_ID.getInverseKey());
 
         return _entityProcessorTickets;
+    }
+
+    private transient EntityProcessorTasksPath _entityProcessorTasks;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_tasks</code> table
+     */
+    public EntityProcessorTasksPath entityProcessorTasks() {
+        if (_entityProcessorTasks == null)
+            _entityProcessorTasks = new EntityProcessorTasksPath(this, null, Keys.FK2_TASKS_OWNER_ID.getInverseKey());
+
+        return _entityProcessorTasks;
     }
 
     @Override

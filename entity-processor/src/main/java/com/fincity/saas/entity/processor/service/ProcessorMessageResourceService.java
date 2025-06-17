@@ -24,7 +24,8 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String IDENTITY_WRONG = "identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
     public static final String PRODUCT_TEMPLATE_FORBIDDEN_ACCESS = "product_template_forbidden_access";
-    public static final String MODEL_NOT_CREATED = "model_not_created";
+    public static final String OWNER_NOT_CREATED = "owner_not_created";
+    public static final String DUPLICATE_TICKET = "duplicate_ticket";
     public static final String USER_DISTRIBUTION_MISSING = "user_distribution_missing";
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
     public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
@@ -34,6 +35,11 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String STAGE_TYPE_MISSING = "stage_type_missing";
     public static final String DEFAULT_RULE_MISSING = "default_rule_missing";
     public static final String NO_VALUES_FOUND = "no_values_found";
+    public static final String CONTENT_MISSING = "content_missing";
+    public static final String DATE_IN_PAST = "date_in_past";
+    public static final String TASK_FORBIDDEN_ACCESS = "task_forbidden_access";
+    public static final String TASK_ALREADY_COMPLETED = "task_already_completed";
+    public static final String TASK_ALREADY_CANCELLED = "task_already_cancelled";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

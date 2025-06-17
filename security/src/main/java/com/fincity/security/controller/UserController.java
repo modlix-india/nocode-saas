@@ -169,5 +169,21 @@ public class UserController
         return this.inviteService.getAllInvitedUsers(pageable, condition)
                 .map(ResponseEntity::ok);
     }
+    
+    @GetMapping("/internal" + PATH_ID)
+    public Mono<ResponseEntity<User>> getUser(@PathVariable ULong id) {
+        return this.service.readById(id).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/exists")
+    public Mono<ResponseEntity<Boolean>> exists(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phoneNumber) {
+
+        return this.service
+                .checkUserExistsAcrossApps(username, email, phoneNumber)
+                .map(ResponseEntity::ok);
+    }
 
 }

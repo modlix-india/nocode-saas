@@ -17,6 +17,7 @@ public class AuthenticationResponse implements Serializable {
 
     private ContextUser user;
     private Client client;
+    private String verifiedAppCode;
     private String loggedInClientCode;
     private BigInteger loggedInClientId;
 
@@ -28,6 +29,7 @@ public class AuthenticationResponse implements Serializable {
         return new ContextAuthentication()
                 .setAccessToken(this.accessToken)
                 .setUser(this.user)
+                .setVerifiedAppCode(this.verifiedAppCode)
                 .setLoggedInFromClientCode(this.loggedInClientCode)
                 .setLoggedInFromClientId(this.loggedInClientId)
                 .setAccessTokenExpiryAt(this.accessTokenExpiryAt);

@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.io.Serial;
@@ -16,7 +16,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class SimpleComplexRuleRelation extends BaseDto<SimpleComplexRuleRelation> implements IEntitySeries {
+public class SimpleComplexRuleRelation extends BaseUpdatableDto<SimpleComplexRuleRelation> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 9035530855293927614L;

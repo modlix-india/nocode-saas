@@ -10,7 +10,7 @@ import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
-import com.fincity.saas.entity.processor.service.base.BaseService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ProductTemplateService
-        extends BaseService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
+        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
         implements IEntitySeries {
 
     private static final String PRODUCT_TEMPLATE = "productTemplate";
@@ -54,13 +54,13 @@ public class ProductTemplateService
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> {
-                    productTemplate.setAppCode(hasAccess.getT1().getT1());
-                    productTemplate.setClientCode(hasAccess.getT1().getT2());
+                access -> {
+                    productTemplate.setAppCode(access.getAppCode());
+                    productTemplate.setClientCode(access.getClientCode());
 
                     return super.create(productTemplate);
                 },
-                (hasAccess, created) -> (productTemplateRequest.getProductId() == null
+                (access, created) -> (productTemplateRequest.getProductId() == null
                                 || productTemplateRequest.getProductId().isNull())
                         ? Mono.just(created)
                         : this.updateDependentServices(created, productTemplateRequest.getProductId()));
@@ -68,20 +68,9 @@ public class ProductTemplateService
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> super.readIdentityInternal(identity),
+                () -> super.readIdentityWithAccess(identity),
                 productTemplate ->
                         this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()));
-    }
-
-    public Mono<ProductTemplate> readWithAccess(Identity identity) {
-        return super.hasAccess().flatMap(hasAccess -> {
-            if (Boolean.FALSE.equals(hasAccess.getT2()))
-                return this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_FORBIDDEN_ACCESS);
-
-            return this.readIdentityInternal(identity);
-        });
     }
 
     private Mono<ProductTemplate> updateDependentServices(ProductTemplate productTemplate, Identity productId) {

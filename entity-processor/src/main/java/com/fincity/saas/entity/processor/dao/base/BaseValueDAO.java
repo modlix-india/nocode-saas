@@ -15,7 +15,8 @@ import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseValueDto<D>> extends BaseDAO<R, D> {
+public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseValueDto<D>>
+        extends BaseUpdatableDAO<R, D> {
 
     private static final String PRODUCT_TEMPLATE_ID = "PRODUCT_TEMPLATE_ID";
     private static final String IS_PARENT = "IS_PARENT";
@@ -40,11 +41,10 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
 
         if (valueEntityIds == null || valueEntityIds.length == 0) return Mono.just(Boolean.FALSE);
 
-        return Mono.from(this.dslContext
-                        .selectOne()
-                        .from(this.table)
-                        .where(DSL.and(this.getBaseValueConditions(
-                                appCode, clientCode, platform, productTemplateId, null, valueEntityIds))))
+        List<Condition> baseConditions =
+                this.getBaseValueConditions(appCode, clientCode, platform, productTemplateId, null, valueEntityIds);
+
+        return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
                 .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
     }
@@ -107,7 +107,6 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
         conditions.add(this.productTemplateIdField.eq(productTemplateId));
         if (platform != null) conditions.add(this.platformField.eq(platform));
         if (onlyParent != null) conditions.add(this.isParentField.eq(onlyParent));
-        conditions.add(super.isActiveTrue()); // we always need Active value entities
         return conditions;
     }
 

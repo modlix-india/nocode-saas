@@ -1,16 +1,20 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
+import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
@@ -19,7 +23,9 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEntitySeries {
+public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> implements IEntitySeries {
+
+    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.stageId, EntitySeries.STAGE.getTable());
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;
@@ -44,18 +50,22 @@ public abstract class Rule<T extends Rule<T>> extends BaseDto<T> implements IEnt
 
     public T of(RuleRequest ruleRequest) {
 
-        this.setName(ruleRequest.getName())
-                .setDescription(ruleRequest.getDescription())
+        RuleInfoRequest ruleInfoRequest = ruleRequest.getRule();
+
+        if (ruleInfoRequest == null) return (T) this;
+
+        this.setName(ruleInfoRequest.getName())
+                .setDescription(ruleInfoRequest.getDescription())
                 .setStageId(
-                        ruleRequest.getStageId() != null
-                                ? ruleRequest.getStageId().getULongId()
+                        ruleInfoRequest.getStageId() != null
+                                ? ruleInfoRequest.getStageId().getULongId()
                                 : null)
-                .setIsDefault(ruleRequest.isDefault())
-                .setBreakAtFirstMatch(ruleRequest.isBreakAtFirstMatch())
+                .setIsDefault(ruleInfoRequest.isDefault())
+                .setBreakAtFirstMatch(ruleInfoRequest.isBreakAtFirstMatch())
                 .setSimple(ruleRequest.isSimple())
                 .setComplex(ruleRequest.isComplex())
-                .setUserDistributionType(ruleRequest.getUserDistributionType())
-                .setUserDistribution(ruleRequest.getUserDistribution());
+                .setUserDistributionType(ruleInfoRequest.getUserDistributionType())
+                .setUserDistribution(ruleInfoRequest.getUserDistribution());
 
         return (T) this;
     }

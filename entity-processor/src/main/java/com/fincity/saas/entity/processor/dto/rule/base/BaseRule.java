@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.io.Serial;
@@ -17,7 +17,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> implements IEntitySeries {
+public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T> implements IEntitySeries {
 
     @Serial
     private static final long serialVersionUID = 1639822311147907386L;

@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.rule.RuleService;
 import com.google.gson.JsonElement;
@@ -47,8 +48,8 @@ public class ProductTemplateRuleService
     }
 
     @Override
-    protected Mono<Identity> getEntityId(Identity entityId) {
-        return productTemplateService.checkAndUpdateIdentity(entityId);
+    protected Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId) {
+        return productTemplateService.checkAndUpdateIdentityWithAccess(access, entityId);
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.controller;
 
-import com.fincity.saas.entity.processor.controller.base.BaseController;
+import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.ProductTemplateDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/entity/processor/products/templates")
 public class ProductTemplateController
-        extends BaseController<
+        extends BaseUpdatableController<
                 EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO, ProductTemplateService> {
 
     @PostMapping(REQ_PATH)

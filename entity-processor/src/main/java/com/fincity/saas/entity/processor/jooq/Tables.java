@@ -4,7 +4,9 @@
 package com.fincity.saas.entity.processor.jooq;
 
 
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
@@ -13,6 +15,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 
@@ -23,9 +27,19 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 public class Tables {
 
     /**
+     * The table <code>entity_processor.entity_processor_activities</code>.
+     */
+    public static final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
+
+    /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
      */
     public static final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_notes</code>.
+     */
+    public static final EntityProcessorNotes ENTITY_PROCESSOR_NOTES = EntityProcessorNotes.ENTITY_PROCESSOR_NOTES;
 
     /**
      * The table <code>entity_processor.entity_processor_owners</code>.
@@ -70,6 +84,16 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_task_types</code>.
+     */
+    public static final EntityProcessorTaskTypes ENTITY_PROCESSOR_TASK_TYPES = EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_tasks</code>.
+     */
+    public static final EntityProcessorTasks ENTITY_PROCESSOR_TASKS = EntityProcessorTasks.ENTITY_PROCESSOR_TASKS;
 
     /**
      * The table <code>entity_processor.entity_processor_tickets</code>.
