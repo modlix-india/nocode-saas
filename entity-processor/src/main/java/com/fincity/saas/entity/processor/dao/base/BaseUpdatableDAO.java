@@ -129,7 +129,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                                             .and(appCodeField.eq(appCode))
                                             .and(clientCodeField.eq(clientCode))))
                             .map(rec -> processRelatedData(rec.intoMap(), relations))
-                            .flatMap(rec -> recordEnrichmentService.enrich(rec, this.relationResolverMap));
+                            .flatMap(rec ->
+                                    recordEnrichmentService.enrich(rec, this.relationResolverMap, eager, eagerFields));
                 })
                 .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
     }
@@ -174,7 +175,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                         .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
                         .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                return this.listAsMap(pageable, filteredQueries, relations);
+                return this.listAsMap(pageable, filteredQueries, relations, eager, eagerFields);
             });
         });
     }
@@ -320,7 +321,9 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     private Mono<Page<Map<String, Object>>> listAsMap(
             Pageable pageable,
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple,
-            Map<String, Tuple2<Table<?>, String>> relations) {
+            Map<String, Tuple2<Table<?>, String>> relations,
+            Boolean eager,
+            List<String> eagerFields) {
 
         List<SortField<?>> orderBy = new ArrayList<>();
 
@@ -339,7 +342,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                         finalQuery.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(rec -> processRelatedData(rec.intoMap(), relations))
                 .collectList()
-                .flatMap(records -> recordEnrichmentService.enrich(records, this.relationResolverMap));
+                .flatMap(records ->
+                        recordEnrichmentService.enrich(records, this.relationResolverMap, eager, eagerFields));
 
         return Mono.zip(recordsList, recordsCount)
                 .map(tuple -> PageableExecutionUtils.getPage(tuple.getT1(), pageable, tuple::getT2));

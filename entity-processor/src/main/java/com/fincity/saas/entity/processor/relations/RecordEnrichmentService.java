@@ -24,41 +24,76 @@ public class RecordEnrichmentService {
     }
 
     public Mono<Map<String, Object>> enrich(
+            Map<String, Object> rec,
+            SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
+            Boolean eager,
+            List<String> eagerFields) {
+
+        if (rec == null || rec.isEmpty()) return Mono.empty();
+        if (eager == null || !eager) return Mono.just(rec);
+
+        return this.enrichInternal(List.of(rec), resolverFieldsMap, eagerFields).thenReturn(rec);
+    }
+
+    public Mono<List<Map<String, Object>>> enrich(
+            List<Map<String, Object>> recs,
+            SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
+            Boolean eager,
+            List<String> eagerFields) {
+
+        if (recs == null || recs.isEmpty()) return Mono.empty();
+        if (eager == null || !eager) return Mono.just(recs);
+
+        return this.enrichInternal(recs, resolverFieldsMap, eagerFields).thenReturn(recs);
+    }
+
+    public Mono<Map<String, Object>> enrich(
             Map<String, Object> rec, SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap) {
+
         if (rec == null || rec.isEmpty()) return Mono.empty();
 
-        SetValuedMap<RelationResolver, String> resolverFields = resolverRegistry.getResolverFields(resolverFieldsMap);
-        if (resolverFields.isEmpty()) return Mono.just(rec);
-
-        return this.processEnrichment(List.of(rec), resolverFields).thenReturn(rec);
+        return this.enrichInternal(List.of(rec), resolverFieldsMap, null).thenReturn(rec);
     }
 
     public Mono<List<Map<String, Object>>> enrich(
             List<Map<String, Object>> recs, SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap) {
+
         if (recs == null || recs.isEmpty()) return Mono.empty();
 
-        SetValuedMap<RelationResolver, String> resolverFields = resolverRegistry.getResolverFields(resolverFieldsMap);
-        if (resolverFields.isEmpty()) return Mono.just(recs);
+        return this.enrichInternal(recs, resolverFieldsMap, null).thenReturn(recs);
+    }
 
-        return this.processEnrichment(recs, resolverFields).thenReturn(recs);
+    private Mono<Void> enrichInternal(
+            List<Map<String, Object>> recs,
+            SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
+            List<String> eagerFields) {
+
+        SetValuedMap<RelationResolver, String> resolverFields = resolverRegistry.getResolverFields(resolverFieldsMap);
+        if (resolverFields.isEmpty()) return Mono.empty();
+
+        return processEnrichment(recs, resolverFields, eagerFields);
     }
 
     private Mono<Void> processEnrichment(
-            List<Map<String, Object>> records, SetValuedMap<RelationResolver, String> resolverFields) {
+            List<Map<String, Object>> recs,
+            SetValuedMap<RelationResolver, String> resolverFields,
+            List<String> eagerFields) {
 
         return Mono.just(resolverFields).flatMap(resolverMap -> {
             List<Mono<Void>> resolverOperations = resolverMap.asMap().entrySet().stream()
                     .map(entry -> {
-                        Map<String, Set<ULong>> fieldIdsMap = this.extractIdsForRecords(records, entry.getValue());
+                        Map<String, Set<ULong>> fieldIdsMap = this.extractIdsForRecords(recs, entry.getValue());
                         if (fieldIdsMap.isEmpty()) return Mono.<Void>empty();
 
-                        Set<ULong> allIds = this.collectAllIds(fieldIdsMap);
+                        Set<ULong> allIds = fieldIdsMap.values().stream()
+                                .flatMap(Set::stream)
+                                .collect(Collectors.toSet());
                         if (allIds.isEmpty()) return Mono.<Void>empty();
 
                         return resolverRegistry
-                                .resolveBatch(entry.getKey().getClass(), allIds)
+                                .resolveBatch(entry.getKey().getClass(), allIds, eagerFields)
                                 .flatMap(resolvedData -> {
-                                    this.enrichRecordsWithResolvedData(records, fieldIdsMap, resolvedData);
+                                    this.enrichRecordsWithResolvedData(recs, fieldIdsMap, resolvedData);
                                     return Mono.<Void>empty();
                                 })
                                 .then();
@@ -69,23 +104,15 @@ public class RecordEnrichmentService {
         });
     }
 
-    private Set<ULong> collectAllIds(Map<String, Set<ULong>> fieldIdsMap) {
-        return fieldIdsMap.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
-    }
-
     private Map<String, Set<ULong>> extractIdsForRecords(List<Map<String, Object>> recs, Collection<String> fields) {
         Map<String, Set<ULong>> fieldIdsMap = new HashMap<>();
-
-        boolean isSingleRecord = recs.size() == 1;
-        Map<String, Object> sRec = isSingleRecord ? recs.getFirst() : null;
 
         for (String field : fields) {
             Set<ULong> ids = new HashSet<>();
 
-            if (isSingleRecord) {
-                this.extractIdFromRecord(sRec, field, ids);
-            } else {
-                recs.forEach(rec -> this.extractIdFromRecord(rec, field, ids));
+            for (Map<String, Object> rec : recs) {
+                Object idObj = rec.get(field);
+                if (idObj instanceof ULong id) ids.add(id);
             }
 
             if (!ids.isEmpty()) fieldIdsMap.put(field, ids);
@@ -94,34 +121,19 @@ public class RecordEnrichmentService {
         return fieldIdsMap;
     }
 
-    private void extractIdFromRecord(Map<String, Object> rec, String field, Set<ULong> ids) {
-        Object idObj = rec.get(field);
-        if (idObj instanceof ULong id) ids.add(id);
-    }
-
     private void enrichRecordsWithResolvedData(
             List<Map<String, Object>> recs,
             Map<String, Set<ULong>> fieldIdsMap,
             Map<ULong, Map<String, Object>> resolvedData) {
 
-        boolean isSingleRecord = recs.size() == 1;
-        Map<String, Object> sRec = isSingleRecord ? recs.getFirst() : null;
-
         for (Map.Entry<String, Set<ULong>> entry : fieldIdsMap.entrySet()) {
-            String field = entry.getKey();
-
-            if (isSingleRecord) {
-                this.enrichSingleRecord(sRec, field, resolvedData);
-            } else {
-                recs.forEach(rec -> this.enrichSingleRecord(rec, field, resolvedData));
-            }
+            recs.forEach(rec -> this.enrichSingleRecord(rec, entry.getKey(), resolvedData));
         }
     }
 
     private void enrichSingleRecord(
             Map<String, Object> rec, String field, Map<ULong, Map<String, Object>> resolvedData) {
-        Object idObj = rec.get(field);
-        if (idObj instanceof ULong id) {
+        if (rec.get(field) instanceof ULong id) {
             Map<String, Object> resolvedInfo = resolvedData.get(id);
             if (resolvedInfo != null) rec.put(field, resolvedInfo);
         }
