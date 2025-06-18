@@ -33,6 +33,10 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     private boolean isToValueField = false;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
 
+    public SimpleRule() {
+        super();
+    }
+
     public static SimpleRule fromCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {
         SimpleRule simpleRule = new SimpleRule()
                 .setField(condition.getField())

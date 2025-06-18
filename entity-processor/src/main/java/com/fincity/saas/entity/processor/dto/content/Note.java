@@ -20,6 +20,10 @@ public class Note extends BaseContentDto<NoteRequest, Note> {
     @Serial
     private static final long serialVersionUID = 4656579497586549236L;
 
+    public Note() {
+        super();
+    }
+
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.NOTE;

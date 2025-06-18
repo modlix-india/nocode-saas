@@ -107,7 +107,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/users/acceptInvite",
 
-                "/api/security/users/exists"
+                "/api/security/users/exists",
+
+                "/api/security/users/internal/**",
+
+                "/api/security/users/internal"
         );
     }
 

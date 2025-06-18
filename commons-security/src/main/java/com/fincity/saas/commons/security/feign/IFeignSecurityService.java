@@ -19,6 +19,7 @@ import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -162,6 +163,9 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
     Mono<Map<String, Object>> getUserInternal(@PathVariable("id") BigInteger id);
+
+    @PostMapping(value = "${security.feign.getUser:/api/security/users/internal}")
+    Mono<List<Map<String, Object>>> getUserInternal(@RequestBody List<BigInteger> userIds);
 
     @PostMapping("${security.feign.getProfileUsers:/api/security/users/internal/getProfileUsers/{appCode}}")
     Mono<List<BigInteger>> getProfileUsers(@PathVariable String appCode, @RequestBody List<BigInteger> profileIds);
