@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.relations.resolvers;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jooq.types.ULong;
@@ -17,4 +18,6 @@ public interface RelationResolver {
     }
 
     Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve);
+
+    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields);
 }
