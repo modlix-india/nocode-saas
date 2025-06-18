@@ -2,8 +2,6 @@ package com.fincity.saas.entity.processor.relations.resolvers;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
