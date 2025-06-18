@@ -25,6 +25,7 @@ public class JWTClaims implements Serializable {
 	private String port;
 	private BigInteger loggedInClientId;
 	private String loggedInClientCode;
+	private String appCode;
 	private boolean oneTime = false;
 
 	public Map<String, Object> getClaimsMap() {
@@ -41,6 +42,9 @@ public class JWTClaims implements Serializable {
 		if (this.loggedInClientCode != null)
 			map.put("loggedInClientCode", this.loggedInClientCode);
 
+		if (this.appCode != null)
+			map.put("appCode", this.appCode);
+
 		map.put(ONE_TIME, this.oneTime);
 
 		return map;
@@ -55,6 +59,7 @@ public class JWTClaims implements Serializable {
 				.setPort(claims.get("port", String.class))
 				.setLoggedInClientId(BigInteger.valueOf(claims.get("loggedInClientId", Long.class)))
 				.setLoggedInClientCode(claims.get("loggedInClientCode", String.class))
+				.setAppCode(claims.get("appCode", String.class))
 				.setOneTime(claims.containsKey(ONE_TIME) ? claims.get(ONE_TIME, Boolean.class) : Boolean.FALSE);
 
 	}

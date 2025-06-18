@@ -34,12 +34,6 @@ spring:
             uri: lb://entity/processor
             predicates:
               - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/*/api/entity/processor/**,
-    rabbitmq:
-      host: ${mq.host}
-      port: ${mq.port}
-      username: ${mq.username}
-      password: ${mq.password}
-
 management:
   endpoint:
     flyway:
