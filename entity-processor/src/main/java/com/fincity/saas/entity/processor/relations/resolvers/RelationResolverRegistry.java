@@ -70,11 +70,11 @@ public class RelationResolverRegistry {
     }
 
     public Mono<Map<ULong, Map<String, Object>>> resolveBatch(
-            Class<? extends RelationResolver> relationResolver, Set<ULong> idsToResolve) {
+            Class<? extends RelationResolver> relationResolver, Set<ULong> idsToResolve, List<String> eagerFields) {
         RelationResolver resolver = resolverClassMap.get(relationResolver);
         if (resolver == null) return Mono.empty();
 
-        return resolver.resolveBatch(idsToResolve);
+        return resolver.resolveBatch(idsToResolve, eagerFields);
     }
 
     public RelationResolver getResolverForField(String field) {

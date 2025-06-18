@@ -2,6 +2,11 @@ package com.fincity.saas.entity.processor.relations.resolvers;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,5 +40,20 @@ public class UserFieldResolver implements RelationResolver {
                 .map(userList -> userList.stream()
                         .collect(
                                 Collectors.toMap(userMap -> ULongUtil.valueOf(userMap.get("id")), userMap -> userMap)));
+    }
+
+    public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields) {
+        return this.resolveBatch(idsToResolve).map(resolvedMap -> {
+            if (eagerFields == null || eagerFields.isEmpty()) return resolvedMap;
+
+            Set<String> eagerFieldSet = new HashSet<>(eagerFields);
+
+            return resolvedMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                Map<String, Object> originalMap = entry.getValue();
+                return originalMap.keySet().stream()
+                        .filter(eagerFieldSet::contains)
+                        .collect(Collectors.toMap(key -> key, originalMap::get, (a, b) -> b, LinkedHashMap::new));
+            }));
+        });
     }
 }
