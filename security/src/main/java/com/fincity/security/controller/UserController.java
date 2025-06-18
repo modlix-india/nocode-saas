@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.model.UserResponse;
 import com.fincity.security.service.UserInviteService;
 import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
@@ -21,6 +22,8 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -169,10 +172,15 @@ public class UserController
         return this.inviteService.getAllInvitedUsers(pageable, condition)
                 .map(ResponseEntity::ok);
     }
-    
+
     @GetMapping("/internal" + PATH_ID)
-    public Mono<ResponseEntity<User>> getUser(@PathVariable ULong id) {
+    public Mono<ResponseEntity<UserResponse>> getUser(@PathVariable ULong id) {
         return this.service.readById(id).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal")
+    public Mono<ResponseEntity<List<UserResponse>>> getUsers(@RequestBody List<ULong> userIds) {
+        return this.service.readByIds(userIds).map(ResponseEntity::ok);
     }
 
     @GetMapping("/exists")

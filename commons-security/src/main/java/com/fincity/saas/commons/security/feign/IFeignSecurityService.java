@@ -4,9 +4,6 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -162,6 +159,9 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
     Mono<Map<String, Object>> getUserInternal(@PathVariable("id") BigInteger id);
+
+    @PostMapping(value = "${security.feign.getUser:/api/security/users/internal}")
+    Mono<List<Map<String, Object>>> getUserInternal(@RequestBody List<BigInteger> userIds);
 
     @PostMapping("${security.feign.getProfileUsers:/api/security/users/internal/getProfileUsers/{appCode}}")
     Mono<List<BigInteger>> getProfileUsers(@PathVariable String appCode, @RequestBody List<BigInteger> profileIds);

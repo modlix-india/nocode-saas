@@ -1,41 +1,34 @@
 package com.fincity.saas.entity.processor.util;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import java.lang.reflect.Field;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import org.springframework.http.HttpStatus;
 
 public class ReflectionUtil {
 
     private ReflectionUtil() {}
 
-    public static <T> T getStaticFieldValue(Class<?> clazz, String fieldName, Class<T> fieldType) {
-        Class<?> currentClass = clazz;
-        while (currentClass != null) {
-            try {
-                Field field = currentClass.getDeclaredField(fieldName);
-                return fieldType.cast(field.get(null));
-            } catch (NoSuchFieldException e) {
-                currentClass = currentClass.getSuperclass();
-            } catch (IllegalAccessException e) {
-                throw new GenericException(
-                        HttpStatus.BAD_REQUEST, "Unable to access the value of the static field: " + fieldName);
-            }
+    public static <T> T getInstance(Class<T> clazz) {
+        Constructor<T> constructor = null;
+        try {
+            constructor = clazz.getDeclaredConstructor();
+        } catch (NoSuchMethodException e) {
+            throw new GenericException(
+                    HttpStatus.BAD_REQUEST, "No-arg constructor not found for class: " + clazz.getName(), e);
         }
-        throw new GenericException(HttpStatus.BAD_REQUEST, "Field not found in class hierarchy: " + fieldName);
-    }
-
-    public static <T> T getStaticFieldValueNoError(Class<?> clazz, String fieldName, Class<T> fieldType) {
-        Class<?> currentClass = clazz;
-        while (currentClass != null) {
-            try {
-                Field field = currentClass.getDeclaredField(fieldName);
-                return fieldType.cast(field.get(null));
-            } catch (NoSuchFieldException e) {
-                currentClass = currentClass.getSuperclass();
-            } catch (IllegalAccessException e) {
-                return null;
-            }
+        try {
+            return constructor.newInstance();
+        } catch (InstantiationException e) {
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Class cannot be instantiated: " + clazz.getName(), e);
+        } catch (IllegalAccessException e) {
+            throw new GenericException(HttpStatus.FORBIDDEN, "Illegal access to constructor of: " + clazz.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error during instantiation of: " + clazz.getName(),
+                    e.getCause());
         }
-        return null;
     }
 }

@@ -2,19 +2,16 @@ package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
-import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.Table;
 import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
@@ -23,9 +20,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> implements IEntitySeries {
-
-    public static final Map<String, Table<?>> relationsMap = Map.of(Fields.stageId, EntitySeries.STAGE.getTable());
+public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;
@@ -43,6 +38,11 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> implem
     private DistributionType userDistributionType;
     private UserDistribution userDistribution;
     private ULong lastAssignedUserId;
+
+    protected Rule() {
+        super();
+        this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
+    }
 
     public abstract ULong getEntityId();
 
