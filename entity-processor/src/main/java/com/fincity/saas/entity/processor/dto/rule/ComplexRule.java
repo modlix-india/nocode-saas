@@ -30,6 +30,10 @@ public class ComplexRule extends BaseRule<ComplexRule> {
     private boolean hasComplexChild;
     private boolean hasSimpleChild;
 
+    public ComplexRule() {
+        super();
+    }
+
     public static ComplexRule fromCondition(ULong ruleId, EntitySeries entitySeries, ComplexCondition condition) {
         ComplexRule complexRule = new ComplexRule()
                 .setNegate(condition.isNegate())

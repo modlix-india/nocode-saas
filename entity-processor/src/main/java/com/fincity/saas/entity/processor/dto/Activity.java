@@ -34,6 +34,10 @@ public class Activity extends BaseDto<Activity> {
     private ULong objectId;
     private Map<String, Object> objectData;
 
+    public Activity() {
+        super();
+    }
+
     public static Activity of(ULong ticketId, ActivityAction action, ActivityObject object) {
         return new Activity()
                 .setTicketId(ticketId)

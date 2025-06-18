@@ -29,6 +29,10 @@ public class Owner extends BaseProcessorDto<Owner> {
     private String source;
     private String subSource;
 
+    public Owner() {
+        super();
+    }
+
     public static Owner of(OwnerRequest ownerRequest) {
         return new Owner()
                 .setDialCode(ownerRequest.getPhoneNumber().getCountryCode())
