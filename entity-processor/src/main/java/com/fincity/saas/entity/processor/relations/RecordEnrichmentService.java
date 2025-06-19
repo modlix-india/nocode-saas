@@ -126,9 +126,8 @@ public class RecordEnrichmentService {
             Map<String, Set<ULong>> fieldIdsMap,
             Map<ULong, Map<String, Object>> resolvedData) {
 
-        for (Map.Entry<String, Set<ULong>> entry : fieldIdsMap.entrySet()) {
+        for (Map.Entry<String, Set<ULong>> entry : fieldIdsMap.entrySet())
             recs.forEach(rec -> this.enrichSingleRecord(rec, entry.getKey(), resolvedData));
-        }
     }
 
     private void enrichSingleRecord(

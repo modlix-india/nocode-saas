@@ -33,6 +33,11 @@ public class UserFieldResolver implements RelationResolver {
 
         if (idsToResolve == null || idsToResolve.isEmpty()) return Mono.just(Map.of());
 
+        if (idsToResolve.size() == 1)
+            return this.securityService
+                    .getUserInternal(idsToResolve.iterator().next().toBigInteger())
+                    .map(user -> Map.of(ULongUtil.valueOf(user.get("id")), user));
+
         return securityService
                 .getUserInternal(idsToResolve.stream().map(ULong::toBigInteger).toList())
                 .map(userList -> userList.stream()
