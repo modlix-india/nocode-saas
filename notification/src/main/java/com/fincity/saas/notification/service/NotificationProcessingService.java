@@ -42,7 +42,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
-public class NotificationProcessingService implements INotificationCacheService<Notification> {
+public class NotificationProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
 
@@ -84,16 +84,12 @@ public class NotificationProcessingService implements INotificationCacheService<
         this.cacheService = cacheService;
     }
 
-    @Override
     public String getCacheName() {
         return NOTIFICATION_INFO_CACHE;
     }
 
-    @Override
     public Mono<Boolean> evictChannelEntities(Map<String, String> templates) {
-
         Map<NotificationChannelType, String> resultMap = NotificationChannelType.getChannelTypeMap(templates);
-
         return notificationTemplateProcessor.evictTemplateCache(resultMap);
     }
 
@@ -213,7 +209,8 @@ public class NotificationProcessingService implements INotificationCacheService<
 
     private Mono<Notification> getNotificationInfoInternal(
             String appCode, String urlClientCode, String clientCode, String notificationName) {
-        return this.cacheValueOrGet(
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
                 () -> coreService.getNotificationInfo(urlClientCode, notificationName, appCode, clientCode),
                 appCode,
                 clientCode,

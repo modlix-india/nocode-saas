@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 
 @Getter
 @Service
-public class NotificationConnectionService implements INotificationCacheService<Connection> {
+public class NotificationConnectionService {
 
     private static final String NOTIFICATION_CONN_CACHE = "notificationConn";
     private static final String NOTIFICATION_CONNECTION_TYPE = "NOTIFICATION";
@@ -34,7 +34,6 @@ public class NotificationConnectionService implements INotificationCacheService<
         this.cacheService = cacheService;
     }
 
-    @Override
     public String getCacheName() {
         return NOTIFICATION_CONN_CACHE;
     }
@@ -54,7 +53,8 @@ public class NotificationConnectionService implements INotificationCacheService<
     }
 
     public Mono<Connection> getNotificationConn(String appCode, String clientCode, String connectionName) {
-        return this.cacheValueOrGet(
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
                 () -> coreService.getConnection(
                         clientCode, connectionName, appCode, clientCode, NOTIFICATION_CONNECTION_TYPE),
                 appCode,

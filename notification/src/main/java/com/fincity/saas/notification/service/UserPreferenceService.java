@@ -29,8 +29,7 @@ import reactor.util.context.Context;
 
 @Service
 public class UserPreferenceService
-        extends AbstractCodeService<NotificationUserPreferencesRecord, ULong, UserPreference, UserPreferenceDao>
-        implements INotificationCacheService<UserPreference> {
+        extends AbstractCodeService<NotificationUserPreferencesRecord, ULong, UserPreference, UserPreferenceDao> {
 
     private static final String USER_PREFERENCE = "user_preference";
 
