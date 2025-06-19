@@ -29,6 +29,8 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -60,6 +62,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.UserResponse;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -440,8 +443,19 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         Mono.defer(() -> this.forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
     }
 
-    public Mono<User> readById(ULong userId) {
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId);
+    public Mono<UserResponse> readById(ULong userId) {
+        return this.cacheService
+                .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId)
+                .map(UserResponse::new);
+    }
+
+    public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {
+        return this.readAllFilter(new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(userIds))
+                .map(UserResponse::new)
+                .collectList();
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")

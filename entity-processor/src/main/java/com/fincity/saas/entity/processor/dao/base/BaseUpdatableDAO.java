@@ -5,6 +5,8 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
@@ -28,6 +31,7 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -55,12 +59,25 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     protected final Field<Boolean> tempActiveField;
     protected final Field<Boolean> isActiveField;
 
+    private final Map<String, Tuple2<Table<?>, String>> relationMap;
+    private final SetValuedMap<Class<? extends RelationResolver>, String> relationResolverMap;
+
+    private RecordEnrichmentService recordEnrichmentService;
+
     protected BaseUpdatableDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
         this.codeField = flowTable.field(CODE, String.class);
         this.nameField = flowTable.field(NAME, String.class);
         this.tempActiveField = flowTable.field(TEMP_ACTIVE, Boolean.class);
         this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
+
+        this.relationMap = EagerUtil.getRelationMap(this.pojoClass);
+        this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
+    }
+
+    @Autowired
+    private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
+        this.recordEnrichmentService = recordEnrichmentService;
     }
 
     private <T, V> Mono<T> objectNotFoundError(V value) {
@@ -111,7 +128,9 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                                             .eq(identity)
                                             .and(appCodeField.eq(appCode))
                                             .and(clientCodeField.eq(clientCode))))
-                            .map(rec -> processRelatedData(rec.intoMap(), relations));
+                            .map(rec -> processRelatedData(rec.intoMap(), relations))
+                            .flatMap(rec ->
+                                    recordEnrichmentService.enrich(rec, this.relationResolverMap, eager, eagerFields));
                 })
                 .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
     }
@@ -156,7 +175,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                         .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
                         .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                return this.listAsMap(pageable, filteredQueries, relations);
+                return this.listAsMap(pageable, filteredQueries, relations, eager, eagerFields);
             });
         });
     }
@@ -166,7 +185,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
                             Map<String, Tuple2<Table<?>, String>>>>
             getSelectJointStepEager(List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        Map<String, Tuple2<Table<?>, String>> relations = EagerUtil.getRelationMap(this.pojoClass);
+        Map<String, Tuple2<Table<?>, String>> relations = this.relationMap;
 
         List<Field<?>> fields = this.getEagerFields(tableFields, eager, eagerFields, this.table, relations);
 
@@ -302,7 +321,9 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     private Mono<Page<Map<String, Object>>> listAsMap(
             Pageable pageable,
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple,
-            Map<String, Tuple2<Table<?>, String>> relations) {
+            Map<String, Tuple2<Table<?>, String>> relations,
+            Boolean eager,
+            List<String> eagerFields) {
 
         List<SortField<?>> orderBy = new ArrayList<>();
 
@@ -320,7 +341,9 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         Mono<List<Map<String, Object>>> recordsList = Flux.from(
                         finalQuery.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(rec -> processRelatedData(rec.intoMap(), relations))
-                .collectList();
+                .collectList()
+                .flatMap(records ->
+                        recordEnrichmentService.enrich(records, this.relationResolverMap, eager, eagerFields));
 
         return Mono.zip(recordsList, recordsCount)
                 .map(tuple -> PageableExecutionUtils.getPage(tuple.getT1(), pageable, tuple::getT2));

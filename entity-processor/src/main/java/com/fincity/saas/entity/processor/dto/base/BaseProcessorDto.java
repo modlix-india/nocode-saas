@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.dto.base;
 
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,12 +13,15 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseUpdatableDto<T>
-        implements IEntitySeries {
+public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;
 
     @Version
     private int version = 1;
+
+    protected BaseProcessorDto() {
+        super();
+    }
 }

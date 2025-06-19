@@ -4,10 +4,13 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ConditionUtil;
+import com.fincity.saas.entity.processor.relations.IRelationMap;
+import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Table;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -17,7 +20,6 @@ import reactor.util.function.Tuples;
 
 public class EagerUtil {
 
-    private static final String RELATIONS_MAP = "relationsMap";
     private static final String EAGER = "eager";
     private static final String EAGER_FIELD = "eagerField";
     private static final String FIELD = "field";
@@ -27,12 +29,14 @@ public class EagerUtil {
     private static final Map<Class<?>, Map<String, Tuple2<Table<?>, String>>> relationMapCache =
             new ConcurrentHashMap<>();
 
+    private static final Map<Class<?>, SetValuedMap<Class<? extends RelationResolver>, String>>
+            relationResolverMapCache = new ConcurrentHashMap<>();
+
     private EagerUtil() {}
 
-    @SuppressWarnings("unchecked")
-    public static Map<String, Tuple2<Table<?>, String>> getRelationMap(Class<?> clazz) {
+    public static <T extends IRelationMap> Map<String, Tuple2<Table<?>, String>> getRelationMap(Class<T> clazz) {
         return relationMapCache.computeIfAbsent(clazz, key -> {
-            Map<String, Table<?>> relations = ReflectionUtil.getStaticFieldValueNoError(key, RELATIONS_MAP, Map.class);
+            Map<String, Table<?>> relations = ReflectionUtil.getInstance(clazz).getRelationsMap();
             Map<String, Tuple2<Table<?>, String>> result = new LinkedHashMap<>();
 
             if (relations != null)
@@ -41,6 +45,12 @@ public class EagerUtil {
 
             return result;
         });
+    }
+
+    public static <T extends IRelationMap>
+            SetValuedMap<Class<? extends RelationResolver>, String> getRelationResolverMap(Class<T> clazz) {
+        return relationResolverMapCache.computeIfAbsent(
+                clazz, key -> ReflectionUtil.getInstance(clazz).getRelationsResolverMap());
     }
 
     public static String toJooqField(String fieldName) {

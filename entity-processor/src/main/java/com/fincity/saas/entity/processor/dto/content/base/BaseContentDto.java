@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.dto.content.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import java.io.Serial;
 import lombok.Data;
@@ -19,7 +19,7 @@ import org.springframework.data.annotation.Version;
 @ToString(callSuper = true)
 @FieldNameConstants
 public abstract class BaseContentDto<Q extends BaseContentRequest<Q>, T extends BaseContentDto<Q, T>>
-        extends BaseUpdatableDto<T> implements IEntitySeries {
+        extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;
@@ -31,6 +31,11 @@ public abstract class BaseContentDto<Q extends BaseContentRequest<Q>, T extends 
     private Boolean hasAttachment;
     private ULong ownerId;
     private ULong ticketId;
+
+    protected BaseContentDto() {
+        super();
+        this.relationsMap.put(Fields.ticketId, EntitySeries.TICKET.getTable());
+    }
 
     public abstract T of(Q contentRequest);
 
