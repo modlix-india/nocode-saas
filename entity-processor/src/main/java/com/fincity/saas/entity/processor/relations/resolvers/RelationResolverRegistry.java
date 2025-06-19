@@ -58,9 +58,7 @@ public class RelationResolverRegistry {
 
             if (allowedField == null || allowedField.isEmpty()) {
                 Set<String> fields = allResolverFieldsCache.get(resolver);
-                if (fields != null && !fields.isEmpty()) {
-                    result.putAll(resolver, fields);
-                }
+                if (fields != null && !fields.isEmpty()) result.putAll(resolver, fields);
             } else if (resolver.supports(allowedField)) {
                 result.put(resolver, allowedField);
             }

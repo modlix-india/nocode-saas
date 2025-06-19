@@ -40,8 +40,11 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;
 
-    protected Map<String, Table<?>> relationsMap = new HashMap<>();
-    protected SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
+    @JsonIgnore
+    protected transient Map<String, Table<?>> relationsMap = new HashMap<>();
+
+    @JsonIgnore
+    protected transient SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
             new HashSetValuedHashMap<>();
 
     private String code = UniqueUtil.shortUUID();
