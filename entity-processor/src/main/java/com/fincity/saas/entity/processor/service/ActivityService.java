@@ -2,6 +2,10 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.entity.processor.dao.ActivityDAO;
@@ -9,21 +13,27 @@ import com.fincity.saas.entity.processor.dto.Activity;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.dto.content.Task;
+import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.TicketRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -32,12 +42,20 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm a");
+
     private StageService stageService;
+    private TicketService ticketService;
 
     @Lazy
     @Autowired
     private void setStageService(StageService stageService) {
         this.stageService = stageService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setTicketService(TicketService ticketService) {
+        this.ticketService = ticketService;
     }
 
     @Override
@@ -75,6 +93,39 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     @Override
     public Mono<Activity> create(Activity activity) {
         return this.createInternal(activity);
+    }
+
+    public Mono<Page<Activity>> readPageFilter(Pageable pageable, Identity ticket, AbstractCondition condition) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.ticketService.checkAndUpdateIdentityWithAccess(access, ticket),
+                (access, uTicket) ->
+                        super.readPageFilter(pageable, addTicketToCondition(access, condition, uTicket.getULongId())));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            Identity ticket,
+            AbstractCondition condition,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.ticketService.checkAndUpdateIdentityWithAccess(access, ticket),
+                (access, uTicket) -> super.readPageFilterEager(
+                        pageable,
+                        addTicketToCondition(access, condition, uTicket.getULongId()),
+                        tableFields,
+                        eager,
+                        eagerFields));
+    }
+
+    private AbstractCondition addTicketToCondition(
+            ProcessorAccess access, AbstractCondition condition, ULong ticketId) {
+        return ComplexCondition.and(
+                super.addAppCodeAndClientCodeToCondition(access, condition),
+                FilterCondition.make("ticketId", ticketId).setOperator(FilterConditionOperator.EQUALS));
     }
 
     protected Mono<Activity> createInternal(Activity activity) {
@@ -183,24 +234,32 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "source", source));
     }
 
-    public Mono<Void> acStatusCreate(ULong ticketId, String comment, ULong statusId) {
+    public Mono<Void> acStageStatus(Ticket ticket, String comment, ULong oldStageId) {
+
+        if (oldStageId == null || ticket.getStage().equals(oldStageId)) return this.acStatusCreate(ticket, comment);
+
+        return Mono.when(this.acStatusCreate(ticket, comment), this.acStageUpdate(ticket, comment, oldStageId));
+    }
+
+    public Mono<Void> acStatusCreate(Ticket ticket, String comment) {
         return FlatMapUtil.flatMapMono(
-                () -> this.stageService.readByIdInternal(statusId),
+                () -> this.stageService.readByIdInternal(ticket.getStatus()),
                 status -> this.createActivityInternal(
                         ActivityAction.STATUS_CREATE,
                         comment,
-                        Map.of("ticketId", ticketId, "status", IdAndValue.of(status.getId(), status.getName()))));
+                        Map.of("ticketId", ticket.getId(), "status", IdAndValue.of(status.getId(), status.getName()))));
     }
 
-    public Mono<Void> acStageUpdate(ULong ticketId, String comment, ULong oldStageId, ULong newStageId) {
+    public Mono<Void> acStageUpdate(Ticket ticket, String comment, ULong oldStageId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.stageService.readByIdInternal(oldStageId), this.stageService.readByIdInternal(newStageId)),
+                        this.stageService.readByIdInternal(oldStageId),
+                        this.stageService.readByIdInternal(ticket.getStage())),
                 stages -> this.createActivityInternal(
                         ActivityAction.STAGE_UPDATE,
                         comment,
                         Map.of(
-                                "ticketId", ticketId,
+                                "ticketId", ticket.getId(),
                                 "oldStage",
                                         IdAndValue.of(
                                                 stages.getT1().getId(),
@@ -209,6 +268,18 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                         IdAndValue.of(
                                                 stages.getT2().getId(),
                                                 stages.getT2().getName()))));
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
+        return this.acContentCreate(content, null);
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content, String comment) {
+        if (content instanceof Note note) return this.acNoteAdd(note, comment);
+
+        if (content instanceof Task task) return this.acTaskCreate(task, comment);
+
+        return Mono.empty();
     }
 
     public Mono<Void> acTaskCreate(Task task, String comment) {
@@ -221,6 +292,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
+    public Mono<Void> acTaskComplete(Task task) {
+        return this.acTaskComplete(task, null);
+    }
+
     public Mono<Void> acTaskComplete(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.TASK_COMPLETE,
@@ -229,6 +304,33 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public Mono<Void> acTaskCancelled(Task task) {
+        return this.acTaskCancelled(task, null);
+    }
+
+    public Mono<Void> acTaskCancelled(Task task, String comment) {
+        return this.createActivityInternal(
+                ActivityAction.TASK_CANCELLED,
+                task.getCancelledDate(),
+                comment,
+                Map.of(
+                        "ticketId", task.getTicketId(),
+                        "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentDelete(T content, LocalDateTime deletedDate) {
+        return this.acContentDelete(content, null, deletedDate);
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentDelete(
+            T content, String comment, LocalDateTime deletedDate) {
+        if (content instanceof Note note) return this.acNoteDelete(note, comment, deletedDate);
+
+        if (content instanceof Task task) return this.acTaskDelete(task, comment, deletedDate);
+
+        return Mono.empty();
     }
 
     public Mono<Void> acTaskDelete(Task task, String comment, LocalDateTime deletedDate) {
@@ -241,6 +343,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
+    public Mono<Void> acReminderSet(Task task) {
+        return this.acReminderSet(task, null);
+    }
+
     public Mono<Void> acReminderSet(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.REMINDER_SET,
@@ -250,6 +356,26 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "ticketId", task.getTicketId(),
                         "reminderDate", task.getNextReminder(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public Mono<Void> acNoteAdd(Note note, String comment) {
+        return this.createActivityInternal(
+                ActivityAction.NOTE_ADD,
+                note.getCreatedAt(),
+                comment,
+                Map.of(
+                        "ticketId", note.getTicketId(),
+                        "note", IdAndValue.of(note.getId(), note.getName())));
+    }
+
+    public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
+        return this.createActivityInternal(
+                ActivityAction.NOTE_DELETE,
+                deletedDate,
+                comment,
+                Map.of(
+                        "ticketId", note.getTicketId(),
+                        "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
     public Mono<Void> acDocumentUpload(ULong ticketId, String comment, String file) {
@@ -277,26 +403,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 Map.of(
                         "ticketId", ticketId,
                         "file", file));
-    }
-
-    public Mono<Void> acNoteAdd(Note note, String comment) {
-        return this.createActivityInternal(
-                ActivityAction.NOTE_ADD,
-                note.getCreatedAt(),
-                comment,
-                Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
-    }
-
-    public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
-        return this.createActivityInternal(
-                ActivityAction.NOTE_DELETE,
-                deletedDate,
-                comment,
-                Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
     public Mono<Void> acAssign(ULong ticketId, String comment, String newUser) {

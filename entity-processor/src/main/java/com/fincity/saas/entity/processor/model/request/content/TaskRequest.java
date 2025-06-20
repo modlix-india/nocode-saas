@@ -21,6 +21,6 @@ public class TaskRequest extends BaseContentRequest<TaskRequest> {
     private Identity taskTypeId;
     private LocalDateTime dueDate;
     private TaskPriority taskPriority;
-    private Boolean hasReminder;
+    private boolean hasReminder;
     private LocalDateTime nextReminder;
 }

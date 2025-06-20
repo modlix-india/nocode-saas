@@ -1,6 +1,10 @@
 package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowDataService;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
@@ -8,9 +12,13 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.List;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
@@ -29,8 +37,37 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         this.securityService = securityService;
     }
 
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> tableFields,
+            Boolean eager,
+            List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.readPageFilterEager(
+                        pageable,
+                        addAppCodeAndClientCodeToCondition(access, condition),
+                        tableFields,
+                        eager,
+                        eagerFields));
+    }
+
     public Mono<ProcessorAccess> hasAccess() {
         return SecurityContextUtil.resolveAppAndClientCode(null, null)
                 .map(tup -> ProcessorAccess.of(tup.getT1(), tup.getT2(), false));
+    }
+
+    protected AbstractCondition addAppCodeAndClientCodeToCondition(
+            ProcessorAccess access, AbstractCondition condition) {
+        if (condition == null || condition.isEmpty())
+            return ComplexCondition.and(
+                    FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make("clientCode", access.getClientCode())
+                            .setOperator(FilterConditionOperator.EQUALS));
+
+        return ComplexCondition.and(
+                condition,
+                FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make("clientCode", access.getClientCode()).setOperator(FilterConditionOperator.EQUALS));
     }
 }

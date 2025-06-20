@@ -18,7 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Task extends BaseContentDto<TaskRequest, Task> {
+public class Task extends BaseContentDto<Task> {
 
     @Serial
     private static final long serialVersionUID = 2984521500368594815L;
@@ -39,13 +39,7 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
         this.relationsMap.put(Fields.taskTypeId, EntitySeries.TASK_TYPE.getTable());
     }
 
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.TASK;
-    }
-
-    @Override
-    public Task of(TaskRequest taskRequest) {
+    public static Task of(TaskRequest taskRequest) {
         return new Task()
                 .setContent(taskRequest.getContent())
                 .setHasAttachment(taskRequest.getHasAttachment())
@@ -63,7 +57,12 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
                                 : null)
                 .setDueDate(taskRequest.getDueDate())
                 .setTaskPriority(taskRequest.getTaskPriority())
-                .setHasReminder(taskRequest.getHasReminder())
+                .setHasReminder(taskRequest.isHasReminder())
                 .setNextReminder(taskRequest.getNextReminder());
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.TASK;
     }
 }

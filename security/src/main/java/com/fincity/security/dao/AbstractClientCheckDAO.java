@@ -67,7 +67,7 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 	}
 
 	@Override
-	protected Mono<Condition> filter(AbstractCondition abstractCondition) {
+	public Mono<Condition> filter(AbstractCondition abstractCondition) {
 
 		Mono<Condition> condition = super.filter(abstractCondition);
 

@@ -28,6 +28,7 @@ public enum ActivityAction implements EnumType {
     // Task-related actions
     TASK_CREATE("TASK_CREATE", "Task '$task' was created by $user on $date at $time", keys("task")),
     TASK_COMPLETE("TASK_COMPLETE", "Task '$task' was marked as completed by $user on $date at $time", keys("task")),
+    TASK_CANCELLED("TASK_CANCELLED", "Task '$task' was marked as cancelled by $user on $date at $time", keys("task")),
     TASK_DELETE("TASK_DELETE", "Task '$task' was deleted by $user on $date at $time", keys("task")),
     REMINDER_SET(
             "REMINDER_SET",
