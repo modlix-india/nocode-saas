@@ -118,7 +118,7 @@ public class ClientPinPolicyService
 				.next()
 				.flatMap(matchedPin -> policyBadRequestException(
 						SecurityMessageResourceService.PASSWORD_USER_ERROR,
-						getAuthenticationPasswordType().getName(), pinPolicy.getPinHistoryCount(),
+						getAuthenticationPasswordType().getName(),
 						getAuthenticationPasswordType().getName()))
 				.switchIfEmpty(Mono.just(Boolean.TRUE));
 	}
