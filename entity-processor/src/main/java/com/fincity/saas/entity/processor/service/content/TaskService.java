@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class TaskService extends BaseContentService<TaskRequest, EntityProcessorTasksRecord, Task, TaskDAO> {
+public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO> {
 
     private static final String TASK_CACHE = "task";
 
@@ -39,36 +39,47 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
         return EntitySeries.TASK;
     }
 
-    @Override
-    protected Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
-        return super.updateIdentities(access, taskRequest).flatMap(updated -> {
-            if (updated.getTaskTypeId() != null)
-                return taskTypeService
-                        .checkAndUpdateIdentityWithAccess(access, updated.getTaskTypeId())
-                        .map(updated::setTaskTypeId);
-
-            return Mono.just(updated);
-        });
+    public Mono<Task> create(TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.updateIdentities(access, taskRequest),
+                (access, uRequest) -> this.createContent(uRequest),
+                (access, uRequest, content) -> content.isTicketContent()
+                        ? this.createTicketContent(access, content)
+                        : createOwnerContent(access, content));
     }
 
-    @Override
-    protected Mono<Task> createContent(TaskRequest contentRequest) {
+    private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> taskRequest.getTicketId() != null
+                        ? this.checkTicket(access, taskRequest.getTicketId())
+                        : Mono.just(Identity.ofNull()),
+                ticketId -> taskRequest.getOwnerId() != null
+                        ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
+                        : Mono.just(Identity.ofNull()),
+                (ticketId, ownerId) -> taskRequest.getTaskTypeId() != null
+                        ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
+                        : Mono.just(Identity.ofNull()),
+                (ticketId, ownerId, taskTypeId) -> Mono.just(
+                        taskRequest.setTicketId(ticketId).setOwnerId(ownerId).setTaskTypeId(taskTypeId)));
+    }
 
-        if ((contentRequest.getContent() == null
-                        || contentRequest.getContent().trim().isEmpty())
-                && contentRequest.getTaskTypeId() == null)
+    private Mono<Task> createContent(TaskRequest taskRequest) {
+
+        if ((taskRequest.getContent() == null || taskRequest.getContent().trim().isEmpty())
+                && taskRequest.getTaskTypeId() == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.CONTENT_MISSING,
                     this.getEntityName());
 
-        if (contentRequest.getDueDate() != null && contentRequest.getDueDate().isBefore(LocalDateTime.now()))
+        if (taskRequest.getDueDate() != null && taskRequest.getDueDate().isBefore(LocalDateTime.now()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.DATE_IN_PAST,
                     "Due");
 
-        return Mono.just(new Task().of(contentRequest));
+        return Mono.just(Task.of(taskRequest));
     }
 
     @Override
@@ -107,15 +118,19 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                     vTask.setNextReminder(reminderDate);
 
                     return this.updateInternal(access, vTask);
-                });
+                },
+                (access, task, vTask, uTask) ->
+                        this.activityService.acReminderSet(uTask).then(Mono.just(uTask)));
     }
 
     public Mono<Task> setTaskCompleted(Identity taskIdentity, Boolean isCompleted, LocalDateTime completedDate) {
-        return this.setTaskStatus(taskIdentity, isCompleted, completedDate, true);
+        return this.setTaskStatus(taskIdentity, isCompleted, completedDate, true)
+                .flatMap(task -> this.activityService.acTaskComplete(task).then(Mono.just(task)));
     }
 
     public Mono<Task> setTaskCancelled(Identity taskIdentity, Boolean isCancelled, LocalDateTime cancelledDate) {
-        return this.setTaskStatus(taskIdentity, isCancelled, cancelledDate, false);
+        return this.setTaskStatus(taskIdentity, isCancelled, cancelledDate, false)
+                .flatMap(task -> this.activityService.acTaskCancelled(task).then(Mono.just(task)));
     }
 
     private Mono<Task> setTaskStatus(

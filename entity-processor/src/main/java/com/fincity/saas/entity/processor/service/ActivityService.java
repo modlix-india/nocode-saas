@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.dto.Activity;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.dto.content.Task;
+import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
@@ -269,6 +270,18 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 stages.getT2().getName()))));
     }
 
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
+        return this.acContentCreate(content, null);
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content, String comment) {
+        if (content instanceof Note note) return this.acNoteAdd(note, comment);
+
+        if (content instanceof Task task) return this.acTaskCreate(task, comment);
+
+        return Mono.empty();
+    }
+
     public Mono<Void> acTaskCreate(Task task, String comment) {
         return this.createActivityInternal(
                 ActivityAction.TASK_CREATE,
@@ -277,6 +290,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public Mono<Void> acTaskComplete(Task task) {
+        return this.acTaskComplete(task, null);
     }
 
     public Mono<Void> acTaskComplete(Task task, String comment) {
@@ -289,6 +306,33 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "task", IdAndValue.of(task.getId(), task.getName())));
     }
 
+    public Mono<Void> acTaskCancelled(Task task) {
+        return this.acTaskCancelled(task, null);
+    }
+
+    public Mono<Void> acTaskCancelled(Task task, String comment) {
+        return this.createActivityInternal(
+                ActivityAction.TASK_CANCELLED,
+                task.getCancelledDate(),
+                comment,
+                Map.of(
+                        "ticketId", task.getTicketId(),
+                        "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentDelete(T content, LocalDateTime deletedDate) {
+        return this.acContentDelete(content, null, deletedDate);
+    }
+
+    public <T extends BaseContentDto<T>> Mono<Void> acContentDelete(
+            T content, String comment, LocalDateTime deletedDate) {
+        if (content instanceof Note note) return this.acNoteDelete(note, comment, deletedDate);
+
+        if (content instanceof Task task) return this.acTaskDelete(task, comment, deletedDate);
+
+        return Mono.empty();
+    }
+
     public Mono<Void> acTaskDelete(Task task, String comment, LocalDateTime deletedDate) {
         return this.createActivityInternal(
                 ActivityAction.TASK_DELETE,
@@ -297,6 +341,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 Map.of(
                         "ticketId", task.getTicketId(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public Mono<Void> acReminderSet(Task task) {
+        return this.acReminderSet(task, null);
     }
 
     public Mono<Void> acReminderSet(Task task, String comment) {
@@ -308,6 +356,26 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         "ticketId", task.getTicketId(),
                         "reminderDate", task.getNextReminder(),
                         "task", IdAndValue.of(task.getId(), task.getName())));
+    }
+
+    public Mono<Void> acNoteAdd(Note note, String comment) {
+        return this.createActivityInternal(
+                ActivityAction.NOTE_ADD,
+                note.getCreatedAt(),
+                comment,
+                Map.of(
+                        "ticketId", note.getTicketId(),
+                        "note", IdAndValue.of(note.getId(), note.getName())));
+    }
+
+    public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
+        return this.createActivityInternal(
+                ActivityAction.NOTE_DELETE,
+                deletedDate,
+                comment,
+                Map.of(
+                        "ticketId", note.getTicketId(),
+                        "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
     public Mono<Void> acDocumentUpload(ULong ticketId, String comment, String file) {
@@ -335,26 +403,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 Map.of(
                         "ticketId", ticketId,
                         "file", file));
-    }
-
-    public Mono<Void> acNoteAdd(Note note, String comment) {
-        return this.createActivityInternal(
-                ActivityAction.NOTE_ADD,
-                note.getCreatedAt(),
-                comment,
-                Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
-    }
-
-    public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
-        return this.createActivityInternal(
-                ActivityAction.NOTE_DELETE,
-                deletedDate,
-                comment,
-                Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
     }
 
     public Mono<Void> acAssign(ULong ticketId, String comment, String newUser) {

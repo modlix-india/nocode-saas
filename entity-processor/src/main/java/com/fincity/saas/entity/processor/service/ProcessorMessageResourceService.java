@@ -25,6 +25,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String PRODUCT_TEMPLATE_FORBIDDEN_ACCESS = "product_template_forbidden_access";
     public static final String OWNER_NOT_CREATED = "owner_not_created";
     public static final String DUPLICATE_TICKET = "duplicate_ticket";
+    public static final String INVALID_TICKET_OWNER = "invalid_ticket_owner";
     public static final String USER_DISTRIBUTION_MISSING = "user_distribution_missing";
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
     public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
