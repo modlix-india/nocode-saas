@@ -117,6 +117,13 @@ public abstract class BaseUpdatableService<
                         code, access.getAppCode(), access.getClientCode(), tableFields, eager, eagerFields));
     }
 
+    public Mono<Map<String, Object>> readEager(
+            Identity identity, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.readByIdentityAndAppCodeAndClientCodeEager(
+                        identity, access.getAppCode(), access.getClientCode(), tableFields, eager, eagerFields));
+    }
+
     public Mono<D> readById(ULong id) {
         return this.dao
                 .readInternal(id)
@@ -248,9 +255,34 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readIdentityWithAccess(access, identity));
     }
 
+    public Mono<D> readIdentityWithOwnerAccess(Identity identity) {
+        return this.hasAccess().flatMap(access -> this.readIdentityWithOwnerAccess(access, identity));
+    }
+
     public Mono<D> readIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return identityMissingError();
+
+        return identity.isCode()
+                ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.IDENTITY_WRONG,
+                                this.getEntityName(),
+                                identity.getCode()))
+                : this.readById(access.getAppCode(), access.getClientCode(), identity.getULongId())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.IDENTITY_WRONG,
+                                this.getEntityName(),
+                                identity.getId()));
+    }
+
+    public Mono<D> readIdentityWithOwnerAccess(ProcessorAccess access, Identity identity) {
+
+        if (identity == null || identity.isNull()) return identityMissingError();
+
+        // TODO: Add logic to check weather user or its team has access to this identity
 
         return identity.isCode()
                 ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
