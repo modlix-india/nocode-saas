@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
-import java.util.stream.Stream;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -48,13 +47,8 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     }
 
     @JsonIgnore
-    public boolean inFamily(ULong childId) {
-        return this.getId().equals(childId) || this.parentLevel0.equals(childId) || this.parentLevel1.equals(childId);
-    }
-
-    @JsonIgnore
-    public boolean isValidChild(ULong... childIds) {
-        return Stream.of(childIds).anyMatch(childId -> this.getId().equals(childId));
+    public boolean hasParent(ULong parentId) {
+        return this.parentLevel0.equals(parentId) || this.parentLevel1.equals(parentId);
     }
 
     // 	These Methods are for JOOQ Compatibility.
