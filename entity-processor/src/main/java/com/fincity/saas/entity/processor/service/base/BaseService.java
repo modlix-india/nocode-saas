@@ -58,7 +58,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 .map(tup -> ProcessorAccess.of(tup.getT1(), tup.getT2(), false));
     }
 
-    private AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
+    public AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
