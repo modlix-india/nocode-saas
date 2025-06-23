@@ -4423,6 +4423,60 @@ ALTER TABLE `security`.`security_designation`
     ADD CONSTRAINT `UK1_SECURITY_DESIGNATION_CLIENT_ID_NAME` UNIQUE (`CLIENT_ID`, `NAME`);
 
 
+-- V43__Invite Users.sql (security)
+use security;
+
+DROP TABLE IF EXISTS `security`.`security_user_invite`;
+
+CREATE TABLE `security`.`security_user_invite` (
+                                                   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+
+                                                   `CLIENT_ID` bigint UNSIGNED NOT NULL COMMENT 'Client id for the user to be created in',
+                                                   `USER_NAME` char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'User Name to login',
+                                                   `EMAIL_ID` varchar(320) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Email ID to login',
+                                                   `PHONE_NUMBER` char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Phone Number to login',
+                                                   `FIRST_NAME` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'First name',
+                                                   `LAST_NAME` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Last name',
+
+                                                   `INVITE_CODE` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Unique Invitation Code',
+                                                   `PROFILE_ID` bigint UNSIGNED DEFAULT NULL COMMENT 'Profile Id to assign by default',
+                                                   `DESIGNATION_ID` bigint UNSIGNED DEFAULT NULL COMMENT 'Designation Id to assign by default',
+
+                                                   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+                                                   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+                                                   PRIMARY KEY (`ID`),
+                                                   UNIQUE KEY (`INVITE_CODE`),
+                                                   UNIQUE KEY (`CLIENT_ID`, `EMAIL_ID`),
+                                                   UNIQUE KEY (`CLIENT_ID`, `PHONE_NUMBER`),
+
+                                                   CONSTRAINT `fk_security_user_invite_client` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security`.`security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+                                                   CONSTRAINT `fk_security_user_invite_profile` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security`.`security_profile` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+                                                   CONSTRAINT `fk_security_user_invite_designation` FOREIGN KEY (`DESIGNATION_ID`) REFERENCES `security`.`security_designation` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- V44__Social Login SSO.sql (security)
+USE security;
+
+ALTER TABLE `security_app_reg_integration_tokens`
+    ADD COLUMN `REQUEST_PARAM` JSON DEFAULT NULL COMMENT 'app metadata from request url' AFTER `STATE`;
+
+
+-- V45__Alter App Reg Integration Add Signup URI.sql (security)
+USE `security`;
+
+ALTER TABLE `security`.`security_app_reg_integration`
+    ADD COLUMN `SIGNUP_URI` VARCHAR(2083) DEFAULT NULL COMMENT 'URI for signup' AFTER `LOGIN_URI`;
+
+UPDATE `security`.`security_app_reg_integration`
+SET `security_app_reg_integration`.`SIGNUP_URI` = `security_app_reg_integration`.`LOGIN_URI`
+WHERE security_app_reg_integration.`SIGNUP_URI` IS NULL;
+
+ALTER TABLE `security`.`security_app_reg_integration`
+    MODIFY COLUMN `SIGNUP_URI` VARCHAR(2083) NOT NULL COMMENT 'URI for signup' AFTER `LOGIN_URI`;
+
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....

@@ -734,8 +734,15 @@ public class ClientRegistrationService {
 
                         (ca, app, appRegIntgToken, appRegIntg, registerRequest) -> {
 
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
+
                             UriComponentsBuilder uriBuilder = UriComponentsBuilder
-                                    .fromUri(URI.create(urlPrefix + appRegIntg.getLoginUri()))
+                                    .fromUri(URI.create(urlPrefix + redirectUrl))
                                     .queryParam("sessionId", appRegIntgToken.getState())
                                     .queryParam("userName", registerRequest.getUserName())
                                     .queryParam("emailId", registerRequest.getEmailId())
@@ -765,10 +772,15 @@ public class ClientRegistrationService {
                         appRegIntgToken ->
                                 this.appRegistrationIntegrationService.read(appRegIntgToken.getIntegrationId()),
                         (appRegIntgToken, appRegIntg) -> {
-                            response.setStatusCode(HttpStatus.FOUND);
 
-                            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(
-                                            URI.create(urlPrefix + appRegIntg.getLoginUri()))
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
+
+                            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(URI.create(urlPrefix + redirectUrl))
                                     .queryParam("error", "access_denied");
 
                             return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
