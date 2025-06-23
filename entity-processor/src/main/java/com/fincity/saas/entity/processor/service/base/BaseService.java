@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.service.base;
 
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -46,7 +47,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         return this.hasAccess()
                 .flatMap(access -> this.dao.readPageFilterEager(
                         pageable,
-                        addAppCodeAndClientCodeToCondition(access, condition),
+                        this.addAppCodeAndClientCodeToCondition(access, condition),
                         tableFields,
                         eager,
                         eagerFields));
@@ -57,17 +58,19 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                 .map(tup -> ProcessorAccess.of(tup.getT1(), tup.getT2(), false));
     }
 
-    protected AbstractCondition addAppCodeAndClientCodeToCondition(
-            ProcessorAccess access, AbstractCondition condition) {
+    private AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
-                    FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make("clientCode", access.getClientCode())
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                            .setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
                             .setOperator(FilterConditionOperator.EQUALS));
 
         return ComplexCondition.and(
                 condition,
-                FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make("clientCode", access.getClientCode()).setOperator(FilterConditionOperator.EQUALS));
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                        .setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                        .setOperator(FilterConditionOperator.EQUALS));
     }
 }
