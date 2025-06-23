@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
@@ -287,6 +288,19 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
             _entityProcessorTickets = new EntityProcessorTicketsPath(this, Keys.FK3_NOTES_TICKET_ID, null);
 
         return _entityProcessorTickets;
+    }
+
+    private transient EntityProcessorActivitiesPath _entityProcessorActivities;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table
+     */
+    public EntityProcessorActivitiesPath entityProcessorActivities() {
+        if (_entityProcessorActivities == null)
+            _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK3_ACTIVITIES_NOTE_ID.getInverseKey());
+
+        return _entityProcessorActivities;
     }
 
     @Override

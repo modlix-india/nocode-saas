@@ -17,6 +17,8 @@ public enum EntityProcessorActivitiesActivityAction implements EnumType {
 
     CREATE("CREATE"),
 
+    RE_INQUIRY("RE_INQUIRY"),
+
     QUALIFY("QUALIFY"),
 
     DISQUALIFY("DISQUALIFY"),
@@ -32,6 +34,8 @@ public enum EntityProcessorActivitiesActivityAction implements EnumType {
     TASK_CREATE("TASK_CREATE"),
 
     TASK_COMPLETE("TASK_COMPLETE"),
+
+    TASK_CANCELLED("TASK_CANCELLED"),
 
     TASK_DELETE("TASK_DELETE"),
 
