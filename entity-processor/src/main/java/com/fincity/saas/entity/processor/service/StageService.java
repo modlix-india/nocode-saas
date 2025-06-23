@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
@@ -258,7 +259,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 });
     }
 
-    public Mono<List<Stage>> reOrderStages(StageReorderRequest reorderRequest) {
+    public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {
 
         if (!reorderRequest.isValidOrder())
             return this.msgService.throwMessage(
@@ -269,36 +270,28 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 super::hasAccess,
                 access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
                         access, reorderRequest.getProductTemplateId()),
-                (access, productTemplateId) -> {
-                    return this.getAllValues(
-                                    access.getAppCode(), access.getClientCode(), null, productTemplateId.getULongId())
-                            .flatMap(allStages -> {
-                                Set<Stage> allStage = allStages.keySet();
+                (access, productTemplateId) -> Flux.fromIterable(
+                                reorderRequest.getStageOrders().entrySet())
+                        .flatMap(entry -> this.checkAndUpdateIdentityWithAccess(access, entry.getKey())
+                                .map(identity -> Tuples.of(identity.getULongId(), entry.getValue())))
+                        .collectMap(Tuple2::getT1, Tuple2::getT2),
+                (access, productTemplateId, requestStageIds) -> this.getAllValues(
+                        access.getAppCode(), access.getClientCode(), null, productTemplateId.getULongId()),
+                (access, productTemplateId, requestStageIds, allStages) -> {
+                    Map<ULong, Stage> parentStageMap = BaseUpdatableDto.toIdMap(allStages.keySet());
 
-                                Map<ULong, Stage> parentStageMap =
-                                        allStage.stream().collect(Collectors.toMap(Stage::getId, Function.identity()));
+                    if (!requestStageIds.keySet().equals(parentStageMap.keySet()))
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                "All parent stages must be provided in the request");
 
-                                Set<ULong> requestStageIds = reorderRequest.getStageOrders().keySet().stream()
-                                        .map(Identity::getULongId)
-                                        .collect(Collectors.toSet());
-
-                                Set<ULong> allStageIds = parentStageMap.keySet();
-
-                                if (!requestStageIds.equals(allStageIds))
-                                    return this.msgService.throwMessage(
-                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                            "All parent stages must be provided in the request");
-
-                                return Flux.fromIterable(
-                                                reorderRequest.getStageOrders().entrySet())
-                                        .flatMap(entry -> {
-                                            Stage stage = parentStageMap.get(
-                                                    entry.getKey().getULongId());
-                                            stage.setOrder(entry.getValue());
-                                            return this.updateInternal(stage);
-                                        })
-                                        .collectList();
-                            });
+                    return Flux.fromIterable(requestStageIds.entrySet())
+                            .flatMap(entry -> {
+                                Stage stage = parentStageMap.get(entry.getKey());
+                                stage.setOrder(entry.getValue());
+                                return this.updateInternal(stage);
+                            })
+                            .collectList();
                 });
     }
 }

@@ -98,7 +98,7 @@ public class EagerUtil {
             Map<String, List<String>> multiValueMap) {
 
         if (multiValueMap.isEmpty())
-            return Tuples.of(new ComplexCondition().setConditions(List.of()), List.of(), Boolean.TRUE, List.of());
+            return Tuples.of(new ComplexCondition().setConditions(List.of()), List.of(), Boolean.FALSE, List.of());
 
         MultiValueMap<String, String> copyMap = new LinkedMultiValueMap<>(multiValueMap);
 
