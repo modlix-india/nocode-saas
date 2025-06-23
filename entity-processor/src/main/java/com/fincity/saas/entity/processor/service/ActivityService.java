@@ -174,7 +174,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                     .setActivityDate(activityDate)
                                     .setDescription(message)
                                     .setActorId(actor.getId());
-                            this.updateActivityIds(activity, mutableContext);
+                            this.updateActivityIds(activity, mutableContext, action.isDelete());
                             return this.create(activity).then();
                         })
                 .then();
@@ -492,7 +492,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.OTHER, comment, Map.of(Activity.Fields.ticketId, ticketId, "action", action));
     }
 
-    private void updateActivityIds(Activity activity, Map<String, Object> context) {
+    private void updateActivityIds(Activity activity, Map<String, Object> context, boolean isDelete) {
+
+        if (isDelete) return;
+
         this.updateIdFromContext(Activity.Fields.taskId, context, activity::setTaskId);
         this.updateIdFromContext(Activity.Fields.noteId, context, activity::setNoteId);
     }

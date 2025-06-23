@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -146,6 +147,10 @@ public enum ActivityAction implements EnumType {
         return "_" + fieldName;
     }
 
+    public List<ActivityAction> getDeleteActions() {
+        return List.of(TASK_DELETE, DOCUMENT_DELETE, NOTE_DELETE);
+    }
+
     @Override
     public String getLiteral() {
         return literal;
@@ -158,6 +163,10 @@ public enum ActivityAction implements EnumType {
 
     public boolean hasEntityKey() {
         return this.contextKeys.contains("entity");
+    }
+
+    public boolean isDelete() {
+        return this.getDeleteActions().contains(this);
     }
 
     public String formatMessage(Map<String, Object> context) {
