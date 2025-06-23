@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.StageService;
@@ -50,6 +51,15 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
             @RequestParam(required = false) ULong parentId) {
         return this.service
                 .getAllValuesInOrder(platform, stageType, productTemplateId, parentId)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @PostMapping("/bulk-reorder")
+    public Mono<ResponseEntity<List<Stage>>> bulkReorderStages(@RequestBody StageReorderRequest reorderRequest) {
+        return this.service
+                .bulkReorderStages(reorderRequest)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));

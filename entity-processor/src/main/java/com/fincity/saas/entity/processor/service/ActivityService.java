@@ -29,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -125,7 +126,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             ProcessorAccess access, AbstractCondition condition, ULong ticketId) {
         return ComplexCondition.and(
                 super.addAppCodeAndClientCodeToCondition(access, condition),
-                FilterCondition.make("ticketId", ticketId).setOperator(FilterConditionOperator.EQUALS));
+                FilterCondition.make(Activity.Fields.ticketId, ticketId).setOperator(FilterConditionOperator.EQUALS));
     }
 
     protected Mono<Activity> createInternal(Activity activity) {
@@ -142,8 +143,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     private Mono<Void> createActivityInternal(
             ActivityAction action, LocalDateTime createOn, String comment, Map<String, Object> context) {
-        if (!context.containsKey("ticketId")) return Mono.empty();
-        ULong ticketId = ULongUtil.valueOf(context.get("ticketId"));
+        if (!context.containsKey(Activity.Fields.ticketId)) return Mono.empty();
+        ULong ticketId = ULongUtil.valueOf(context.get(Activity.Fields.ticketId));
         if (ticketId == null || ticketId.longValue() <= 0) return Mono.empty();
 
         Map<String, Object> mutableContext = new HashMap<>(context);
@@ -154,8 +155,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                             mutableContext.put("entity", EntitySeries.TICKET.getPrefix(access.getAppCode()));
                             return Mono.just(mutableContext);
                         },
-                        (access, uContext) ->
-                                this.getActorName(ULongUtil.valueOf(uContext.getOrDefault("actorId", null))),
+                        (access, uContext) -> this.getActorName(
+                                ULongUtil.valueOf(uContext.getOrDefault(Activity.Fields.actorId, null))),
                         (access, uContext, actor) -> {
                             LocalDateTime activityDate = createOn != null ? createOn : LocalDateTime.now();
 
@@ -173,7 +174,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                     .setActivityDate(activityDate)
                                     .setDescription(message)
                                     .setActorId(actor.getId());
-
+                            this.updateActivityIds(activity, mutableContext);
                             return this.create(activity).then();
                         })
                 .then();
@@ -188,12 +189,16 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.CREATE,
                 comment,
                 Map.of(
-                        "ticketId",
+                        Activity.Fields.ticketId,
                         ticket.getId(),
-                        "source",
+                        Ticket.Fields.source,
                         ticket.getSubSource() != null
-                                ? Map.of("source", ticket.getSource(), "subSource", ticket.getSubSource())
-                                : Map.of("source", ticket.getSource())));
+                                ? Map.of(
+                                        Ticket.Fields.source,
+                                        ticket.getSource(),
+                                        Ticket.Fields.subSource,
+                                        ticket.getSubSource())
+                                : Map.of(Ticket.Fields.source, ticket.getSource())));
     }
 
     public Mono<Void> acReInquiry(Ticket ticket, TicketRequest ticketRequest) {
@@ -205,24 +210,29 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.RE_INQUIRY,
                 comment,
                 Map.of(
-                        "ticketId",
+                        Activity.Fields.ticketId,
                         ticket.getId(),
-                        "source",
+                        Ticket.Fields.source,
                         ticketRequest.getSubSource() != null
-                                ? Map.of("source", ticketRequest.getSource(), "subSource", ticketRequest.getSubSource())
-                                : Map.of("source", ticketRequest.getSource())));
+                                ? Map.of(
+                                        Ticket.Fields.source,
+                                        ticketRequest.getSource(),
+                                        Ticket.Fields.subSource,
+                                        ticketRequest.getSubSource())
+                                : Map.of(Ticket.Fields.source, ticketRequest.getSource())));
     }
 
     public Mono<Void> acQualify(ULong ticketId, String comment) {
-        return this.createActivityInternal(ActivityAction.QUALIFY, comment, Map.of("ticketId", ticketId));
+        return this.createActivityInternal(ActivityAction.QUALIFY, comment, Map.of(Activity.Fields.ticketId, ticketId));
     }
 
     public Mono<Void> acDisqualify(ULong ticketId, String comment) {
-        return this.createActivityInternal(ActivityAction.DISQUALIFY, comment, Map.of("ticketId", ticketId));
+        return this.createActivityInternal(
+                ActivityAction.DISQUALIFY, comment, Map.of(Activity.Fields.ticketId, ticketId));
     }
 
     public Mono<Void> acDiscard(ULong ticketId, String comment) {
-        return this.createActivityInternal(ActivityAction.DISCARD, comment, Map.of("ticketId", ticketId));
+        return this.createActivityInternal(ActivityAction.DISCARD, comment, Map.of(Activity.Fields.ticketId, ticketId));
     }
 
     public Mono<Void> acImport(ULong ticketId, String comment, String source) {
@@ -230,8 +240,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.IMPORT,
                 comment,
                 Map.of(
-                        "ticketId", ticketId,
-                        "source", source));
+                        Activity.Fields.ticketId, ticketId,
+                        Ticket.Fields.source, source));
     }
 
     public Mono<Void> acStageStatus(Ticket ticket, String comment, ULong oldStageId) {
@@ -247,7 +257,11 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 status -> this.createActivityInternal(
                         ActivityAction.STATUS_CREATE,
                         comment,
-                        Map.of("ticketId", ticket.getId(), "status", IdAndValue.of(status.getId(), status.getName()))));
+                        Map.of(
+                                Activity.Fields.ticketId,
+                                ticket.getId(),
+                                Ticket.Fields.status,
+                                IdAndValue.of(status.getId(), status.getName()))));
     }
 
     public Mono<Void> acStageUpdate(Ticket ticket, String comment, ULong oldStageId) {
@@ -259,15 +273,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         ActivityAction.STAGE_UPDATE,
                         comment,
                         Map.of(
-                                "ticketId", ticket.getId(),
-                                "oldStage",
-                                        IdAndValue.of(
-                                                stages.getT1().getId(),
-                                                stages.getT1().getName()),
-                                "newStage",
-                                        IdAndValue.of(
-                                                stages.getT2().getId(),
-                                                stages.getT2().getName()))));
+                                Activity.Fields.ticketId,
+                                ticket.getId(),
+                                ActivityAction.getOldName(Ticket.Fields.stage),
+                                IdAndValue.of(
+                                        stages.getT1().getId(), stages.getT1().getName()),
+                                Ticket.Fields.stage,
+                                IdAndValue.of(
+                                        stages.getT2().getId(), stages.getT2().getName()))));
     }
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
@@ -288,8 +301,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 task.getCreatedAt(),
                 comment,
                 Map.of(
-                        "ticketId", task.getTicketId(),
-                        "task", IdAndValue.of(task.getId(), task.getName())));
+                        Activity.Fields.ticketId, task.getTicketId(),
+                        Activity.Fields.taskId, task.getId()));
     }
 
     public Mono<Void> acTaskComplete(Task task) {
@@ -302,8 +315,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 task.getCompletedDate(),
                 comment,
                 Map.of(
-                        "ticketId", task.getTicketId(),
-                        "task", IdAndValue.of(task.getId(), task.getName())));
+                        Activity.Fields.ticketId, task.getTicketId(),
+                        Activity.Fields.taskId, task.getId()));
     }
 
     public Mono<Void> acTaskCancelled(Task task) {
@@ -316,8 +329,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 task.getCancelledDate(),
                 comment,
                 Map.of(
-                        "ticketId", task.getTicketId(),
-                        "task", IdAndValue.of(task.getId(), task.getName())));
+                        Activity.Fields.ticketId, task.getTicketId(),
+                        Activity.Fields.taskId, task.getId()));
     }
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentDelete(T content, LocalDateTime deletedDate) {
@@ -339,8 +352,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 deletedDate,
                 comment,
                 Map.of(
-                        "ticketId", task.getTicketId(),
-                        "task", IdAndValue.of(task.getId(), task.getName())));
+                        Activity.Fields.ticketId, task.getTicketId(),
+                        Activity.Fields.taskId, task.getId()));
     }
 
     public Mono<Void> acReminderSet(Task task) {
@@ -353,9 +366,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 task.getNextReminder(),
                 comment,
                 Map.of(
-                        "ticketId", task.getTicketId(),
-                        "reminderDate", task.getNextReminder(),
-                        "task", IdAndValue.of(task.getId(), task.getName())));
+                        Activity.Fields.ticketId, task.getTicketId(),
+                        Activity.Fields.taskId, task.getId(),
+                        Task.Fields.nextReminder, task.getNextReminder()));
     }
 
     public Mono<Void> acNoteAdd(Note note, String comment) {
@@ -364,8 +377,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 note.getCreatedAt(),
                 comment,
                 Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
+                        Activity.Fields.ticketId, note.getTicketId(),
+                        Activity.Fields.noteId, note.getId()));
     }
 
     public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
@@ -374,35 +387,23 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 deletedDate,
                 comment,
                 Map.of(
-                        "ticketId", note.getTicketId(),
-                        "note", IdAndValue.of(note.getId(), note.getName())));
+                        Activity.Fields.ticketId, note.getTicketId(),
+                        Activity.Fields.noteId, note.getId()));
     }
 
     public Mono<Void> acDocumentUpload(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
-                ActivityAction.DOCUMENT_UPLOAD,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "file", file));
+                ActivityAction.DOCUMENT_UPLOAD, comment, Map.of(Activity.Fields.ticketId, ticketId, "file", file));
     }
 
     public Mono<Void> acDocumentDownload(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
-                ActivityAction.DOCUMENT_DOWNLOAD,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "file", file));
+                ActivityAction.DOCUMENT_DOWNLOAD, comment, Map.of(Activity.Fields.ticketId, ticketId, "file", file));
     }
 
     public Mono<Void> acDocumentDelete(ULong ticketId, String comment, String file) {
         return this.createActivityInternal(
-                ActivityAction.DOCUMENT_DELETE,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "file", file));
+                ActivityAction.DOCUMENT_DELETE, comment, Map.of(Activity.Fields.ticketId, ticketId, "file", file));
     }
 
     public Mono<Void> acAssign(ULong ticketId, String comment, String newUser) {
@@ -410,8 +411,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.ASSIGN,
                 comment,
                 Map.of(
-                        "ticketId", ticketId,
-                        "newUser", newUser));
+                        Activity.Fields.ticketId, ticketId,
+                        Ticket.Fields.assignedUserId, newUser));
     }
 
     public Mono<Void> acReassign(ULong ticketId, String comment, String oldUser, String newUser) {
@@ -419,9 +420,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.REASSIGN,
                 comment,
                 Map.of(
-                        "ticketId", ticketId,
-                        "oldUser", oldUser,
-                        "newUser", newUser));
+                        Activity.Fields.ticketId,
+                        ticketId,
+                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                        oldUser,
+                        Ticket.Fields.assignedUserId,
+                        newUser));
     }
 
     public Mono<Void> acReassignSystem(ULong ticketId, String comment, String oldUser, String newUser) {
@@ -429,91 +433,79 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.REASSIGN_SYSTEM,
                 comment,
                 Map.of(
-                        "ticketId", ticketId,
-                        "oldUser", oldUser,
-                        "newUser", newUser));
+                        Activity.Fields.ticketId,
+                        ticketId,
+                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                        oldUser,
+                        Ticket.Fields.assignedUserId,
+                        newUser));
     }
 
     public Mono<Void> acOwnerShipTransfer(ULong ticketId, String comment, String oldOwner, String newOwner) {
         return this.createActivityInternal(
                 ActivityAction.OWNERSHIP_TRANSFER,
                 comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "oldOwner", oldOwner,
-                        "newOwner", newOwner));
+                Map.of(Activity.Fields.ticketId, ticketId, "oldOwner", oldOwner, "newOwner", newOwner));
     }
 
     public Mono<Void> acCallLog(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
-                ActivityAction.CALL_LOG,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "customer", customer));
+                ActivityAction.CALL_LOG, comment, Map.of(Activity.Fields.ticketId, ticketId, "customer", customer));
     }
 
     public Mono<Void> acWhatsapp(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
-                ActivityAction.WHATSAPP,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "customer", customer));
+                ActivityAction.WHATSAPP, comment, Map.of(Activity.Fields.ticketId, ticketId, "customer", customer));
     }
 
     public Mono<Void> acEmailSent(ULong ticketId, String comment, String email) {
         return this.createActivityInternal(
-                ActivityAction.EMAIL_SENT,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "email", email));
+                ActivityAction.EMAIL_SENT, comment, Map.of(Activity.Fields.ticketId, ticketId, "email", email));
     }
 
     public Mono<Void> acSmsSent(ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
-                ActivityAction.SMS_SENT,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "customer", customer));
+                ActivityAction.SMS_SENT, comment, Map.of(Activity.Fields.ticketId, ticketId, "customer", customer));
     }
 
     public Mono<Void> acFieldUpdate(ULong ticketId, String comment, String fields) {
         return this.createActivityInternal(
-                ActivityAction.FIELD_UPDATE,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "fields", fields));
+                ActivityAction.FIELD_UPDATE, comment, Map.of(Activity.Fields.ticketId, ticketId, "fields", fields));
     }
 
     public Mono<Void> acCustomFieldUpdate(ULong ticketId, String comment, String field, String value) {
         return this.createActivityInternal(
                 ActivityAction.CUSTOM_FIELD_UPDATE,
                 comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "field", field,
-                        "value", value));
+                Map.of(Activity.Fields.ticketId, ticketId, "field", field, "value", value));
     }
 
     public Mono<Void> acLocationUpdate(ULong ticketId, String comment, String location) {
         return this.createActivityInternal(
                 ActivityAction.LOCATION_UPDATE,
                 comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "location", location));
+                Map.of(Activity.Fields.ticketId, ticketId, "location", location));
     }
 
     public Mono<Void> acOther(ULong ticketId, String comment, String action) {
         return this.createActivityInternal(
-                ActivityAction.OTHER,
-                comment,
-                Map.of(
-                        "ticketId", ticketId,
-                        "action", action));
+                ActivityAction.OTHER, comment, Map.of(Activity.Fields.ticketId, ticketId, "action", action));
+    }
+
+    private void updateActivityIds(Activity activity, Map<String, Object> context) {
+        this.updateIdFromContext(Activity.Fields.taskId, context, activity::setTaskId);
+        this.updateIdFromContext(Activity.Fields.noteId, context, activity::setNoteId);
+    }
+
+    private void updateIdFromContext(String fieldName, Map<String, Object> context, Consumer<ULong> consumer) {
+        if (!context.containsKey(fieldName)) return;
+
+        Object fieldValue = context.get(fieldName);
+
+        if (fieldValue instanceof IdAndValue<?, ?> idAndValue) {
+            consumer.accept(ULongUtil.valueOf(idAndValue.getId()));
+        } else if (fieldValue instanceof ULong ulongValue) {
+            consumer.accept(ulongValue);
+        }
     }
 }

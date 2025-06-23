@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -9,6 +10,7 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
@@ -19,6 +21,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -45,6 +48,28 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         if (entity.isChild()) return Mono.just(entity);
 
+        if (entity.getOrder() != null) {
+            return this.dao
+                    .existsByOrder(
+                            access.getAppCode(),
+                            access.getClientCode(),
+                            entity.getProductTemplateId(),
+                            entity.getOrder(),
+                            entity.getId())
+                    .flatMap(exists -> {
+                        if (Boolean.FALSE.equals(exists)) {
+                            return Mono.just(entity);
+                        } else {
+                            return this.getNewOrder(entity, access);
+                        }
+                    });
+        }
+
+        // Entity doesn't have an order, get a new one
+        return this.getNewOrder(entity, access);
+    }
+
+    private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.getLatestStageByOrder(
                         access.getAppCode(),
@@ -188,7 +213,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<Stage> getLatestStageByOrder(
             String appCode, String clientCode, ULong productTemplateId, Platform platform) {
-        return super.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+        return super.getAllValuesInOrderInternal(appCode, clientCode, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty());
     }
@@ -238,5 +263,55 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
                     return Mono.just(stageIdsInternal);
                 });
+    }
+
+    public Mono<List<Stage>> bulkReorderStages(StageReorderRequest reorderRequest) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
+                        access, reorderRequest.getProductTemplateId()),
+                (access, productTemplateId) -> {
+                    return this.getAllValues(
+                                    access.getAppCode(), access.getClientCode(), null, productTemplateId.getULongId())
+                            .flatMap(allStages -> {
+                                Set<Stage> allStage = allStages.keySet();
+
+                                Map<ULong, Stage> parentStageMap =
+                                        allStage.stream().collect(Collectors.toMap(Stage::getId, Function.identity()));
+
+                                Set<ULong> requestStageIds = reorderRequest.getStageOrders().keySet().stream()
+                                        .map(Identity::getULongId)
+                                        .collect(Collectors.toSet());
+
+                                Set<ULong> allStageIds = parentStageMap.keySet();
+
+                                if (!requestStageIds.equals(allStageIds))
+                                    return this.msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            "All parent stages must be provided in the request");
+
+                                return Flux.fromIterable(
+                                                reorderRequest.getStageOrders().entrySet())
+                                        .flatMap(entry -> {
+                                            Identity stageId = entry.getKey();
+                                            Integer newOrder = entry.getValue();
+
+                                            if (newOrder == null || newOrder < 0) {
+                                                return this.msgService.throwMessage(
+                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                        "Valid order is required for stage " + stageId.getId());
+                                            }
+
+                                            Stage stage = parentStageMap.get(stageId.getULongId());
+                                            stage.setOrder(newOrder);
+
+                                            return super.update(stage);
+                                        })
+                                        .collectList();
+                            });
+                },
+                (access, productTemplateId, updatedStages) -> Flux.fromIterable(updatedStages)
+                        .flatMap(this::evictCache)
+                        .then(Mono.just(updatedStages)));
     }
 }
