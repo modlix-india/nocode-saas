@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.Map;
+import lombok.Getter;
 import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -16,6 +17,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.util.function.Tuple2;
 
+@Getter
 public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>> extends AbstractFlowDAO<R, ULong, D>
         implements IEagerDAO<R> {
 
@@ -34,21 +36,6 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
 
         this.relationMap = EagerUtil.getRelationMap(this.pojoClass);
         this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
-    }
-
-    @Override
-    public Map<String, Tuple2<Table<?>, String>> getRelationMap() {
-        return this.relationMap;
-    }
-
-    @Override
-    public SetValuedMap<Class<? extends RelationResolver>, String> getRelationResolverMap() {
-        return this.relationResolverMap;
-    }
-
-    @Override
-    public RecordEnrichmentService getRecordEnrichmentService() {
-        return this.recordEnrichmentService;
     }
 
     @Autowired

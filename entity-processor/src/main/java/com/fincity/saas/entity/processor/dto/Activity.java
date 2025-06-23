@@ -26,6 +26,7 @@ public class Activity extends BaseDto<Activity> {
 
     private ULong ticketId;
     private ULong taskId;
+    private ULong noteId;
     private String comment;
     private LocalDateTime activityDate;
     private ActivityAction activityAction;
