@@ -9,8 +9,8 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -176,11 +176,30 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_activities.NOTE_ID</code>. Note
+     * related to this Activity.
+     */
+    public EntityProcessorActivitiesRecord setNoteId(ULong value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_activities.NOTE_ID</code>. Note
+     * related to this Activity.
+     */
+    public ULong getNoteId() {
+        return (ULong) get(8);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_activities.COMMENT</code>.
      * Comment on this Activity.
      */
     public EntityProcessorActivitiesRecord setComment(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -190,45 +209,64 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Comment on this Activity.
      */
     public String getComment() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
      * Date of the Activity.
      */
     public EntityProcessorActivitiesRecord setActivityDate(LocalDateTime value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
-     * Date of the Activity.
-     */
-    public LocalDateTime getActivityDate() {
-        return (LocalDateTime) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
-     * Activity Action categories for this Activity.
-     */
-    public EntityProcessorActivitiesRecord setActivityAction(ActivityAction value) {
         set(10, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
+     * Date of the Activity.
+     */
+    public LocalDateTime getActivityDate() {
+        return (LocalDateTime) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
+     * Activity Action categories for this Activity.
+     */
+    public EntityProcessorActivitiesRecord setActivityAction(ActivityAction value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
      * Activity Action categories for this Activity.
      */
     public ActivityAction getActivityAction() {
-        return (ActivityAction) get(10);
+        return (ActivityAction) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_activities.ACTOR_ID</code>. ID of
+     * the user who performed this activity.
+     */
+    public EntityProcessorActivitiesRecord setActorId(ULong value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_activities.ACTOR_ID</code>. ID of
+     * the user who performed this activity.
+     */
+    public ULong getActorId() {
+        return (ULong) get(12);
     }
 
     /**
@@ -237,7 +275,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Entity Series of the object associated with this Activity. 
      */
     public EntityProcessorActivitiesRecord setObjectEntitySeries(EntitySeries value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -247,7 +285,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Entity Series of the object associated with this Activity. 
      */
     public EntitySeries getObjectEntitySeries() {
-        return (EntitySeries) get(11);
+        return (EntitySeries) get(13);
     }
 
     /**
@@ -256,7 +294,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Object id of OBJECT_ENTITY_SERIES on which Activity is performed
      */
     public EntityProcessorActivitiesRecord setObjectId(ULong value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -266,7 +304,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Object id of OBJECT_ENTITY_SERIES on which Activity is performed
      */
     public ULong getObjectId() {
-        return (ULong) get(12);
+        return (ULong) get(14);
     }
 
     /**
@@ -274,8 +312,8 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
      * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public EntityProcessorActivitiesRecord setObjectData(JSON value) {
-        set(13, value);
+    public EntityProcessorActivitiesRecord setObjectData(Map value) {
+        set(15, value);
         return this;
     }
 
@@ -284,8 +322,8 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
      * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public JSON getObjectData() {
-        return (JSON) get(13);
+    public Map getObjectData() {
+        return (Map) get(15);
     }
 
     /**
@@ -294,7 +332,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Temporary active flag for this Activity.
      */
     public EntityProcessorActivitiesRecord setTempActive(Byte value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -304,7 +342,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Temporary active flag for this Activity.
      */
     public Byte getTempActive() {
-        return (Byte) get(14);
+        return (Byte) get(16);
     }
 
     /**
@@ -313,7 +351,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * to check if this Activity is active or not.
      */
     public EntityProcessorActivitiesRecord setIsActive(Byte value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -323,7 +361,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * to check if this Activity is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(15);
+        return (Byte) get(17);
     }
 
     /**
@@ -332,7 +370,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public EntityProcessorActivitiesRecord setCreatedBy(ULong value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -342,7 +380,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(18);
     }
 
     /**
@@ -351,7 +389,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public EntityProcessorActivitiesRecord setCreatedAt(LocalDateTime value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -361,44 +399,6 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(17);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_activities.UPDATED_BY</code>. ID
-     * of the user who updated this row.
-     */
-    public EntityProcessorActivitiesRecord setUpdatedBy(ULong value) {
-        set(18, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_activities.UPDATED_BY</code>. ID
-     * of the user who updated this row.
-     */
-    public ULong getUpdatedBy() {
-        return (ULong) get(18);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_activities.UPDATED_AT</code>.
-     * Time when this row is updated.
-     */
-    public EntityProcessorActivitiesRecord setUpdatedAt(LocalDateTime value) {
-        set(19, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_activities.UPDATED_AT</code>.
-     * Time when this row is updated.
-     */
-    public LocalDateTime getUpdatedAt() {
         return (LocalDateTime) get(19);
     }
 
@@ -425,7 +425,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Create a detached, initialised EntityProcessorActivitiesRecord
      */
-    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, ULong taskId, String comment, LocalDateTime activityDate, ActivityAction activityAction, EntitySeries objectEntitySeries, ULong objectId, JSON objectData, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, ULong taskId, ULong noteId, String comment, LocalDateTime activityDate, ActivityAction activityAction, ULong actorId, EntitySeries objectEntitySeries, ULong objectId, Map objectData, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt) {
         super(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES);
 
         setId(id);
@@ -436,9 +436,11 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
         setDescription(description);
         setTicketId(ticketId);
         setTaskId(taskId);
+        setNoteId(noteId);
         setComment(comment);
         setActivityDate(activityDate);
         setActivityAction(activityAction);
+        setActorId(actorId);
         setObjectEntitySeries(objectEntitySeries);
         setObjectId(objectId);
         setObjectData(objectData);
@@ -446,8 +448,6 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        setUpdatedBy(updatedBy);
-        setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
     }
 }
