@@ -6,10 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.jooq.jackson.ByteSerializationModule;
 import com.fincity.saas.commons.jooq.jackson.JSONSerializationModule;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 
@@ -41,7 +39,6 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
         super.initialize();
         this.objectMapper.registerModule(new UnsignedNumbersSerializationModule(messageResourceService));
         this.objectMapper.registerModule(new JSONSerializationModule());
-        this.objectMapper.registerModule(new ByteSerializationModule());
     }
 
     @Bean
