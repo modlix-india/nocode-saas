@@ -316,7 +316,7 @@
                                             <converter>
                                                 com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
                                             </converter>
-                                            <includeExpression>ARRANGEMENT</includeExpression>
+                                            <includeExpression>ARRANGEMENT|TOKEN_METADATA|USER_METADATA|REQUEST_PARAM</includeExpression>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>false</genericConverter>
                                         </forcedType>
