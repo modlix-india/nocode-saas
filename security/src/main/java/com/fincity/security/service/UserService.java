@@ -1,6 +1,5 @@
 package com.fincity.security.service;
 
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
@@ -14,15 +13,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fincity.security.dto.*;
-import com.fincity.security.model.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,6 +29,8 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -48,11 +46,23 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientHierarchy;
+import com.fincity.security.dto.Profile;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.ClientRegistrationRequest;
+import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.UserResponse;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -70,6 +80,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
 
     private static final String CACHE_NAME_USER_ROLE = "userRoles";
+
+    private static final String CACHE_NAME_USER = "user";
 
     private static final int VALIDITY_MINUTES = 30;
 
@@ -429,6 +441,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         }))
                 .switchIfEmpty(
                         Mono.defer(() -> this.forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
+    }
+
+    public Mono<UserResponse> readById(ULong userId) {
+        return this.cacheService
+                .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId)
+                .map(UserResponse::new);
+    }
+
+    public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {
+        return this.readAllFilter(new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(userIds))
+                .map(UserResponse::new)
+                .collectList();
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")

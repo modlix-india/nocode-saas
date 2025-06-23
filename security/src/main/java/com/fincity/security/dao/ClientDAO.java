@@ -72,7 +72,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     }
 
     @Override
-    protected Mono<Condition> filter(AbstractCondition condition) {
+    public Mono<Condition> filter(AbstractCondition condition) {
 
         return super.filter(condition).flatMap(cond -> SecurityContextUtil.getUsersContextAuthentication()
                 .map(ca -> {

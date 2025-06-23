@@ -1,10 +1,9 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
-import java.util.stream.Stream;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -17,7 +16,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdatableDto<T> implements IEntitySeries {
+public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 2090745028406660414L;
@@ -28,6 +27,11 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     private ULong parentLevel0;
     private ULong parentLevel1;
     private Integer order;
+
+    protected BaseValueDto() {
+        super();
+        this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
+    }
 
     public T setOrder(Integer order) {
         this.order = order;
@@ -43,13 +47,8 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     }
 
     @JsonIgnore
-    public boolean inFamily(ULong childId) {
-        return this.getId().equals(childId) || this.parentLevel0.equals(childId) || this.parentLevel1.equals(childId);
-    }
-
-    @JsonIgnore
-    public boolean isValidChild(ULong... childIds) {
-        return Stream.of(childIds).anyMatch(childId -> this.getId().equals(childId));
+    public boolean hasParent(ULong parentId) {
+        return this.parentLevel0.equals(parentId) || this.parentLevel1.equals(parentId);
     }
 
     // 	These Methods are for JOOQ Compatibility.

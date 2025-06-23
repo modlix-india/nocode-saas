@@ -43,11 +43,13 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 import io.r2dbc.spi.Row;
 import io.r2dbc.spi.RowMetadata;
+import lombok.Getter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+@Getter
 @Transactional
 public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>> {
 
@@ -160,12 +162,12 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     @SuppressWarnings("rawtypes")
-    protected Field getField(String fieldName) { // NOSONAR
+    public Field getField(String fieldName) { // NOSONAR
         // this return type has to be generic.
         return table.field(convertToJOOQFieldName(fieldName));
     }
 
-    protected Mono<Condition> filter(AbstractCondition condition) {
+    public Mono<Condition> filter(AbstractCondition condition) {
 
         if (condition == null)
             return Mono.just(DSL.noCondition());

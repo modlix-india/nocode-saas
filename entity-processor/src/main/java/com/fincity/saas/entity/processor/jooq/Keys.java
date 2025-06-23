@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq;
 
 
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -17,6 +18,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
@@ -50,6 +52,8 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<EntityProcessorActivitiesRecord> KEY_ENTITY_PROCESSOR_ACTIVITIES_PRIMARY = Internal.createUniqueKey(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES, DSL.name("KEY_entity_processor_activities_PRIMARY"), new TableField[] { EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES.ID }, true);
+    public static final UniqueKey<EntityProcessorActivitiesRecord> KEY_ENTITY_PROCESSOR_ACTIVITIES_UK1_ACTIVITIES_CODE = Internal.createUniqueKey(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES, DSL.name("KEY_entity_processor_activities_UK1_ACTIVITIES_CODE"), new TableField[] { EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES.CODE }, true);
     public static final UniqueKey<EntityProcessorComplexRulesRecord> KEY_ENTITY_PROCESSOR_COMPLEX_RULES_PRIMARY = Internal.createUniqueKey(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES, DSL.name("KEY_entity_processor_complex_rules_PRIMARY"), new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.ID }, true);
     public static final UniqueKey<EntityProcessorComplexRulesRecord> KEY_ENTITY_PROCESSOR_COMPLEX_RULES_UK1_COMPLEX_RULES_CODE = Internal.createUniqueKey(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES, DSL.name("KEY_entity_processor_complex_rules_UK1_COMPLEX_RULES_CODE"), new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.CODE }, true);
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_PRIMARY = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_PRIMARY"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.ID }, true);
@@ -85,6 +89,8 @@ public class Keys {
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final ForeignKey<EntityProcessorActivitiesRecord, EntityProcessorTicketsRecord> FK1_ACTIVITIES_TICKET_ID = Internal.createForeignKey(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES, DSL.name("FK1_ACTIVITIES_TICKET_ID"), new TableField[] { EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID }, Keys.KEY_ENTITY_PROCESSOR_TICKETS_PRIMARY, new TableField[] { EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);
+    public static final ForeignKey<EntityProcessorActivitiesRecord, EntityProcessorTasksRecord> FK2_ACTIVITIES_TASK_ID = Internal.createForeignKey(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES, DSL.name("FK2_ACTIVITIES_TASK_ID"), new TableField[] { EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES.TASK_ID }, Keys.KEY_ENTITY_PROCESSOR_TASKS_PRIMARY, new TableField[] { EntityProcessorTasks.ENTITY_PROCESSOR_TASKS.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);
     public static final ForeignKey<EntityProcessorComplexRulesRecord, EntityProcessorProductTemplateRulesRecord> FK1_COMPLEX_RULES_PRODUCT_TEMPLATE_RULE_ID = Internal.createForeignKey(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES, DSL.name("FK1_COMPLEX_RULES_PRODUCT_TEMPLATE_RULE_ID"), new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.PRODUCT_TEMPLATE_RULE_ID }, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES_PRIMARY, new TableField[] { EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);
     public static final ForeignKey<EntityProcessorComplexRulesRecord, EntityProcessorProductStageRulesRecord> FK2_COMPLEX_RULES_PRODUCT_STAGE_RULE_ID = Internal.createForeignKey(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES, DSL.name("FK2_COMPLEX_RULES_PRODUCT_STAGE_RULE_ID"), new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.PRODUCT_STAGE_RULE_ID }, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_STAGE_RULES_PRIMARY, new TableField[] { EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);
     public static final ForeignKey<EntityProcessorComplexRulesRecord, EntityProcessorComplexRulesRecord> FK3_COMPLEX_RULES_PARENT_ID = Internal.createForeignKey(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES, DSL.name("FK3_COMPLEX_RULES_PARENT_ID"), new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.PARENT_CONDITION_ID }, Keys.KEY_ENTITY_PROCESSOR_COMPLEX_RULES_PRIMARY, new TableField[] { EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);

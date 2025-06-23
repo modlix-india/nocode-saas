@@ -1,10 +1,13 @@
 package com.fincity.saas.entity.processor.service.content;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
@@ -13,7 +16,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class NoteService extends BaseContentService<NoteRequest, EntityProcessorNotesRecord, Note, NoteDAO> {
+public class NoteService extends BaseContentService<EntityProcessorNotesRecord, Note, NoteDAO> {
 
     private static final String NOTE_CACHE = "note";
 
@@ -27,16 +30,35 @@ public class NoteService extends BaseContentService<NoteRequest, EntityProcessor
         return EntitySeries.NOTE;
     }
 
-    @Override
-    protected Mono<Note> createContent(NoteRequest contentRequest) {
+    public Mono<Note> create(NoteRequest noteRequest) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.updateIdentities(access, noteRequest),
+                (access, uRequest) -> this.createContent(uRequest),
+                (access, uRequest, content) -> content.isTicketContent()
+                        ? super.createTicketContent(access, content)
+                        : super.createOwnerContent(access, content));
+    }
 
-        if (contentRequest.getContent() == null
-                || contentRequest.getContent().trim().isEmpty())
+    private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> noteRequest.getTicketId() != null
+                        ? this.checkTicket(access, noteRequest.getTicketId())
+                        : Mono.just(Identity.ofNull()),
+                ticketId -> noteRequest.getOwnerId() != null
+                        ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
+                        : Mono.just(Identity.ofNull()),
+                (ticketId, ownerId) ->
+                        Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)));
+    }
+
+    private Mono<Note> createContent(NoteRequest noteRequest) {
+        if (noteRequest.getContent() == null || noteRequest.getContent().trim().isEmpty())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.CONTENT_MISSING,
                     this.getEntityName());
 
-        return Mono.just(new Note().of(contentRequest));
+        return Mono.just(Note.of(noteRequest));
     }
 }

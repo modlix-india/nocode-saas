@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -15,6 +16,7 @@ import java.io.Serializable;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
+@FieldNameConstants
 public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends Serializable> extends AbstractUpdatableDTO<I, U> {
 
 	@Serial

@@ -10,4 +10,4 @@ public abstract class BaseProcessorController<
                 D extends BaseProcessorDto<D>,
                 O extends BaseProcessorDAO<R, D>,
                 S extends BaseProcessorService<R, D, O>>
-        extends BaseController<R, D, O, S> {}
+        extends BaseUpdatableController<R, D, O, S> {}
