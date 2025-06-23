@@ -144,11 +144,28 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
     }
 
     /**
+     * Setter for <code>security.security_app_reg_integration.SIGNUP_URI</code>.
+     * URI for signup
+     */
+    public SecurityAppRegIntegrationRecord setSignupUri(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_app_reg_integration.SIGNUP_URI</code>.
+     * URI for signup
+     */
+    public String getSignupUri() {
+        return (String) get(7);
+    }
+
+    /**
      * Setter for <code>security.security_app_reg_integration.CREATED_BY</code>.
      * ID of the user who created this row
      */
     public SecurityAppRegIntegrationRecord setCreatedBy(ULong value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -157,7 +174,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(7);
+        return (ULong) get(8);
     }
 
     /**
@@ -165,7 +182,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * Time when this row is created
      */
     public SecurityAppRegIntegrationRecord setCreatedAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -174,7 +191,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -182,7 +199,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * ID of the user who updated this row
      */
     public SecurityAppRegIntegrationRecord setUpdatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -191,7 +208,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -199,7 +216,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * Time when this row is updated
      */
     public SecurityAppRegIntegrationRecord setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -208,7 +225,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -234,7 +251,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
     /**
      * Create a detached, initialised SecurityAppRegIntegrationRecord
      */
-    public SecurityAppRegIntegrationRecord(ULong id, ULong appId, ULong clientId, SecurityAppRegIntegrationPlatform platform, String intgId, String intgSecret, String loginUri, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegIntegrationRecord(ULong id, ULong appId, ULong clientId, SecurityAppRegIntegrationPlatform platform, String intgId, String intgSecret, String loginUri, String signupUri, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION);
 
         setId(id);
@@ -244,6 +261,7 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
         setIntgId(intgId);
         setIntgSecret(intgSecret);
         setLoginUri(loginUri);
+        setSignupUri(signupUri);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
