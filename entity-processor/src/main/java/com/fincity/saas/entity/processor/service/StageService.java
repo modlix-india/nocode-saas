@@ -48,7 +48,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         if (entity.isChild()) return Mono.just(entity);
 
-        if (entity.getOrder() != null) {
+        if (entity.getOrder() != null)
             return this.dao
                     .existsByOrder(
                             access.getAppCode(),
@@ -56,16 +56,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                             entity.getProductTemplateId(),
                             entity.getOrder(),
                             entity.getId())
-                    .flatMap(exists -> {
-                        if (Boolean.FALSE.equals(exists)) {
-                            return Mono.just(entity);
-                        } else {
-                            return this.getNewOrder(entity, access);
-                        }
-                    });
-        }
+                    .flatMap(exists ->
+                            Boolean.FALSE.equals(exists) ? Mono.just(entity) : this.getNewOrder(entity, access));
 
-        // Entity doesn't have an order, get a new one
         return this.getNewOrder(entity, access);
     }
 
