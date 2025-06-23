@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.security.jooq.Indexes;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -21,7 +23,6 @@ import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -92,6 +93,13 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
 
     /**
      * The column
+     * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
+     * url from request made
+     */
+    public final TableField<SecurityAppRegIntegrationTokensRecord, Map> REQUEST_PARAM = createField(DSL.name("REQUEST_PARAM"), SQLDataType.JSON, this, "url from request made", new JSONMysqlMapConvertor());
+
+    /**
+     * The column
      * <code>security.security_app_reg_integration_tokens.TOKEN</code>. Token
      */
     public final TableField<SecurityAppRegIntegrationTokensRecord, String> TOKEN = createField(DSL.name("TOKEN"), SQLDataType.VARCHAR(512), this, "Token");
@@ -115,7 +123,7 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> TOKEN_METADATA = createField(DSL.name("TOKEN_METADATA"), SQLDataType.JSON, this, "Token metadata");
+    public final TableField<SecurityAppRegIntegrationTokensRecord, Map> TOKEN_METADATA = createField(DSL.name("TOKEN_METADATA"), SQLDataType.JSON, this, "Token metadata", new JSONMysqlMapConvertor());
 
     /**
      * The column
@@ -129,7 +137,7 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, JSON> USER_METADATA = createField(DSL.name("USER_METADATA"), SQLDataType.JSON, this, "User metadata");
+    public final TableField<SecurityAppRegIntegrationTokensRecord, Map> USER_METADATA = createField(DSL.name("USER_METADATA"), SQLDataType.JSON, this, "User metadata", new JSONMysqlMapConvertor());
 
     /**
      * The column
