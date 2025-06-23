@@ -41,7 +41,7 @@ public class RecordEnrichmentService {
             Boolean eager,
             List<String> eagerFields) {
 
-        if (recs == null || recs.isEmpty()) return Mono.empty();
+        if (recs == null || recs.isEmpty()) return Mono.just(List.of());
         if (eager == null || !eager) return Mono.just(recs);
 
         return this.enrichInternal(recs, resolverFieldsMap, eagerFields).thenReturn(recs);
@@ -58,7 +58,7 @@ public class RecordEnrichmentService {
     public Mono<List<Map<String, Object>>> enrich(
             List<Map<String, Object>> recs, SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap) {
 
-        if (recs == null || recs.isEmpty()) return Mono.empty();
+        if (recs == null || recs.isEmpty()) return Mono.just(List.of());
 
         return this.enrichInternal(recs, resolverFieldsMap, null).thenReturn(recs);
     }

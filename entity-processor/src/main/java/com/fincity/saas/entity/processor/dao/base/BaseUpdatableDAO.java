@@ -14,13 +14,11 @@ import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
-import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.SelectJoinStep;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
@@ -31,6 +29,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+@Getter
 public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> implements IEagerDAO<R> {
 
@@ -58,21 +57,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
 
         this.relationMap = EagerUtil.getRelationMap(this.pojoClass);
         this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
-    }
-
-    @Override
-    public Map<String, Tuple2<Table<?>, String>> getRelationMap() {
-        return this.relationMap;
-    }
-
-    @Override
-    public SetValuedMap<Class<? extends RelationResolver>, String> getRelationResolverMap() {
-        return this.relationResolverMap;
-    }
-
-    @Override
-    public RecordEnrichmentService getRecordEnrichmentService() {
-        return this.recordEnrichmentService;
     }
 
     @Autowired

@@ -49,6 +49,11 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     private String name = this.code;
     private String description;
 
+    @JsonIgnore
+    private boolean tempActive = Boolean.FALSE;
+
+    private boolean isActive = Boolean.TRUE;
+
     protected BaseDto() {
         super();
         this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
