@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesActivityAction;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesObjectEntitySeries;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
@@ -18,13 +20,13 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -124,6 +126,13 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_activities.NOTE_ID</code>. Note
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> NOTE_ID = createField(DSL.name("NOTE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Note related to this Activity.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_activities.COMMENT</code>.
      * Comment on this Activity.
      */
@@ -131,17 +140,24 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_activities.Activity_DATE</code>.
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_DATE</code>.
      * Date of the Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> ACTIVITY_DATE = createField(DSL.name("Activity_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Date of the Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> ACTIVITY_DATE = createField(DSL.name("ACTIVITY_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false), this, "Date of the Activity.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_activities.Activity_ACTION</code>.
+     * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
      * Activity Action categories for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("Activity_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Activity Action categories for this Activity.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Activity Action categories for this Activity.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.ACTOR_ID</code>. ID of
+     * the user who performed this activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> ACTOR_ID = createField(DSL.name("ACTOR_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who performed this activity.");
 
     /**
      * The column
@@ -162,7 +178,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
      * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public final TableField<EntityProcessorActivitiesRecord, JSON> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which Activity is performed");
+    public final TableField<EntityProcessorActivitiesRecord, Map> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which Activity is performed", new JSONMysqlMapConvertor());
 
     /**
      * The column
@@ -191,20 +207,6 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * Time when this row is created.
      */
     public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_activities.UPDATED_BY</code>. ID
-     * of the user who updated this row.
-     */
-    public final TableField<EntityProcessorActivitiesRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_activities.UPDATED_AT</code>.
-     * Time when this row is updated.
-     */
-    public final TableField<EntityProcessorActivitiesRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated.");
 
     private EntityProcessorActivities(Name alias, Table<EntityProcessorActivitiesRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -293,7 +295,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<ForeignKey<EntityProcessorActivitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID);
+        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID);
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
@@ -320,6 +322,19 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
             _entityProcessorTasks = new EntityProcessorTasksPath(this, Keys.FK2_ACTIVITIES_TASK_ID, null);
 
         return _entityProcessorTasks;
+    }
+
+    private transient EntityProcessorNotesPath _entityProcessorNotes;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_notes</code> table.
+     */
+    public EntityProcessorNotesPath entityProcessorNotes() {
+        if (_entityProcessorNotes == null)
+            _entityProcessorNotes = new EntityProcessorNotesPath(this, Keys.FK3_ACTIVITIES_NOTE_ID, null);
+
+        return _entityProcessorNotes;
     }
 
     @Override
