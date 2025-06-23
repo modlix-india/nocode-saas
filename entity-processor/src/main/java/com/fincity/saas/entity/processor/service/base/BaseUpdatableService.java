@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -164,7 +165,7 @@ public abstract class BaseUpdatableService<
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return this.hasAccess()
                 .flatMap(access ->
-                        super.readPageFilter(pageable, addAppCodeAndClientCodeToCondition(access, condition)));
+                        super.readPageFilter(pageable, this.addAppCodeAndClientCodeToCondition(access, condition)));
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
@@ -176,7 +177,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess()
                 .flatMap(access -> this.dao.readPageFilterEager(
                         pageable,
-                        addAppCodeAndClientCodeToCondition(access, condition),
+                        this.addAppCodeAndClientCodeToCondition(access, condition),
                         tableFields,
                         eager,
                         eagerFields));
@@ -185,20 +186,23 @@ public abstract class BaseUpdatableService<
     @Override
     public Flux<D> readAllFilter(AbstractCondition condition) {
         return this.hasAccess()
-                .flatMapMany(access -> super.readAllFilter(addAppCodeAndClientCodeToCondition(access, condition)));
+                .flatMapMany(access -> super.readAllFilter(this.addAppCodeAndClientCodeToCondition(access, condition)));
     }
 
     private AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
-                    FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make("clientCode", access.getClientCode())
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                            .setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
                             .setOperator(FilterConditionOperator.EQUALS));
 
         return ComplexCondition.and(
                 condition,
-                FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make("clientCode", access.getClientCode()).setOperator(FilterConditionOperator.EQUALS));
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                        .setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                        .setOperator(FilterConditionOperator.EQUALS));
     }
 
     @Override

@@ -14,6 +14,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,10 +57,10 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
-    @PostMapping("/bulk-reorder")
-    public Mono<ResponseEntity<List<Stage>>> bulkReorderStages(@RequestBody StageReorderRequest reorderRequest) {
+    @PatchMapping(REQ_PATH + "/reorder")
+    public Mono<ResponseEntity<List<Stage>>> reOrderStages(@RequestBody StageReorderRequest reorderRequest) {
         return this.service
-                .bulkReorderStages(reorderRequest)
+                .reOrderStages(reorderRequest)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));

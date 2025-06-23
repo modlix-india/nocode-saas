@@ -8,10 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-/**
- * Request model for bulk reordering of stages.
- * Contains a product template ID and a map of stage IDs to their new orders.
- */
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor

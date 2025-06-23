@@ -258,7 +258,13 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 });
     }
 
-    public Mono<List<Stage>> bulkReorderStages(StageReorderRequest reorderRequest) {
+    public Mono<List<Stage>> reOrderStages(StageReorderRequest reorderRequest) {
+
+        if (!reorderRequest.isValidOrder())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    "Valid order is required for stage reordering.");
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
@@ -286,25 +292,13 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                 return Flux.fromIterable(
                                                 reorderRequest.getStageOrders().entrySet())
                                         .flatMap(entry -> {
-                                            Identity stageId = entry.getKey();
-                                            Integer newOrder = entry.getValue();
-
-                                            if (newOrder == null || newOrder < 0) {
-                                                return this.msgService.throwMessage(
-                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                                        "Valid order is required for stage " + stageId.getId());
-                                            }
-
-                                            Stage stage = parentStageMap.get(stageId.getULongId());
-                                            stage.setOrder(newOrder);
-
-                                            return super.update(stage);
+                                            Stage stage = parentStageMap.get(
+                                                    entry.getKey().getULongId());
+                                            stage.setOrder(entry.getValue());
+                                            return this.updateInternal(stage);
                                         })
                                         .collectList();
                             });
-                },
-                (access, productTemplateId, updatedStages) -> Flux.fromIterable(updatedStages)
-                        .flatMap(this::evictCache)
-                        .then(Mono.just(updatedStages)));
+                });
     }
 }

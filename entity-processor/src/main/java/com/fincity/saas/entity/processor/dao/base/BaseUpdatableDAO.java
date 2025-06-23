@@ -3,10 +3,12 @@ package com.fincity.saas.entity.processor.dao.base;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
@@ -117,9 +119,14 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             List<String> eagerFields) {
 
         AbstractCondition condition = ComplexCondition.and(
-                FilterCondition.of(identityField.getName(), identity, FilterConditionOperator.EQUALS),
-                FilterCondition.of(appCodeField.getName(), appCode, FilterConditionOperator.EQUALS),
-                FilterCondition.of(clientCodeField.getName(), clientCode, FilterConditionOperator.EQUALS));
+                FilterCondition.make(
+                                identityField == codeField ? BaseUpdatableDto.Fields.code : AbstractDTO.Fields.id,
+                                identity)
+                        .setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
+                        .setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
+                        .setOperator(FilterConditionOperator.EQUALS));
 
         return this.readSingleRecordByIdentityEager(condition, tableFields, eager, eagerFields)
                 .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
