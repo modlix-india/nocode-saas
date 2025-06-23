@@ -58,9 +58,9 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
     }
 
     @PatchMapping(REQ_PATH + "/reorder")
-    public Mono<ResponseEntity<List<Stage>>> reOrderStages(@RequestBody StageReorderRequest reorderRequest) {
+    public Mono<ResponseEntity<List<Stage>>> reorderStages(@RequestBody StageReorderRequest reorderRequest) {
         return this.service
-                .reOrderStages(reorderRequest)
+                .reorderStages(reorderRequest)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
