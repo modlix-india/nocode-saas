@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.StageService;
@@ -13,6 +14,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +52,15 @@ public class StageController extends BaseValueController<EntityProcessorStagesRe
             @RequestParam(required = false) ULong parentId) {
         return this.service
                 .getAllValuesInOrder(platform, stageType, productTemplateId, parentId)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @PatchMapping(REQ_PATH + "/reorder")
+    public Mono<ResponseEntity<List<Stage>>> reorderStages(@RequestBody StageReorderRequest reorderRequest) {
+        return this.service
+                .reorderStages(reorderRequest)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));

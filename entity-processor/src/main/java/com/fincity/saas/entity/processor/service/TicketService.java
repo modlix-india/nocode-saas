@@ -7,8 +7,10 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.TicketRequest;
+import com.fincity.saas.entity.processor.model.request.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
@@ -108,6 +110,41 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         this.activityService.acCreate(created).thenReturn(created));
     }
 
+    public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> super.readIdentityWithOwnerAccess(access, ticketId),
+                (access, ticket) -> this.stageService
+                        .getParentChild(access, ticketStatusRequest.getStageId(), ticketStatusRequest.getStatusId())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_STAGE_STATUS)),
+                (access, ticket, sSEntity) -> Mono.just(ticket.getStage()),
+                (access, ticket, sSEntity, oldStage) -> {
+                    ticket.setStage(sSEntity.getT1().getId());
+                    ticket.setStatus(sSEntity.getT2().getId());
+                    return super.updateInternal(ticket);
+                },
+                (access, ticket, sSEntity, oldStage, updated) -> this.activityService
+                        .acStageStatus(updated, ticketStatusRequest.getComment(), oldStage)
+                        .thenReturn(updated));
+    }
+
+    public Mono<Ticket> reAssignTicket(Identity ticketId, ULong userId) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
+                    ULong oldUserId = ticket.getProductId();
+
+                    if (oldUserId.equals(userId)) return Mono.just(ticket);
+
+                    return this.setTicketAssignment(ticket, userId)
+                            .flatMap(this::updateInternal)
+                            .flatMap(updated -> this.activityService
+                                    .acReassign(updated.getId(), null, oldUserId, userId)
+                                    .then(Mono.just(updated)));
+                });
+    }
+
     private Mono<Ticket> checkTicket(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getProductId() == null)
@@ -128,15 +165,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         this.getEntityPrefix(access.getAppCode()),
                         access.getUserId(),
                         sTicket.toJson()),
-                (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
+                (product, sTicket, userId) ->
+                        this.setTicketAssignment(sTicket, userId != null ? userId : access.getUserId()));
     }
 
     private Mono<Ticket> setDefaultStage(Ticket ticket, String appCode, String clientCode, ULong productTemplateId) {
+
+        if (productTemplateId == null) return Mono.just(ticket);
+
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> stageService.getFirstStage(appCode, clientCode, productTemplateId),
                 stage -> stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
                 (stage, status) -> {
-                    ticket.setStage(stage.getId());
+                    if (stage != null) ticket.setStage(stage.getId());
                     if (status != null) ticket.setStatus(status.getId());
 
                     return Mono.just(ticket);
@@ -163,7 +204,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         existing.getCode(),
                                         this.getEntityPrefix(appCode)));
                     return Mono.just(Boolean.FALSE);
-                });
+                })
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     private Mono<Owner> setOwner(ProcessorAccess access, Ticket ticket) {

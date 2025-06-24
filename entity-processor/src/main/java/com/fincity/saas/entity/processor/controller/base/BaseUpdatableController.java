@@ -46,12 +46,11 @@ public abstract class BaseUpdatableController<
 
     public static final String REQ_PATH = "/req";
     public static final String REQ_PATH_ID = REQ_PATH + "/{" + PATH_VARIABLE_ID + "}";
-
-    public static final String EAGER = "/eager";
-    public static final String EAGER_PATH_QUERY = EAGER + "/query";
-    public static final String PATH_CODE_EAGER = "/code/{" + PATH_VARIABLE_CODE + "}" + EAGER;
-
-    public static final String PATH_ID_EAGER = PATH_ID + EAGER;
+    public static final String EAGER_BASE = "/eager";
+    public static final String EAGER_PATH_QUERY = EAGER_BASE + "/query";
+    public static final String EAGER_PATH_CODE = "/code/{" + PATH_VARIABLE_CODE + "}" + EAGER_BASE;
+    public static final String EAGER_PATH_ID = PATH_ID + EAGER_BASE;
+    public static final String EAGER_REQ_PATH_ID = REQ_PATH_ID + EAGER_BASE;
 
     @GetMapping(PATH_CODE)
     public Mono<ResponseEntity<D>> read(@PathVariable(PATH_VARIABLE_CODE) final String code) {
@@ -62,7 +61,22 @@ public abstract class BaseUpdatableController<
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
-    @GetMapping(PATH_CODE_EAGER)
+    @GetMapping(EAGER_PATH_ID)
+    public Mono<ResponseEntity<Map<String, Object>>> readEager(
+            @PathVariable(PATH_VARIABLE_ID) final ULong id, ServerHttpRequest request) {
+
+        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
+        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
+        List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
+
+        return this.service
+                .readEager(id, fieldParams, eager, eagerParams)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
+    @GetMapping(EAGER_PATH_CODE)
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_CODE) final String code, ServerHttpRequest request) {
 
@@ -77,16 +91,16 @@ public abstract class BaseUpdatableController<
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
-    @GetMapping(PATH_ID_EAGER)
+    @GetMapping(EAGER_REQ_PATH_ID)
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
-            @PathVariable(PATH_VARIABLE_ID) final ULong id, ServerHttpRequest request) {
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity, ServerHttpRequest request) {
 
         Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
         List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
         List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(id, fieldParams, eager, eagerParams)
+                .readEager(identity, fieldParams, eager, eagerParams)
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -123,17 +137,17 @@ public abstract class BaseUpdatableController<
     }
 
     @GetMapping(REQ_PATH_ID)
-    public Mono<ResponseEntity<D>> readIdentity(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+    public Mono<ResponseEntity<D>> readIdentity(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
         return this.service.readIdentityWithAccess(identity).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)
     @ResponseStatus(value = HttpStatus.NO_CONTENT)
-    public Mono<Integer> deleteIdentity(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+    public Mono<Integer> deleteIdentity(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
         return this.service.deleteIdentity(identity);
     }
 
-    @GetMapping(EAGER)
+    @GetMapping(EAGER_BASE)
     public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);

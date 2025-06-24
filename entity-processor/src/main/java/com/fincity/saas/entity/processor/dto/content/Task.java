@@ -6,13 +6,11 @@ import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import java.io.Serial;
 import java.time.LocalDateTime;
-import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -20,10 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Task extends BaseContentDto<TaskRequest, Task> {
-
-    public static final Map<String, Table<?>> relationsMap =
-            Map.of(Fields.taskTypeId, EntitySeries.TASK_TYPE.getTable());
+public class Task extends BaseContentDto<Task> {
 
     @Serial
     private static final long serialVersionUID = 2984521500368594815L;
@@ -39,13 +34,12 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
     private boolean hasReminder;
     private LocalDateTime nextReminder;
 
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.TASK;
+    public Task() {
+        super();
+        this.relationsMap.put(Fields.taskTypeId, EntitySeries.TASK_TYPE.getTable());
     }
 
-    @Override
-    public Task of(TaskRequest taskRequest) {
+    public static Task of(TaskRequest taskRequest) {
         return new Task()
                 .setContent(taskRequest.getContent())
                 .setHasAttachment(taskRequest.getHasAttachment())
@@ -63,7 +57,12 @@ public class Task extends BaseContentDto<TaskRequest, Task> {
                                 : null)
                 .setDueDate(taskRequest.getDueDate())
                 .setTaskPriority(taskRequest.getTaskPriority())
-                .setHasReminder(taskRequest.getHasReminder())
+                .setHasReminder(taskRequest.isHasReminder())
                 .setNextReminder(taskRequest.getNextReminder());
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.TASK;
     }
 }

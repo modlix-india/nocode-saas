@@ -1,14 +1,17 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
@@ -19,6 +22,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -45,6 +49,21 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         if (entity.isChild()) return Mono.just(entity);
 
+        if (entity.getOrder() != null)
+            return this.dao
+                    .existsByOrder(
+                            access.getAppCode(),
+                            access.getClientCode(),
+                            entity.getProductTemplateId(),
+                            entity.getOrder(),
+                            entity.getId())
+                    .flatMap(exists ->
+                            Boolean.FALSE.equals(exists) ? Mono.just(entity) : this.getNewOrder(entity, access));
+
+        return this.getNewOrder(entity, access);
+    }
+
+    private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.getLatestStageByOrder(
                         access.getAppCode(),
@@ -188,7 +207,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<Stage> getLatestStageByOrder(
             String appCode, String clientCode, ULong productTemplateId, Platform platform) {
-        return super.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+        return super.getAllValuesInOrderInternal(appCode, clientCode, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty());
     }
@@ -237,6 +256,42 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     stageIdsInternal.retainAll(List.of(stageIds));
 
                     return Mono.just(stageIdsInternal);
+                });
+    }
+
+    public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {
+
+        if (!reorderRequest.isValidOrder())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    "Valid order is required for stage reordering.");
+
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
+                        access, reorderRequest.getProductTemplateId()),
+                (access, productTemplateId) -> Flux.fromIterable(
+                                reorderRequest.getStageOrders().entrySet())
+                        .flatMap(entry -> this.checkAndUpdateIdentityWithAccess(access, entry.getKey())
+                                .map(identity -> Tuples.of(identity.getULongId(), entry.getValue())))
+                        .collectMap(Tuple2::getT1, Tuple2::getT2),
+                (access, productTemplateId, requestStageIds) -> this.getAllValues(
+                        access.getAppCode(), access.getClientCode(), null, productTemplateId.getULongId()),
+                (access, productTemplateId, requestStageIds, allStages) -> {
+                    Map<ULong, Stage> parentStageMap = BaseUpdatableDto.toIdMap(allStages.keySet());
+
+                    if (!requestStageIds.keySet().equals(parentStageMap.keySet()))
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                "All parent stages must be provided in the request");
+
+                    return Flux.fromIterable(requestStageIds.entrySet())
+                            .flatMap(entry -> {
+                                Stage stage = parentStageMap.get(entry.getKey());
+                                stage.setOrder(entry.getValue());
+                                return this.updateInternal(stage);
+                            })
+                            .collectList();
                 });
     }
 }

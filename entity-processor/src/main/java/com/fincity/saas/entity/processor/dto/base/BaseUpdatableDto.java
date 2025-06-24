@@ -2,11 +2,18 @@ package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.relations.IRelationMap;
+import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.IClassConvertor;
 import java.io.Serial;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -15,6 +22,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.apache.commons.collections4.SetValuedMap;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
+import org.jooq.Table;
 import org.jooq.types.ULong;
 
 @Data
@@ -22,16 +32,22 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong>
-        implements IClassConvertor {
+public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong>
+        implements IClassConvertor, IEntitySeries, IRelationMap {
 
     public static final int CODE_LENGTH = 22;
 
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;
 
-    private String code = UniqueUtil.shortUUID();
+    @JsonIgnore
+    protected transient Map<String, Table<?>> relationsMap = new HashMap<>();
 
+    @JsonIgnore
+    protected transient SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
+            new HashSetValuedHashMap<>();
+
+    private String code = UniqueUtil.shortUUID();
     private String name = this.code;
     private String description;
 
@@ -40,7 +56,13 @@ public class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractFlo
 
     private boolean isActive = Boolean.TRUE;
 
-    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(List<T> baseDtoList) {
+    protected BaseUpdatableDto() {
+        super();
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
+    }
+
+    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
         return baseDtoList.stream()
                 .collect(Collectors.toMap(BaseUpdatableDto::getId, Function.identity(), (a, b) -> b));
     }

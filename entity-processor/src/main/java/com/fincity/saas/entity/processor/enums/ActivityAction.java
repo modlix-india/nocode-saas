@@ -1,38 +1,71 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jooq.EnumType;
+import org.jooq.types.ULong;
 
 @Getter
 public enum ActivityAction implements EnumType {
 
     // Deal-related actions
-    CREATE("CREATE", "$entity from $source created for $user on $date at $time", keys("entity", "source")),
-    RE_INQUIRY("RE_INQUIRY", "$entity re-inquired from $source for $user on $date at $time", keys("entity", "source")),
+    CREATE(
+            "CREATE",
+            "$entity from $%s created for $user on $date at $time".formatted(Ticket.Fields.source),
+            keys("entity", Ticket.Fields.source)),
+    RE_INQUIRY(
+            "RE_INQUIRY",
+            "$entity re-inquired from $%s for $user on $date at $time".formatted(Ticket.Fields.source),
+            keys("entity", Ticket.Fields.source)),
     QUALIFY("QUALIFY", "$entity qualified by $user on $date at $time", keys("entity")),
     DISQUALIFY("DISQUALIFY", "$entity marked as disqualified by $user on $date at $time", keys("entity")),
     DISCARD("DISCARD", "$entity discarded by $user on $date at $time", keys("entity")),
-    IMPORT("IMPORT", "$entity imported via '$source' by $user on $date at $time", keys("entity", "source")),
-    STATUS_CREATE("STATUS_CREATE", "$status created by $user on $date at $time", keys("status")),
+    IMPORT(
+            "IMPORT",
+            "$entity imported via '$%s' by $user on $date at $time".formatted(Ticket.Fields.source),
+            keys("entity", Ticket.Fields.source)),
+    STATUS_CREATE(
+            "STATUS_CREATE",
+            "$%s created by $user on $date at $time".formatted(Ticket.Fields.status),
+            keys(Ticket.Fields.status)),
     STAGE_UPDATE(
             "STAGE_UPDATE",
-            "Stage moved from '$oldStage' to '$newStage' by $user on $date at $time",
-            keys("oldStage", "newStage")),
+            "Stage moved from '$%s' to '$%s' by $user on $date at $time"
+                    .formatted(getOldName(Ticket.Fields.stage), Ticket.Fields.stage),
+            keys(getOldName(Ticket.Fields.stage), Ticket.Fields.stage)),
 
     // Task-related actions
-    TASK_CREATE("TASK_CREATE", "Task '$task' was created by $user on $date at $time", keys("task")),
-    TASK_COMPLETE("TASK_COMPLETE", "Task '$task' was marked as completed by $user on $date at $time", keys("task")),
-    TASK_DELETE("TASK_DELETE", "Task '$task' was deleted by $user on $date at $time", keys("task")),
+    TASK_CREATE(
+            "TASK_CREATE",
+            "Task '$%s' was created by $user on $date at $time".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
+    TASK_COMPLETE(
+            "TASK_COMPLETE",
+            "Task '$%s' was marked as completed by $user on $date at $time".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
+    TASK_CANCELLED(
+            "TASK_CANCELLED",
+            "Task '$%s' was marked as cancelled by $user on $date at $time".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
+    TASK_DELETE(
+            "TASK_DELETE",
+            "Task '$%s' was deleted by $user on $date at $time".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
     REMINDER_SET(
             "REMINDER_SET",
-            "Reminder for date $reminderDate, set for $task by $user on $date at $time",
-            keys("reminderDate", "task")),
+            "Reminder for date $%s, set for $%s by $user on $date at $time"
+                    .formatted(Task.Fields.nextReminder, Activity.Fields.taskId),
+            keys(Task.Fields.nextReminder, Activity.Fields.taskId)),
 
     // Document actions
     DOCUMENT_UPLOAD("DOCUMENT_UPLOAD", "Document '$file' uploaded by $user on $date at $time", keys("file")),
@@ -40,23 +73,35 @@ public enum ActivityAction implements EnumType {
     DOCUMENT_DELETE("DOCUMENT_DELETE", "Document '$file' deleted by $user on $date at $time", keys("file")),
 
     // Note actions
-    NOTE_ADD("NOTE_ADD", "Note $note added by $user on $date at $time", keys("note")),
-    NOTE_DELETE("NOTE_DELETE", "Note $note deleted by $user on $date at $time", keys("note")),
+    NOTE_ADD(
+            "NOTE_ADD",
+            "Note $%s added by $user on $date at $time".formatted(Activity.Fields.noteId),
+            keys(Activity.Fields.noteId)),
+    NOTE_DELETE(
+            "NOTE_DELETE",
+            "Note $%s deleted by $user on $date at $time".formatted(Activity.Fields.noteId),
+            keys(Activity.Fields.noteId)),
 
     // Assignment actions
-    ASSIGN("ASSIGN", "$entity was assigned to $newUser by $user on $date at $time", keys("entity", "newUser")),
+    ASSIGN(
+            "ASSIGN",
+            "$entity was assigned to $%s by $user on $date at $time".formatted(Ticket.Fields.assignedUserId),
+            keys("entity", Ticket.Fields.assignedUserId)),
     REASSIGN(
             "REASSIGN",
-            "$entity was reassigned from $oldUser to $newUser by $user on $date at $time",
-            keys("entity", "oldUser", "newUser")),
+            "$entity was reassigned from $%s to $%s by $user on $date at $time"
+                    .formatted(getOldName(Ticket.Fields.assignedUserId), Ticket.Fields.assignedUserId),
+            keys("entity", getOldName(Ticket.Fields.assignedUserId), Ticket.Fields.assignedUserId)),
     REASSIGN_SYSTEM(
             "REASSIGN_SYSTEM",
-            "$entity reassigned from $oldUser to $newUser due to availability rule by $user on $date at $time",
-            keys("entity", "oldUser", "newUser")),
+            "$entity reassigned from $%s to $%s due to availability rule by $user on $date at $time"
+                    .formatted(getOldName(Ticket.Fields.assignedUserId), Ticket.Fields.assignedUserId),
+            keys("entity", getOldName(Ticket.Fields.assignedUserId), Ticket.Fields.assignedUserId)),
     OWNERSHIP_TRANSFER(
             "OWNERSHIP_TRANSFER",
-            "Ownership transferred from $oldOwner to $newOwner by $user on $date at $time",
-            keys("oldOwner", "newOwner")),
+            "Ownership transferred from $%s to $%s by $user on $date at $time"
+                    .formatted(getOldName(AbstractDTO.Fields.createdBy), AbstractDTO.Fields.createdBy),
+            keys(getOldName(AbstractDTO.Fields.createdBy), AbstractDTO.Fields.createdBy)),
 
     // Communication actions
     CALL_LOG("CALL_LOG", "Call with $customer logged by $user on $date at $time", keys("customer")),
@@ -98,6 +143,14 @@ public enum ActivityAction implements EnumType {
         return Set.copyOf(result);
     }
 
+    public static String getOldName(String fieldName) {
+        return "_" + fieldName;
+    }
+
+    public List<ActivityAction> getDeleteActions() {
+        return List.of(TASK_DELETE, DOCUMENT_DELETE, NOTE_DELETE);
+    }
+
     @Override
     public String getLiteral() {
         return literal;
@@ -112,23 +165,27 @@ public enum ActivityAction implements EnumType {
         return this.contextKeys.contains("entity");
     }
 
+    public boolean isDelete() {
+        return this.getDeleteActions().contains(this);
+    }
+
     public String formatMessage(Map<String, Object> context) {
-        StringBuilder msgBuilder = new StringBuilder(template);
+        String formattedMessage = template;
 
-        context.forEach((key, value) -> {
-            int index;
-            while ((index = msgBuilder.indexOf("$" + key)) != -1) {
-                msgBuilder.replace(index, index + key.length() + 1, this.getValue(value));
-            }
-        });
+        for (Map.Entry<String, Object> entry : context.entrySet()) {
+            String key = entry.getKey();
+            String value = this.getValue(entry.getValue());
+            formattedMessage = formattedMessage.replace("$" + key, value);
+        }
 
-        return msgBuilder.toString();
+        return formattedMessage;
     }
 
     private String getValue(Object value) {
         return switch (value) {
             case Map<?, ?> map when map.size() <= 2 && !map.isEmpty() -> formatMapEntries(map);
             case IdAndValue<?, ?> idAndValue -> String.valueOf(idAndValue.getValue());
+            case ULong ulong -> String.valueOf(ulong.longValue());
             default -> String.valueOf(value);
         };
     }

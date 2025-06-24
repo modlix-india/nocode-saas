@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -117,47 +118,40 @@ public abstract class BaseUpdatableService<
                         code, access.getAppCode(), access.getClientCode(), tableFields, eager, eagerFields));
     }
 
+    public Mono<Map<String, Object>> readEager(
+            Identity identity, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.readByIdentityAndAppCodeAndClientCodeEager(
+                        identity, access.getAppCode(), access.getClientCode(), tableFields, eager, eagerFields));
+    }
+
     public Mono<D> readById(ULong id) {
-        return this.dao
-                .readInternal(id)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), id)
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
     }
 
     public Mono<D> readByCode(String code) {
-        return this.dao
-                .readInternal(code)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
     }
 
     public Mono<D> readById(String appCode, String clientCode, ULong id) {
-        return this.dao
-                .readInternal(appCode, clientCode, id)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(
-                                this.getCacheName(), () -> Mono.just(value), this.getCacheKey(appCode, clientCode, id))
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(appCode, clientCode, id),
+                this.getCacheKey(appCode, clientCode, id));
     }
 
     public Mono<D> readByCode(String appCode, String clientCode, String code) {
-        return this.dao
-                .readInternal(appCode, clientCode, code)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(
-                                this.getCacheName(),
-                                () -> Mono.just(value),
-                                this.getCacheKey(appCode, clientCode, code))
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(appCode, clientCode, code),
+                this.getCacheKey(appCode, clientCode, code));
     }
 
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return this.hasAccess()
                 .flatMap(access ->
-                        super.readPageFilter(pageable, addAppCodeAndClientCodeToCondition(access, condition)));
+                        super.readPageFilter(pageable, this.addAppCodeAndClientCodeToCondition(access, condition)));
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
@@ -169,7 +163,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess()
                 .flatMap(access -> this.dao.readPageFilterEager(
                         pageable,
-                        addAppCodeAndClientCodeToCondition(access, condition),
+                        this.addAppCodeAndClientCodeToCondition(access, condition),
                         tableFields,
                         eager,
                         eagerFields));
@@ -178,20 +172,23 @@ public abstract class BaseUpdatableService<
     @Override
     public Flux<D> readAllFilter(AbstractCondition condition) {
         return this.hasAccess()
-                .flatMapMany(access -> super.readAllFilter(addAppCodeAndClientCodeToCondition(access, condition)));
+                .flatMapMany(access -> super.readAllFilter(this.addAppCodeAndClientCodeToCondition(access, condition)));
     }
 
     private AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
-                    FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make("clientCode", access.getClientCode())
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                            .setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
                             .setOperator(FilterConditionOperator.EQUALS));
 
         return ComplexCondition.and(
                 condition,
-                FilterCondition.make("appCode", access.getAppCode()).setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make("clientCode", access.getClientCode()).setOperator(FilterConditionOperator.EQUALS));
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                        .setOperator(FilterConditionOperator.EQUALS),
+                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                        .setOperator(FilterConditionOperator.EQUALS));
     }
 
     @Override
@@ -248,9 +245,34 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readIdentityWithAccess(access, identity));
     }
 
+    public Mono<D> readIdentityWithOwnerAccess(Identity identity) {
+        return this.hasAccess().flatMap(access -> this.readIdentityWithOwnerAccess(access, identity));
+    }
+
     public Mono<D> readIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return identityMissingError();
+
+        return identity.isCode()
+                ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.IDENTITY_WRONG,
+                                this.getEntityName(),
+                                identity.getCode()))
+                : this.readById(access.getAppCode(), access.getClientCode(), identity.getULongId())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.IDENTITY_WRONG,
+                                this.getEntityName(),
+                                identity.getId()));
+    }
+
+    public Mono<D> readIdentityWithOwnerAccess(ProcessorAccess access, Identity identity) {
+
+        if (identity == null || identity.isNull()) return identityMissingError();
+
+        // TODO: Add logic to check weather user or its team has access to this identity
 
         return identity.isCode()
                 ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())

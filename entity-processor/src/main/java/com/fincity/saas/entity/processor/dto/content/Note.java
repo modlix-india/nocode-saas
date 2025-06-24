@@ -15,18 +15,16 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class Note extends BaseContentDto<NoteRequest, Note> {
+public class Note extends BaseContentDto<Note> {
 
     @Serial
     private static final long serialVersionUID = 4656579497586549236L;
 
-    @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.NOTE;
+    public Note() {
+        super();
     }
 
-    @Override
-    public Note of(NoteRequest noteRequest) {
+    public static Note of(NoteRequest noteRequest) {
         return new Note()
                 .setContent(noteRequest.getContent())
                 .setHasAttachment(noteRequest.getHasAttachment())
@@ -38,5 +36,10 @@ public class Note extends BaseContentDto<NoteRequest, Note> {
                         noteRequest.getTicketId() != null
                                 ? noteRequest.getTicketId().getULongId()
                                 : null);
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.NOTE;
     }
 }
