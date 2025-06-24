@@ -130,6 +130,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         .thenReturn(updated));
     }
 
+    public Mono<Ticket> reAssignTicket(Identity ticketId, ULong userId) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
+                    ULong oldUserId = ticket.getProductId();
+
+                    if (oldUserId.equals(userId)) return Mono.just(ticket);
+
+                    return this.setTicketAssignment(ticket, userId)
+                            .flatMap(this::updateInternal)
+                            .flatMap(updated -> this.activityService
+                                    .acReassign(updated.getId(), null, oldUserId, userId)
+                                    .then(Mono.just(updated)));
+                });
+    }
+
     private Mono<Ticket> checkTicket(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getProductId() == null)
@@ -150,15 +165,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         this.getEntityPrefix(access.getAppCode()),
                         access.getUserId(),
                         sTicket.toJson()),
-                (product, sTicket, userId) -> this.setTicketAssignment(sTicket, userId));
+                (product, sTicket, userId) ->
+                        this.setTicketAssignment(sTicket, userId != null ? userId : access.getUserId()));
     }
 
     private Mono<Ticket> setDefaultStage(Ticket ticket, String appCode, String clientCode, ULong productTemplateId) {
+
+        if (productTemplateId == null) return Mono.just(ticket);
+
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> stageService.getFirstStage(appCode, clientCode, productTemplateId),
                 stage -> stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
                 (stage, status) -> {
-                    ticket.setStage(stage.getId());
+                    if (stage != null) ticket.setStage(stage.getId());
                     if (status != null) ticket.setStatus(status.getId());
 
                     return Mono.just(ticket);
