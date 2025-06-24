@@ -43,16 +43,17 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     @Override
     protected Mono<Product> checkEntity(Product product, ProcessorAccess access) {
 
-        if (product.getName().isEmpty())
+        if (product.getId() == null && product.getName().isEmpty())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        if (product.getId() == null) return Mono.just(product);
+        if (product.getProductTemplateId() != null)
+            return productTemplateService
+                    .readByIdInternal(product.getProductTemplateId())
+                    .map(valueTemplate -> product);
 
-        return productTemplateService
-                .readByIdInternal(product.getProductTemplateId())
-                .map(valueTemplate -> product);
+        return Mono.just(product);
     }
 
     @Override
