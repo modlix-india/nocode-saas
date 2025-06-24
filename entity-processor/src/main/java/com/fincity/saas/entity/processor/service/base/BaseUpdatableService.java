@@ -126,39 +126,25 @@ public abstract class BaseUpdatableService<
     }
 
     public Mono<D> readById(ULong id) {
-        return this.dao
-                .readInternal(id)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), id)
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
     }
 
     public Mono<D> readByCode(String code) {
-        return this.dao
-                .readInternal(code)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(this.getCacheName(), () -> Mono.just(value), code)
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
     }
 
     public Mono<D> readById(String appCode, String clientCode, ULong id) {
-        return this.dao
-                .readInternal(appCode, clientCode, id)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(
-                                this.getCacheName(), () -> Mono.just(value), this.getCacheKey(appCode, clientCode, id))
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(appCode, clientCode, id),
+                this.getCacheKey(appCode, clientCode, id));
     }
 
     public Mono<D> readByCode(String appCode, String clientCode, String code) {
-        return this.dao
-                .readInternal(appCode, clientCode, code)
-                .flatMap(value -> value != null
-                        ? this.cacheService.cacheValueOrGet(
-                                this.getCacheName(),
-                                () -> Mono.just(value),
-                                this.getCacheKey(appCode, clientCode, code))
-                        : Mono.empty());
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(appCode, clientCode, code),
+                this.getCacheKey(appCode, clientCode, code));
     }
 
     @Override
