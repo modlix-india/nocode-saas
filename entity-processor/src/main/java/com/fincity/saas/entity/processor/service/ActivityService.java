@@ -415,7 +415,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         Ticket.Fields.assignedUserId, newUser));
     }
 
-    public Mono<Void> acReassign(ULong ticketId, String comment, String oldUser, String newUser) {
+    public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
         return this.createActivityInternal(
                 ActivityAction.REASSIGN,
                 comment,
