@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -18,8 +19,12 @@ public class UserDistribution implements Serializable {
     @Serial
     private static final long serialVersionUID = 7428944421074508272L;
 
-    private List<ULong> profileIds;
-    private List<ULong> userIds;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private List<ULong> profileIds = List.of();
+
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private List<ULong> userIds = List.of();
+
     private String appCode;
     private Integer percentage;
     private Integer maxLoad;
@@ -49,6 +54,7 @@ public class UserDistribution implements Serializable {
         };
     }
 
+    @JsonIgnore
     public List<BigInteger> getProfileIdsInt() {
         return profileIds.stream().map(ULong::toBigInteger).toList();
     }
