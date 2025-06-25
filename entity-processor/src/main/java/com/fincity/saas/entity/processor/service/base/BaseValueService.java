@@ -64,6 +64,11 @@ public abstract class BaseValueService<
                                 entity.getAppCode(),
                                 entity.getClientCode(),
                                 entity.getPlatform(),
+                                entity.getProductTemplateId()),
+                        super.getCacheKey(
+                                this.getValueEtKey(),
+                                entity.getAppCode(),
+                                entity.getClientCode(),
                                 entity.getProductTemplateId())),
                 (baseEvicted, mapEvicted) -> super.cacheService.evict(
                         getCacheName(),
@@ -71,7 +76,8 @@ public abstract class BaseValueService<
                                 entity.getAppCode(),
                                 entity.getClientCode(),
                                 entity.getPlatform(),
-                                entity.getProductTemplateId())));
+                                entity.getProductTemplateId()),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId())));
     }
 
     @Override

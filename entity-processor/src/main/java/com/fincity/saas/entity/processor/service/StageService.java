@@ -68,8 +68,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 () -> this.getLatestStageByOrder(
                         access.getAppCode(),
                         access.getClientCode(),
-                        entity.getProductTemplateId(),
-                        entity.getPlatform()),
+                        entity.getProductTemplateId()),
                 latestStage -> {
                     if (latestStage == null) return Mono.just(entity.setOrder(1));
 
@@ -206,7 +205,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     public Mono<Stage> getLatestStageByOrder(
-            String appCode, String clientCode, ULong productTemplateId, Platform platform) {
+            String appCode, String clientCode, ULong productTemplateId) {
         return super.getAllValuesInOrderInternal(appCode, clientCode, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty());
