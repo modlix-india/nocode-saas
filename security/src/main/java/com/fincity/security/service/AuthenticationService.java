@@ -209,16 +209,16 @@ public class AuthenticationService implements IAuthenticationService {
             ServerHttpRequest request,
             ServerHttpResponse response) {
 
-        // Get userId either from authRequest or by calling userService
-        Mono<ULong> userIdMono = this.userService.findUserAcrossApps(authRequest.getUserName(), clientCode, authRequest.getIdentifierType());
+        Mono<ULong> userIdMono = this.userService
+                .findNonDeletedUserNClient(
+                        authRequest.getUserName(),
+                        authRequest.getUserId(),
+                        clientCode,
+                        null,
+                        authRequest.getIdentifierType())
+                .map(t -> t.getT3().getId());
 
         return userIdMono
-                .flatMap(userId -> {
-                    if (authRequest.getUserId() != null && !authRequest.getUserId().equals(userId)) {
-                        return this.authError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND);
-                    }
-                    return Mono.just(userId);
-                })
                 .flatMap(this.profileService::getUserAppHavingProfile)
                 .flatMap(this.appService::getAppById)
                 .flatMap(app -> {

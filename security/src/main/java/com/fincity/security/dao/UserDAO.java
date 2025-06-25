@@ -14,13 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.fincity.saas.commons.util.*;
-import org.jooq.Condition;
-import org.jooq.Field;
+import org.jooq.*;
 import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.SelectConditionStep;
-import org.jooq.SelectLimitPercentStep;
-import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -365,19 +360,30 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         if (userId != null)
             conditions.add(SECURITY_USER.ID.eq(userId));
 
-        conditions.add(
-                SECURITY_APP.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)
-                        .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)));
+        if (appCode != null)
+            conditions.add(SECURITY_APP
+                    .CLIENT_ID
+                    .eq(SECURITY_USER.CLIENT_ID)
+                    .or(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)));
 
         conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));
 
-        return this.dslContext.select(fields).from(SECURITY_USER)
-                .leftJoin(SECURITY_APP).on(SECURITY_APP.APP_CODE.eq(appCode))
-                .leftJoin(SECURITY_APP_ACCESS)
-                .on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID)
-                        .and(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)))
-                .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.CODE.eq(clientCode))
-                .leftJoin(SECURITY_CLIENT_HIERARCHY).on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
+        SelectJoinStep<Record> query = this.dslContext.select(fields).from(SECURITY_USER);
+
+        if (appCode != null) {
+            query = query.leftJoin(SECURITY_APP)
+                    .on(SECURITY_APP.APP_CODE.eq(appCode))
+                    .leftJoin(SECURITY_APP_ACCESS)
+                    .on(SECURITY_APP_ACCESS
+                            .CLIENT_ID
+                            .eq(SECURITY_USER.CLIENT_ID)
+                            .and(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)));
+        }
+
+        return query.leftJoin(SECURITY_CLIENT)
+                .on(SECURITY_CLIENT.CODE.eq(clientCode))
+                .leftJoin(SECURITY_CLIENT_HIERARCHY)
+                .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
                 .where(DSL.and(conditions));
     }
 
@@ -485,46 +491,4 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
-    public Mono<ULong> findUserAcrossApps(String userName, String clientCode, AuthenticationIdentifierType authenticationIdentifierType,
-                                          SecurityUserStatusCode[] userStatusCodes) {
-
-        List<Condition> conditions = new ArrayList<>();
-
-        if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName)) {
-            TableField<SecurityUserRecord, String> userIdentificationField;
-
-            switch (authenticationIdentifierType) {
-                case PHONE_NUMBER -> userIdentificationField = SECURITY_USER.PHONE_NUMBER;
-                case EMAIL_ID -> userIdentificationField = SECURITY_USER.EMAIL_ID;
-                default -> userIdentificationField = SECURITY_USER.USER_NAME;
-            }
-            conditions.add(userIdentificationField.eq(userName));
-        }
-
-        if (userStatusCodes != null && userStatusCodes.length > 0)
-            conditions.add(SECURITY_USER.STATUS_CODE.in(userStatusCodes));
-
-        conditions.add(ClientHierarchyDAO.getManageClientCondition(SECURITY_CLIENT.ID));
-
-        return Mono.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER)
-                .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.CODE.eq(clientCode))
-                .leftJoin(SECURITY_CLIENT_HIERARCHY).on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID))
-                .where(DSL.and(conditions)).limit(1))
-                .map(Record1::value1);
-
-    }
-
-    public Mono<Boolean> checkUserExistsAcrossApps(String username, String email, String phoneNumber) {
-
-        List<Condition> conditions = new ArrayList<>(getUserAvailabilityConditions(username, email, phoneNumber));
-
-        // Exclude deleted users
-        conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
-
-        return Mono.from(
-                        this.dslContext.selectCount()
-                                .from(SECURITY_USER)
-                                .where(DSL.and(conditions)))
-                .map(e -> e.value1() > 0);
-    }
 }
