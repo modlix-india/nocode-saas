@@ -88,16 +88,18 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
     @Override
     protected Mono<Boolean> evictCache(D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> super.evictCache(entity),
-                evicted -> this.evictRulesCache(
-                        entity.getAppCode(), entity.getClientCode(), entity.getEntityId(), entity.getStageId()));
+        return Mono.zip(
+                super.evictCache(entity),
+                this.evictRulesCache(
+                        entity.getAppCode(), entity.getClientCode(), entity.getEntityId(), entity.getStageId()),
+                (baseEvicted, rulesEvicted) -> baseEvicted && rulesEvicted);
     }
 
     private Mono<Boolean> evictRulesCache(String appCode, String clientCode, ULong entityId, ULong stageId) {
-        return this.cacheService
-                .evict(this.getCacheName(), this.getCacheKey(appCode, clientCode, entityId, stageId))
-                .flatMap(evicted -> this.evictDefaultCache(appCode, clientCode, entityId));
+        return Mono.zip(
+                this.cacheService.evict(this.getCacheName(), this.getCacheKey(appCode, clientCode, entityId, stageId)),
+                this.evictDefaultCache(appCode, clientCode, entityId),
+                (ruleEvicted, defaultEvicted) -> ruleEvicted && defaultEvicted);
     }
 
     private Mono<Boolean> evictDefaultCache(String appCode, String clientCode, ULong entityId) {
