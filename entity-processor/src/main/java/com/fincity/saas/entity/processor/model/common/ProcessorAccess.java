@@ -68,7 +68,7 @@ public final class ProcessorAccess implements Serializable {
     public static ProcessorAccess of(ContextAuthentication ca) {
         return of(
                 ca.getUrlAppCode(),
-                ca.getUrlClientCode(),
+                ca.getClientCode(),
                 ULongUtil.valueOf(ca.getUser().getId()),
                 true);
     }
