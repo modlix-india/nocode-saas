@@ -5,6 +5,10 @@ import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
+
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 
@@ -59,5 +63,13 @@ public final class ProcessorAccess implements Serializable {
 
     public static ProcessorAccess of(Tuple2<String, String> access, boolean hasAccessFlag) {
         return of(access.getT1(), access.getT2(), hasAccessFlag);
+    }
+
+    public static ProcessorAccess of(ContextAuthentication ca) {
+        return of(
+                ca.getUrlAppCode(),
+                ca.getUrlClientCode(),
+                ULongUtil.valueOf(ca.getUser().getId()),
+                true);
     }
 }

@@ -164,7 +164,7 @@ public abstract class BaseContentService<
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.INVALID_TICKET_OWNER,
                                 tOEntity.getT1().getName(),
-                                tOEntity.getT1().getCode());
+                                tOEntity.getT1().getId());
 
                     return Mono.just(Identity.of(
                             tOEntity.getT1().getId().toBigInteger(),
