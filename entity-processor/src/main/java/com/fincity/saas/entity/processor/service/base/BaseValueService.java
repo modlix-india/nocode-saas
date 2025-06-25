@@ -55,12 +55,13 @@ public abstract class BaseValueService<
 
     @Override
     protected Mono<Boolean> evictCache(D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> super.evictCache(entity),
-                baseEvicted -> Mono.zip(
+        return Mono.zip(
+                super.evictCache(entity),
+                Mono.zip(
                         this.evictEtCache(entity),
                         this.evictMapCache(entity),
-                        (etEvicted, mEvicted) -> etEvicted && mEvicted));
+                        (etEvicted, mEvicted) -> etEvicted && mEvicted),
+                (baseEvicted, mapEvicted) -> baseEvicted && mapEvicted);
     }
 
     private Mono<Boolean> evictEtCache(D entity) {

@@ -62,14 +62,33 @@ public abstract class BaseUpdatableService<
     }
 
     protected Mono<Boolean> evictCache(D entity) {
-        return this.cacheService
-                .evict(this.getCacheName(), entity.getCode())
-                .flatMap(evicted -> this.cacheService.evict(getCacheName(), entity.getId()));
+        return Mono.zip(
+                this.evictBaseCache(entity),
+                this.evictAcCcCache(entity),
+                (baseEvicted, acCcEvicted) -> baseEvicted && acCcEvicted);
     }
 
     protected Mono<Boolean> evictCaches(Flux<D> entities) {
         return entities.flatMap(this::evictCache).collectList().map(results -> results.stream()
                 .allMatch(Boolean::booleanValue));
+    }
+
+    private Mono<Boolean> evictBaseCache(D entity) {
+        return Mono.zip(
+                this.cacheService.evict(this.getCacheName(), entity.getId()),
+                this.cacheService.evict(this.getCacheName(), entity.getCode()),
+                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
+    }
+
+    private Mono<Boolean> evictAcCcCache(D entity) {
+        return Mono.zip(
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getId())),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCode())),
+                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
     }
 
     @Autowired
