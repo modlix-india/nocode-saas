@@ -57,7 +57,15 @@ public abstract class BaseValueService<
     protected Mono<Boolean> evictCache(D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> super.evictCache(entity),
-                baseEvicted -> super.cacheService.evict(
+                baseEvicted -> Mono.zip(
+                        this.evictEtCache(entity),
+                        this.evictMapCache(entity),
+                        (etEvicted, mEvicted) -> etEvicted && mEvicted));
+    }
+
+    private Mono<Boolean> evictEtCache(D entity) {
+        return Mono.zip(
+                super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
                                 this.getValueEtKey(),
@@ -65,13 +73,29 @@ public abstract class BaseValueService<
                                 entity.getClientCode(),
                                 entity.getPlatform(),
                                 entity.getProductTemplateId())),
-                (baseEvicted, mapEvicted) -> super.cacheService.evict(
+                super.cacheService.evict(
+                        getCacheName(),
+                        super.getCacheKey(
+                                this.getValueEtKey(),
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getProductTemplateId())),
+                (pEvicted, evicted) -> pEvicted && evicted);
+    }
+
+    private Mono<Boolean> evictMapCache(D entity) {
+        return Mono.zip(
+                super.cacheService.evict(
                         getCacheName(),
                         super.getCacheKey(
                                 entity.getAppCode(),
                                 entity.getClientCode(),
                                 entity.getPlatform(),
-                                entity.getProductTemplateId())));
+                                entity.getProductTemplateId())),
+                super.cacheService.evict(
+                        getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId())),
+                (pEvicted, evicted) -> pEvicted && evicted);
     }
 
     @Override
