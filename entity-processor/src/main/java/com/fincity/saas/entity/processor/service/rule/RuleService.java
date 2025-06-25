@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -158,9 +157,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                         access -> this.getEntityId(access, entityId),
                         (access, entity) -> this.getRuleResponseWithOrder(
                                 access.getAppCode(), access.getClientCode(), entity, stageIds))
-                .switchIfEmpty(super.msgService
-                        .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.getEntityRefName(), entityId)
-                        .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg))));
+                .switchIfEmpty(Mono.just(Map.of()));
     }
 
     private Mono<Map<Integer, RuleResponse<D>>> getRuleResponseWithOrder(

@@ -56,7 +56,10 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     public Mono<Owner> create(OwnerRequest ownerRequest) {
-        return super.create(Owner.of(ownerRequest));
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
+                (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)));
     }
 
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
@@ -83,5 +86,27 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                                 ProcessorMessageResourceService.OWNER_NOT_CREATED);
                     return Mono.just(owner);
                 });
+    }
+
+    private Mono<Boolean> checkDuplicate(String appCode, String clientCode, OwnerRequest ownerRequest) {
+        return this.dao
+                .readByNumberAndEmail(
+                        appCode,
+                        clientCode,
+                        ownerRequest.getPhoneNumber().getCountryCode(),
+                        ownerRequest.getPhoneNumber().getNumber(),
+                        ownerRequest.getEmail().getAddress())
+                .flatMap(existing -> {
+                    if (existing.getId() != null)
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.DUPLICATE_ENTITY,
+                                this.getEntityPrefix(appCode),
+                                existing.getId(),
+                                this.getEntityPrefix(appCode));
+
+                    return Mono.just(Boolean.FALSE);
+                })
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 }

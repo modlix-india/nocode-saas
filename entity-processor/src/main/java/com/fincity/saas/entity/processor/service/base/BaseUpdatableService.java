@@ -453,6 +453,9 @@ public abstract class BaseUpdatableService<
     }
 
     private Mono<ProcessorAccess> getProcessorAccess(ContextAuthentication ca) {
+
+        if (ca.isAuthenticated()) return Mono.just(ProcessorAccess.of(ca));
+
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
                 acTup -> securityService
