@@ -199,9 +199,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .acReInquiry(existing, ticketRequest)
                                 .then(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.DUPLICATE_TICKET,
+                                        ProcessorMessageResourceService.DUPLICATE_ENTITY,
                                         this.getEntityPrefix(appCode),
-                                        existing.getCode(),
+                                        existing.getId(),
                                         this.getEntityPrefix(appCode)));
                     return Mono.just(Boolean.FALSE);
                 })
