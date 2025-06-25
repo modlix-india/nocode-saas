@@ -1250,12 +1250,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.profileService.getUsersForProfiles(appId, profiles);
     }
 
-    public Mono<ULong> findUserAcrossApps(
-            String userName, String clientCode, AuthenticationIdentifierType authenticationIdentifierType) {
-        return this.dao.findUserAcrossApps(
-                userName, clientCode, authenticationIdentifierType, this.getNonDeletedUserStatusCodes());
-    }
-
     public Mono<Boolean> checkUserExistsAcrossApps(
             String userName, String email, String phoneNumber) {
 
