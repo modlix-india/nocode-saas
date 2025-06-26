@@ -48,12 +48,20 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        if (product.getProductTemplateId() != null)
-            return productTemplateService
-                    .readByIdInternal(product.getProductTemplateId())
-                    .map(valueTemplate -> product);
-
-        return Mono.just(product);
+        return FlatMapUtil.flatMapMono(
+                () -> this.existsByName(access.getAppCode(), access.getClientCode(), product.getName()),
+                exists -> Boolean.TRUE.equals(exists)
+                        ? this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                product.getName(),
+                                this.getEntityName())
+                        : Mono.just(exists),
+                (exists, pExist) -> product.getProductTemplateId() != null
+                        ? productTemplateService
+                                .readByIdInternal(product.getProductTemplateId())
+                                .map(valueTemplate -> product)
+                        : Mono.just(product));
     }
 
     @Override
@@ -77,6 +85,10 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     created.setProductTemplateId(productTemplate.getId());
                     return super.updateInternal(created);
                 });
+    }
+
+    private Mono<Boolean> existsByName(String appCode, String clientCode, String productName) {
+        return this.dao.existsByName(appCode, clientCode, productName);
     }
 
     public Mono<ProductTemplate> setProductTemplate(Identity productId, ProductTemplate productTemplate) {

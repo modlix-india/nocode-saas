@@ -1,14 +1,12 @@
 package com.fincity.saas.entity.processor.model.common;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple3;
 
