@@ -228,7 +228,9 @@ public class AuthenticationService implements IAuthenticationService {
                             .build();
 
                     // Call authenticate with the modified request
-                    return this.authenticate(authRequest, modifiedRequest, response);
+                    if (StringUtil.safeIsBlank(authRequest.getSocialRegisterState()))
+                        return this.authenticate(authRequest, modifiedRequest, response);
+                    else return this.authenticateWSocial(authRequest, modifiedRequest, response);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateUserForHavingApp"))
                 .switchIfEmpty(Mono.defer(() -> this.authError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND)));
