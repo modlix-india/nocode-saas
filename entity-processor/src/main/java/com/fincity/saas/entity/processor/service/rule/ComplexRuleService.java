@@ -78,14 +78,17 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
 
     private Mono<Integer> deleteComplexRuleAndRelations(ComplexRule complexRule) {
 
-        if (!complexRule.isHasSimpleChild())
-            return FlatMapUtil.flatMapMono(
-                    () -> this.delete(complexRule.getId()),
-                    deleted -> this.evictCache(complexRule).map(evicted -> deleted));
+        if (!complexRule.isHasSimpleChild()) return this.delete(complexRule);
 
         return this.simpleComplexRuleRelationService
                 .deleteByComplexRuleId(complexRule.getId())
-                .then(this.simpleRuleService.deleteByComplexRuleId(complexRule.getId()));
+                .then(this.simpleRuleService.deleteByComplexRuleId(complexRule.getId()))
+                .then(this.delete(complexRule));
+    }
+
+    private Mono<Integer> delete(ComplexRule complexRule) {
+        return FlatMapUtil.flatMapMono(() -> this.delete(complexRule.getId()), deleted -> this.evictCache(complexRule)
+                .map(evicted -> deleted));
     }
 
     @Override

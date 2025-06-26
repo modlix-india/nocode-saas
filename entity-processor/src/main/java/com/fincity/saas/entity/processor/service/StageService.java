@@ -66,9 +66,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.getLatestStageByOrder(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        entity.getProductTemplateId()),
+                        access.getAppCode(), access.getClientCode(), entity.getProductTemplateId()),
                 latestStage -> {
                     if (latestStage == null) return Mono.just(entity.setOrder(1));
 
@@ -204,8 +202,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .defaultIfEmpty(Tuples.of(parent, List.of()));
     }
 
-    public Mono<Stage> getLatestStageByOrder(
-            String appCode, String clientCode, ULong productTemplateId) {
+    public Mono<Stage> getLatestStageByOrder(String appCode, String clientCode, ULong productTemplateId) {
         return super.getAllValuesInOrderInternal(appCode, clientCode, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty());
