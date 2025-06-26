@@ -71,11 +71,12 @@ public class UserController
     }
 
     @PostMapping("/findUserClients")
-    public Mono<ResponseEntity<List<UserClient>>> findUserClients(@RequestBody AuthenticationRequest authRequest,
-                                                                  ServerHttpRequest request) {
+    public Mono<ResponseEntity<List<UserClient>>> findUserClients(
+            @RequestBody AuthenticationRequest authRequest,
+            @RequestParam(value = "appLevel", required = false, defaultValue = "true") Boolean appLevel,
+            ServerHttpRequest request) {
 
-        return this.service.findUserClients(authRequest, request)
-                .map(ResponseEntity::ok);
+        return this.service.findUserClients(authRequest, appLevel, request).map(ResponseEntity::ok);
     }
 
     @GetMapping("/makeUserActive")

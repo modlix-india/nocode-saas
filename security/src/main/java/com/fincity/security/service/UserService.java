@@ -974,10 +974,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPassword"));
     }
 
-    public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
+    public Mono<List<UserClient>> findUserClients(
+            AuthenticationRequest authRequest, Boolean appLevel, ServerHttpRequest request) {
 
-        String appCode = request.getHeaders()
-                .getFirst(AppService.AC);
+        String appCode = appLevel ? request.getHeaders()
+                .getFirst(AppService.AC) : null;
 
         String clientCode = request.getHeaders()
                 .getFirst(ClientService.CC);
