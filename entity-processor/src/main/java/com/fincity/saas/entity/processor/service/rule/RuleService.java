@@ -304,8 +304,14 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                             Integer order = entry.getKey();
                             RuleRequest ruleRequest = entry.getValue();
 
+                            if (order == 0)
+                                ruleRequest.getRule().setDefault(Boolean.TRUE).setStageId(null);
+
                             if (ruleRequest.getCondition() == null
-                                    || ruleRequest.getCondition().isEmpty()) return Flux.empty();
+                                    || ruleRequest.getCondition().isEmpty())
+                                return order == 0
+                                        ? this.handleDefaultRuleNullCondition(access, entity, ruleRequest, order)
+                                        : Flux.empty();
 
                             return this.createInternal(access, entity, ruleRequest, order)
                                     .map(rule -> Map.entry(order, rule));
@@ -335,8 +341,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     }
 
     private Mono<D> createInternal(ProcessorAccess access, Identity entityId, RuleRequest ruleRequest, Integer order) {
-
-        if (order == 0) ruleRequest.getRule().setDefault(Boolean.TRUE).setStageId(null);
 
         if (order > 0
                 && (ruleRequest.getRule().getStageId() == null
@@ -511,5 +515,17 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 () -> this.deleteOldRelations(rule),
                 relationsDeleted -> this.delete(rule.getId()),
                 (relationsDeleted, deleted) -> this.evictCache(rule).map(evicted -> deleted));
+    }
+
+    private Flux<Map.Entry<Integer, D>> handleDefaultRuleNullCondition(
+            ProcessorAccess access, Identity entity, RuleRequest ruleRequest, Integer order) {
+        return this.getRule(access, entity, ruleRequest, order)
+                .flatMap(rule -> FlatMapUtil.flatMapMono(
+                        () -> this.deleteOldRelations(rule),
+                        relationsDeleted -> this.evictCache(rule).map(evicted -> rule),
+                        (relationsDeleted, evictedRule) -> Mono.just(Map.entry(order, evictedRule))))
+                .switchIfEmpty(
+                        this.createInternal(access, entity, ruleRequest, order).map(rule -> Map.entry(order, rule)))
+                .flux();
     }
 }
