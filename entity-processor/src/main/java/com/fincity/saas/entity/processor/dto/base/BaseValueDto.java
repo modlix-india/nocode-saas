@@ -48,7 +48,14 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
 
     @JsonIgnore
     public boolean hasParent(ULong parentId) {
-        return this.parentLevel0.equals(parentId) || this.parentLevel1.equals(parentId);
+
+        if (this.parentLevel0 == null && this.parentLevel1 == null)
+            return false;
+
+        boolean hasParentLevel0 = this.parentLevel0 != null && this.parentLevel0.equals(parentId);
+        boolean hasParentLevel1 = this.parentLevel1 != null && this.parentLevel1.equals(parentId);
+
+        return hasParentLevel0 || hasParentLevel1;
     }
 
     // 	These Methods are for JOOQ Compatibility.
