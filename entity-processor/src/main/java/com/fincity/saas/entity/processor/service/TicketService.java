@@ -111,23 +111,37 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
+
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.readIdentityWithOwnerAccess(access, ticketId),
-                (access, ticket) -> this.stageService
-                        .getParentChild(access, ticketStatusRequest.getStageId(), ticketStatusRequest.getStatusId())
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.INVALID_STAGE_STATUS)),
-                (access, ticket, sSEntity) -> Mono.just(ticket.getStage()),
-                (access, ticket, sSEntity, oldStage) -> {
-                    ticket.setStage(sSEntity.getT1().getId());
-                    ticket.setStatus(sSEntity.getT2().getId());
-                    return super.updateInternal(ticket);
-                },
-                (access, ticket, sSEntity, oldStage, updated) -> this.activityService
-                        .acStageStatus(updated, ticketStatusRequest.getComment(), oldStage)
-                        .thenReturn(updated));
+                super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
+                    if (ticket.getStage()
+                                    .equals(ticketStatusRequest.getStageId().getULongId())
+                            && ticket.getStatus()
+                                    .equals(ticketStatusRequest.getStatusId().getULongId())) return Mono.just(ticket);
+
+                    return FlatMapUtil.flatMapMono(
+                            () -> Mono.just(access),
+                            processorAccess -> Mono.just(ticket),
+                            (processorAccess, currentTicket) -> this.stageService
+                                    .getParentChild(
+                                            processorAccess,
+                                            ticketStatusRequest.getStageId(),
+                                            ticketStatusRequest.getStatusId())
+                                    .switchIfEmpty(this.msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.INVALID_STAGE_STATUS)),
+                            (processorAccess, currentTicket, stageStatusEntity) -> Mono.just(currentTicket.getStage()),
+                            (processorAccess, currentTicket, stageStatusEntity, oldStage) -> {
+                                currentTicket.setStage(stageStatusEntity.getT1().getId());
+                                currentTicket.setStatus(
+                                        stageStatusEntity.getT2().getId());
+                                return super.updateInternal(currentTicket);
+                            },
+                            (processorAccess, currentTicket, stageStatusEntity, oldStage, updated) ->
+                                    this.activityService
+                                            .acStageStatus(updated, ticketStatusRequest.getComment(), oldStage)
+                                            .thenReturn(updated));
+                });
     }
 
     public Mono<Ticket> reAssignTicket(Identity ticketId, ULong userId) {
