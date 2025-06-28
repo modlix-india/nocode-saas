@@ -286,6 +286,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.DEFAULT_RULE_MISSING);
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.getEntityId(access, entityId),
