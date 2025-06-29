@@ -1,0 +1,14 @@
+---
+spring:
+  application:
+    name: notification
+  config:
+    import: "configserver:http://${CLOUD_CONFIG_SERVER:localhost}:${CLOUD_CONFIG_SERVER_PORT:8888}/"
+  profiles:
+    active: "${SPRING_PROFILE:default}"
+management:
+  metrics:
+    tags:
+      application: "${INSTANCE_ENVIRONMENT:LOCAL}-${spring.application.name}-${INSTANCE_ID:default}"
+server:
+  port: 8007
