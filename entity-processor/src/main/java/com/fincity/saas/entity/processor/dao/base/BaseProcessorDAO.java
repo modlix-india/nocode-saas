@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -47,28 +48,30 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
-        AbstractCondition condition = this.addAppCodeAndClientCode(
-                FilterCondition.make(
-                                identityField == codeField ? BaseUpdatableDto.Fields.code : AbstractDTO.Fields.id,
-                                identity)
-                        .setOperator(FilterConditionOperator.EQUALS),
-                access);
 
-        AbstractCondition uCondition = this.addUserIds(condition, access);
-
-        return this.readSingleRecordByIdentityEager(uCondition, tableFields, eager, eagerFields)
-                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
+        return FlatMapUtil.flatMapMono(
+                () -> this.addAppCodeAndClientCode(
+                        FilterCondition.make(
+                                        identityField == codeField
+                                                ? BaseUpdatableDto.Fields.code
+                                                : AbstractDTO.Fields.id,
+                                        identity)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access),
+                bCondition -> this.addUserIds(bCondition, access),
+                (bCondition, uCondition) ->
+                        this.readSingleRecordByIdentityEager(uCondition, tableFields, eager, eagerFields));
     }
 
-    public AbstractCondition addUserIds(AbstractCondition condition, ProcessorAccess access) {
+    public Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
         if (condition == null || condition.isEmpty())
-            return FilterCondition.make(this.jUserAccessField, access.getSubOrg())
-                    .setOperator(FilterConditionOperator.IN);
+            return Mono.just(FilterCondition.make(this.jUserAccessField, access.getSubOrg())
+                    .setOperator(FilterConditionOperator.IN));
 
-        return ComplexCondition.and(
+        return Mono.just(ComplexCondition.and(
                 condition,
                 FilterCondition.make(this.jUserAccessField, access.getSubOrg())
-                        .setOperator(FilterConditionOperator.IN));
+                        .setOperator(FilterConditionOperator.IN)));
     }
 
     public Flux<D> updateAll(Flux<D> entities) {
