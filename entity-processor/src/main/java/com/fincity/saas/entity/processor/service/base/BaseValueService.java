@@ -55,13 +55,8 @@ public abstract class BaseValueService<
 
     @Override
     protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                Mono.zip(
-                        this.evictEtCache(entity),
-                        this.evictMapCache(entity),
-                        (etEvicted, mEvicted) -> etEvicted && mEvicted),
-                (baseEvicted, mapEvicted) -> baseEvicted && mapEvicted);
+        return Mono.zip(super.evictCache(entity), this.evictEtCache(entity), this.evictMapCache(entity))
+                .map(evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3());
     }
 
     private Mono<Boolean> evictEtCache(D entity) {
@@ -120,28 +115,35 @@ public abstract class BaseValueService<
 
     private Mono<D> validateEntity(D entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
-                () -> entity.hasParentLevels()
-                        ? this.existsById(
+                () -> Mono.zip(
+                        this.existsByName(
                                 access.getAppCode(),
                                 access.getClientCode(),
                                 entity.getPlatform(),
                                 entity.getProductTemplateId(),
-                                entity.getParentLevel0(),
-                                entity.getParentLevel1())
-                        : Mono.just(Boolean.TRUE),
-                parentExists -> this.existsByName(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        entity.getPlatform(),
-                        entity.getProductTemplateId(),
-                        entity.getId(),
-                        entity.getName()),
-                (parentExists, nameExists) -> {
-                    if (Boolean.TRUE.equals(nameExists))
+                                entity.getId(),
+                                entity.getName()),
+                        entity.hasParentLevels()
+                                ? this.existsById(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        entity.getPlatform(),
+                                        entity.getProductTemplateId(),
+                                        entity.getParentLevel0(),
+                                        entity.getParentLevel1())
+                                : Mono.just(Boolean.TRUE)),
+                exists -> {
+                    if (exists.getT2())
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 entity.getName(),
+                                entity.getEntityName());
+
+                    if (exists.getT2())
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.INVALID_PARENT,
                                 entity.getEntityName());
 
                     entity.setName(NameUtil.normalize(entity.getName()));
