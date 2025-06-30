@@ -133,14 +133,14 @@ public abstract class BaseValueService<
                                         entity.getParentLevel1())
                                 : Mono.just(Boolean.TRUE)),
                 exists -> {
-                    if (exists.getT2())
+                    if (exists.getT1())
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 entity.getName(),
                                 entity.getEntityName());
 
-                    if (exists.getT2())
+                    if (!exists.getT2())
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.INVALID_PARENT,
