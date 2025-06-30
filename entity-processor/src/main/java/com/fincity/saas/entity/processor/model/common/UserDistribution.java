@@ -1,19 +1,16 @@
 package com.fincity.saas.entity.processor.model.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
-
-import org.jooq.types.ULong;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fincity.saas.entity.processor.enums.rule.DistributionType;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

@@ -5,7 +5,6 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;

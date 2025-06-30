@@ -1,17 +1,14 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
 import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 @Data
 @Accessors(chain = true)

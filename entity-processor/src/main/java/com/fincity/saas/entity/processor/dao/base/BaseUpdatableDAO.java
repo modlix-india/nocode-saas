@@ -67,29 +67,20 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         this.recordEnrichmentService = recordEnrichmentService;
     }
 
-    protected  <T, V> Mono<T> objectNotFoundError(V value) {
+    protected <T, V> Mono<T> objectNotFoundError(V value) {
         return messageResourceService
                 .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), value)
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
-            ULong id,
-            ProcessorAccess access,
-            List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            ULong id, ProcessorAccess access, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, eager, eagerFields);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
-            String code,
-            ProcessorAccess access,
-            List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(
-                codeField, code, access, tableFields, eager, eagerFields);
+            String code, ProcessorAccess access, List<String> tableFields, Boolean eager, List<String> eagerFields) {
+        return this.readSingleRecordByIdentityEager(codeField, code, access, tableFields, eager, eagerFields);
     }
 
     public Mono<Map<String, Object>> readByIdentityAndAppCodeAndClientCodeEager(

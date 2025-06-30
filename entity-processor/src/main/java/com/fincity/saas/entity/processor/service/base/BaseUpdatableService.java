@@ -122,15 +122,15 @@ public abstract class BaseUpdatableService<
     public Mono<Map<String, Object>> readEager(
             ULong id, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.hasAccess()
-                .flatMap(access -> this.dao.readByIdAndAppCodeAndClientCodeEager(
-                        id, access, tableFields, eager, eagerFields));
+                .flatMap(access ->
+                        this.dao.readByIdAndAppCodeAndClientCodeEager(id, access, tableFields, eager, eagerFields));
     }
 
     public Mono<Map<String, Object>> readEager(
             String code, List<String> tableFields, Boolean eager, List<String> eagerFields) {
         return this.hasAccess()
-                .flatMap(access -> this.dao.readByCodeAndAppCodeAndClientCodeEager(
-                        code, access, tableFields, eager, eagerFields));
+                .flatMap(access ->
+                        this.dao.readByCodeAndAppCodeAndClientCodeEager(code, access, tableFields, eager, eagerFields));
     }
 
     public Mono<Map<String, Object>> readEager(
@@ -165,8 +165,7 @@ public abstract class BaseUpdatableService<
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return this.hasAccess()
-                .flatMap(access ->
-                        super.readPageFilter(pageable, this.dao.addAppCodeAndClientCode(condition, access)));
+                .flatMap(access -> super.readPageFilter(pageable, this.dao.addAppCodeAndClientCode(condition, access)));
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(

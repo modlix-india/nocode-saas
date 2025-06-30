@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;

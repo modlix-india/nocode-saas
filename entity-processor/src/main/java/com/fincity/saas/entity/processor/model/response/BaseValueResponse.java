@@ -19,7 +19,6 @@ public class BaseValueResponse<T extends BaseValueDto<T>> {
     private T parent;
     private List<T> child;
 
-
     public static <T extends BaseValueDto<T>> List<BaseValueResponse<T>> toList(
             Map<T, Set<T>> valueMap, ULong... parentId) {
         return valueMap.entrySet().stream()
