@@ -48,20 +48,22 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        return FlatMapUtil.flatMapMono(
-                () -> this.existsByName(access.getAppCode(), access.getClientCode(), product.getName()),
-                exists -> Boolean.TRUE.equals(exists)
-                        ? this.msgService.throwMessage(
+        return this.existsByName(access.getAppCode(), access.getClientCode(), product.getName())
+                .flatMap(exists -> {
+                    if (Boolean.TRUE.equals(exists))
+                        return msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 product.getName(),
-                                this.getEntityName())
-                        : Mono.just(exists),
-                (exists, pExist) -> product.getProductTemplateId() != null
-                        ? productTemplateService
+                                getEntityName());
+
+                    if (product.getProductTemplateId() != null)
+                        return productTemplateService
                                 .readByIdInternal(product.getProductTemplateId())
-                                .map(valueTemplate -> product)
-                        : Mono.just(product));
+                                .thenReturn(product);
+
+                    return Mono.just(product);
+                });
     }
 
     @Override
