@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model.request;
+package com.fincity.saas.entity.processor.model.request.ticket;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;

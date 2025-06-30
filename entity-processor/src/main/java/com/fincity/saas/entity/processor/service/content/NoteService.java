@@ -40,6 +40,15 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
                         : super.createOwnerContent(access, content));
     }
 
+    public Mono<Note> createInternal(ProcessorAccess access, NoteRequest noteRequest) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.updateIdentities(access, noteRequest),
+                this::createContent,
+                (uRequest, content) -> content.isTicketContent()
+                        ? super.createTicketContent(access, content)
+                        : super.createOwnerContent(access, content));
+    }
+
     private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
                 () -> noteRequest.getTicketId() != null
