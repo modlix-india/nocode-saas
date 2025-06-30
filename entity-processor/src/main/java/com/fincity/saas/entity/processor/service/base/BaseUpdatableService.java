@@ -164,8 +164,10 @@ public abstract class BaseUpdatableService<
 
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return this.hasAccess()
-                .flatMap(access -> super.readPageFilter(pageable, this.dao.addAppCodeAndClientCode(condition, access)));
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.dao.addAppCodeAndClientCode(condition, access),
+                (access, pCondition) -> super.readPageFilter(pageable, pCondition));
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
@@ -174,19 +176,19 @@ public abstract class BaseUpdatableService<
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
-        return this.hasAccess()
-                .flatMap(access -> this.dao.readPageFilterEager(
-                        pageable,
-                        this.dao.addAppCodeAndClientCode(condition, access),
-                        tableFields,
-                        eager,
-                        eagerFields));
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.dao.addAppCodeAndClientCode(condition, access),
+                (access, pCondition) ->
+                        this.dao.readPageFilterEager(pageable, pCondition, tableFields, eager, eagerFields));
     }
 
     @Override
     public Flux<D> readAllFilter(AbstractCondition condition) {
         return this.hasAccess()
-                .flatMapMany(access -> super.readAllFilter(this.dao.addAppCodeAndClientCode(condition, access)));
+                .flatMap(access -> this.dao.addAppCodeAndClientCode(condition, access))
+                .flatMapMany(super::readAllFilter);
     }
 
     @Override
