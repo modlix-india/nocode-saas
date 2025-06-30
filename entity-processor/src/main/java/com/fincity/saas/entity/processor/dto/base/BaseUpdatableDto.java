@@ -7,6 +7,7 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
@@ -97,5 +98,9 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
     public BaseResponse toBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
+    }
+
+    public Identity getIdentity() {
+        return Identity.of(this.getId().toBigInteger(), this.getCode());
     }
 }

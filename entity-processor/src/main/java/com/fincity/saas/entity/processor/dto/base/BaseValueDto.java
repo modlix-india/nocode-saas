@@ -49,8 +49,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     @JsonIgnore
     public boolean hasParent(ULong parentId) {
 
-        if (this.parentLevel0 == null && this.parentLevel1 == null)
-            return false;
+        if (this.parentLevel0 == null && this.parentLevel1 == null) return false;
 
         boolean hasParentLevel0 = this.parentLevel0 != null && this.parentLevel0.equals(parentId);
         boolean hasParentLevel1 = this.parentLevel1 != null && this.parentLevel1.equals(parentId);

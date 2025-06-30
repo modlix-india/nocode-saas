@@ -231,7 +231,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> readByIdInternal(ULong id) {
 
-        if (id == null) return identityMissingError();
+        if (id == null) return this.identityMissingError();
 
         return this.readById(id)
                 .switchIfEmpty(this.msgService.throwMessage(
@@ -243,7 +243,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> readIdentityInternal(Identity identity) {
 
-        if (identity == null || identity.isNull()) return identityMissingError();
+        if (identity == null || identity.isNull()) return this.identityMissingError();
 
         return (identity.isCode()
                         ? this.readByCode(identity.getCode())
@@ -270,7 +270,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> readIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
-        if (identity == null || identity.isNull()) return identityMissingError();
+        if (identity == null || identity.isNull()) return this.identityMissingError();
 
         return identity.isCode()
                 ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
@@ -289,7 +289,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> readIdentityWithOwnerAccess(ProcessorAccess access, Identity identity) {
 
-        if (identity == null || identity.isNull()) return identityMissingError();
+        if (identity == null || identity.isNull()) return this.identityMissingError();
 
         // TODO: Add logic to check weather user or its team has access to this identity
 
@@ -328,7 +328,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<Identity> checkAndUpdateIdentity(Identity identity) {
 
-        if (identity == null || identity.isNull()) return identityMissingError();
+        if (identity == null || identity.isNull()) return this.identityMissingError();
 
         if (identity.isId())
             return this.readById(ULongUtil.valueOf(identity.getId()))
@@ -354,7 +354,7 @@ public abstract class BaseUpdatableService<
 
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
-        if (identity == null || identity.isNull()) return identityMissingError();
+        if (identity == null || identity.isNull()) return this.identityMissingError();
 
         if (identity.isId())
             return this.readById(access.getAppCode(), access.getClientCode(), ULongUtil.valueOf(identity.getId()))

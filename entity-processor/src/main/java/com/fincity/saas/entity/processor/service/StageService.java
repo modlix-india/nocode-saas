@@ -123,13 +123,13 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                         },
                         (access, productTemplateId, parentStage) -> stageRequest.getChildren() != null
                                 ? this.updateOrCreateChildren(
-                                        productTemplateId, stageRequest.getChildren(), parentStage)
+                                        access, productTemplateId, stageRequest.getChildren(), parentStage)
                                 : Mono.just(Tuples.of(parentStage, List.of())))
                 .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()));
     }
 
     private Mono<Tuple2<Stage, List<Stage>>> updateOrCreateChildren(
-            Identity productTemplateId, Map<Integer, StageRequest> children, Stage parent) {
+            ProcessorAccess access, Identity productTemplateId, Map<Integer, StageRequest> children, Stage parent) {
 
         if (children == null || children.isEmpty())
             return FlatMapUtil.flatMapMono(
@@ -176,11 +176,12 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                                         .setIsFailure(childRequest.getIsFailure())
                                                         .setOrder(order);
 
-                                                return super.update(existingChild);
+                                                return super.updateInternal(access, existingChild);
                                             }
                                         }
 
                                         return super.createChild(
+                                                access,
                                                 Stage.ofChild(
                                                         childRequest,
                                                         order,
