@@ -96,10 +96,12 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         return (T) this;
     }
 
-    public BaseResponse toBaseResponse() {
+    @JsonIgnore
+    public BaseResponse getBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
     }
 
+    @JsonIgnore
     public Identity getIdentity() {
         return Identity.of(this.getId().toBigInteger(), this.getCode());
     }

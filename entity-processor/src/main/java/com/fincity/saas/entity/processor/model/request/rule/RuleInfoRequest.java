@@ -15,7 +15,7 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 public class RuleInfoRequest extends BaseRequest<RuleInfoRequest> {
 
-    private Identity ruleId;
+    private Identity id;
     private Identity stageId;
     private boolean isDefault = false;
     private boolean breakAtFirstMatch = false;

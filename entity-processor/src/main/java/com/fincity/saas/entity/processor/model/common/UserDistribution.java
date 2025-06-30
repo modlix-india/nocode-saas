@@ -58,4 +58,10 @@ public class UserDistribution implements Serializable {
     public List<BigInteger> getProfileIdsInt() {
         return profileIds.stream().map(ULong::toBigInteger).toList();
     }
+
+    public UserDistribution transformToValid() {
+        this.setProfileIds(this.profileIds.stream().distinct().toList());
+        this.setUserIds(this.userIds.stream().distinct().toList());
+        return this;
+    }
 }
