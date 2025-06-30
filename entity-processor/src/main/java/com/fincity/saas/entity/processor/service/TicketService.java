@@ -140,11 +140,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             ticketStatusRequest.getStatusId())
                                     .switchIfEmpty(this.msgService.throwMessage(
                                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                            ProcessorMessageResourceService.INVALID_STAGE_STATUS)),
+                                            ProcessorMessageResourceService.STAGE_MISSING)),
                             (pAccess, cTicket, stageStatusEntity) -> Mono.just(cTicket.getStage()),
                             (pAccess, cTicket, stageStatusEntity, oldStage) -> {
-                                cTicket.setStage(stageStatusEntity.getT1().getId());
-                                cTicket.setStatus(stageStatusEntity.getT2().getId());
+                                cTicket.setStage(stageStatusEntity.getKey().getId());
+
+                                if (!stageStatusEntity.getValue().isEmpty())
+                                    cTicket.setStatus(stageStatusEntity
+                                            .getValue()
+                                            .getFirst()
+                                            .getId());
+
                                 return super.updateInternal(cTicket);
                             },
                             (pAccess, cTicket, stageStatusEntity, oldStage, uTicket) ->
