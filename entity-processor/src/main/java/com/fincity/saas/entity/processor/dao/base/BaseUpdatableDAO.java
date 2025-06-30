@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dao.base;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
@@ -106,22 +107,23 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             Boolean eager,
             List<String> eagerFields) {
 
-        AbstractCondition condition = this.addAppCodeAndClientCode(
-                FilterCondition.make(
-                                identityField == codeField ? BaseUpdatableDto.Fields.code : AbstractDTO.Fields.id,
-                                identity)
-                        .setOperator(FilterConditionOperator.EQUALS),
-                access);
-
-        return this.readSingleRecordByIdentityEager(condition, tableFields, eager, eagerFields)
-                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
+        return FlatMapUtil.flatMapMono(
+                () -> this.addAppCodeAndClientCode(
+                        FilterCondition.make(
+                                        identityField == codeField
+                                                ? BaseUpdatableDto.Fields.code
+                                                : AbstractDTO.Fields.id,
+                                        identity)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access),
+                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, eager, eagerFields));
     }
 
-    public AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
-        return this.addAppCodeAndClientCode(condition, access.getAppCode(), access.getClientCode());
+    public Mono<AbstractCondition> addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
+        return Mono.just(this.addAppCodeAndClientCode(condition, access.getAppCode(), access.getClientCode()));
     }
 
-    public AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
+    private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
