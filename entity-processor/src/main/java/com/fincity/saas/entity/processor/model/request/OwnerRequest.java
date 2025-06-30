@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.model.request;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

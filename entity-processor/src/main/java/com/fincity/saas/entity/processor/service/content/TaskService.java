@@ -40,28 +40,36 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     }
 
     public Mono<Task> create(TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskRequest));
+    }
+
+    public Mono<Task> createInternal(ProcessorAccess access, TaskRequest taskRequest) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.updateIdentities(access, taskRequest),
-                (access, uRequest) -> this.createContent(uRequest),
-                (access, uRequest, content) -> content.isTicketContent()
+                () -> this.updateIdentities(access, taskRequest),
+                (task) -> this.createContent(taskRequest),
+                (task, content) -> content.isTicketContent()
                         ? this.createTicketContent(access, content)
-                        : createOwnerContent(access, content));
+                        : this.createOwnerContent(access, content));
     }
 
     private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
-        return FlatMapUtil.flatMapMono(
-                () -> taskRequest.getTicketId() != null
-                        ? this.checkTicket(access, taskRequest.getTicketId())
-                        : Mono.just(Identity.ofNull()),
-                ticketId -> taskRequest.getOwnerId() != null
-                        ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
-                        : Mono.just(Identity.ofNull()),
-                (ticketId, ownerId) -> taskRequest.getTaskTypeId() != null
-                        ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
-                        : Mono.just(Identity.ofNull()),
-                (ticketId, ownerId, taskTypeId) -> Mono.just(
-                        taskRequest.setTicketId(ticketId).setOwnerId(ownerId).setTaskTypeId(taskTypeId)));
+
+        Mono<Identity> ticketIdMono = taskRequest.getTicketId() != null
+                ? this.checkTicket(access, taskRequest.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        Mono<Identity> ownerIdMono = ticketIdMono.flatMap(ticketId -> taskRequest.getOwnerId() != null
+                ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
+                : Mono.just(Identity.ofNull()));
+
+        Mono<Identity> taskTypeIdMono = taskRequest.getTaskTypeId() != null
+                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
+                : Mono.just(Identity.ofNull());
+
+        return Mono.zip(ticketIdMono, ownerIdMono, taskTypeIdMono).map(tuple3 -> taskRequest
+                .setTicketId(tuple3.getT1())
+                .setOwnerId(tuple3.getT2())
+                .setTaskTypeId(tuple3.getT3()));
     }
 
     private Mono<Task> createContent(TaskRequest taskRequest) {

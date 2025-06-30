@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.controller.open;
 
-import com.fincity.saas.entity.processor.model.request.TicketRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.TicketService;
 import org.springframework.http.ResponseEntity;
