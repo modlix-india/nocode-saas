@@ -110,12 +110,13 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return FlatMapUtil.flatMapMono(
                 () -> this.addAppCodeAndClientCode(
                         FilterCondition.make(
-                                        identityField == codeField ? BaseUpdatableDto.Fields.code : AbstractDTO.Fields.id,
+                                        identityField == codeField
+                                                ? BaseUpdatableDto.Fields.code
+                                                : AbstractDTO.Fields.id,
                                         identity)
                                 .setOperator(FilterConditionOperator.EQUALS),
                         access),
-                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, eager, eagerFields)
-        );
+                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, eager, eagerFields));
     }
 
     public Mono<AbstractCondition> addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
