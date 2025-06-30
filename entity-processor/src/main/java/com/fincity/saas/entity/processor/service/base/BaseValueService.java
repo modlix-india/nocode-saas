@@ -166,25 +166,29 @@ public abstract class BaseValueService<
                 (access, vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
 
-    public Mono<D> createChild(D entity, D parentEntity) {
-        entity.setName(NameUtil.normalize(entity.getName()));
-        entity.setAppCode(parentEntity.getAppCode());
-        entity.setClientCode(parentEntity.getClientCode());
-        entity.setCreatedBy(parentEntity.getCreatedBy());
-        entity.setIsParent(Boolean.FALSE);
-        entity.setParentLevel0(parentEntity.getId());
+    public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
-        if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
+        return FlatMapUtil.flatMapMono(() -> this.validateEntity(entity, access), vEntity -> {
+            entity.setName(vEntity.getName());
+            entity.setAppCode(parentEntity.getAppCode());
+            entity.setClientCode(parentEntity.getClientCode());
+            entity.setCreatedBy(parentEntity.getCreatedBy());
+            entity.setIsParent(Boolean.FALSE);
+            entity.setParentLevel0(parentEntity.getId());
 
-        return super.create(entity);
+            if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
+
+            return super.create(entity);
+        });
     }
 
     @Override
     public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.validateEntity(entity, access),
-                (access, validated) -> this.updateInternal(validated));
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
+    }
+
+    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
+        return this.validateEntity(entity, access).flatMap(this::updateInternal);
     }
 
     @Override
