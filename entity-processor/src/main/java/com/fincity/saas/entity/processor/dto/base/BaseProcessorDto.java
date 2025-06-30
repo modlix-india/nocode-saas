@@ -1,11 +1,13 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
 @Data
@@ -23,5 +25,15 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
 
     protected BaseProcessorDto() {
         super();
+    }
+
+    @JsonIgnore
+    public ULong getAccessUser() {
+        return this.getCreatedBy();
+    }
+
+    @JsonIgnore
+    public ULong getAccessUserOrCreatedBy() {
+        return this.getAccessUser() != null ? this.getAccessUser() : this.getCreatedBy();
     }
 }
