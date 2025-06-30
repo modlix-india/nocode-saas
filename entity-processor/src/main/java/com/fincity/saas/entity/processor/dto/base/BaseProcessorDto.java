@@ -6,7 +6,12 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+
+import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 @Data
 @Accessors(chain = true)
@@ -23,5 +28,15 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
 
     protected BaseProcessorDto() {
         super();
+    }
+
+    @JsonIgnore
+    public ULong getAccessUser() {
+        return this.getCreatedBy();
+    }
+
+    @JsonIgnore
+    public ULong getAccessUserOrCreatedBy() {
+        return this.getAccessUser() != null ? this.getAccessUser() : this.getCreatedBy();
     }
 }

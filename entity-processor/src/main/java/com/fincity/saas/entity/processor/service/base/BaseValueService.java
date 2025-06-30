@@ -232,21 +232,6 @@ public abstract class BaseValueService<
         return this.dao.existsByName(appCode, clientCode, platform, productTemplateId, entityId, names);
     }
 
-    public Mono<Tuple2<D, D>> getParentChild(ProcessorAccess access, Identity parent, Identity child) {
-
-        if (parent == null || parent.isNull() || child == null || child.isNull()) return Mono.empty();
-
-        return FlatMapUtil.flatMapMono(
-                () -> Mono.zip(this.readIdentityWithAccess(access, parent), this.readIdentityWithAccess(access, child)),
-                pCEntity -> {
-                    if (Boolean.TRUE.equals(pCEntity.getT2().getIsParent())) return Mono.empty();
-
-                    if (!pCEntity.getT2().hasParent(pCEntity.getT1().getId())) return Mono.empty();
-
-                    return Mono.just(pCEntity);
-                });
-    }
-
     public Mono<List<BaseValueResponse<D>>> getAllValuesInOrder(
             Platform platform, ULong productTemplateId, ULong parentId) {
         return FlatMapUtil.flatMapMono(
@@ -300,6 +285,26 @@ public abstract class BaseValueService<
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
                 .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
+    }
+
+    public Mono<Map.Entry<D, List<D>>> getParentChild(ProcessorAccess access, Identity parent, Identity child) {
+
+        if (parent == null || parent.isNull()) return Mono.empty();
+
+        if (child == null || child.isNull())
+            return this.readIdentityWithAccess(access, parent).map(pEntity -> Map.entry(pEntity, List.of()));
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> this.readIdentityWithAccess(access, parent),
+                pEntity -> this.readIdentityWithAccess(access, child),
+                (pEntity, cEntity) -> {
+                    if (pEntity == null) return Mono.empty();
+
+	                if (cEntity == null || !cEntity.hasParent(pEntity.getId()))
+		                return Mono.just(Map.entry(pEntity, List.of()));
+
+	                return Mono.just(Map.entry(pEntity, List.of(cEntity)));
+                });
     }
 
     public Mono<Map.Entry<D, Set<D>>> getValue(

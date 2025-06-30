@@ -11,6 +11,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
@@ -66,7 +67,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         this.recordEnrichmentService = recordEnrichmentService;
     }
 
-    private <T, V> Mono<T> objectNotFoundError(V value) {
+    protected  <T, V> Mono<T> objectNotFoundError(V value) {
         return messageResourceService
                 .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), value)
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
@@ -74,62 +75,75 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
             ULong id,
-            String appCode,
-            String clientCode,
+            ProcessorAccess access,
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(idField, id, appCode, clientCode, tableFields, eager, eagerFields);
+        return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, eager, eagerFields);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
             String code,
-            String appCode,
-            String clientCode,
+            ProcessorAccess access,
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
         return this.readSingleRecordByIdentityEager(
-                codeField, code, appCode, clientCode, tableFields, eager, eagerFields);
+                codeField, code, access, tableFields, eager, eagerFields);
     }
 
     public Mono<Map<String, Object>> readByIdentityAndAppCodeAndClientCodeEager(
             Identity identity,
-            String appCode,
-            String clientCode,
+            ProcessorAccess access,
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
 
         if (identity.isId())
             return this.readSingleRecordByIdentityEager(
-                    idField, identity.getULongId(), appCode, clientCode, tableFields, eager, eagerFields);
+                    idField, identity.getULongId(), access, tableFields, eager, eagerFields);
 
         return this.readSingleRecordByIdentityEager(
-                codeField, identity.getCode(), appCode, clientCode, tableFields, eager, eagerFields);
+                codeField, identity.getCode(), access, tableFields, eager, eagerFields);
     }
 
-    private <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
+    public <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
             Field<V> identityField,
             V identity,
-            String appCode,
-            String clientCode,
+            ProcessorAccess access,
             List<String> tableFields,
             Boolean eager,
             List<String> eagerFields) {
 
-        AbstractCondition condition = ComplexCondition.and(
+        AbstractCondition condition = this.addAppCodeAndClientCode(
                 FilterCondition.make(
                                 identityField == codeField ? BaseUpdatableDto.Fields.code : AbstractDTO.Fields.id,
                                 identity)
                         .setOperator(FilterConditionOperator.EQUALS),
+                access);
+
+        return this.readSingleRecordByIdentityEager(condition, tableFields, eager, eagerFields)
+                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
+    }
+
+    public AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
+        return this.addAppCodeAndClientCode(condition, access.getAppCode(), access.getClientCode());
+    }
+
+    public AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
+        if (condition == null || condition.isEmpty())
+            return ComplexCondition.and(
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
+                            .setOperator(FilterConditionOperator.EQUALS),
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
+                            .setOperator(FilterConditionOperator.EQUALS));
+
+        return ComplexCondition.and(
+                condition,
                 FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
                         .setOperator(FilterConditionOperator.EQUALS),
                 FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
                         .setOperator(FilterConditionOperator.EQUALS));
-
-        return this.readSingleRecordByIdentityEager(condition, tableFields, eager, eagerFields)
-                .switchIfEmpty(Mono.defer(() -> objectNotFoundError(identity)));
     }
 
     public Mono<D> readInternal(ULong id) {

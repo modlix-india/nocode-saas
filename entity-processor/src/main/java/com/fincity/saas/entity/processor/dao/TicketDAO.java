@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
 
     protected TicketDAO() {
-        super(Ticket.class, ENTITY_PROCESSOR_TICKETS, ENTITY_PROCESSOR_TICKETS.ID);
+        super(Ticket.class, ENTITY_PROCESSOR_TICKETS, ENTITY_PROCESSOR_TICKETS.ID, ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
     }
 
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {

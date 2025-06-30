@@ -1,5 +1,17 @@
 package com.fincity.saas.entity.processor.dto.base;
 
+import java.io.Serial;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.apache.commons.collections4.SetValuedMap;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
+import org.jooq.Table;
+import org.jooq.types.ULong;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -12,21 +24,12 @@ import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.IClassConvertor;
-import java.io.Serial;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.apache.commons.collections4.SetValuedMap;
-import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
-import org.jooq.Table;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -96,10 +99,12 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         return (T) this;
     }
 
-    public BaseResponse toBaseResponse() {
+    @JsonIgnore
+    public BaseResponse getBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
     }
 
+    @JsonIgnore
     public Identity getIdentity() {
         return Identity.of(this.getId().toBigInteger(), this.getCode());
     }
