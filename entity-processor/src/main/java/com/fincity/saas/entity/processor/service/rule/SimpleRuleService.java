@@ -59,7 +59,11 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     @Override
     public Mono<SimpleRule> createForCondition(
             ULong entityId, EntitySeries entitySeries, ProcessorAccess access, FilterCondition condition) {
-        return this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition);
+        return FlatMapUtil.flatMapMono(
+                () -> this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition),
+                simpleRule -> this.cacheService
+                        .evict(this.getCacheName(), this.getCacheKey(entityId, entitySeries))
+                        .map(evicted -> simpleRule));
     }
 
     public Mono<SimpleRule> createForCondition(
