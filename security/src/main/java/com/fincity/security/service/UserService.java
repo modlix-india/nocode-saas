@@ -1,15 +1,18 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fincity.saas.commons.service.CacheService;
-import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -26,6 +29,8 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventNames;
 import com.fincity.saas.commons.mq.events.EventQueObject;
@@ -34,12 +39,19 @@ import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientHierarchy;
+import com.fincity.security.dto.Profile;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -50,6 +62,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.UserResponse;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -67,6 +80,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
 
     private static final String CACHE_NAME_USER_ROLE = "userRoles";
+
+    private static final String CACHE_NAME_USER = "user";
 
     private static final int VALIDITY_MINUTES = 30;
 
@@ -118,29 +133,45 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
     }
 
-    public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(String userName, ULong userId,
-                                                                        String clientCode, String appCode, AuthenticationIdentifierType authenticationIdentifierType) {
-        return this.findUserNClient(userName, userId, clientCode, appCode, authenticationIdentifierType,
+    public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(
+            String userName,
+            ULong userId,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType) {
+        return this.findUserNClient(
+                userName,
+                userId,
+                clientCode,
+                appCode,
+                authenticationIdentifierType,
                 this.getNonDeletedUserStatusCodes());
     }
 
-    public Mono<Tuple3<Client, Client, User>> findUserNClient(String userName, ULong userId, String clientCode,
-                                                              String appCode, AuthenticationIdentifierType authenticationIdentifierType,
-                                                              SecurityUserStatusCode... userStatusCodes) {
+    public Mono<Tuple3<Client, Client, User>> findUserNClient(
+            String userName,
+            ULong userId,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityUserStatusCode... userStatusCodes) {
 
         return FlatMapUtil.flatMapMono(
 
                         () -> this.dao
-                                .getUsersBy(userName, userId, clientCode, appCode, authenticationIdentifierType,
+                                .getUsersBy(
+                                        userName,
+                                        userId,
+                                        clientCode,
+                                        appCode,
+                                        authenticationIdentifierType,
                                         userStatusCodes)
                                 .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.getFirst()))
                                 .flatMap(user -> this.setAllAuthorities(appCode, user)),
-
                         user -> this.clientService.getActiveClient(user.getClientId()),
-
-                        (user, uClient) -> uClient.getCode().equals(clientCode) ? Mono.just(uClient)
+                        (user, uClient) -> uClient.getCode().equals(clientCode)
+                                ? Mono.just(uClient)
                                 : this.clientService.getClientBy(clientCode),
-
                         (user, uClient, mClient) -> Mono.just(Tuples.of(mClient, uClient, user)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.findUserNClient"));
     }
@@ -220,8 +251,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     public SecurityUserStatusCode[] getNonDeletedUserStatusCodes() {
-        return new SecurityUserStatusCode[]{SecurityUserStatusCode.ACTIVE, SecurityUserStatusCode.INACTIVE,
-                SecurityUserStatusCode.LOCKED, SecurityUserStatusCode.PASSWORD_EXPIRED};
+        return new SecurityUserStatusCode[] {
+            SecurityUserStatusCode.ACTIVE,
+            SecurityUserStatusCode.INACTIVE,
+            SecurityUserStatusCode.LOCKED,
+            SecurityUserStatusCode.PASSWORD_EXPIRED
+        };
     }
 
     @Override
@@ -406,6 +441,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         }))
                 .switchIfEmpty(
                         Mono.defer(() -> this.forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
+    }
+
+    public Mono<UserResponse> readById(ULong userId) {
+        return this.cacheService
+                .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId)
+                .map(UserResponse::new);
+    }
+
+    public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {
+        return this.readAllFilter(new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(userIds))
+                .map(UserResponse::new)
+                .collectList();
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
@@ -924,10 +974,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.setPassword"));
     }
 
-    public Mono<List<UserClient>> findUserClients(AuthenticationRequest authRequest, ServerHttpRequest request) {
+    public Mono<List<UserClient>> findUserClients(
+            AuthenticationRequest authRequest, Boolean appLevel, ServerHttpRequest request) {
 
-        String appCode = request.getHeaders()
-                .getFirst(AppService.AC);
+        String appCode = appLevel ? request.getHeaders()
+                .getFirst(AppService.AC) : null;
 
         String clientCode = request.getHeaders()
                 .getFirst(ClientService.CC);
@@ -948,6 +999,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .map(x -> new UserClient(x.getT1(), x.getT2()))
                         .sorted().toList());
     }
+
 
     // Don't call this method other than from the client service register method
     public Mono<User> createForRegistration(ULong appId, ULong appClientId, ULong urlClientId, Client client,
@@ -996,7 +1048,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
 
-    private Mono<Boolean> addDesignation(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDesignation(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                          ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1031,7 +1083,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDesignation"));
     }
 
-    private Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDefaultRoles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                           ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1047,7 +1099,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addDefaultRoles"));
     }
 
-    private Mono<Boolean> addDefaultProfiles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
+    public Mono<Boolean> addDefaultProfiles(ULong appId, ULong appClientId, ULong urlClientId, Client client,
                                              ULong userId) {
 
         return FlatMapUtil.flatMapMono(
@@ -1189,5 +1241,27 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
         return this.profileService.assignedProfiles(userId, appId);
+    }
+
+    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
+        return this.appService.getAppByCode(appCode).flatMap(app -> this.getProfileUsers(app.getId(), profileIds));
+    }
+
+    public Mono<List<ULong>> getProfileUsers(ULong appId, List<ULong> profiles) {
+        return this.profileService.getUsersForProfiles(appId, profiles);
+    }
+
+    public Mono<Boolean> checkUserExistsAcrossApps(
+            String userName, String email, String phoneNumber) {
+
+        if (userName == null && email == null && phoneNumber == null)
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.USER_DESIGNATION_MISMATCH);
+
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.dao.checkUserExists(
+                        ULong.valueOf(ca.getLoggedInFromClientId()), userName, email, phoneNumber, null));
     }
 }

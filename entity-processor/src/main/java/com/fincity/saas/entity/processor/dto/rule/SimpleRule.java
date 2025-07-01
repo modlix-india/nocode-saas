@@ -5,6 +5,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
+import com.fincity.saas.entity.processor.model.common.ValueContainer;
 import java.io.Serial;
 import java.util.List;
 import lombok.Data;
@@ -24,23 +25,24 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     @Serial
     private static final long serialVersionUID = 1248302700338268L;
 
+    private boolean hasParent = false;
     private String field;
     private ComparisonOperator comparisonOperator = ComparisonOperator.EQUALS;
-    private Object value;
-    private Object toValue;
-    private List<Object> multiValue;
+    private ValueContainer value;
     private boolean isValueField = false;
     private boolean isToValueField = false;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
+
+    public SimpleRule() {
+        super();
+    }
 
     public static SimpleRule fromCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {
         SimpleRule simpleRule = new SimpleRule()
                 .setField(condition.getField())
                 .setComparisonOperator(ComparisonOperator.lookup(condition.getOperator()))
-                .setValue(condition.getValue())
-                .setToValue(condition.getToValue())
+                .setValue(condition.getValue(), condition.getToValue(), condition.getMultiValue())
                 .setValueField(condition.isValueField())
-                .setMultiValue((List<Object>) condition.getMultiValue())
                 .setToValueField(condition.isToValueField())
                 .setMatchOperator(ComparisonOperator.lookup(condition.getMatchOperator()))
                 .setNegate(condition.isNegate());
@@ -55,11 +57,11 @@ public class SimpleRule extends BaseRule<SimpleRule> {
         return new FilterCondition()
                 .setField(rule.getField())
                 .setOperator(rule.getComparisonOperator().getConditionOperator())
-                .setValue(rule.getValue())
-                .setToValue(rule.getToValue())
+                .setValue(rule.getValue().getValue())
+                .setToValue(rule.getValue().getToValue())
+                .setMultiValue(rule.getValue().getMultiValue())
                 .setValueField(rule.isValueField())
                 .setToValueField(rule.isToValueField())
-                .setMultiValue(rule.getMultiValue())
                 .setMatchOperator(rule.getMatchOperator().getConditionOperator())
                 .setNegate(rule.isNegate());
     }
@@ -67,5 +69,11 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.SIMPLE_RULE;
+    }
+
+    public SimpleRule setValue(Object value, Object toValue, List<?> multiValue) {
+        this.value = new ValueContainer().setValue(value).setToValue(toValue);
+        if (multiValue != null) this.value.setMultiValue(multiValue);
+        return this;
     }
 }

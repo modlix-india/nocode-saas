@@ -463,4 +463,23 @@ public class ProfileService
                 .flatMap(this::read)
                 .collectList();
     }
+
+    public Mono<List<ULong>> getUsersForProfiles(ULong appId, List<ULong> profileIds) {
+        if (profileIds == null || profileIds.isEmpty()) {
+            return Mono.just(List.of());
+        }
+
+        return this.dao.getUsersForProfiles(appId, profileIds)
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
+    }
+
+    public Mono<ULong> getUserAppHavingProfile(ULong userId) {
+
+        if (userId == null) return Mono.empty();
+
+        return  this.dao.getUserAppHavingProfile(userId);
+
+    }
+
 }

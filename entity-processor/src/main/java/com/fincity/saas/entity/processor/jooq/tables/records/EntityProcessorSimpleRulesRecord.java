@@ -6,10 +6,10 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
+import com.fincity.saas.entity.processor.model.common.ValueContainer;
 
 import java.time.LocalDateTime;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -215,11 +215,30 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
+     * Flag to tell if this rule has a complex parent or not.
+     */
+    public EntityProcessorSimpleRulesRecord setHasParent(Byte value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
+     * Flag to tell if this rule has a complex parent or not.
+     */
+    public Byte getHasParent() {
+        return (Byte) get(10);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_simple_rules.FIELD</code>. Field
      * name for this Simple Rule.
      */
     public EntityProcessorSimpleRulesRecord setField(String value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -229,7 +248,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * name for this Simple Rule.
      */
     public String getField() {
-        return (String) get(10);
+        return (String) get(11);
     }
 
     /**
@@ -238,7 +257,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Operator for this Simple Rule.
      */
     public EntityProcessorSimpleRulesRecord setComparisonOperator(ComparisonOperator value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -248,7 +267,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * Operator for this Simple Rule.
      */
     public ComparisonOperator getComparisonOperator() {
-        return (ComparisonOperator) get(11);
+        return (ComparisonOperator) get(12);
     }
 
     /**
@@ -256,37 +275,18 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
      * for this Simple Rule.
      */
-    public EntityProcessorSimpleRulesRecord setValue(JSON value) {
-        set(12, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
-     * for this Simple Rule.
-     */
-    public JSON getValue() {
-        return (JSON) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
-     */
-    public EntityProcessorSimpleRulesRecord setToValue(JSON value) {
+    public EntityProcessorSimpleRulesRecord setValue(ValueContainer value) {
         set(13, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_simple_rules.TO_VALUE</code>. To
-     * value for this Simple Rule.
+     * <code>entity_processor.entity_processor_simple_rules.VALUE</code>. Value
+     * for this Simple Rule.
      */
-    public JSON getToValue() {
-        return (JSON) get(13);
+    public ValueContainer getValue() {
+        return (ValueContainer) get(13);
     }
 
     /**
@@ -483,7 +483,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
     /**
      * Create a detached, initialised EntityProcessorSimpleRulesRecord
      */
-    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, String field, ComparisonOperator comparisonOperator, JSON value, JSON toValue, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, Byte hasParent, String field, ComparisonOperator comparisonOperator, ValueContainer value, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES);
 
         setId(id);
@@ -496,10 +496,10 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
         setProductTemplateRuleId(productTemplateRuleId);
         setProductStageRuleId(productStageRuleId);
         setNegate(negate);
+        setHasParent(hasParent);
         setField(field);
         setComparisonOperator(comparisonOperator);
         setValue(value);
-        setToValue(toValue);
         setIsValueField(isValueField);
         setIsToValueField(isToValueField);
         setMatchOperator(matchOperator);

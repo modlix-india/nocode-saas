@@ -13,7 +13,7 @@ import org.jooq.Schema;
  * User distribution strategy for this rule.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
-public enum EntityProcessorProductRulesUserDistributionType implements EnumType {
+public enum EntityProcessorProductStageRulesUserDistributionType implements EnumType {
 
     ROUND_ROBIN("ROUND_ROBIN"),
 
@@ -31,7 +31,7 @@ public enum EntityProcessorProductRulesUserDistributionType implements EnumType 
 
     private final String literal;
 
-    private EntityProcessorProductRulesUserDistributionType(String literal) {
+    private EntityProcessorProductStageRulesUserDistributionType(String literal) {
         this.literal = literal;
     }
 
@@ -60,7 +60,7 @@ public enum EntityProcessorProductRulesUserDistributionType implements EnumType 
      * <code>null</code>, if no such value could be found, see {@link
      * EnumType#lookupLiteral(Class, String)}.
      */
-    public static EntityProcessorProductRulesUserDistributionType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(EntityProcessorProductRulesUserDistributionType.class, literal);
+    public static EntityProcessorProductStageRulesUserDistributionType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(EntityProcessorProductStageRulesUserDistributionType.class, literal);
     }
 }

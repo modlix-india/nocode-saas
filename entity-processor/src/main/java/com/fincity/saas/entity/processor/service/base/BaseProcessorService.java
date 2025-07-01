@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
@@ -11,15 +12,13 @@ import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
 
 @Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
-        extends BaseService<R, D, O> {
+        extends BaseUpdatableService<R, D, O> {
 
-    protected abstract Mono<D> checkEntity(D entity, Tuple3<String, String, ULong> accessInfo);
+    protected abstract Mono<D> checkEntity(D entity, ProcessorAccess access);
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -36,19 +35,19 @@ public abstract class BaseProcessorService<
 
     @Override
     public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess));
+        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
     public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(hasAccess -> this.createInternal(entity, hasAccess));
+        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
-    protected Mono<D> createInternal(D entity, Tuple2<Tuple3<String, String, ULong>, Boolean> hasAccess) {
-        return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, hasAccess.getT1()), cEntity -> {
-            cEntity.setAppCode(hasAccess.getT1().getT1());
-            cEntity.setClientCode(hasAccess.getT1().getT2());
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
+        return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, access), cEntity -> {
+            cEntity.setAppCode(access.getAppCode());
+            cEntity.setClientCode(access.getClientCode());
 
-            cEntity.setCreatedBy(hasAccess.getT1().getT3());
+            cEntity.setCreatedBy(access.getUserId());
 
             return super.create(cEntity);
         });
@@ -58,9 +57,9 @@ public abstract class BaseProcessorService<
     public Mono<D> update(ULong key, Map<String, Object> fields) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> key != null ? this.read(key) : Mono.empty(),
-                (hasAccess, entity) -> super.update(key, fields),
-                (hasAccess, entity, updated) ->
+                access -> key != null ? this.read(key) : Mono.empty(),
+                (access, entity) -> super.update(key, fields),
+                (access, entity, updated) ->
                         this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
     }
 
@@ -68,8 +67,8 @@ public abstract class BaseProcessorService<
     public Mono<D> update(D entity) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.checkEntity(entity, hasAccess.getT1()),
-                (hasAccess, cEntity) -> this.updateInternal(cEntity));
+                access -> this.checkEntity(entity, access),
+                (access, cEntity) -> this.updateInternal(cEntity));
     }
 
     public Mono<D> updateInternal(D entity) {
@@ -80,8 +79,8 @@ public abstract class BaseProcessorService<
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                hasAccess -> this.read(id),
-                (hasAccess, entity) -> super.delete(entity.getId()),
+                access -> this.read(id),
+                (access, entity) -> super.delete(entity.getId()),
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 }

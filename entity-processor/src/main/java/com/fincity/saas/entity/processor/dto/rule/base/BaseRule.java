@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,7 +16,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> implements IEntitySeries {
+public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 1639822311147907386L;
@@ -45,5 +45,10 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseDto<T> impleme
 
     public T setName() {
         return this.setName(this.getCode());
+    }
+
+    public ULong getRuleId(EntitySeries entitySeries) {
+        if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return this.getProductStageRuleId();
+        return this.getProductTemplateRuleId();
     }
 }

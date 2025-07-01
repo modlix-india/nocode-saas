@@ -10,4 +10,8 @@ public abstract class BaseValueController<
                 D extends BaseValueDto<D>,
                 O extends BaseValueDAO<R, D>,
                 S extends BaseValueService<R, D, O>>
-        extends BaseController<R, D, O, S> {}
+        extends BaseUpdatableController<R, D, O, S> {
+
+    public static final String PATH_VALUES = "/values";
+    public static final String PATH_VALUES_ORDERED = "/values/ordered";
+}

@@ -1,11 +1,14 @@
 package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -19,14 +22,21 @@ import reactor.core.publisher.Mono;
 @Service
 public class RuleExecutionService {
 
+    private static final ULong ANO_USER_ID = ULong.MIN;
+
     private final SimpleRuleService simpleRuleService;
     private final ComplexRuleService complexRuleService;
+    private final IFeignSecurityService securityService;
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
-    public RuleExecutionService(SimpleRuleService simpleRuleService, ComplexRuleService complexRuleService) {
+    public RuleExecutionService(
+            SimpleRuleService simpleRuleService,
+            ComplexRuleService complexRuleService,
+            IFeignSecurityService securityService) {
         this.simpleRuleService = simpleRuleService;
         this.complexRuleService = complexRuleService;
+        this.securityService = securityService;
     }
 
     private Mono<List<ULong>> getUsersForDistribution(UserDistribution userDistribution) {
@@ -38,38 +48,47 @@ public class RuleExecutionService {
                 && (userDistribution.getUserIds() == null
                         || userDistribution.getUserIds().isEmpty())) return Mono.empty();
 
-        // TODO: Implement actual logic to fetch users from profiles
-        // For now, return an empty list
+        if (userDistribution.getProfileIds() != null
+                && !userDistribution.getProfileIds().isEmpty()) {
+            String appCode = userDistribution.getAppCode();
+
+            return this.securityService
+                    .getProfileUsers(appCode, userDistribution.getProfileIdsInt())
+                    .flatMap(userIds -> {
+                        List<ULong> combinedUserIds = new ArrayList<>();
+
+                        if (userIds != null && !userIds.isEmpty())
+                            combinedUserIds.addAll(
+                                    userIds.stream().map(ULongUtil::valueOf).toList());
+
+                        if (userDistribution.getUserIds() != null
+                                && !userDistribution.getUserIds().isEmpty())
+                            combinedUserIds.addAll(userDistribution.getUserIds());
+
+                        return Mono.just(combinedUserIds);
+                    });
+        }
+
         return Mono.just(userDistribution.getUserIds());
     }
 
     public <T extends Rule<T>> Mono<T> executeRules(Map<Integer, T> rules, String prefix, JsonElement data) {
+        return executeRules(rules, prefix, null, data);
+    }
+
+    public <T extends Rule<T>> Mono<T> executeRules(
+            Map<Integer, T> rules, String prefix, ULong userId, JsonElement data) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
-        return Flux.fromIterable(rules.keySet())
-                .filter(order -> order != null && order > 0)
-                .sort((o1, o2) -> Integer.compare(o2, o1))
-                .map(rules::get)
-                .flatMap(rule -> this.evaluateRule(rule, prefix, data)
-                        .filter(matches -> matches)
-                        .map(matches -> rule))
-                .take(1)
-                .collectList()
-                .flatMap(matchedRules -> {
-                    if (matchedRules.isEmpty()) {
-                        T defaultRule = rules.get(0);
-                        if (defaultRule != null)
-                            return getUsersForDistribution(defaultRule.getUserDistribution())
-                                    .flatMap(userIds -> this.distributeUsers(defaultRule, userIds));
-                        return Mono.empty();
-                    }
+        final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
-                    T matchedRule = matchedRules.getFirst();
+        return findMatchedRules(rules, prefix, data).flatMap(matchedRules -> {
+            if (matchedRules.isEmpty()) return handleDefaultRule(rules, finalUserId);
 
-                    return getUsersForDistribution(matchedRule.getUserDistribution())
-                            .flatMap(userIds -> this.distributeUsers(matchedRule, userIds));
-                });
+            T matchedRule = matchedRules.getFirst();
+            return handleMatchedRule(matchedRule, rules, finalUserId);
+        });
     }
 
     private <T extends Rule<T>> Mono<T> distributeUsers(T rule, List<ULong> userIds) {
@@ -92,7 +111,6 @@ public class RuleExecutionService {
     }
 
     private <T extends Rule<T>> Mono<T> handleRoundRobin(T rule, List<ULong> userIds) {
-        if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
         TreeSet<ULong> sortedUserIds = new TreeSet<>(userIds);
 
@@ -179,9 +197,10 @@ public class RuleExecutionService {
                 () -> {
                     if (rule == null) return Mono.empty();
 
-                    if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId());
+                    if (rule.isSimple())
+                        return simpleRuleService.getCondition(rule.getId(), rule.getEntitySeries(), Boolean.FALSE);
 
-                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId());
+                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId(), rule.getEntitySeries());
 
                     return Mono.empty();
                 },
@@ -198,5 +217,60 @@ public class RuleExecutionService {
     @SuppressWarnings("unchecked")
     private <T extends Rule<T>> T addAssignedUser(T rule, ULong assignedUserId) {
         return (T) rule.setLastAssignedUserId(assignedUserId);
+    }
+
+    private <T extends Rule<T>> Mono<List<T>> findMatchedRules(Map<Integer, T> rules, String prefix, JsonElement data) {
+        return Flux.fromIterable(rules.keySet())
+                .filter(order -> order != null && order > 0)
+                .sort((o1, o2) -> Integer.compare(o2, o1))
+                .map(rules::get)
+                .flatMap(rule -> this.evaluateRule(rule, prefix, data)
+                        .filter(matches -> matches)
+                        .map(matches -> rule))
+                .take(1)
+                .collectList();
+    }
+
+    private <T extends Rule<T>> Mono<T> handleDefaultRule(Map<Integer, T> rules, ULong finalUserId) {
+        T defaultRule = rules.get(0);
+        if (defaultRule == null) return Mono.empty();
+
+        return this.getUsersForDistribution(defaultRule.getUserDistribution()).flatMap(userIds -> {
+            // If userId is provided and exists in default rule's userIds, use it
+            if (finalUserId != null && userIds.contains(finalUserId)) {
+                return Mono.just(addAssignedUser(defaultRule, finalUserId));
+            }
+            // Otherwise distribute users according to the rule
+            return this.distributeUsers(defaultRule, userIds);
+        });
+    }
+
+    private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, Map<Integer, T> rules, ULong finalUserId) {
+        return this.getUsersForDistribution(matchedRule.getUserDistribution()).flatMap(userIds -> {
+            // If userId is provided and exists in matched rule's userIds, use it
+            if (finalUserId != null && userIds.contains(finalUserId)) {
+                return Mono.just(addAssignedUser(matchedRule, finalUserId));
+            }
+
+            // If userId is not in matched rule, check default rule
+            if (finalUserId != null) {
+                T defaultRule = rules.get(0);
+                if (defaultRule != null) {
+                    return this.getUsersForDistribution(defaultRule.getUserDistribution())
+                            .flatMap(defaultUserIds -> {
+                                // If userId exists in default rule's userIds, use it
+                                if (defaultUserIds.contains(finalUserId)) {
+                                    return Mono.just(addAssignedUser(defaultRule, finalUserId));
+                                }
+                                // Otherwise use the matched rule's distribution
+                                return this.distributeUsers(matchedRule, userIds);
+                            });
+                }
+            }
+
+            // If userId is not provided or not found in any rule, use the matched rule's
+            // distribution
+            return this.distributeUsers(matchedRule, userIds);
+        });
     }
 }

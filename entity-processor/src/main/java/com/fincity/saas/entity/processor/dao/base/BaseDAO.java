@@ -1,63 +1,46 @@
 package com.fincity.saas.entity.processor.dao.base;
 
-import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
+import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import java.util.List;
+import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.util.EagerUtil;
+import java.util.Map;
+import lombok.Getter;
+import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Condition;
-import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-import reactor.core.publisher.Mono;
+import org.springframework.beans.factory.annotation.Autowired;
+import reactor.util.function.Tuple2;
 
-public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>>
-        extends AbstractFlowUpdatableDAO<R, ULong, D> {
+@Getter
+public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>> extends AbstractFlowDAO<R, ULong, D>
+        implements IEagerDAO<R> {
 
-    private static final String CODE = "CODE";
-    private static final String NAME = "NAME";
-    private static final String TEMP_ACTIVE = "TEMP_ACTIVE";
     private static final String IS_ACTIVE = "IS_ACTIVE";
 
-    protected final Field<String> codeField;
-    protected final Field<String> nameField;
-    protected final Field<Boolean> tempActiveField;
     protected final Field<Boolean> isActiveField;
+
+    private final Map<String, Tuple2<Table<?>, String>> relationMap;
+    private final SetValuedMap<Class<? extends RelationResolver>, String> relationResolverMap;
+
+    private RecordEnrichmentService recordEnrichmentService;
 
     protected BaseDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
-        this.codeField = flowTable.field(CODE, String.class);
-        this.nameField = flowTable.field(NAME, String.class);
-        this.tempActiveField = flowTable.field(TEMP_ACTIVE, Boolean.class);
         this.isActiveField = flowTable.field(IS_ACTIVE, Boolean.class);
+
+        this.relationMap = EagerUtil.getRelationMap(this.pojoClass);
+        this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
     }
 
-    public Mono<D> readInternal(ULong id) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(this.idField.eq(id))
-                        .limit(1))
-                .map(e -> e.into(this.pojoClass));
-    }
-
-    public Mono<D> readByCode(String code) {
-        return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
-                .map(result -> result.into(this.pojoClass));
-    }
-
-    public Mono<Integer> deleteByCode(String code) {
-
-        DeleteQuery<R> query = dslContext.deleteQuery(table);
-        query.addConditions(codeField.eq(code));
-
-        return Mono.from(query);
-    }
-
-    public Mono<Integer> deleteMultiple(List<ULong> ids) {
-        DeleteQuery<R> query = dslContext.deleteQuery(table);
-        query.addConditions(this.idField.in(ids));
-        return Mono.from(query);
+    @Autowired
+    private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
+        this.recordEnrichmentService = recordEnrichmentService;
     }
 
     protected Condition isActiveTrue() {

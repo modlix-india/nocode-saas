@@ -32,6 +32,7 @@ public class JWTUtil {
 						.setPort(params.port)
 						.setLoggedInClientId(params.loggedInClientId)
 						.setLoggedInClientCode(params.loggedInClientCode)
+						.setAppCode(params.appCode)
 						.setOneTime(params.oneTime)
 						.getClaimsMap())
 				.setIssuedAt(Date.from(Instant.now()))
@@ -65,6 +66,7 @@ public class JWTUtil {
 		String port;
 		BigInteger loggedInClientId;
 		String loggedInClientCode;
+		String appCode;
 
 		@Builder.Default
 		boolean oneTime = false;

@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,6 +22,11 @@ public class ProductStageRule extends Rule<ProductStageRule> {
 
     private ULong productId;
 
+    public ProductStageRule() {
+        super();
+        this.relationsMap.put(Fields.productId, EntitySeries.PRODUCT.getTable());
+    }
+
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_STAGE_RULE;
@@ -36,10 +40,5 @@ public class ProductStageRule extends Rule<ProductStageRule> {
     @Override
     public ProductStageRule setEntityId(ULong entityId) {
         return this.setProductId(entityId);
-    }
-
-    @Override
-    public ProductStageRule of(RuleRequest ruleRequest) {
-        return null;
     }
 }

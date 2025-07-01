@@ -35,8 +35,6 @@
         <palantir-java.format.version>2.61.0</palantir-java.format.version>
         <resources.dir>src/main/resources</resources.dir>
         <saas-commons-jooq-version>2.0.0</saas-commons-jooq-version>
-        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
-        <saas-commons-mq-version>2.0.0</saas-commons-mq-version>
         <saas-commons-security-version>2.0.0</saas-commons-security-version>
         <saas-commons-version>2.0.0</saas-commons-version>
         <server.package>entity.processor</server.package>
@@ -79,16 +77,6 @@
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${saas-commons-mongo-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${saas-commons-mq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>
             <version>${saas-commons-security-version}</version>
         </dependency>
@@ -96,6 +84,10 @@
             <groupId>com.googlecode.libphonenumber</groupId>
             <artifactId>libphonenumber</artifactId>
             <version>${com-googlecode-libphonenumber-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
         </dependency>
         <dependency>
             <groupId>io.asyncer</groupId>
@@ -141,10 +133,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -240,13 +228,25 @@
                                     <inputSchema>${database.schema.name}</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.model.common.UserDistribution</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.USER_DISTRIBUTION</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.model.common.ValueContainer</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.VALUE</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
-                                            </converter>
-                                            <includeExpression>RULES</includeExpression>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>false</genericConverter>
-                                            <ignoreUnused>true</ignoreUnused>
+                                            <includeExpression>.*\.OBJECT_DATA</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
@@ -261,31 +261,44 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.LogicalOperator</userType>
                                             <includeExpression>.*\.LOGICAL_OPERATOR</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator
-                                            </userType>
-                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)
-                                            </includeExpression>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.ComparisonOperator</userType>
+                                            <includeExpression>.*\.(COMPARISON_OPERATOR|MATCH_OPERATOR)</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.rule.DistributionType</userType>
                                             <includeExpression>.*\DISTRIBUTION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType
-                                            </userType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ProductTemplateType</userType>
                                             <includeExpression>.*\.PRODUCT_TEMPLATE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.content.TaskPriority</userType>
+                                            <includeExpression>.*\.TASK_PRIORITY</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.EntitySeries</userType>
+                                            <includeExpression>.*ENTITY_SERIES</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.ActivityAction</userType>
+                                            <includeExpression>.*\.ACTIVITY_ACTION</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>

@@ -9,10 +9,12 @@ import org.springframework.data.annotation.Id;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
 @Accessors(chain = true)
 @ToString(callSuper = true)
+@FieldNameConstants
 public abstract class AbstractDTO<I extends Serializable, U extends Serializable> implements Serializable {
 
 	@Serial

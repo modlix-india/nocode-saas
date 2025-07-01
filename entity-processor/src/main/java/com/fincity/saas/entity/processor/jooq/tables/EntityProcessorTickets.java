@@ -6,6 +6,12 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 
 import java.time.LocalDateTime;
@@ -15,10 +21,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -115,7 +125,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * <code>entity_processor.entity_processor_tickets.ASSIGNED_USER_ID</code>.
      * User which added this ticket or user who is assigned to this ticket.
      */
-    public final TableField<EntityProcessorTicketsRecord, ULong> ASSIGNED_USER_ID = createField(DSL.name("ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this ticket or user who is assigned to this ticket.");
+    public final TableField<EntityProcessorTicketsRecord, ULong> ASSIGNED_USER_ID = createField(DSL.name("ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "User which added this ticket or user who is assigned to this ticket.");
 
     /**
      * The column
@@ -243,6 +253,39 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
         this(DSL.name("entity_processor_tickets"), null);
     }
 
+    public <O extends Record> EntityProcessorTickets(Table<O> path, ForeignKey<O, EntityProcessorTicketsRecord> childPath, InverseForeignKey<O, EntityProcessorTicketsRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_PROCESSOR_TICKETS);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityProcessorTicketsPath extends EntityProcessorTickets implements Path<EntityProcessorTicketsRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityProcessorTicketsPath(Table<O> path, ForeignKey<O, EntityProcessorTicketsRecord> childPath, InverseForeignKey<O, EntityProcessorTicketsRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityProcessorTicketsPath(Name alias, Table<EntityProcessorTicketsRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityProcessorTicketsPath as(String alias) {
+            return new EntityProcessorTicketsPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityProcessorTicketsPath as(Name alias) {
+            return new EntityProcessorTicketsPath(alias, this);
+        }
+
+        @Override
+        public EntityProcessorTicketsPath as(Table<?> alias) {
+            return new EntityProcessorTicketsPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
@@ -261,6 +304,104 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     @Override
     public List<UniqueKey<EntityProcessorTicketsRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKETS_UK1_TICKETS_CODE);
+    }
+
+    @Override
+    public List<ForeignKey<EntityProcessorTicketsRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_TICKETS_OWNER_ID, Keys.FK2_TICKETS_PRODUCT_ID, Keys.FK3_TICKETS_STAGE_ID, Keys.FK4_TICKETS_STATUS_ID);
+    }
+
+    private transient EntityProcessorOwnersPath _entityProcessorOwners;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_owners</code> table.
+     */
+    public EntityProcessorOwnersPath entityProcessorOwners() {
+        if (_entityProcessorOwners == null)
+            _entityProcessorOwners = new EntityProcessorOwnersPath(this, Keys.FK1_TICKETS_OWNER_ID, null);
+
+        return _entityProcessorOwners;
+    }
+
+    private transient EntityProcessorProductsPath _entityProcessorProducts;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_products</code> table.
+     */
+    public EntityProcessorProductsPath entityProcessorProducts() {
+        if (_entityProcessorProducts == null)
+            _entityProcessorProducts = new EntityProcessorProductsPath(this, Keys.FK2_TICKETS_PRODUCT_ID, null);
+
+        return _entityProcessorProducts;
+    }
+
+    private transient EntityProcessorStagesPath _fk3TicketsStageId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK3_TICKETS_STAGE_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk3TicketsStageId() {
+        if (_fk3TicketsStageId == null)
+            _fk3TicketsStageId = new EntityProcessorStagesPath(this, Keys.FK3_TICKETS_STAGE_ID, null);
+
+        return _fk3TicketsStageId;
+    }
+
+    private transient EntityProcessorStagesPath _fk4TicketsStatusId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK4_TICKETS_STATUS_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk4TicketsStatusId() {
+        if (_fk4TicketsStatusId == null)
+            _fk4TicketsStatusId = new EntityProcessorStagesPath(this, Keys.FK4_TICKETS_STATUS_ID, null);
+
+        return _fk4TicketsStatusId;
+    }
+
+    private transient EntityProcessorActivitiesPath _entityProcessorActivities;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table
+     */
+    public EntityProcessorActivitiesPath entityProcessorActivities() {
+        if (_entityProcessorActivities == null)
+            _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK1_ACTIVITIES_TICKET_ID.getInverseKey());
+
+        return _entityProcessorActivities;
+    }
+
+    private transient EntityProcessorNotesPath _entityProcessorNotes;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_notes</code> table
+     */
+    public EntityProcessorNotesPath entityProcessorNotes() {
+        if (_entityProcessorNotes == null)
+            _entityProcessorNotes = new EntityProcessorNotesPath(this, null, Keys.FK3_NOTES_TICKET_ID.getInverseKey());
+
+        return _entityProcessorNotes;
+    }
+
+    private transient EntityProcessorTasksPath _entityProcessorTasks;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_tasks</code> table
+     */
+    public EntityProcessorTasksPath entityProcessorTasks() {
+        if (_entityProcessorTasks == null)
+            _entityProcessorTasks = new EntityProcessorTasksPath(this, null, Keys.FK3_TASKS_TICKET_ID.getInverseKey());
+
+        return _entityProcessorTasks;
     }
 
     @Override

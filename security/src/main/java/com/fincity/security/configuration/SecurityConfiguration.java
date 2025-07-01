@@ -101,7 +101,17 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "api/security/clientPinPolicy/codes/policy",
 
-                "/api/security/authenticateWithOneTimeToken/**"
+                "/api/security/authenticateWithOneTimeToken/**",
+
+                "/api/security/users/inviteDetails/**",
+
+                "/api/security/users/acceptInvite",
+
+                "/api/security/users/exists",
+
+                "/api/security/users/internal/**",
+
+                "/api/security/users/internal"
         );
     }
 
