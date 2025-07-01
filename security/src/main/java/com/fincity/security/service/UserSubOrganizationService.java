@@ -1,5 +1,11 @@
 package com.fincity.security.service;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -12,6 +18,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.UserDAO;
@@ -28,14 +35,20 @@ import reactor.util.function.Tuples;
 public class UserSubOrganizationService
         extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
+    private static final String USER_SUB_ORG = "userSubOrg";
+
     private final SecurityMessageResourceService msgService;
+
+    private final CacheService cacheService;
 
     private final TokenService tokenService;
 
     private ClientService clientService;
 
-    public UserSubOrganizationService(SecurityMessageResourceService msgService, TokenService tokenService) {
+    public UserSubOrganizationService(
+            SecurityMessageResourceService msgService, CacheService cacheService, TokenService tokenService) {
         this.msgService = msgService;
+        this.cacheService = cacheService;
         this.tokenService = tokenService;
     }
 
@@ -43,6 +56,19 @@ public class UserSubOrganizationService
     @Autowired
     private void setClientService(ClientService clientService) {
         this.clientService = clientService;
+    }
+
+    protected String getCacheName() {
+        return USER_SUB_ORG;
+    }
+
+    protected String getCacheKey(Object... entityNames) {
+        return String.join(
+                ":",
+                Stream.of(entityNames)
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .toArray(String[]::new));
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -66,35 +92,55 @@ public class UserSubOrganizationService
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
-    public Mono<User> updateReportingManager(ULong userId, ULong managerId) {
+    public Mono<User> updateManager(ULong userId, ULong managerId) {
 
+        return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
+                    if (user.getReportingTo().equals(managerId)) return Mono.just(user);
+                    return this.updateManager(user, managerId);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"));
+    }
+
+    private Mono<User> updateManager(User user, ULong managerId) {
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.dao.readById(userId),
-                        (ca, user) -> ca.isSystemClient()
+                        ca -> Mono.just(user),
+                        (ca, uUser) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : clientService
                                         .isBeingManagedBy(
-                                                ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+                                                ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
                                         .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (ca, user, sysOrManaged) -> this.canReportTo(user.getClientId(), managerId, userId)
+                        (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
                                 .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
                                         ? this.msgService.throwMessage(
                                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                                 SecurityMessageResourceService.USER_REPORTING_ERROR)
-                                        : Mono.just(user)),
-                        (ca, user, sysOrManaged, validUser) -> super.update(user.setReportingTo(managerId)),
-                        (ca, user, sysOrManaged, validUser, updated) ->
+                                        : Mono.just(uUser)),
+                        (ca, uUser, sysOrManaged, validUser) -> {
+                            ULong oldReportingTo = validUser.getReportingTo();
+                            return super.update(validUser.setReportingTo(managerId))
+                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                        },
+                        (ca, uUser, sysOrManaged, validUser, updated) ->
                                 this.evictTokens(updated.getId()).map(evicted -> updated))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user reporting manager"));
     }
 
+    private Mono<User> evictHierarchyCaches(User updatedUser, ULong oldReportingTo, ULong newReportingTo) {
+
+        ULong clientId = updatedUser.getClientId();
+
+        return Flux.fromIterable(Set.of(oldReportingTo, newReportingTo))
+                .filter(Objects::nonNull)
+                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
+                .then(Mono.just(updatedUser))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictHierarchyCaches"));
+    }
+
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
-
         if (reportingTo == null) return Mono.just(Boolean.TRUE);
-
         return this.dao.canReportTo(clientId, reportingTo, userId);
     }
 
@@ -133,7 +179,26 @@ public class UserSubOrganizationService
                                 });
                     });
                 })
-                .flatMapMany(tuple -> this.dao.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE))
+                .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getAllUsersInSubOrg"));
+    }
+
+    private Mono<List<ULong>> getLevel1SubOrg(ULong clientId, ULong userId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getLevel1SubOrg(clientId, userId).collectList(),
+                this.getCacheKey(clientId, userId));
+    }
+
+    private Flux<ULong> getSubOrgUserIds(ULong clientId, ULong userId, boolean includeSelf) {
+
+        Set<ULong> visited = ConcurrentHashMap.newKeySet();
+
+        return Flux.just(userId)
+                .expandDeep(id -> !visited.add(id)
+                        ? Flux.empty()
+                        : this.getLevel1SubOrg(clientId, id).flatMapMany(Flux::fromIterable))
+                .filter(id -> includeSelf || !id.equals(userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
     }
 }

@@ -24,7 +24,6 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.UserSubOrganizationService;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -216,7 +215,7 @@ public class UserController
     @PutMapping("/{userId}/reportingManager/{managerId}")
     public Mono<ResponseEntity<User>> updateReportingManager(
             @PathVariable ULong userId, @PathVariable ULong managerId) {
-        return this.userSubOrgService.updateReportingManager(userId, managerId).map(ResponseEntity::ok);
+        return this.userSubOrgService.updateManager(userId, managerId).map(ResponseEntity::ok);
     }
 
     @PutMapping("/{userId}/designation/{designationId}")
