@@ -9,7 +9,6 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.Field;
@@ -28,8 +27,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     protected BaseProcessorDAO(
             Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<ULong> userAccessField) {
         super(flowPojoClass, flowTable, flowTableId);
-        this.userAccessField = userAccessField;
-        this.jUserAccessField = EagerUtil.fromJooqField(userAccessField.getName());
+        this.userAccessField = null;
+        this.jUserAccessField = null;
     }
 
     protected BaseProcessorDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
