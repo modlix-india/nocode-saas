@@ -441,7 +441,8 @@ public abstract class BaseUpdatableService<
 
     private Mono<ProcessorAccess> getProcessorAccess(ContextAuthentication ca) {
 
-        if (ca.isAuthenticated()) return Mono.just(ProcessorAccess.of(ca));
+        if (ca.isAuthenticated())
+            return securityService.getCurrentUserSubOrg().map(subOrg -> ProcessorAccess.of(ca, subOrg));
 
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
@@ -461,10 +462,12 @@ public abstract class BaseUpdatableService<
                                 ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
                                 ca.getUser().getId(),
                                 acTup.getT2())),
-                (acTup, hasAppAccess, isUserManaged) -> Mono.just(ProcessorAccess.of(
+                (acTup, hasAppAccess, isUserManaged) -> securityService.getCurrentUserSubOrg(),
+                (acTup, hasAppAccess, isUserManaged, userSubOrg) -> Mono.just(ProcessorAccess.of(
                         acTup.getT1(),
                         acTup.getT2(),
                         ULongUtil.valueOf(ca.getUser().getId()),
-                        hasAppAccess && isUserManaged)));
+                        hasAppAccess && isUserManaged,
+                        userSubOrg)));
     }
 }
