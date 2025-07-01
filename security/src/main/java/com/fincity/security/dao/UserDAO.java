@@ -1,21 +1,28 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityApp.*;
-import static com.fincity.security.jooq.tables.SecurityAppAccess.*;
-import static com.fincity.security.jooq.tables.SecurityClient.*;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
-import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
-import static com.fincity.security.jooq.tables.SecurityPastPins.*;
-import static com.fincity.security.jooq.tables.SecurityUser.*;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
+import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-import com.fincity.saas.commons.util.*;
-import org.jooq.*;
+import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectConditionStep;
+import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitPercentStep;
+import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +32,10 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityProfile;
@@ -491,4 +502,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
+    public Flux<ULong> getSubOrgUserIds(ULong clientId, ULong userId, boolean includeSelf) {
+
+        Set<ULong> visited = ConcurrentHashMap.newKeySet();
+
+        return Flux.just(List.of(userId))
+                .expand(currentLevelIds -> {
+                    List<ULong> newIds =
+                            currentLevelIds.stream().filter(visited::add).toList();
+
+                    if (newIds.isEmpty()) return Mono.empty();
+
+                    return Flux.from(this.dslContext
+                                    .select(SECURITY_USER.ID)
+                                    .from(SECURITY_USER)
+                                    .where(DSL.and(
+                                            SECURITY_USER.REPORTING_TO.in(newIds),
+                                            SECURITY_USER.CLIENT_ID.eq(clientId))))
+                            .map(Record1::value1)
+                            .collectList();
+                })
+                .flatMap(Flux::fromIterable)
+                .filter(id -> includeSelf || !id.equals(userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getSubOrgUserIds"));
+    }
 }
