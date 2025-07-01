@@ -105,7 +105,11 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     @Override
     public Mono<ComplexRule> createForCondition(
             ULong entityId, EntitySeries entitySeries, ProcessorAccess access, ComplexCondition condition) {
-        return this.createComplexRuleInternal(entityId, entitySeries, access, condition, null);
+        return FlatMapUtil.flatMapMono(
+                () -> this.createComplexRuleInternal(entityId, entitySeries, access, condition, null),
+                complexRule -> this.cacheService
+                        .evict(this.getCacheName(), this.getCacheKey(entityId, entitySeries))
+                        .map(evicted -> complexRule));
     }
 
     @Override
