@@ -9,7 +9,6 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.Field;
@@ -22,22 +21,24 @@ import reactor.core.publisher.Mono;
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
         extends BaseUpdatableDAO<R, D> {
 
-    private static final String CREATED_BY = "CREATED_BY";
-
     protected final Field<ULong> userAccessField;
     protected final String jUserAccessField;
 
     protected BaseProcessorDAO(
             Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId, Field<ULong> userAccessField) {
         super(flowPojoClass, flowTable, flowTableId);
-        this.userAccessField = userAccessField;
-        this.jUserAccessField = EagerUtil.fromJooqField(userAccessField.getName());
+        this.userAccessField = null;
+        this.jUserAccessField = null;
     }
 
     protected BaseProcessorDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
-        this.userAccessField = flowTable.field(CREATED_BY, ULong.class);
-        this.jUserAccessField = EagerUtil.fromJooqField(CREATED_BY);
+        this.userAccessField = null;
+        this.jUserAccessField = null;
+    }
+
+    public boolean hasAccessAssignment() {
+        return this.userAccessField != null;
     }
 
     @Override
@@ -64,6 +65,9 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     public Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
+
+        if (!hasAccessAssignment()) return Mono.just(condition);
+
         if (condition == null || condition.isEmpty())
             return Mono.just(FilterCondition.make(this.jUserAccessField, access.getSubOrg())
                     .setOperator(FilterConditionOperator.IN));
