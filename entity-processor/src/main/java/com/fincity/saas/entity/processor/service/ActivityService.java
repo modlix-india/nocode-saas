@@ -352,8 +352,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 deletedDate,
                 comment,
                 Map.of(
-                        Activity.Fields.ticketId, task.getTicketId(),
-                        Activity.Fields.taskId, task.getId()));
+                        Activity.Fields.ticketId,
+                        task.getTicketId(),
+                        Activity.Fields.taskId,
+                        task.getId(),
+                        EntitySeries.TASK.getDisplayName(),
+                        task));
     }
 
     public Mono<Void> acReminderSet(Task task) {
@@ -387,8 +391,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 deletedDate,
                 comment,
                 Map.of(
-                        Activity.Fields.ticketId, note.getTicketId(),
-                        Activity.Fields.noteId, note.getId()));
+                        Activity.Fields.ticketId,
+                        note.getTicketId(),
+                        Activity.Fields.noteId,
+                        note.getId(),
+                        EntitySeries.NOTE.getDisplayName(),
+                        note));
     }
 
     public Mono<Void> acDocumentUpload(ULong ticketId, String comment, String file) {

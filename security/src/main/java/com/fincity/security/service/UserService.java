@@ -592,7 +592,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     if (removed) super.unAssignLog(userId, UNASSIGNED_ROLE);
 
                                     return removed;
-                                }))
+                                }),
+                        (ca, user, isManaged, removed) -> this.userSubOrgService
+                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()), userId)
+                                .map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
                 .flatMap(e -> this.evictTokens(userId).map(x -> e))
                 .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
@@ -625,7 +628,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         if (Boolean.TRUE.equals(e)) super.assignLog(userId, ASSIGNED_ROLE + roleId);
 
                                         return e;
-                                    }))
+                                    }),
+                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this.userSubOrgService
+                                    .evictOwnerCache(
+                                            ULongUtil.valueOf(ca.getUser().getClientId()), userId)
+                                    .map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
                     .flatMap(e -> this.evictTokens(userId).map(x -> e))
                     .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
@@ -646,7 +653,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .hasAccessToProfiles(user.getClientId(), Set.of(profileId))
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged, profileAccess) ->
-                                this.dao.addProfileToUser(userId, profileId).map(e -> e != 0))
+                                this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
+                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.userSubOrgService
+                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()), userId)
+                                .map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
                 .flatMap(e -> this.evictTokens(userId).map(x -> e))
@@ -664,7 +674,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged) ->
-                                this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0))
+                                this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
+                        (ca, user, sysManaged, profileRemoved) -> this.userSubOrgService
+                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()), userId)
+                                .map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
                 .flatMap(e -> this.evictTokens(userId).map(x -> e))

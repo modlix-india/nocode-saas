@@ -35,6 +35,6 @@ public abstract class BaseContentRequest<T extends BaseContentRequest<T>> extend
     }
 
     public boolean hasContent() {
-        return this.getContent() != null && !this.getContent().isEmpty();
+        return this.getContent() != null && !this.getContent().trim().isEmpty();
     }
 }

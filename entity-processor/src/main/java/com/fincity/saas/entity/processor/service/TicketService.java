@@ -108,6 +108,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
 
+        if (!ticketRequest.hasIdentifyInfo() && !ticketRequest.hasSourceInfo()) return this.identityMissingError();
+
         Ticket ticket = Ticket.of(ticketRequest);
 
         return FlatMapUtil.flatMapMono(
@@ -123,26 +125,50 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
 
+        if (ticketStatusRequest.getStageId() == null
+                || ticketStatusRequest.getStageId().isNull())
+            return this.identityMissingError(this.stageService.getEntityName());
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
+                    boolean statusPresent = ticketStatusRequest.getStatusId() != null
+                            && !ticketStatusRequest.getStatusId().isNull();
+
                     if (ticket.getStage()
                                     .equals(ticketStatusRequest.getStageId().getULongId())
-                            && ticket.getStatus()
-                                    .equals(ticketStatusRequest.getStatusId().getULongId())) return Mono.just(ticket);
+                            && (statusPresent
+                                    && ticket.getStatus()
+                                            .equals(ticketStatusRequest
+                                                    .getStatusId()
+                                                    .getULongId()))) return Mono.just(ticket);
+
+                    if (ticket.getStage()
+                                    .equals(ticketStatusRequest.getStageId().getULongId())
+                            && !statusPresent) return Mono.just(ticket);
 
                     return FlatMapUtil.flatMapMono(
                             () -> Mono.just(access),
                             pAccess -> Mono.just(ticket),
-                            (pAccess, cTicket) -> this.stageService
-                                    .getParentChild(
-                                            pAccess,
-                                            ticketStatusRequest.getStageId(),
-                                            ticketStatusRequest.getStatusId())
-                                    .switchIfEmpty(this.msgService.throwMessage(
+                            (pAccess, cTicket) -> this.productService.readById(pAccess, cTicket.getProductId()),
+                            (pAccess, cTicket, product) -> {
+                                if (product.getProductTemplateId() == null)
+                                    return this.msgService.throwMessage(
                                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                            ProcessorMessageResourceService.STAGE_MISSING)),
-                            (pAccess, cTicket, stageStatusEntity) -> Mono.just(cTicket.getStage()),
-                            (pAccess, cTicket, stageStatusEntity, oldStage) -> {
+                                            ProcessorMessageResourceService.PRODUCT_TEMPLATE_TYPE_MISSING,
+                                            product.getId());
+
+                                return this.stageService
+                                        .getParentChild(
+                                                pAccess,
+                                                product.getProductTemplateId(),
+                                                ticketStatusRequest.getStageId(),
+                                                ticketStatusRequest.getStatusId())
+                                        .switchIfEmpty(this.msgService.throwMessage(
+                                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                ProcessorMessageResourceService.STAGE_MISSING));
+                            },
+                            (pAccess, cTicket, product, stageStatusEntity) -> Mono.just(cTicket.getStage()),
+                            (pAccess, cTicket, product, stageStatusEntity, oldStage) -> {
                                 cTicket.setStage(stageStatusEntity.getKey().getId());
 
                                 if (!stageStatusEntity.getValue().isEmpty())
@@ -153,11 +179,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                                 return super.updateInternal(cTicket);
                             },
-                            (pAccess, cTicket, stageStatusEntity, oldStage, uTicket) ->
+                            (pAccess, cTicket, product, stageStatusEntity, oldStage, uTicket) ->
                                     this.createTask(pAccess, ticketStatusRequest, uTicket),
-                            (pAccess, cTicket, stageStatusEntity, oldStage, uTicket, cTask) -> this.activityService
-                                    .acStageStatus(uTicket, ticketStatusRequest.getComment(), oldStage)
-                                    .thenReturn(uTicket));
+                            (pAccess, cTicket, product, stageStatusEntity, oldStage, uTicket, cTask) ->
+                                    this.activityService
+                                            .acStageStatus(uTicket, ticketStatusRequest.getComment(), oldStage)
+                                            .thenReturn(uTicket));
                 });
     }
 
