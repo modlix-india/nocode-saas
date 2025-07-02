@@ -43,6 +43,8 @@ public class UserSubOrganizationService
 
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
+    private static final String OWNER = "owner";
+
     private final SecurityMessageResourceService msgService;
 
     private final CacheService cacheService;
@@ -103,7 +105,7 @@ public class UserSubOrganizationService
     }
 
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
-        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId, "owner"));
+        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId, OWNER));
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -263,11 +265,9 @@ public class UserSubOrganizationService
 
     private Mono<List<ULong>> getAllUserIds(ULong clientId, ULong userId) {
 
-        return this.dao.getUserIdsByClientId(clientId, null).collectList();
-
-//        return this.cacheService.cacheValueOrGet(
-//                this.getCacheName(),
-//                () -> this.dao.getAllIds(null).collectList(),
-//                this.getCacheKey(clientId, userId, "owner"));
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getUserIdsByClientId(clientId, null).collectList(),
+                this.getCacheKey(clientId, userId, OWNER));
     }
 }

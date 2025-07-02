@@ -78,14 +78,25 @@ public abstract class BaseUpdatableService<
     }
 
     private Mono<Boolean> evictAcCcCache(D entity) {
-        return Mono.zip(
-                this.cacheService.evict(
-                        this.getCacheName(),
-                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getId())),
-                this.cacheService.evict(
-                        this.getCacheName(),
-                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCode())),
-                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> Mono.zip(
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getCacheKey(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        access.getUserId(),
+                                        entity.getId())),
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getCacheKey(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        access.getUserId(),
+                                        entity.getCode())),
+                        (idEvicted, codeEvicted) -> idEvicted && codeEvicted));
     }
 
     @Autowired
