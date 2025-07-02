@@ -47,4 +47,9 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/core/functions/repositoryFilter",
                 "/api/entity/processor/core/functions/repositoryFind");
     }
+
+    @Override
+    public String getOpenApiDesc() {
+        return "Entity Processor Api";
+    }
 }

@@ -22,8 +22,8 @@ import com.fincity.security.dao.UserDAO;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.service.UserSubOrganizationService;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -32,9 +32,11 @@ public class UserController
         extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
 
     private final UserInviteService inviteService;
+    private final UserSubOrganizationService userSubOrgService;
 
-    public UserController(UserInviteService inviteService) {
+    public UserController(UserInviteService inviteService, UserSubOrganizationService userSubOrgService) {
         this.inviteService = inviteService;
+	    this.userSubOrgService = userSubOrgService;
     }
 
     @GetMapping("{userId}/removeProfile/{profileId}")
@@ -195,4 +197,28 @@ public class UserController
                 .map(ResponseEntity::ok);
     }
 
+    @GetMapping("/sub-org")
+    public Mono<ResponseEntity<List<ULong>>> getCurrentUserSubOrgUserIds() {
+        return this.userSubOrgService.getCurrentUserSubOrg().collectList().map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/{userId}/sub-org")
+    public Mono<ResponseEntity<List<ULong>>> getUserSubOrgInternal(
+            @PathVariable ULong userId, @RequestParam ULong clientId) {
+        return this.userSubOrgService
+                .getUserSubOrgInternal(clientId, userId)
+                .collectList()
+                .map(ResponseEntity::ok);
+    }
+
+    @PutMapping("/{userId}/reportingManager/{managerId}")
+    public Mono<ResponseEntity<User>> updateReportingManager(
+            @PathVariable ULong userId, @PathVariable ULong managerId) {
+        return this.userSubOrgService.updateManager(userId, managerId).map(ResponseEntity::ok);
+    }
+
+    @PutMapping("/{userId}/designation/{designationId}")
+    public Mono<ResponseEntity<User>> updateDesignation(@PathVariable ULong userId, @PathVariable ULong designationId) {
+        return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);
+    }
 }

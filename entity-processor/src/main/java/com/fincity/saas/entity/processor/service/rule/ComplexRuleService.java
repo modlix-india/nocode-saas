@@ -225,9 +225,8 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
                 hasComplexChild |= childCondition instanceof ComplexCondition;
                 hasSimpleChild |= childCondition instanceof FilterCondition;
 
-                if (hasComplexChild && hasSimpleChild) {
+                if (hasComplexChild && hasSimpleChild)
                     break;
-                }
             }
         }
 
