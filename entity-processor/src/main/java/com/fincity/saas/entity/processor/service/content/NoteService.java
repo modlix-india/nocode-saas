@@ -62,7 +62,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
     }
 
     private Mono<Note> createContent(NoteRequest noteRequest) {
-        if (noteRequest.getContent() == null || noteRequest.getContent().trim().isEmpty())
+        if (!noteRequest.hasContent())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.CONTENT_MISSING,

@@ -36,21 +36,19 @@ public class UserController
 
     public UserController(UserInviteService inviteService, UserSubOrganizationService userSubOrgService) {
         this.inviteService = inviteService;
-	    this.userSubOrgService = userSubOrgService;
+        this.userSubOrgService = userSubOrgService;
     }
 
     @GetMapping("{userId}/removeProfile/{profileId}")
     public Mono<ResponseEntity<Boolean>> removeProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
 
-        return this.service.removeProfileFromUser(userId, profileId)
-                .map(ResponseEntity::ok);
+        return this.service.removeProfileFromUser(userId, profileId).map(ResponseEntity::ok);
     }
 
     @GetMapping("{userId}/assignProfile/{profileId}")
     public Mono<ResponseEntity<Boolean>> assignProfile(@PathVariable ULong userId, @PathVariable ULong profileId) {
 
-        return this.service.assignProfileToUser(userId, profileId)
-                .map(ResponseEntity::ok);
+        return this.service.assignProfileToUser(userId, profileId).map(ResponseEntity::ok);
     }
 
     @GetMapping("{userId}/app/{appId}/assignedProfiles")
@@ -61,15 +59,13 @@ public class UserController
     @GetMapping("{userId}/removeRole/{roleId}")
     public Mono<ResponseEntity<Boolean>> removeRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
-        return this.service.removeRoleFromUser(userId, roleId)
-                .map(ResponseEntity::ok);
+        return this.service.removeRoleFromUser(userId, roleId).map(ResponseEntity::ok);
     }
 
     @GetMapping("{userId}/assignRole/{roleId}")
     public Mono<ResponseEntity<Boolean>> assignRole(@PathVariable ULong userId, @PathVariable ULong roleId) {
 
-        return this.service.assignRoleToUser(userId, roleId)
-                .map(ResponseEntity::ok);
+        return this.service.assignRoleToUser(userId, roleId).map(ResponseEntity::ok);
     }
 
     @PostMapping("/findUserClients")
@@ -84,96 +80,84 @@ public class UserController
     @GetMapping("/makeUserActive")
     public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
 
-        return this.service.makeUserActive(userId)
-                .map(ResponseEntity::ok);
+        return this.service.makeUserActive(userId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/makeUserInActive")
     public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
 
-        return this.service.makeUserInActive(userId)
-                .map(ResponseEntity::ok);
+        return this.service.makeUserInActive(userId).map(ResponseEntity::ok);
     }
 
     @PostMapping("/unblockUser")
     public Mono<ResponseEntity<Boolean>> unblockUser(@RequestParam(required = false) ULong userId) {
 
-        return this.service.unblockUser(userId)
-                .map(ResponseEntity::ok);
+        return this.service.unblockUser(userId).map(ResponseEntity::ok);
     }
 
     @PostMapping("{userId}/updatePassword")
-    public Mono<ResponseEntity<Boolean>> updatePassword(@PathVariable ULong userId,
-                                                        @RequestBody RequestUpdatePassword passwordRequest) {
+    public Mono<ResponseEntity<Boolean>> updatePassword(
+            @PathVariable ULong userId, @RequestBody RequestUpdatePassword passwordRequest) {
 
-        return this.service.updatePassword(userId, passwordRequest)
-                .map(ResponseEntity::ok);
+        return this.service.updatePassword(userId, passwordRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping("updatePassword")
     public Mono<ResponseEntity<Boolean>> updatePassword(@RequestBody RequestUpdatePassword passwordRequest) {
 
-        return this.service.updatePassword(passwordRequest)
-                .map(ResponseEntity::ok);
+        return this.service.updatePassword(passwordRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping("/reset/password/otp/generate")
-    public Mono<ResponseEntity<Boolean>> generateOtpResetPassword(@RequestBody AuthenticationRequest authRequest,
-                                                                  ServerHttpRequest request) {
+    public Mono<ResponseEntity<Boolean>> generateOtpResetPassword(
+            @RequestBody AuthenticationRequest authRequest, ServerHttpRequest request) {
 
-        return this.service.generateOtpResetPassword(authRequest, request)
-                .map(ResponseEntity::ok);
+        return this.service.generateOtpResetPassword(authRequest, request).map(ResponseEntity::ok);
     }
 
     @PostMapping("/reset/password/otp/verify")
     public Mono<ResponseEntity<Boolean>> verifyOtpResetPassword(@RequestBody AuthenticationRequest authRequest) {
 
-        return this.service.verifyOtpResetPassword(authRequest)
-                .map(ResponseEntity::ok);
+        return this.service.verifyOtpResetPassword(authRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping("/reset/password")
     public Mono<ResponseEntity<Boolean>> resetPassword(@RequestBody RequestUpdatePassword reqPassword) {
 
-        return this.service.resetPassword(reqPassword)
-                .map(ResponseEntity::ok);
+        return this.service.resetPassword(reqPassword).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/getProfileUsers/{appCode}")
-    public Mono<ResponseEntity<List<ULong>>> getProfileUsers(@PathVariable String appCode, @RequestBody List<ULong> profileIds) {
-        return this.service.getProfileUsers(appCode, profileIds)
-                .map(ResponseEntity::ok);
+    public Mono<ResponseEntity<List<ULong>>> getProfileUsers(
+            @PathVariable String appCode, @RequestBody List<ULong> profileIds) {
+        return this.service.getProfileUsers(appCode, profileIds).map(ResponseEntity::ok);
     }
 
     @PostMapping("/invite")
     public Mono<ResponseEntity<UserInvite>> inviteUser(@RequestBody UserInvite invite) {
-        return this.inviteService.create(invite)
-                .map(ResponseEntity::ok);
+        return this.inviteService.create(invite).map(ResponseEntity::ok);
     }
 
     @GetMapping("/inviteDetails/{code}")
     public Mono<ResponseEntity<UserInvite>> getInvite(@PathVariable String code) {
-        return this.inviteService.getUserInvitation(code)
-                .map(ResponseEntity::ok);
+        return this.inviteService.getUserInvitation(code).map(ResponseEntity::ok);
     }
 
     @PostMapping("/acceptInvite")
-    public Mono<ResponseEntity<RegistrationResponse>> acceptInvite(@RequestBody UserRegistrationRequest userRequest, ServerHttpRequest request, ServerHttpResponse response) {
-        return this.inviteService.acceptInvite(userRequest, request, response)
-                .map(ResponseEntity::ok);
+    public Mono<ResponseEntity<RegistrationResponse>> acceptInvite(
+            @RequestBody UserRegistrationRequest userRequest, ServerHttpRequest request, ServerHttpResponse response) {
+        return this.inviteService.acceptInvite(userRequest, request, response).map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/invite/{code}")
     public Mono<ResponseEntity<Boolean>> rejectInvite(@PathVariable String code) {
-        return this.inviteService.deleteUserInvitation(code)
-                .map(ResponseEntity::ok);
+        return this.inviteService.deleteUserInvitation(code).map(ResponseEntity::ok);
     }
 
     @GetMapping("/invites")
-    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(Pageable pageable,
-                                                                     @RequestParam(required = false) AbstractCondition condition) {
-        return this.inviteService.getAllInvitedUsers(pageable, condition)
-                .map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Page<UserInvite>>> getAllInvitedUsers(
+            Pageable pageable, @RequestParam(required = false) AbstractCondition condition) {
+        return this.inviteService.getAllInvitedUsers(pageable, condition).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal" + PATH_ID)
@@ -204,9 +188,9 @@ public class UserController
 
     @GetMapping("/internal/{userId}/sub-org")
     public Mono<ResponseEntity<List<ULong>>> getUserSubOrgInternal(
-            @PathVariable ULong userId, @RequestParam ULong clientId) {
+            @PathVariable ULong userId, @RequestParam String appCode, @RequestParam ULong clientId) {
         return this.userSubOrgService
-                .getUserSubOrgInternal(clientId, userId)
+                .getUserSubOrgInternal(appCode, clientId, userId)
                 .collectList()
                 .map(ResponseEntity::ok);
     }

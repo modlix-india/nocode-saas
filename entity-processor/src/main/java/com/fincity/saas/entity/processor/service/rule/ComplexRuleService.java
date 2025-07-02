@@ -47,11 +47,6 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     }
 
     @Override
-    protected Mono<Boolean> evictCache(ComplexRule entity) {
-        return super.evictCache(entity);
-    }
-
-    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.COMPLEX_RULE;
     }
@@ -225,8 +220,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
                 hasComplexChild |= childCondition instanceof ComplexCondition;
                 hasSimpleChild |= childCondition instanceof FilterCondition;
 
-                if (hasComplexChild && hasSimpleChild)
-                    break;
+                if (hasComplexChild && hasSimpleChild) break;
             }
         }
 
