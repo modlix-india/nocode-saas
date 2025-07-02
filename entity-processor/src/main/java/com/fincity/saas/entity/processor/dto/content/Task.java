@@ -41,6 +41,7 @@ public class Task extends BaseContentDto<Task> {
 
     public static Task of(TaskRequest taskRequest) {
         return new Task()
+                .setName(taskRequest.getName())
                 .setContent(taskRequest.getContent())
                 .setHasAttachment(taskRequest.getHasAttachment())
                 .setOwnerId(

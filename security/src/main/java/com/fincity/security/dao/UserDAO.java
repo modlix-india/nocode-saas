@@ -26,12 +26,19 @@ import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -50,12 +57,17 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     @Autowired
     private PasswordEncoder encoder;
+
+    @Lazy
+    @Autowired
+    private ClientDAO clientDAO;
 
     protected UserDAO() {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
@@ -502,11 +514,43 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
+    public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds) {
+
+        return this.clientDAO.getClientTypeNCode(clientId)
+                .flatMapMany(typeAndCode -> {
+                    List<Condition> conditions = new ArrayList<>();
+                    conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+                    conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+                    boolean isSystemClient = ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(typeAndCode.getT1());
+
+                    if (!isSystemClient) {
+                        conditions.add(ClientHierarchyDAO.getManageClientCondition(clientId));
+                    }
+
+                    if (userIds != null && !userIds.isEmpty())
+                        conditions.add(SECURITY_USER.ID.in(userIds));
+
+                    SelectJoinStep<Record1<ULong>> query = this.dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER);
+
+                    if (!isSystemClient) {
+                        query = query.leftJoin(SECURITY_CLIENT_HIERARCHY)
+                                .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID));
+                    }
+
+                    return Flux.from(query.where(DSL.and(conditions)))
+                            .map(Record1::value1);
+                })
+                .switchIfEmpty(Flux.empty());
+    }
+
     public Flux<ULong> getLevel1SubOrg(ULong clientId, ULong userId) {
-        return Flux.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER).where(DSL.and(
-                SECURITY_USER.REPORTING_TO.eq(userId),
-                SECURITY_USER.CLIENT_ID.eq(clientId)
-        )))
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.ID)
+                        .from(SECURITY_USER)
+                        .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
     }
 }

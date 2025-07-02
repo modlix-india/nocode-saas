@@ -74,13 +74,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
     private Mono<Task> createContent(TaskRequest taskRequest) {
 
-        if ((taskRequest.getContent() == null || taskRequest.getContent().trim().isEmpty())
-                && taskRequest.getTaskTypeId() == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.CONTENT_MISSING,
-                    this.getEntityName());
-
         if (taskRequest.getDueDate() != null && taskRequest.getDueDate().isBefore(LocalDateTime.now()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -93,6 +86,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     @Override
     protected Mono<Task> updatableEntity(Task entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setName(entity.getName());
             existing.setDueDate(entity.getDueDate());
             existing.setTaskPriority(entity.getTaskPriority());
 

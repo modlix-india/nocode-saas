@@ -27,7 +27,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>>
-		extends AbstractUpdatableDAO<R, I, D> {
+	extends AbstractUpdatableDAO<R, I, D> {
 
 	protected AbstractClientCheckDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
 		super(pojoClass, table, idField);

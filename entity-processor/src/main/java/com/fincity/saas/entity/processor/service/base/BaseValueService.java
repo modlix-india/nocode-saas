@@ -287,24 +287,25 @@ public abstract class BaseValueService<
                 .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
     }
 
-    public Mono<Map.Entry<D, List<D>>> getParentChild(ProcessorAccess access, Identity parent, Identity child) {
+    public Mono<Map.Entry<D, List<D>>> getParentChild(
+            ProcessorAccess access, ULong productTemplateId, Identity parent, Identity child) {
 
         if (parent == null || parent.isNull()) return Mono.empty();
 
-        if (child == null || child.isNull())
-            return this.readIdentityWithAccess(access, parent).map(pEntity -> Map.entry(pEntity, List.of()));
+        return this.readIdentityWithAccess(access, parent).flatMap(pEntity -> {
+            if (pEntity == null || !productTemplateId.equals(pEntity.getProductTemplateId())) return Mono.empty();
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                () -> this.readIdentityWithAccess(access, parent),
-                pEntity -> this.readIdentityWithAccess(access, child),
-                (pEntity, cEntity) -> {
-                    if (pEntity == null) return Mono.empty();
+            if (child == null || child.isNull()) return Mono.just(Map.entry(pEntity, List.of()));
 
-                    if (cEntity == null || !cEntity.hasParent(pEntity.getId()))
-                        return Mono.just(Map.entry(pEntity, List.of()));
+            return this.readIdentityWithAccess(access, child).flatMap(cEntity -> {
+                if (cEntity == null || !productTemplateId.equals(cEntity.getProductTemplateId()))
+                    return Mono.just(Map.entry(pEntity, List.of()));
 
-                    return Mono.just(Map.entry(pEntity, List.of(cEntity)));
-                });
+                if (cEntity.hasParent(pEntity.getId())) return Mono.just(Map.entry(pEntity, List.of(cEntity)));
+
+                return Mono.just(Map.entry(pEntity, List.of()));
+            });
+        });
     }
 
     public Mono<Map.Entry<D, Set<D>>> getValue(
