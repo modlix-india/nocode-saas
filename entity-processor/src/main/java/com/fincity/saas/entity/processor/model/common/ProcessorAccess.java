@@ -1,17 +1,14 @@
 package com.fincity.saas.entity.processor.model.common;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.List;
-
-import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
