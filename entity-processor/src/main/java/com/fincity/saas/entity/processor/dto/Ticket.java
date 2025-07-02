@@ -48,9 +48,18 @@ public class Ticket extends BaseProcessorDto<Ticket> {
 
     public static Ticket of(TicketRequest ticketRequest) {
         return new Ticket()
-                .setDialCode(ticketRequest.getPhoneNumber().getCountryCode())
-                .setPhoneNumber(ticketRequest.getPhoneNumber().getNumber())
-                .setEmail(ticketRequest.getEmail().getAddress())
+                .setDialCode(
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getCountryCode()
+                                : null)
+                .setPhoneNumber(
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setEmail(
+                        ticketRequest.getEmail() != null
+                                ? ticketRequest.getEmail().getAddress()
+                                : null)
                 .setSource(ticketRequest.getSource())
                 .setSubSource(ticketRequest.getSubSource() != null ? ticketRequest.getSubSource() : null)
                 .setName(ticketRequest.getName())

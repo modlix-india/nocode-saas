@@ -93,9 +93,15 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .readByNumberAndEmail(
                         appCode,
                         clientCode,
-                        ownerRequest.getPhoneNumber().getCountryCode(),
-                        ownerRequest.getPhoneNumber().getNumber(),
-                        ownerRequest.getEmail().getAddress())
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getCountryCode()
+                                : null,
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getNumber()
+                                : null,
+                        ownerRequest.getEmail() != null
+                                ? ownerRequest.getEmail().getAddress()
+                                : null)
                 .flatMap(existing -> {
                     if (existing.getId() != null)
                         return this.msgService.throwMessage(

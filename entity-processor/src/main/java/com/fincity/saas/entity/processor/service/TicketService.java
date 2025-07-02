@@ -266,9 +266,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         appCode,
                         clientCode,
                         ticketRequest.getProductId().getULongId(),
-                        ticketRequest.getPhoneNumber().getCountryCode(),
-                        ticketRequest.getPhoneNumber().getNumber(),
-                        ticketRequest.getEmail().getAddress())
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getCountryCode()
+                                : null,
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getNumber()
+                                : null,
+                        ticketRequest.getEmail() != null
+                                ? ticketRequest.getEmail().getAddress()
+                                : null)
                 .flatMap(existing -> {
                     if (existing.getId() != null)
                         return this.activityService
