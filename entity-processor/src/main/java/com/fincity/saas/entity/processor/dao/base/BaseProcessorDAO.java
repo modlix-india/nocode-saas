@@ -51,7 +51,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             return Mono.just(new FilterCondition()
                     .setField(this.jUserAccessField)
                     .setOperator(FilterConditionOperator.IN)
-                    .setMultiValue(access.getSubOrg()));
+                    .setMultiValue(access.getSubOrg())
+            );
 
         return Mono.just(ComplexCondition.and(
                 condition,

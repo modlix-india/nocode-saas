@@ -32,6 +32,11 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -50,6 +55,7 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
@@ -502,11 +508,26 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
+    public Flux<ULong> getAllIds(List<ULong> userIds) {
+
+        if (userIds == null || userIds.isEmpty())
+            return this.getSelectJointIdStep().flatMapMany(sjs -> filter(null)
+                    .flatMapMany(cond -> Flux.from(sjs.where(cond)).map(Record1::value1)));
+
+        AbstractCondition condition = new FilterCondition()
+                .setField(AbstractDTO.Fields.id)
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(userIds);
+
+        return this.getSelectJointIdStep().flatMapMany(sjs -> filter(condition)
+                .flatMapMany(cond -> Flux.from(sjs.where(cond)).map(Record1::value1)));
+    }
+
     public Flux<ULong> getLevel1SubOrg(ULong clientId, ULong userId) {
-        return Flux.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER).where(DSL.and(
-                SECURITY_USER.REPORTING_TO.eq(userId),
-                SECURITY_USER.CLIENT_ID.eq(clientId)
-        )))
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.ID)
+                        .from(SECURITY_USER)
+                        .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
     }
 }

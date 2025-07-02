@@ -1,9 +1,11 @@
 package com.fincity.security.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jooq.types.ULong;
@@ -11,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -37,6 +41,8 @@ public class UserSubOrganizationService
 
     private static final String USER_SUB_ORG = "userSubOrg";
 
+    private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
+
     private final SecurityMessageResourceService msgService;
 
     private final CacheService cacheService;
@@ -45,6 +51,8 @@ public class UserSubOrganizationService
 
     private ClientService clientService;
 
+    private UserService userService;
+
     public UserSubOrganizationService(
             SecurityMessageResourceService msgService, CacheService cacheService, TokenService tokenService) {
         this.msgService = msgService;
@@ -52,10 +60,33 @@ public class UserSubOrganizationService
         this.tokenService = tokenService;
     }
 
+    private static boolean isOwner(List<String> authorities) {
+        return SecurityContextUtil.hasAuthority(OWNER_ROLE, toGrantedAuthorities(authorities));
+    }
+
+    private static boolean isOwner(Collection<? extends GrantedAuthority> authorities) {
+        return SecurityContextUtil.hasAuthority(OWNER_ROLE, authorities);
+    }
+
+    private static Collection<? extends GrantedAuthority> toGrantedAuthorities(List<String> stringAuthorities) {
+
+        if (stringAuthorities == null || stringAuthorities.isEmpty()) return Set.of();
+
+        return stringAuthorities.parallelStream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toSet());
+    }
+
     @Lazy
     @Autowired
     private void setClientService(ClientService clientService) {
         this.clientService = clientService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setUserService(UserService userService) {
+        this.userService = userService;
     }
 
     protected String getCacheName() {
@@ -69,6 +100,10 @@ public class UserSubOrganizationService
                         .filter(Objects::nonNull)
                         .map(Object::toString)
                         .toArray(String[]::new));
+    }
+
+    public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
+        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId, "owner"));
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -102,6 +137,7 @@ public class UserSubOrganizationService
     }
 
     private Mono<User> updateManager(User user, ULong managerId) {
+
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> Mono.just(user),
@@ -140,37 +176,51 @@ public class UserSubOrganizationService
     }
 
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
+
         if (reportingTo == null) return Mono.just(Boolean.TRUE);
+
         return this.dao.canReportTo(clientId, reportingTo, userId);
     }
 
     public Flux<ULong> getCurrentUserSubOrg() {
+
         return SecurityContextUtil.getUsersContextAuthentication()
                 .flatMapMany(ca -> this.getSubOrg(
                         ULongUtil.valueOf(ca.getUser().getClientId()),
-                        ULongUtil.valueOf(ca.getUser().getId())))
+                        ULongUtil.valueOf(ca.getUser().getId()),
+                        isOwner(ca.getAuthorities())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrg"));
     }
 
-    public Flux<ULong> getUserSubOrgInternal(ULong clientId, ULong userId) {
-        return this.getSubOrg(clientId, userId)
+    public Flux<ULong> getUserSubOrgInternal(String appCode, ULong clientId, ULong userId) {
+
+        return this.isOwner(appCode, clientId, userId)
+                .flatMapMany(isOwner -> this.getSubOrg(clientId, userId, isOwner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgInternal"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
-    public Flux<ULong> getUserSubOrg(ULong clientId, ULong userId, ULong managerId) {
-        return this.getSubOrg(clientId, userId, managerId)
+    public Flux<ULong> getUserSubOrg(String appCode, ULong clientId, ULong userId, ULong managerId) {
+
+        return this.isOwner(appCode, clientId, userId)
+                .flatMapMany(isOwner -> this.getSubOrg(clientId, userId, managerId, isOwner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrg"));
     }
 
-    private Flux<ULong> getSubOrg(ULong clientId, ULong userId) {
-        return this.getSubOrg(clientId, userId, userId)
+    private Mono<Boolean> isOwner(String appCode, ULong clientId, ULong userId) {
+        return this.userService.getUserAuthorities(appCode, clientId, userId).map(UserSubOrganizationService::isOwner);
+    }
+
+    private Flux<ULong> getSubOrg(ULong clientId, ULong userId, Boolean isOwner) {
+
+        return this.getSubOrg(clientId, userId, userId, isOwner)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId]"));
     }
 
-    private Flux<ULong> getSubOrg(ULong clientId, ULong userId, ULong managerId) {
+    private Flux<ULong> getSubOrg(ULong clientId, ULong userId, ULong managerId, Boolean isOwner) {
+
         if (managerId == null || managerId.equals(userId))
-            return this.getSubOrgUserIds(clientId, userId, Boolean.TRUE)
+            return this.getSubOrgUserIds(clientId, userId, Boolean.TRUE, isOwner)
                     .contextWrite(
                             Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
 
@@ -182,18 +232,16 @@ public class UserSubOrganizationService
                                 : this.forbiddenError(
                                         SecurityMessageResourceService.FORBIDDEN_PERMISSION,
                                         "user reporting hierarchy"))
-                .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE))
+                .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE, isOwner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
     }
 
-    private Mono<List<ULong>> getLevel1SubOrg(ULong clientId, ULong userId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getLevel1SubOrg(clientId, userId).collectList(),
-                this.getCacheKey(clientId, userId));
-    }
+    private Flux<ULong> getSubOrgUserIds(ULong clientId, ULong userId, boolean includeSelf, boolean isOwner) {
 
-    private Flux<ULong> getSubOrgUserIds(ULong clientId, ULong userId, boolean includeSelf) {
+        if (isOwner)
+            return this.getAllUserIds(clientId, userId)
+                    .flatMapMany(Flux::fromIterable)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
 
         Set<ULong> visited = ConcurrentHashMap.newKeySet();
 
@@ -203,5 +251,21 @@ public class UserSubOrganizationService
                         : this.getLevel1SubOrg(clientId, id).flatMapMany(Flux::fromIterable))
                 .filter(id -> includeSelf || !id.equals(userId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
+    }
+
+    private Mono<List<ULong>> getLevel1SubOrg(ULong clientId, ULong userId) {
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getLevel1SubOrg(clientId, userId).collectList(),
+                this.getCacheKey(clientId, userId));
+    }
+
+    private Mono<List<ULong>> getAllUserIds(ULong clientId, ULong userId) {
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getAllIds(null).collectList(),
+                this.getCacheKey(clientId, userId, "owner"));
     }
 }
