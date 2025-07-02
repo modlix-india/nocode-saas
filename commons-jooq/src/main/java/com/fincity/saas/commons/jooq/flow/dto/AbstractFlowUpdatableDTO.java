@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.jooq.flow.FlowField;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.google.gson.JsonObject;
@@ -26,5 +27,6 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
 	private String clientCode;
 
 	@FlowField
+	@JsonIgnore
 	private JsonObject fields;
 }

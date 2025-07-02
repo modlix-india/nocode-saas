@@ -101,7 +101,7 @@ public abstract class BaseContentService<
     public Mono<Integer> deleteByCode(String code) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                access -> this.readByCode(access.getAppCode(), access.getClientCode(), code),
+                access -> this.readByCode(access, code),
                 (access, entity) -> super.delete(entity.getId()),
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
@@ -112,7 +112,7 @@ public abstract class BaseContentService<
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                access -> this.readById(access.getAppCode(), access.getClientCode(), id),
+                access -> this.readById(access, id),
                 (access, entity) -> super.delete(entity.getId()),
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())

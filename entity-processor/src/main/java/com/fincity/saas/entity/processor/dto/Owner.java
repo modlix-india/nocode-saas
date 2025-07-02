@@ -35,9 +35,18 @@ public class Owner extends BaseProcessorDto<Owner> {
 
     public static Owner of(OwnerRequest ownerRequest) {
         return new Owner()
-                .setDialCode(ownerRequest.getPhoneNumber().getCountryCode())
-                .setPhoneNumber(ownerRequest.getPhoneNumber().getNumber())
-                .setEmail(ownerRequest.getEmail().getAddress())
+                .setDialCode(
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getCountryCode()
+                                : null)
+                .setPhoneNumber(
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setEmail(
+                        ownerRequest.getEmail() != null
+                                ? ownerRequest.getEmail().getAddress()
+                                : null)
                 .setSource(ownerRequest.getSource())
                 .setSubSource(ownerRequest.getSubSource() != null ? ownerRequest.getSubSource() : null)
                 .setName(ownerRequest.getName())

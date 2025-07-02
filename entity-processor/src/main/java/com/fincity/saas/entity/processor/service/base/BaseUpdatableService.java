@@ -112,11 +112,11 @@ public abstract class BaseUpdatableService<
 
     @Override
     public Mono<D> read(ULong id) {
-        return this.hasAccess().flatMap(access -> this.readById(access.getAppCode(), access.getClientCode(), id));
+        return this.hasAccess().flatMap(access -> this.readById(access, id));
     }
 
     public Mono<D> read(String code) {
-        return this.hasAccess().flatMap(access -> this.readByCode(access.getClientCode(), access.getAppCode(), code));
+        return this.hasAccess().flatMap(access -> this.readByCode(access, code));
     }
 
     public Mono<Map<String, Object>> readEager(
@@ -148,25 +148,25 @@ public abstract class BaseUpdatableService<
         return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
     }
 
-    public Mono<D> readById(String appCode, String clientCode, ULong id) {
+    public Mono<D> readById(ProcessorAccess access, ULong id) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao.readInternal(appCode, clientCode, id),
-                this.getCacheKey(appCode, clientCode, id));
+                () -> this.dao.readInternal(access, id),
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), id));
     }
 
-    public Mono<D> readByCode(String appCode, String clientCode, String code) {
+    public Mono<D> readByCode(ProcessorAccess access, String code) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao.readInternal(appCode, clientCode, code),
-                this.getCacheKey(appCode, clientCode, code));
+                () -> this.dao.readInternal(access, code),
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), code));
     }
 
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.dao.addAppCodeAndClientCode(condition, access),
+                access -> this.dao.processorAccessCondition(condition, access),
                 (access, pCondition) -> super.readPageFilter(pageable, pCondition));
     }
 
@@ -179,7 +179,7 @@ public abstract class BaseUpdatableService<
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.dao.addAppCodeAndClientCode(condition, access),
+                access -> this.dao.processorAccessCondition(condition, access),
                 (access, pCondition) ->
                         this.dao.readPageFilterEager(pageable, pCondition, tableFields, eager, eagerFields));
     }
@@ -187,7 +187,7 @@ public abstract class BaseUpdatableService<
     @Override
     public Flux<D> readAllFilter(AbstractCondition condition) {
         return this.hasAccess()
-                .flatMap(access -> this.dao.addAppCodeAndClientCode(condition, access))
+                .flatMap(access -> this.dao.processorAccessCondition(condition, access))
                 .flatMapMany(super::readAllFilter);
     }
 
@@ -254,13 +254,13 @@ public abstract class BaseUpdatableService<
         if (identity == null || identity.isNull()) return this.identityMissingError();
 
         return identity.isCode()
-                ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
+                ? this.readByCode(access, identity.getCode())
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
                                 this.getEntityName(),
                                 identity.getCode()))
-                : this.readById(access.getAppCode(), access.getClientCode(), identity.getULongId())
+                : this.readById(access, identity.getULongId())
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -273,14 +273,14 @@ public abstract class BaseUpdatableService<
         if (identity == null || identity.isNull()) return this.identityMissingError();
 
         return identity.isCode()
-                ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
+                ? this.readByCode(access, identity.getCode())
                         .flatMap(ticket -> this.checkUserAccess(access, ticket))
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
                                 this.getEntityName(),
                                 identity.getCode()))
-                : this.readById(access.getAppCode(), access.getClientCode(), identity.getULongId())
+                : this.readById(access, identity.getULongId())
                         .flatMap(ticket -> this.checkUserAccess(access, ticket))
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -299,10 +299,8 @@ public abstract class BaseUpdatableService<
         if (identity == null || identity.isNull()) return Mono.empty();
 
         return identity.isCode()
-                ? this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
-                        .switchIfEmpty(Mono.empty())
-                : this.readById(access.getAppCode(), access.getClientCode(), ULongUtil.valueOf(identity.getId()))
-                        .switchIfEmpty(Mono.empty());
+                ? this.readByCode(access, identity.getCode()).switchIfEmpty(Mono.empty())
+                : this.readById(access, ULongUtil.valueOf(identity.getId())).switchIfEmpty(Mono.empty());
     }
 
     public Mono<Identity> updateIdentity(Identity identity) {
@@ -344,7 +342,7 @@ public abstract class BaseUpdatableService<
         if (identity == null || identity.isNull()) return this.identityMissingError();
 
         if (identity.isId())
-            return this.readById(access.getAppCode(), access.getClientCode(), ULongUtil.valueOf(identity.getId()))
+            return this.readById(access, ULongUtil.valueOf(identity.getId()))
                     .map(entity -> identity)
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -352,7 +350,7 @@ public abstract class BaseUpdatableService<
                             this.getEntityName(),
                             identity.getId()));
 
-        return this.readByCode(access.getAppCode(), access.getClientCode(), identity.getCode())
+        return this.readByCode(access, identity.getCode())
                 .map(entity -> identity.setId(entity.getId().toBigInteger()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -369,7 +367,7 @@ public abstract class BaseUpdatableService<
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.readByCode(access.getAppCode(), access.getClientCode(), code),
+                access -> this.readByCode(access, code),
                 (access, e) -> {
                     if (entity.getId() == null) entity.setId(e.getId());
                     return updatableEntity(entity);
@@ -388,7 +386,7 @@ public abstract class BaseUpdatableService<
     public Mono<Integer> deleteByCode(String code) {
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.readByCode(access.getAppCode(), access.getClientCode(), code),
+                access -> this.readByCode(access, code),
                 (access, entity) -> this.dao.deleteByCode(code),
                 (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
@@ -413,15 +411,11 @@ public abstract class BaseUpdatableService<
     }
 
     public Mono<BaseResponse> getBaseResponse(ULong id) {
-        return this.hasAccess()
-                .flatMap(access -> this.readById(access.getAppCode(), access.getClientCode(), id))
-                .map(BaseUpdatableDto::getBaseResponse);
+        return this.hasAccess().flatMap(access -> this.readById(access, id)).map(BaseUpdatableDto::getBaseResponse);
     }
 
     public Mono<BaseResponse> getBaseResponse(String code) {
-        return this.hasAccess()
-                .flatMap(access -> this.readByCode(access.getAppCode(), access.getClientCode(), code))
-                .map(BaseUpdatableDto::getBaseResponse);
+        return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
     }
 
     public Mono<ProcessorAccess> hasAccess() {
@@ -441,7 +435,10 @@ public abstract class BaseUpdatableService<
 
     private Mono<ProcessorAccess> getProcessorAccess(ContextAuthentication ca) {
 
-        if (ca.isAuthenticated()) return Mono.just(ProcessorAccess.of(ca));
+        if (ca.isAuthenticated())
+            return this.securityService
+                    .getUserSubOrgInternal(ca.getUser().getId(), ca.getUser().getClientId())
+                    .map(subOrg -> ProcessorAccess.of(ca, subOrg));
 
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
@@ -461,10 +458,13 @@ public abstract class BaseUpdatableService<
                                 ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
                                 ca.getUser().getId(),
                                 acTup.getT2())),
-                (acTup, hasAppAccess, isUserManaged) -> Mono.just(ProcessorAccess.of(
+                (acTup, hasAppAccess, isUserManaged) -> this.securityService.getUserSubOrgInternal(
+                        ca.getUser().getId(), ca.getUser().getClientId()),
+                (acTup, hasAppAccess, isUserManaged, userSubOrg) -> Mono.just(ProcessorAccess.of(
                         acTup.getT1(),
                         acTup.getT2(),
                         ULongUtil.valueOf(ca.getUser().getId()),
-                        hasAppAccess && isUserManaged)));
+                        hasAppAccess && isUserManaged,
+                        userSubOrg)));
     }
 }

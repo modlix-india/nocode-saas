@@ -248,9 +248,8 @@ public class RuleExecutionService {
     private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, Map<Integer, T> rules, ULong finalUserId) {
         return this.getUsersForDistribution(matchedRule.getUserDistribution()).flatMap(userIds -> {
             // If userId is provided and exists in matched rule's userIds, use it
-            if (finalUserId != null && userIds.contains(finalUserId)) {
+            if (finalUserId != null && userIds.contains(finalUserId))
                 return Mono.just(addAssignedUser(matchedRule, finalUserId));
-            }
 
             // If userId is not in matched rule, check default rule
             if (finalUserId != null) {
@@ -259,9 +258,9 @@ public class RuleExecutionService {
                     return this.getUsersForDistribution(defaultRule.getUserDistribution())
                             .flatMap(defaultUserIds -> {
                                 // If userId exists in default rule's userIds, use it
-                                if (defaultUserIds.contains(finalUserId)) {
+                                if (defaultUserIds.contains(finalUserId))
                                     return Mono.just(addAssignedUser(defaultRule, finalUserId));
-                                }
+
                                 // Otherwise use the matched rule's distribution
                                 return this.distributeUsers(matchedRule, userIds);
                             });
