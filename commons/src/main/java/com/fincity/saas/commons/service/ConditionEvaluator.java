@@ -5,11 +5,8 @@ import static com.fincity.saas.commons.model.condition.ComplexConditionOperator.
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
-import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.ObjectValueSetterExtractor;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -29,10 +26,6 @@ public class ConditionEvaluator {
     private static final Gson GSON = new Gson();
     private final String prefix;
 
-    private final ConcurrentHashMap<String, ExpressionEvaluator> evaluatorCache = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<JsonObject, ObjectValueSetterExtractor> extractorCache = new ConcurrentHashMap<>();
-
     public ConditionEvaluator(String prefix) {
         this.prefix = prefix;
     }
@@ -43,7 +36,10 @@ public class ConditionEvaluator {
 
         return switch (condition) {
             case ComplexCondition cc -> evaluateComplex(cc, json);
-            case FilterCondition fc -> evaluateFilter(fc, json);
+            case FilterCondition fc -> evaluateFilter(fc, json).flatMap(e -> {
+                Boolean nas  = e;
+                return Mono.just(nas);
+            });
             default -> Mono.just(Boolean.FALSE);
         };
     }
@@ -74,12 +70,9 @@ public class ConditionEvaluator {
 
         if (!field.startsWith(prefix)) return Mono.just(JsonNull.INSTANCE);
 
-        ObjectValueSetterExtractor extractor =
-                extractorCache.computeIfAbsent(obj, k -> new ObjectValueSetterExtractor(obj, prefix));
+        ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-        ExpressionEvaluator evaluator = evaluatorCache.computeIfAbsent(field, k -> new ExpressionEvaluator(field));
-
-        return Mono.just(evaluator.evaluate(Map.of(extractor.getPrefix(), extractor)));
+        return Mono.just(extractor.getValue(field));
     }
 
     private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
@@ -161,8 +154,12 @@ public class ConditionEvaluator {
             if (p1.isNumber() && p2.isNumber())
                 return compare(jsonVal, filterVal).map(result -> result == 0);
             if (p1.isBoolean() && p2.isBoolean()) return Mono.just(p1.getAsBoolean() == p2.getAsBoolean());
-            if (p1.isString() && p2.isString())
+            if (p1.isString() && p2.isString()) {
+                String as = p1.getAsString();
+                String a= p2.getAsString();
                 return Mono.just(p1.getAsString().equals(p2.getAsString()));
+            }
+
         }
 
         return Mono.just(jsonVal.toString().equals(filterVal.toString()));
