@@ -202,14 +202,13 @@ public class UserController
         return this.userSubOrgService.getCurrentUserSubOrg().collectList().map(ResponseEntity::ok);
     }
 
-    @GetMapping("/internal/sub-org")
-    public Mono<ResponseEntity<List<ULong>>> getCurrentUserSubOrgUserIdsInternal() {
-        return this.userSubOrgService.getCurrentUserSubOrg().collectList().map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/{userId}/sub-org")
-    public Mono<ResponseEntity<List<ULong>>> getSubOrgByUserId(@PathVariable ULong userId) {
-        return this.userSubOrgService.getUserSubOrg(userId).collectList().map(ResponseEntity::ok);
+    @GetMapping("/internal/{userId}/sub-org")
+    public Mono<ResponseEntity<List<ULong>>> getUserSubOrgInternal(
+            @PathVariable ULong userId, @RequestParam ULong clientId) {
+        return this.userSubOrgService
+                .getUserSubOrgInternal(clientId, userId)
+                .collectList()
+                .map(ResponseEntity::ok);
     }
 
     @PutMapping("/{userId}/reportingManager/{managerId}")

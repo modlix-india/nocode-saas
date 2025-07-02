@@ -166,6 +166,6 @@ public interface IFeignSecurityService {
     @PostMapping("${security.feign.getProfileUsers:/api/security/users/internal/getProfileUsers/{appCode}}")
     Mono<List<BigInteger>> getProfileUsers(@PathVariable String appCode, @RequestBody List<BigInteger> profileIds);
 
-    @PostMapping("${security.feign.getCurrentUserSubOrg:/api/security/users/internal/sub-org}")
-    Mono<List<BigInteger>> getCurrentUserSubOrg();
+    @GetMapping("${security.feign.getUserSubOrgInternal:/api/security/users/internal/{userId}/sub-org}")
+    Mono<List<BigInteger>> getUserSubOrgInternal(@PathVariable BigInteger userId, @RequestParam BigInteger clientId);
 }

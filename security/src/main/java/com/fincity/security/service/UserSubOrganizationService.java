@@ -146,41 +146,44 @@ public class UserSubOrganizationService
 
     public Flux<ULong> getCurrentUserSubOrg() {
         return SecurityContextUtil.getUsersContextAuthentication()
-                .map(ca -> ULong.valueOf(ca.getUser().getId()))
-                .flatMapMany(this::getSubOrg)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrgUserIds"));
+                .flatMapMany(ca -> this.getSubOrg(
+                        ULongUtil.valueOf(ca.getUser().getClientId()),
+                        ULongUtil.valueOf(ca.getUser().getId())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrg"));
+    }
+
+    public Flux<ULong> getUserSubOrgInternal(ULong clientId, ULong userId) {
+        return this.getSubOrg(clientId, userId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgInternal"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
-    public Flux<ULong> getUserSubOrg(ULong userId) {
-        return this.getSubOrg(userId)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrgUserIdsByUserId"));
+    public Flux<ULong> getUserSubOrg(ULong clientId, ULong userId, ULong managerId) {
+        return this.getSubOrg(clientId, userId, managerId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrg"));
     }
 
-    private Flux<ULong> getSubOrg(ULong managerId) {
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
-                    ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+    private Flux<ULong> getSubOrg(ULong clientId, ULong userId) {
+        return this.getSubOrg(clientId, userId, userId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId]"));
+    }
 
-                    if (managerId.equals(ULong.valueOf(ca.getUser().getId())))
-                        return Mono.just(Tuples.of(clientId, managerId));
+    private Flux<ULong> getSubOrg(ULong clientId, ULong userId, ULong managerId) {
+        if (managerId == null || managerId.equals(userId))
+            return this.getSubOrgUserIds(clientId, userId, Boolean.TRUE)
+                    .contextWrite(
+                            Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
 
-                    return this.dao.readById(managerId).flatMap(user -> {
-                        if (ca.isSystemClient()) return Mono.just(Tuples.of(user.getClientId(), managerId));
-
-                        return this.clientService
-                                .isBeingManagedBy(clientId, user.getClientId())
-                                .flatMap(isManaged -> {
-                                    if (Boolean.TRUE.equals(isManaged))
-                                        return Mono.just(Tuples.of(user.getClientId(), managerId));
-                                    return this.forbiddenError(
-                                            SecurityMessageResourceService.FORBIDDEN_PERMISSION,
-                                            "user reporting hierarchy");
-                                });
-                    });
-                })
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.readById(managerId),
+                        user -> this.clientService.isBeingManagedBy(clientId, user.getClientId()),
+                        (user, isManaged) -> Boolean.TRUE.equals(isManaged)
+                                ? Mono.just(Tuples.of(user.getClientId(), managerId))
+                                : this.forbiddenError(
+                                        SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                        "user reporting hierarchy"))
                 .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getAllUsersInSubOrg"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
     }
 
     private Mono<List<ULong>> getLevel1SubOrg(ULong clientId, ULong userId) {

@@ -130,18 +130,22 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     }
 
     protected Mono<RuleResponse<D>> getDefaultResponse(String appCode, String clientCode, ULong entityId) {
-        return this.getDefault(appCode, clientCode, entityId).flatMap(rule -> {
-            if (rule.isComplex()) {
-                return this.complexRuleService
-                        .getCondition(rule.getId(), this.getEntitySeries())
-                        .map(condition -> new RuleResponse<D>().setRule(rule).setCondition(condition));
-            } else if (rule.isSimple()) {
-                return this.simpleRuleService
-                        .getCondition(rule.getId(), this.getEntitySeries(), false)
-                        .map(condition -> new RuleResponse<D>().setRule(rule).setCondition(condition));
-            }
-            return Mono.just(new RuleResponse<D>().setRule(rule));
-        });
+        return this.getDefault(appCode, clientCode, entityId)
+                .flatMap(rule -> {
+                    if (rule.isComplex()) {
+                        return this.complexRuleService
+                                .getCondition(rule.getId(), this.getEntitySeries())
+                                .map(condition ->
+                                        new RuleResponse<D>().setRule(rule).setCondition(condition));
+                    } else if (rule.isSimple()) {
+                        return this.simpleRuleService
+                                .getCondition(rule.getId(), this.getEntitySeries(), false)
+                                .map(condition ->
+                                        new RuleResponse<D>().setRule(rule).setCondition(condition));
+                    }
+                    return Mono.just(new RuleResponse<D>().setRule(rule));
+                })
+                .switchIfEmpty(Mono.just(new RuleResponse<>()));
     }
 
     protected Mono<D> getDefault(String appCode, String clientCode, ULong entityId) {

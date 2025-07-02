@@ -4,6 +4,7 @@ import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import jakarta.validation.constraints.NotBlank;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +23,8 @@ public class TicketRequest extends BaseRequest<TicketRequest> {
     private Identity productId;
     private PhoneNumber phoneNumber;
     private Email email;
-    private String source;
+
+    @NotBlank(message = "Source is required") private String source;
+
     private String subSource;
 }

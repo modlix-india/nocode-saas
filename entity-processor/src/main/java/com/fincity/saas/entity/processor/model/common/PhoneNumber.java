@@ -24,7 +24,7 @@ public class PhoneNumber implements Serializable {
     @Serial
     private static final long serialVersionUID = 1855000683356483889L;
 
-    private Integer countryCode;
+    private Integer countryCode = PhoneUtil.getDefaultCallingCode();
     private String number;
 
     public static PhoneNumber of(Integer countryCode, String phoneNumber) {
