@@ -188,9 +188,9 @@ public class UserController
 
     @GetMapping("/internal/{userId}/sub-org")
     public Mono<ResponseEntity<List<ULong>>> getUserSubOrgInternal(
-            @PathVariable ULong userId, @RequestParam ULong clientId) {
+            @PathVariable ULong userId, @RequestParam String appCode, @RequestParam ULong clientId) {
         return this.userSubOrgService
-                .getUserSubOrgInternal(null, clientId, userId)
+                .getUserSubOrgInternal(appCode, clientId, userId)
                 .collectList()
                 .map(ResponseEntity::ok);
     }

@@ -33,28 +33,6 @@ public abstract class AbstractClientCheckDAO<R extends UpdatableRecord<R>, I ext
 		super(pojoClass, table, idField);
 	}
 
-    protected Mono<SelectJoinStep<Record1<I>>> getSelectJointIdStep() {
-
-        return SecurityContextUtil.getUsersContextAuthentication().map(ca -> {
-            SelectJoinStep<Record1<I>> mainQuery =
-                    dslContext.select(this.idField).from(table);
-
-            return ca.getClientTypeCode().equals(ContextAuthentication.CLIENT_TYPE_SYSTEM)
-                    ? mainQuery
-                    : this.addIdJoinCondition(mainQuery, this.getClientIDField());
-        });
-    }
-
-    protected SelectJoinStep<Record1<I>> addIdJoinCondition(
-            SelectJoinStep<Record1<I>> mainQuery, Field<ULong> clientIdField) {
-
-        return mainQuery
-                .leftJoin(SECURITY_CLIENT)
-                .on(SECURITY_CLIENT.ID.eq(clientIdField))
-                .leftJoin(SECURITY_CLIENT_HIERARCHY)
-                .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_CLIENT.ID));
-	}
-
 	@Override
 	protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
 

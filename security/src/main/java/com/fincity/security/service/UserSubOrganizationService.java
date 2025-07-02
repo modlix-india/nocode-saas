@@ -263,9 +263,11 @@ public class UserSubOrganizationService
 
     private Mono<List<ULong>> getAllUserIds(ULong clientId, ULong userId) {
 
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getAllIds(null).collectList(),
-                this.getCacheKey(clientId, userId, "owner"));
+        return this.dao.getUserIdsByClientId(clientId, null).collectList();
+
+//        return this.cacheService.cacheValueOrGet(
+//                this.getCacheName(),
+//                () -> this.dao.getAllIds(null).collectList(),
+//                this.getCacheKey(clientId, userId, "owner"));
     }
 }

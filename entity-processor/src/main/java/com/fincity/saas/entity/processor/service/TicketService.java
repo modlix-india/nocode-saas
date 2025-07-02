@@ -108,6 +108,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
 
+        if (!ticketRequest.hasIdentifyInfo() && !ticketRequest.hasSourceInfo()) return this.identityMissingError();
+
         Ticket ticket = Ticket.of(ticketRequest);
 
         return FlatMapUtil.flatMapMono(
@@ -123,12 +125,25 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
 
+        if (ticketStatusRequest.getStageId() == null
+                || ticketStatusRequest.getStageId().isNull())
+            return this.identityMissingError(this.stageService.getEntityName());
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
+                    boolean statusPresent = ticketStatusRequest.getStatusId() != null
+                            && !ticketStatusRequest.getStatusId().isNull();
+
                     if (ticket.getStage()
                                     .equals(ticketStatusRequest.getStageId().getULongId())
-                            && ticket.getStatus()
-                                    .equals(ticketStatusRequest.getStatusId().getULongId())) return Mono.just(ticket);
+                            && (statusPresent
+                                    && ticket.getStatus()
+                                            .equals(ticketStatusRequest
+                                                    .getStatusId()
+                                                    .getULongId()))) return Mono.just(ticket);
+
+                    if (ticket.getStage().equals(ticketStatusRequest.getStageId().getULongId()) && !statusPresent)
+                        return Mono.just(ticket);
 
                     return FlatMapUtil.flatMapMono(
                             () -> Mono.just(access),

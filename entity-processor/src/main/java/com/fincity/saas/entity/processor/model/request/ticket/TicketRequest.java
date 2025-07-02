@@ -23,8 +23,14 @@ public class TicketRequest extends BaseRequest<TicketRequest> {
     private Identity productId;
     private PhoneNumber phoneNumber;
     private Email email;
-
-    @NotBlank(message = "Source is required") private String source;
-
+    private String source;
     private String subSource;
+
+    public boolean hasIdentifyInfo() {
+        return this.getPhoneNumber() != null || this.getEmail() != null;
+    }
+
+    public boolean hasSourceInfo() {
+        return this.source != null && !this.source.isEmpty();
+    }
 }
