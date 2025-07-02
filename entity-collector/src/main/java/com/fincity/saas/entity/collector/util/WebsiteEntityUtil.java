@@ -5,18 +5,14 @@ import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.LeadDetails;
 import com.fincity.saas.entity.collector.dto.WebsiteDetails;
-import com.fincity.saas.entity.collector.enums.LeadSource;
-import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
 import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
-import org.jetbrains.annotations.NotNull;
 import org.jooq.types.ULong;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import reactor.core.publisher.Mono;
 
 import static com.fincity.saas.entity.collector.util.EntityUtil.fetchOAuthToken;
-import static com.fincity.saas.entity.collector.util.EntityUtil.populateStaticFields;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.buildCampaignDetails;
 
 public class WebsiteEntityUtil {
@@ -35,7 +31,7 @@ public class WebsiteEntityUtil {
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
 
-        String adId = websiteDetails.getUtm_ad();
+        String adId = websiteDetails.getUtmAd();
 
         if (adId == null || adId.isBlank()) {
             return Mono.just(response);

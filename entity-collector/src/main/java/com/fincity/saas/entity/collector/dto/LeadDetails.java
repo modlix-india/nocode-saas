@@ -48,7 +48,7 @@ public class LeadDetails extends AbstractLeadBase {
         this.setSource(details.getSource());
         this.setCustomFields(details.getCustomFields());
 
-        if ("FACEBOOK".equalsIgnoreCase(details.getUtm_source())) {
+        if ("FACEBOOK".equalsIgnoreCase(details.getUtmSource())) {
             populateStaticFields(this, integration, "FACEBOOK", LeadSource.WEBSITE, LeadSubSource.WEBSITE_FORM);
         } else {
             populateStaticFields(this, integration, "WEBSITE", LeadSource.WEBSITE,

@@ -6,12 +6,12 @@ import com.fincity.saas.entity.collector.dto.EntityCollectorLog;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityCollectorLogRecord;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import static com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.ENTITY_COLLECTOR_LOG;
 
-@Repository
+@Component
 public class EntityCollectorLogDAO extends AbstractUpdatableDAO<EntityCollectorLogRecord, ULong, EntityCollectorLog> {
 
     protected EntityCollectorLogDAO() {

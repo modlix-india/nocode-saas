@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/entity/collector/integration")
-@RequiredArgsConstructor
 public class EntityIntegrationController extends AbstractJOOQUpdatableDataController<
         EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO, EntityIntegrationService> {
 

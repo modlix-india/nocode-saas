@@ -23,7 +23,7 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
 
     @Override
     protected Mono<EntityCollectorLog> updatableEntity(EntityCollectorLog entityCollectorLog) {
-        return this.read(entityCollectorLog.getId()).map(existing -> {
+        return super.read(entityCollectorLog.getId()).map(existing -> {
             existing.setOutgoingEntityData(entityCollectorLog.getOutgoingEntityData());
             existing.setStatus(entityCollectorLog.getStatus());
             existing.setStatusMessage(entityCollectorLog.getStatusMessage());

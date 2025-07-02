@@ -6,12 +6,12 @@ import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceTy
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 import org.jooq.Condition;
 import org.jooq.types.ULong;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import static com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations.ENTITY_INTEGRATIONS;
 
-@Repository
+@Component
 public class EntityIntegrationDAO extends AbstractUpdatableDAO<EntityIntegrationsRecord, ULong, EntityIntegration> {
 
     protected EntityIntegrationDAO() {
@@ -27,7 +27,7 @@ public class EntityIntegrationDAO extends AbstractUpdatableDAO<EntityIntegration
         return Mono.from(this.dslContext.selectFrom(ENTITY_INTEGRATIONS)
                         .where(condition)
                         .limit(1))
-                .map(record -> record.into(EntityIntegration.class));
+                .map(record -> record.into(this.pojoClass));
     }
 
 }
