@@ -144,8 +144,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                                         new RuleResponse<D>().setRule(rule).setCondition(condition));
                     }
                     return Mono.just(new RuleResponse<D>().setRule(rule));
-                })
-                .switchIfEmpty(Mono.just(new RuleResponse<>()));
+                });
     }
 
     protected Mono<D> getDefault(String appCode, String clientCode, ULong entityId) {
@@ -501,7 +500,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         if (distributionType == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.USER_DISTRIBUTION_MISSING);
+                    ProcessorMessageResourceService.USER_DISTRIBUTION_TYPE_MISSING);
 
         if (!ruleRequest.getRule().getUserDistribution().isValidForType(distributionType))
             return this.msgService.throwMessage(

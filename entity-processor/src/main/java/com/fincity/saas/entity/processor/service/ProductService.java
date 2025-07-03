@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
@@ -78,7 +80,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     public Mono<Product> create(ProductRequest productRequest) {
 
         if (productRequest.getProductTemplateId() == null
-                || productRequest.getProductTemplateId().isNull()) return super.create(Product.of(productRequest));
+                || productRequest.getProductTemplateId().isNull()) 
+            return super.create(Product.of(productRequest))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create"));
 
         return FlatMapUtil.flatMapMono(
                 () -> super.create(Product.of(productRequest)),
@@ -86,7 +90,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 (created, productTemplate) -> {
                     created.setProductTemplateId(productTemplate.getId());
                     return super.updateInternal(created);
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create"));
     }
 
     private Mono<Boolean> existsByName(String appCode, String clientCode, String productName) {
@@ -97,6 +102,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(productId), product -> {
             product.setProductTemplateId(productTemplate.getId());
             return super.updateInternal(product).map(updated -> productTemplate);
-        });
+        })
+        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 }

@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -14,6 +15,7 @@ import com.fincity.saas.entity.processor.service.content.base.BaseContentService
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class NoteService extends BaseContentService<EntityProcessorNotesRecord, Note, NoteDAO> {
@@ -37,7 +39,8 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
                 (access, uRequest) -> this.createContent(uRequest),
                 (access, uRequest, content) -> content.isTicketContent()
                         ? super.createTicketContent(access, content)
-                        : super.createOwnerContent(access, content));
+                        : super.createOwnerContent(access, content))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create"));
     }
 
     public Mono<Note> createInternal(ProcessorAccess access, NoteRequest noteRequest) {
@@ -46,7 +49,8 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
                 this::createContent,
                 (uRequest, content) -> content.isTicketContent()
                         ? super.createTicketContent(access, content)
-                        : super.createOwnerContent(access, content));
+                        : super.createOwnerContent(access, content))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createInternal"));
     }
 
     private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {

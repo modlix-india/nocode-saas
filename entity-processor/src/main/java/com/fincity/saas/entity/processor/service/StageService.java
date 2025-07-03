@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
@@ -26,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -125,7 +127,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                 ? this.updateOrCreateChildren(
                                         access, productTemplateId, stageRequest.getChildren(), parentStage)
                                 : Mono.just(Tuples.of(parentStage, List.of())))
-                .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()));
+                .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.create"));
     }
 
     private Mono<Tuple2<Stage, List<Stage>>> updateOrCreateChildren(
@@ -289,6 +292,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                 return this.updateInternal(stage);
                             })
                             .collectList();
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.reorderStages"));
     }
 }
