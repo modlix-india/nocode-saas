@@ -65,44 +65,48 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                                 .thenReturn(product);
 
                     return Mono.just(product);
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.checkEntity"));
     }
 
     @Override
     protected Mono<Product> updatableEntity(Product entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setProductTemplateId(entity.getProductTemplateId());
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setProductTemplateId(entity.getProductTemplateId());
 
-            return Mono.just(existing);
-        });
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updatableEntity"));
     }
 
     public Mono<Product> create(ProductRequest productRequest) {
 
         if (productRequest.getProductTemplateId() == null
-                || productRequest.getProductTemplateId().isNull()) 
+                || productRequest.getProductTemplateId().isNull())
             return super.create(Product.of(productRequest))
-                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create"));
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
 
         return FlatMapUtil.flatMapMono(
-                () -> super.create(Product.of(productRequest)),
-                created -> productTemplateService.readIdentityWithAccess(productRequest.getProductTemplateId()),
-                (created, productTemplate) -> {
-                    created.setProductTemplateId(productTemplate.getId());
-                    return super.updateInternal(created);
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create"));
+                        () -> super.create(Product.of(productRequest)),
+                        created -> productTemplateService.readIdentityWithAccess(productRequest.getProductTemplateId()),
+                        (created, productTemplate) -> {
+                            created.setProductTemplateId(productTemplate.getId());
+                            return super.updateInternal(created);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
     private Mono<Boolean> existsByName(String appCode, String clientCode, String productName) {
-        return this.dao.existsByName(appCode, clientCode, productName);
+        return this.dao.existsByName(appCode, clientCode, productName)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.existsByName"));
     }
 
     public Mono<ProductTemplate> setProductTemplate(Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(productId), product -> {
-            product.setProductTemplateId(productTemplate.getId());
-            return super.updateInternal(product).map(updated -> productTemplate);
-        })
-        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
+                    product.setProductTemplateId(productTemplate.getId());
+                    return super.updateInternal(product).map(updated -> productTemplate);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 }

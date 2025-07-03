@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductTemplateRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ProductTemplateRuleService
@@ -60,19 +62,22 @@ public class ProductTemplateRuleService
     @Override
     protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                () -> productTemplateService.readIdentityInternal(entityId),
-                productTemplate -> super.stageService.getAllStages(
-                        appCode,
-                        clientCode,
-                        productTemplate.getId(),
-                        stageIds != null ? stageIds.toArray(new ULong[0]) : null));
+                        () -> productTemplateService.readIdentityInternal(entityId),
+                        productTemplate -> super.stageService.getAllStages(
+                                appCode,
+                                clientCode,
+                                productTemplate.getId(),
+                                stageIds != null ? stageIds.toArray(new ULong[0]) : null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageIds"));
     }
 
     @Override
     protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
-                () -> productTemplateService.readIdentityInternal(entityId),
-                productTemplate -> super.stageService.getStage(appCode, clientCode, productTemplate.getId(), stageId));
+                        () -> productTemplateService.readIdentityInternal(entityId),
+                        productTemplate ->
+                                super.stageService.getStage(appCode, clientCode, productTemplate.getId(), stageId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageId"));
     }
 
     @Override
@@ -94,6 +99,7 @@ public class ProductTemplateRuleService
 
                             return Mono.just(assignedUserId);
                         }))
-                .onErrorResume(e -> Mono.empty());
+                .onErrorResume(e -> Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getUserAssignment"));
     }
 }
