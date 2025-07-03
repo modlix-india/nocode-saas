@@ -121,10 +121,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     public Mono<BaseResponse> readForCxApp(String cxAppToken) {
 
-        if (!cxAppToken.equals(generateCxAppToken()))
-            return Mono.empty();
+        if (!cxAppToken.equals(generateCxAppToken())) return Mono.empty();
 
         return Mono.empty();
     }
-
 }
