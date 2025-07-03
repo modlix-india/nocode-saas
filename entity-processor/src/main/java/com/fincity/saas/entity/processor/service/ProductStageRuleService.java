@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductStageRuleDAO;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ProductStageRuleService
@@ -101,7 +103,8 @@ public class ProductStageRuleService
                         }))
                 .switchIfEmpty(this.getUserAssignmentFromTemplate(
                         appCode, clientCode, entityId, stageId, tokenPrefix, userId, data))
-                .onErrorResume(e -> Mono.empty());
+                .onErrorResume(e -> Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
 
     public Mono<ULong> getUserAssignmentFromTemplate(
@@ -115,6 +118,7 @@ public class ProductStageRuleService
         return FlatMapUtil.flatMapMono(
                 () -> productService.readById(entityId),
                 product -> this.productTemplateRuleService.getUserAssignment(
-                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, userId, data));
+                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
     }
 }
