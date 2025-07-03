@@ -104,8 +104,8 @@ public class UserSubOrganizationService
                         .toArray(String[]::new));
     }
 
-    public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
-        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId, OWNER));
+    public Mono<Boolean> evictOwnerCache(ULong clientId) {
+        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER));
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -241,7 +241,7 @@ public class UserSubOrganizationService
     private Flux<ULong> getSubOrgUserIds(ULong clientId, ULong userId, boolean includeSelf, boolean isOwner) {
 
         if (isOwner)
-            return this.getAllUserIds(clientId, userId)
+            return this.getAllUserIds(clientId)
                     .flatMapMany(Flux::fromIterable)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.getSubOrgUserIds"));
 
@@ -263,11 +263,11 @@ public class UserSubOrganizationService
                 this.getCacheKey(clientId, userId));
     }
 
-    private Mono<List<ULong>> getAllUserIds(ULong clientId, ULong userId) {
+    private Mono<List<ULong>> getAllUserIds(ULong clientId) {
 
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getUserIdsByClientId(clientId, null).collectList(),
-                this.getCacheKey(clientId, userId, OWNER));
+                this.getCacheKey(clientId, OWNER));
     }
 }

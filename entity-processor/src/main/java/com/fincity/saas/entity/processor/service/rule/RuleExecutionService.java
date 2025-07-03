@@ -237,9 +237,9 @@ public class RuleExecutionService {
 
         return this.getUsersForDistribution(defaultRule.getUserDistribution()).flatMap(userIds -> {
             // If userId is provided and exists in default rule's userIds, use it
-            if (finalUserId != null && userIds.contains(finalUserId)) {
+            if (finalUserId != null && userIds.contains(finalUserId))
                 return Mono.just(addAssignedUser(defaultRule, finalUserId));
-            }
+
             // Otherwise distribute users according to the rule
             return this.distributeUsers(defaultRule, userIds);
         });
@@ -247,28 +247,24 @@ public class RuleExecutionService {
 
     private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, Map<Integer, T> rules, ULong finalUserId) {
         return this.getUsersForDistribution(matchedRule.getUserDistribution()).flatMap(userIds -> {
-            // If userId is provided and exists in matched rule's userIds, use it
-            if (finalUserId != null && userIds.contains(finalUserId))
-                return Mono.just(addAssignedUser(matchedRule, finalUserId));
-
-            // If userId is not in matched rule, check default rule
             if (finalUserId != null) {
+                // Case 1: finalUserId is in matched rule's user list
+                if (userIds.contains(finalUserId)) return Mono.just(addAssignedUser(matchedRule, finalUserId));
+
+                // Case 2: Check if finalUserId exists in default rule's user list
                 T defaultRule = rules.get(0);
-                if (defaultRule != null) {
+                if (defaultRule != null)
                     return this.getUsersForDistribution(defaultRule.getUserDistribution())
                             .flatMap(defaultUserIds -> {
-                                // If userId exists in default rule's userIds, use it
                                 if (defaultUserIds.contains(finalUserId))
                                     return Mono.just(addAssignedUser(defaultRule, finalUserId));
 
-                                // Otherwise use the matched rule's distribution
+                                // Case 3: Not found, fallback to matched rule distribution
                                 return this.distributeUsers(matchedRule, userIds);
                             });
-                }
             }
 
-            // If userId is not provided or not found in any rule, use the matched rule's
-            // distribution
+            // Case 4: finalUserId is null or not found in any rule
             return this.distributeUsers(matchedRule, userIds);
         });
     }

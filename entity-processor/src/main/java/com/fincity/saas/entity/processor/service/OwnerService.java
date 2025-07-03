@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.OwnerDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class OwnerService extends BaseProcessorService<EntityProcessorOwnersRecord, Owner, OwnerDAO> {
@@ -59,18 +61,23 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
-                (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)));
+                (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
     }
 
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
-        if (ticket.getOwnerId() != null) return this.readById(ULongUtil.valueOf(ticket.getOwnerId()));
+        if (ticket.getOwnerId() != null) 
+            return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
 
-        return this.getOrCreateTicketPhoneOwner(access.getAppCode(), access.getClientCode(), ticket);
+        return this.getOrCreateTicketPhoneOwner(access.getAppCode(), access.getClientCode(), ticket)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
     }
 
     private Mono<Owner> updateTickets(Owner owner) {
-        return this.ticketService.updateOwnerTickets(owner).collectList().map(tickets -> owner);
+        return this.ticketService.updateOwnerTickets(owner).collectList().map(tickets -> owner)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
     }
 
     private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
@@ -85,7 +92,8 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.OWNER_NOT_CREATED);
                     return Mono.just(owner);
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketPhoneOwner"));
     }
 
     private Mono<Boolean> checkDuplicate(String appCode, String clientCode, OwnerRequest ownerRequest) {
@@ -113,6 +121,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
                     return Mono.just(Boolean.FALSE);
                 })
-                .switchIfEmpty(Mono.just(Boolean.FALSE));
+                .switchIfEmpty(Mono.just(Boolean.FALSE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.checkDuplicate"));
     }
 }

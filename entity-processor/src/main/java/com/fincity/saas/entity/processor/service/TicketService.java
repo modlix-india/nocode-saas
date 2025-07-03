@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO> {
@@ -86,7 +88,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         Flux<Ticket> ticketsFlux =
                 this.dao.getAllOwnerTickets(owner.getId()).flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
 
-        return this.dao.updateAll(ticketsFlux);
+        return this.dao.updateAll(ticketsFlux)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
     public Mono<ProcessorResponse> createOpenResponse(TicketRequest ticketRequest) {
@@ -96,14 +99,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (ticketRequest.getProductId() == null || ticketRequest.getProductId().isNull())
             return super.hasPublicAccess()
                     .flatMap(access -> setOwner(access, ticket))
-                    .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()));
+                    .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
 
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
                         access -> this.productService.updateIdentity(ticketRequest.getProductId()),
                         (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
                         (access, productIdentity, pTicket) -> super.createInternal(access, pTicket))
-                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
+                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
@@ -120,7 +125,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 (access, productIdentity, isDuplicate) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
                 (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
                 (access, productIdentity, isDuplicate, pTicket, created) ->
-                        this.activityService.acCreate(created).thenReturn(created));
+                        this.activityService.acCreate(created).thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create"));
     }
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
@@ -185,7 +191,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     this.activityService
                                             .acStageStatus(uTicket, ticketStatusRequest.getComment(), oldStage)
                                             .thenReturn(uTicket));
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateStageStatus"));
     }
 
     private Mono<Boolean> createTask(ProcessorAccess access, TicketStatusRequest ticketStatusRequest, Ticket ticket) {
@@ -227,7 +234,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             cTicket.getAssignedUserId(),
                                             uTicket.getAssignedUserId())
                                     .thenReturn(uTicket));
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
     private Mono<Boolean> createNote(
