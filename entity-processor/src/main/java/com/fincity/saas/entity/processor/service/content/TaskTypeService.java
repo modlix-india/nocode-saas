@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskTypeDAO;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTypesRecord, TaskType, TaskTypeDAO> {
@@ -33,47 +35,57 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
 
     @Override
     public Mono<TaskType> create(TaskType taskType) {
-        return super.hasAccess().flatMap(access -> this.createInternal(access, taskType));
+        return super.hasAccess()
+                .flatMap(access -> this.createInternal(access, taskType))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create"));
     }
 
     public Flux<TaskType> create(List<TaskTypeRequest> taskTypeRequests) {
 
         if (taskTypeRequests == null || taskTypeRequests.isEmpty()) return Flux.empty();
 
-        return super.hasAccess().flatMapMany(access -> {
-            String[] names =
-                    taskTypeRequests.stream().map(TaskTypeRequest::getName).toArray(String[]::new);
+        return super.hasAccess()
+                .flatMapMany(access -> {
+                    String[] names = taskTypeRequests.stream()
+                            .map(TaskTypeRequest::getName)
+                            .toArray(String[]::new);
 
-            return this.existsByName(access.getAppCode(), access.getClientCode(), names)
-                    .flatMapMany(exists -> Boolean.TRUE.equals(exists)
-                            ? this.msgService.throwMessage(
-                                    msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                    ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                    String.join(", ", names),
-                                    this.getEntityName())
-                            : Flux.fromIterable(taskTypeRequests)
-                                    .flatMap(req -> this.createInternal(access, TaskType.of(req))));
-        });
+                    return this.existsByName(access.getAppCode(), access.getClientCode(), names)
+                            .flatMapMany(exists -> Boolean.TRUE.equals(exists)
+                                    ? this.msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                            ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                            String.join(", ", names),
+                                            this.getEntityName())
+                                    : Flux.fromIterable(taskTypeRequests)
+                                            .flatMap(req -> this.createInternal(access, TaskType.of(req))));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[List<TaskTypeRequest>]"));
     }
 
     public Mono<TaskType> create(TaskTypeRequest taskTypeRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskTypeRequest));
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskTypeRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[TaskTypeRequest]"));
     }
 
     public Mono<TaskType> createInternal(ProcessorAccess access, TaskTypeRequest taskTypeRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> this.existsByName(access.getAppCode(), access.getClientCode(), taskTypeRequest.getName()),
-                exists -> Boolean.TRUE.equals(exists)
-                        ? this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                taskTypeRequest.getName(),
-                                this.getEntityName())
-                        : this.createInternal(access, TaskType.of(taskTypeRequest)));
+                        () -> this.existsByName(access.getAppCode(), access.getClientCode(), taskTypeRequest.getName()),
+                        exists -> Boolean.TRUE.equals(exists)
+                                ? this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                        ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                        taskTypeRequest.getName(),
+                                        this.getEntityName())
+                                : this.createInternal(access, TaskType.of(taskTypeRequest)))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskTypeRequest]"));
     }
 
     public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
-        return this.dao.existsByName(appCode, clientCode, names);
+        return this.dao
+                .existsByName(appCode, clientCode, names)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.existsByName"));
     }
 
     private Mono<TaskType> createInternal(ProcessorAccess access, TaskType taskType) {
@@ -83,6 +95,8 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
 
         taskType.setCreatedBy(access.getUserId());
 
-        return super.create(taskType);
+        return super.create(taskType)
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskType]"));
     }
 }

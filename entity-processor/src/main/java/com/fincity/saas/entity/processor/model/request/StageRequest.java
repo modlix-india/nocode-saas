@@ -24,6 +24,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private StageType stageType;
     private Boolean isSuccess;
     private Boolean isFailure;
+    private Integer order;
 
     public boolean isValid() {
 
