@@ -54,20 +54,21 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
                     return Mono.just(existing);
                 })
-                .flatMap(this::updateTickets);
+                .flatMap(this::updateTickets)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updatableEntity"));
     }
 
     public Mono<Owner> create(OwnerRequest ownerRequest) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
-                (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
+                        super::hasAccess,
+                        access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
+                        (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
     }
 
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
-        if (ticket.getOwnerId() != null) 
+        if (ticket.getOwnerId() != null)
             return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
 
@@ -76,23 +77,30 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     private Mono<Owner> updateTickets(Owner owner) {
-        return this.ticketService.updateOwnerTickets(owner).collectList().map(tickets -> owner)
+        return this.ticketService
+                .updateOwnerTickets(owner)
+                .collectList()
+                .map(tickets -> owner)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
     }
 
     private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
-                () -> this.dao
-                        .readByNumberAndEmail(
-                                appCode, clientCode, ticket.getDialCode(), ticket.getPhoneNumber(), ticket.getEmail())
-                        .switchIfEmpty(this.create(Owner.of(ticket))),
-                owner -> {
-                    if (owner.getId() == null)
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.OWNER_NOT_CREATED);
-                    return Mono.just(owner);
-                })
+                        () -> this.dao
+                                .readByNumberAndEmail(
+                                        appCode,
+                                        clientCode,
+                                        ticket.getDialCode(),
+                                        ticket.getPhoneNumber(),
+                                        ticket.getEmail())
+                                .switchIfEmpty(this.create(Owner.of(ticket))),
+                        owner -> {
+                            if (owner.getId() == null)
+                                return this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                        ProcessorMessageResourceService.OWNER_NOT_CREATED);
+                            return Mono.just(owner);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketPhoneOwner"));
     }
 

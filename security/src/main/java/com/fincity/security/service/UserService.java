@@ -288,7 +288,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     @Override
     protected Mono<ULong> getLoggedInUserId() {
-
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
     }
 
@@ -349,7 +348,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             this.soxLogService.createLog(
                                     createdUser.getId(), CREATE, getSoxObjectName(), "User created");
                             return this.setPasswordEntities(createdUser, pass);
-                        })
+                        },
+                        (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) ->
+                                this.evictOwnerCache(passSet.getClientId()).map(evicted -> passSet))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
@@ -498,8 +499,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         },
                         (clientId, clientType, userExists) ->
                                 Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(key, fields),
-                        (clientId, clientType, userExists, updated) ->
-                                this.evictTokens(updated.getId()).<User>map(evicted -> updated))
+                        (clientId, clientType, userExists, updated) -> this.evictTokensAndOwnerCache(
+                                        updated.getId(), updated.getClientId())
+                                .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
 
@@ -532,13 +534,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         },
                         (clientType, userExists) ->
                                 Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
-                        (clientType, userExists, updated) ->
-                                this.evictTokens(updated.getId()).map(evicted -> updated))
+                        (clientType, userExists, updated) -> this.evictTokensAndOwnerCache(
+                                        updated.getId(), updated.getClientId())
+                                .map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
+    }
+
+    private Mono<Integer> evictTokensAndOwnerCache(ULong userId, ULong clientId) {
+        return Mono.zip(
+                this.evictTokens(userId),
+                this.evictOwnerCache(clientId),
+                (tEvicted, oEvicted) -> tEvicted == 1 && oEvicted == 1 ? 1 : 0);
     }
 
     private Mono<Integer> evictTokens(ULong id) {
         return this.tokenService.evictTokensOfUser(id);
+    }
+
+    private Mono<Integer> evictOwnerCache(ULong clientId) {
+        return this.userSubOrgService.evictOwnerCache(clientId).map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
     }
 
     @Override
@@ -567,7 +581,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     return e;
                 })
                 .flatMap(this::update)
-                .flatMap(e -> this.evictTokens(e.getId()).map(x -> 1));
+                .flatMap(e -> this.evictTokensAndOwnerCache(e.getId(), e.getClientId())
+                        .map(x -> 1));
     }
 
     public Mono<User> readInternal(String appCode, ULong id) {
@@ -593,11 +608,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                                     return removed;
                                 }),
-                        (ca, user, isManaged, removed) -> this.userSubOrgService
-                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()))
+                        (ca, user, isManaged, removed) -> this.evictTokensAndOwnerCache(userId, user.getClientId())
                                 .map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
-                .flatMap(e -> this.evictTokens(userId).map(x -> e))
                 .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
     }
@@ -629,12 +642,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                                         return e;
                                     }),
-                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this.userSubOrgService
-                                    .evictOwnerCache(
-                                            ULongUtil.valueOf(ca.getUser().getClientId()))
+                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this.evictTokensAndOwnerCache(
+                                            userId, user.getClientId())
                                     .map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
-                    .flatMap(e -> this.evictTokens(userId).map(x -> e))
                     .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
                     .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
         });
@@ -654,12 +665,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged, profileAccess) ->
                                 this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.userSubOrgService
-                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()))
+                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictTokensAndOwnerCache(
+                                        userId, user.getClientId())
                                 .map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
-                .flatMap(e -> this.evictTokens(userId).map(x -> e))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.PROFILE_FORBIDDEN, profileId, userId));
     }
@@ -675,12 +685,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged) ->
                                 this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileRemoved) -> this.userSubOrgService
-                                .evictOwnerCache(ULongUtil.valueOf(ca.getUser().getClientId()))
+                        (ca, user, sysManaged, profileRemoved) -> this.evictTokensAndOwnerCache(
+                                        userId, user.getClientId())
                                 .map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
-                .flatMap(e -> this.evictTokens(userId).map(x -> e))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.PROFILE_FORBIDDEN, profileId, userId));
     }
@@ -1305,8 +1314,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                                 SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                         : Mono.just(user)),
                         (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
-                        (ca, user, sysOrManaged, validUser, updated) ->
-                                this.evictTokens(updated.getId()).map(evicted -> updated))
+                        (ca, user, sysOrManaged, validUser, updated) -> this.evictTokensAndOwnerCache(
+                                        updated.getId(), updated.getClientId())
+                                .map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
