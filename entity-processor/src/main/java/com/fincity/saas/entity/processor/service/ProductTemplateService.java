@@ -55,25 +55,25 @@ public class ProductTemplateService
         ProductTemplate productTemplate = ProductTemplate.of(productTemplateRequest);
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> {
-                    productTemplate.setAppCode(access.getAppCode());
-                    productTemplate.setClientCode(access.getClientCode());
+                        super::hasAccess,
+                        access -> {
+                            productTemplate.setAppCode(access.getAppCode());
+                            productTemplate.setClientCode(access.getClientCode());
 
-                    return super.create(productTemplate);
-                },
-                (access, created) -> (productTemplateRequest.getProductId() == null
-                                || productTemplateRequest.getProductId().isNull())
-                        ? Mono.just(created)
-                        : this.updateDependentServices(created, productTemplateRequest.getProductId()))
+                            return super.create(productTemplate);
+                        },
+                        (access, created) -> (productTemplateRequest.getProductId() == null
+                                        || productTemplateRequest.getProductId().isNull())
+                                ? Mono.just(created)
+                                : this.updateDependentServices(created, productTemplateRequest.getProductId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.create"));
     }
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> super.readIdentityWithAccess(identity),
-                productTemplate ->
-                        this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()))
+                        () -> super.readIdentityWithAccess(identity),
+                        productTemplate ->
+                                this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.attachEntity"));
     }
 

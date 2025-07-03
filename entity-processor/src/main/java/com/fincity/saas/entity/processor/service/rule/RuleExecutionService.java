@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
@@ -18,6 +19,7 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class RuleExecutionService {
@@ -73,7 +75,8 @@ public class RuleExecutionService {
     }
 
     public <T extends Rule<T>> Mono<T> executeRules(Map<Integer, T> rules, String prefix, JsonElement data) {
-        return executeRules(rules, prefix, null, data);
+        return executeRules(rules, prefix, null, data)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
     public <T extends Rule<T>> Mono<T> executeRules(
@@ -83,12 +86,14 @@ public class RuleExecutionService {
 
         final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
-        return findMatchedRules(rules, prefix, data).flatMap(matchedRules -> {
-            if (matchedRules.isEmpty()) return handleDefaultRule(rules, finalUserId);
+        return findMatchedRules(rules, prefix, data)
+                .flatMap(matchedRules -> {
+                    if (matchedRules.isEmpty()) return handleDefaultRule(rules, finalUserId);
 
-            T matchedRule = matchedRules.getFirst();
-            return handleMatchedRule(matchedRule, rules, finalUserId);
-        });
+                    T matchedRule = matchedRules.getFirst();
+                    return handleMatchedRule(matchedRule, rules, finalUserId);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
     private <T extends Rule<T>> Mono<T> distributeUsers(T rule, List<ULong> userIds) {

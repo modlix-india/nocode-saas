@@ -69,19 +69,22 @@ public class ProductStageRuleService
     @Override
     protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                () -> productService.readIdentityInternal(entityId),
-                product -> super.stageService.getAllStages(
-                        appCode,
-                        clientCode,
-                        product.getProductTemplateId(),
-                        stageIds != null ? stageIds.toArray(new ULong[0]) : null));
+                        () -> productService.readIdentityInternal(entityId),
+                        product -> super.stageService.getAllStages(
+                                appCode,
+                                clientCode,
+                                product.getProductTemplateId(),
+                                stageIds != null ? stageIds.toArray(new ULong[0]) : null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getStageIds"));
     }
 
     @Override
     protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
-                () -> productService.readIdentityInternal(entityId),
-                product -> super.stageService.getStage(appCode, clientCode, product.getProductTemplateId(), stageId));
+                        () -> productService.readIdentityInternal(entityId),
+                        product -> super.stageService.getStage(
+                                appCode, clientCode, product.getProductTemplateId(), stageId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getStageId"));
     }
 
     @Override
@@ -116,9 +119,15 @@ public class ProductStageRuleService
             ULong userId,
             JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                () -> productService.readById(entityId),
-                product -> this.productTemplateRuleService.getUserAssignment(
-                        appCode, clientCode, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
+                        () -> productService.readById(entityId),
+                        product -> this.productTemplateRuleService.getUserAssignment(
+                                appCode,
+                                clientCode,
+                                product.getProductTemplateId(),
+                                stageId,
+                                tokenPrefix,
+                                userId,
+                                data))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
     }
 }
