@@ -55,14 +55,14 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
     private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> noteRequest.getTicketId() != null
-                        ? this.checkTicket(access, noteRequest.getTicketId())
-                        : Mono.just(Identity.ofNull()),
-                ticketId -> noteRequest.getOwnerId() != null
-                        ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
-                        : Mono.just(Identity.ofNull()),
-                (ticketId, ownerId) ->
-                        Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)))
+                        () -> noteRequest.getTicketId() != null
+                                ? this.checkTicket(access, noteRequest.getTicketId())
+                                : Mono.just(Identity.ofNull()),
+                        ticketId -> noteRequest.getOwnerId() != null
+                                ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
+                                : Mono.just(Identity.ofNull()),
+                        (ticketId, ownerId) ->
+                                Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.updateIdentities"));
     }
 

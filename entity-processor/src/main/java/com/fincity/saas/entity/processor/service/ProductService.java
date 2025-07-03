@@ -2,12 +2,14 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.HashUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
@@ -22,9 +24,15 @@ import reactor.util.context.Context;
 @Service
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
 
+    private static final String CX_APP_CODE = "cxapp";
+
     private static final String PRODUCT_CACHE = "product";
 
     private ProductTemplateService productTemplateService;
+
+    private static String generateCxAppToken() {
+        return HashUtil.sha256Hash(CX_APP_CODE).substring(0, 16).toUpperCase();
+    }
 
     @Lazy
     @Autowired
@@ -98,7 +106,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     }
 
     private Mono<Boolean> existsByName(String appCode, String clientCode, String productName) {
-        return this.dao.existsByName(appCode, clientCode, productName)
+        return this.dao
+                .existsByName(appCode, clientCode, productName)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.existsByName"));
     }
 
@@ -109,4 +118,13 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
+
+    public Mono<BaseResponse> readForCxApp(String cxAppToken) {
+
+        if (!cxAppToken.equals(generateCxAppToken()))
+            return Mono.empty();
+
+        return Mono.empty();
+    }
+
 }
