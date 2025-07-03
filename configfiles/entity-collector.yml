@@ -1,8 +1,6 @@
 spring:
   application:
     name: entity-collector
-  freemarker:
-    check-template-location: false
   r2dbc:
     url: ${entity-collector.db.url}
     username: ${entity-collector.db.username}
@@ -34,11 +32,6 @@ spring:
             uri: lb://entity-collector
             predicates:
               - Path=/api/entity/collector/**, /*/api/entity/collector/**, /*/*/api/entity/collector/**, /*/*/*/api/entity/collector/**, /*/*/*/*/api/entity/collector/**, /*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/*/api/entity/collector/**,
-    rabbitmq:
-      host: ${mq.host}
-      port: ${mq.port}
-      username: ${mq.username}
-      password: ${mq.password}
 
 management:
   endpoint:
