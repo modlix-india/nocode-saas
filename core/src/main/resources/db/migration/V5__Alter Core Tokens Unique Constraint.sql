@@ -1,0 +1,4 @@
+USE `core`;
+
+ALTER TABLE `core`.`core_tokens`
+    DROP CONSTRAINT `UK_CORE_TOKEN_STATE_TOKEN_TYPE`;
