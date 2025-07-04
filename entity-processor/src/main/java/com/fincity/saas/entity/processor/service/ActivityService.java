@@ -26,7 +26,6 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,9 +41,6 @@ import reactor.util.context.Context;
 
 @Service
 public class ActivityService extends BaseService<EntityProcessorActivitiesRecord, Activity, ActivityDAO> {
-
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm a");
 
     private StageService stageService;
     private TicketService ticketService;
@@ -83,14 +79,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         ULongUtil.valueOf(user.get("id")),
                         NameUtil.assembleFullName(user.get("firstName"), user.get("middleName"), user.get("lastName"))))
                 .switchIfEmpty(this.getLoggedInUser());
-    }
-
-    private String formatDate(LocalDateTime dateTime) {
-        return dateTime.format(DATE_FORMAT);
-    }
-
-    private String formatTime(LocalDateTime dateTime) {
-        return dateTime.format(TIME_FORMAT);
     }
 
     @Override
