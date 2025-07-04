@@ -4477,6 +4477,13 @@ ALTER TABLE `security`.`security_app_reg_integration`
     MODIFY COLUMN `SIGNUP_URI` VARCHAR(2083) NOT NULL COMMENT 'URI for signup' AFTER `LOGIN_URI`;
 
 
+-- V5__Alter Core Tokens Unique Constraint.sql (core)
+USE `core`;
+
+ALTER TABLE `core`.`core_tokens`
+    DROP CONSTRAINT `UK_CORE_TOKEN_STATE_TOKEN_TYPE`;
+
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
