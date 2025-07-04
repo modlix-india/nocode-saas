@@ -10,12 +10,14 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -177,6 +179,20 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 () -> this.processorAccessCondition(access, code), this::filter, (pCondition, jCondition) -> Mono.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(e -> e.into(this.pojoClass)));
+    }
+
+    public Mono<Boolean> existsByName(String appCode, String clientCode, String name) {
+
+        if (StringUtil.safeIsBlank(name)) return Mono.just(Boolean.FALSE);
+
+        List<Condition> baseConditions = new ArrayList<>();
+        baseConditions.add(super.appCodeField.eq(appCode));
+        baseConditions.add(super.clientCodeField.eq(clientCode));
+        baseConditions.add(this.nameField.eq(name));
+
+        return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
+                .map(rec -> Boolean.TRUE)
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<Integer> deleteByCode(String code) {

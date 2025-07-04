@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.HashUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -30,10 +29,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     private ProductTemplateService productTemplateService;
 
-    private static String generateCxAppToken() {
-        return HashUtil.sha256Hash(CX_APP_CODE).substring(0, 16).toUpperCase();
-    }
-
     @Lazy
     @Autowired
     private void setValueTemplateService(ProductTemplateService productTemplateService) {
@@ -58,22 +53,12 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
-        return this.existsByName(access.getAppCode(), access.getClientCode(), product.getName())
-                .flatMap(exists -> {
-                    if (Boolean.TRUE.equals(exists))
-                        return msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                product.getName(),
-                                getEntityName());
-
-                    if (product.getProductTemplateId() != null)
-                        return productTemplateService
+        return super.checkExistsByName(access, product)
+                .flatMap(exists -> product.getProductTemplateId() != null
+                        ? productTemplateService
                                 .readByIdInternal(product.getProductTemplateId())
-                                .thenReturn(product);
-
-                    return Mono.just(product);
-                })
+                                .thenReturn(product)
+                        : Mono.just(product))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.checkEntity"));
     }
 
@@ -105,12 +90,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
-    private Mono<Boolean> existsByName(String appCode, String clientCode, String productName) {
-        return this.dao
-                .existsByName(appCode, clientCode, productName)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.existsByName"));
-    }
-
     public Mono<ProductTemplate> setProductTemplate(Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(productId), product -> {
                     product.setProductTemplateId(productTemplate.getId());
@@ -119,9 +98,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
-    public Mono<BaseResponse> readForCxApp(String cxAppToken) {
-
-        if (!cxAppToken.equals(generateCxAppToken())) return Mono.empty();
+    public Mono<BaseResponse> readForCxApp() {
 
         return Mono.empty();
     }
