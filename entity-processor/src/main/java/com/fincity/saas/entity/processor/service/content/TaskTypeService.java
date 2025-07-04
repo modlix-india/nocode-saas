@@ -69,15 +69,11 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Mono<TaskType> createInternal(ProcessorAccess access, TaskTypeRequest taskTypeRequest) {
-        return FlatMapUtil.flatMapMono(
-                        () -> this.existsByName(access.getAppCode(), access.getClientCode(), taskTypeRequest.getName()),
-                        exists -> Boolean.TRUE.equals(exists)
-                                ? this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                        ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                        taskTypeRequest.getName(),
-                                        this.getEntityName())
-                                : this.createInternal(access, TaskType.of(taskTypeRequest)))
+
+        TaskType taskType = TaskType.of(taskTypeRequest);
+
+        return this.checkExistsByName(access, taskType)
+                .flatMap(cEntity -> this.createInternal(access, taskType))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskTypeRequest]"));
     }

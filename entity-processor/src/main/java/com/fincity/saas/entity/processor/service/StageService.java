@@ -122,6 +122,19 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
+
+        if (!stageRequest.isValid())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    "Please select the type of stage to continue.");
+
+        if (!stageRequest.areChildrenValid())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                    String.join(", ", stageRequest.getDuplicateChildNames()),
+                    "Status");
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
@@ -130,7 +143,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                             stageRequest.setProductTemplateId(productTemplateId);
 
                             if (stageRequest.getId() != null
-                                    && stageRequest.getId().getId() != null) {
+                                    && stageRequest.getId().getId() != null)
                                 return super.readIdentityWithAccess(access, stageRequest.getId())
                                         .flatMap(existingStage -> {
                                             existingStage
@@ -144,9 +157,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                             return super.update(existingStage);
                                         })
                                         .switchIfEmpty(super.create(Stage.ofParent(stageRequest)));
-                            } else {
-                                return super.create(Stage.ofParent(stageRequest));
-                            }
+                            else return super.create(Stage.ofParent(stageRequest));
                         },
                         (access, productTemplateId, parentStage) -> stageRequest.getChildren() != null
                                 ? this.updateOrCreateChildren(
