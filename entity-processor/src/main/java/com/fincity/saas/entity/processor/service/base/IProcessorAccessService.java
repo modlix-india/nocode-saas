@@ -5,9 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -20,8 +18,6 @@ public interface IProcessorAccessService {
 
     IFeignSecurityService getSecurityService();
 
-    CacheService getCacheService();
-
     default Mono<ProcessorAccess> hasAccess() {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -31,22 +27,11 @@ public interface IProcessorAccessService {
                                 .throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         ProcessorMessageResourceService.LOGIN_REQUIRED)),
-                (ca, isAuthenticated) -> this.getCachedProcessorAccess(ca));
+                (ca, isAuthenticated) -> this.getProcessorAccess(ca));
     }
 
     default Mono<ProcessorAccess> hasPublicAccess() {
-        return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication, this::getCachedProcessorAccess);
-    }
-
-    private Mono<ProcessorAccess> getCachedProcessorAccess(ContextAuthentication ca) {
-        if (ca.getAccessToken() == null) return this.getProcessorAccess(ca);
-
-        return this.getCacheService()
-                .cacheValueOrGet(
-                        IAuthenticationService.CACHE_NAME_TOKEN_ENTITY_PROCESSOR,
-                        () -> this.getProcessorAccess(ca),
-                        ca.getAccessToken());
+        return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, this::getProcessorAccess);
     }
 
     private Mono<ProcessorAccess> getProcessorAccess(ContextAuthentication ca) {

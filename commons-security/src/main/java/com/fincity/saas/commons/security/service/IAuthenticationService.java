@@ -9,8 +9,6 @@ public interface IAuthenticationService {
 
     String CACHE_NAME_TOKEN = "tokenCache";
 
-    String CACHE_NAME_TOKEN_ENTITY_PROCESSOR = "epTokenCache";
-
     Mono<Authentication> getAuthentication(
 		    boolean isBasic, String bearerToken, String clientCode, String appCode, ServerHttpRequest request);
 }
