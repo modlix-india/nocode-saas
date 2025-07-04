@@ -26,10 +26,8 @@ public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecor
     public Mono<Integer> evictTokensOfUser(ULong id) {
         return this.dao
                 .getTokensOfId(id)
-                .flatMap(e -> Mono.zip(
-                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e),
-                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN_ENTITY_PROCESSOR, e),
-                        (tEvicted, eEvicted) -> tEvicted && eEvicted))
+                .flatMap(e ->
+                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e))
                 .collectList()
                 .map(e -> 1);
     }
