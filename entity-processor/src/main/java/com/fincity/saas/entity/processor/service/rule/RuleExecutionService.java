@@ -86,13 +86,10 @@ public class RuleExecutionService {
 
         final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
-        return findMatchedRules(rules, prefix, data)
-                .flatMap(matchedRules -> {
-                    if (matchedRules.isEmpty()) return handleDefaultRule(rules, finalUserId);
-
-                    T matchedRule = matchedRules.getFirst();
-                    return handleMatchedRule(matchedRule, finalUserId);
-                })
+        return this.findMatchedRules(rules, prefix, data)
+                .flatMap(matchedRules -> matchedRules.isEmpty()
+                        ? handleDefaultRule(rules, finalUserId)
+                        : handleMatchedRule(matchedRules.getFirst(), finalUserId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
