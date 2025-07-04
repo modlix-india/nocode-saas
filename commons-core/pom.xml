@@ -232,6 +232,17 @@
                                 <database>
                                     <includes>${database.schema.name}_.*</includes>
                                     <inputSchema>${database.schema.name}</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>TOKEN_METADATA</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>
