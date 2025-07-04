@@ -91,7 +91,7 @@ public class RuleExecutionService {
                     if (matchedRules.isEmpty()) return handleDefaultRule(rules, finalUserId);
 
                     T matchedRule = matchedRules.getFirst();
-                    return handleMatchedRule(matchedRule, rules, finalUserId);
+                    return handleMatchedRule(matchedRule, finalUserId);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
@@ -243,33 +243,20 @@ public class RuleExecutionService {
         return this.getUsersForDistribution(defaultRule.getUserDistribution()).flatMap(userIds -> {
             // If userId is provided and exists in default rule's userIds, use it
             if (finalUserId != null && userIds.contains(finalUserId))
-                return Mono.just(addAssignedUser(defaultRule, finalUserId));
+                return Mono.just(this.addAssignedUser(defaultRule, finalUserId));
 
             // Otherwise distribute users according to the rule
             return this.distributeUsers(defaultRule, userIds);
         });
     }
 
-    private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, Map<Integer, T> rules, ULong finalUserId) {
+    private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, ULong finalUserId) {
         return this.getUsersForDistribution(matchedRule.getUserDistribution()).flatMap(userIds -> {
-            if (finalUserId != null) {
-                // Case 1: finalUserId is in matched rule's user list
-                if (userIds.contains(finalUserId)) return Mono.just(addAssignedUser(matchedRule, finalUserId));
+            // Case 1: finalUserId is provided and exists in the rule's userIds
+            if (finalUserId != null && userIds.contains(finalUserId))
+                return Mono.just(this.addAssignedUser(matchedRule, finalUserId));
 
-                // Case 2: Check if finalUserId exists in default rule's user list
-                T defaultRule = rules.get(0);
-                if (defaultRule != null)
-                    return this.getUsersForDistribution(defaultRule.getUserDistribution())
-                            .flatMap(defaultUserIds -> {
-                                if (defaultUserIds.contains(finalUserId))
-                                    return Mono.just(addAssignedUser(defaultRule, finalUserId));
-
-                                // Case 3: Not found, fallback to matched rule distribution
-                                return this.distributeUsers(matchedRule, userIds);
-                            });
-            }
-
-            // Case 4: finalUserId is null or not found in any rule
+            // Case 2: finalUserId is null or not found in any rule
             return this.distributeUsers(matchedRule, userIds);
         });
     }
