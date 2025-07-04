@@ -116,13 +116,15 @@ public abstract class BaseValueService<
     private Mono<D> validateEntity(D entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.existsByName(
-                                access.getAppCode(),
-                                access.getClientCode(),
-                                entity.getPlatform(),
-                                entity.getProductTemplateId(),
-                                entity.getId(),
-                                entity.getName()),
+                        Boolean.TRUE.equals(entity.getIsParent())
+                                ? this.existsByName(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        entity.getPlatform(),
+                                        entity.getProductTemplateId(),
+                                        entity.getId(),
+                                        entity.getName())
+                                : Mono.just(Boolean.FALSE),
                         entity.hasParentLevels()
                                 ? this.existsById(
                                         access.getAppCode(),
