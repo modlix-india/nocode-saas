@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
@@ -27,6 +27,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -178,7 +179,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.OBJECT_DATA</code>.
      * Object data of OBJECT_ENTITY_SERIES on which Activity is performed
      */
-    public final TableField<EntityProcessorActivitiesRecord, Map> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which Activity is performed", new JSONMysqlMapConvertor());
+    public final TableField<EntityProcessorActivitiesRecord, Map> OBJECT_DATA = createField(DSL.name("OBJECT_DATA"), SQLDataType.JSON, this, "Object data of OBJECT_ENTITY_SERIES on which Activity is performed", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
