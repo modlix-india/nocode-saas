@@ -56,13 +56,14 @@ public class ProductTemplateService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> {
-                            productTemplate.setAppCode(access.getAppCode());
-                            productTemplate.setClientCode(access.getClientCode());
+                        access -> super.checkExistsByName(access, productTemplate),
+                        (access, cEntity) -> {
+                            cEntity.setAppCode(access.getAppCode());
+                            cEntity.setClientCode(access.getClientCode());
 
-                            return super.create(productTemplate);
+                            return super.create(cEntity);
                         },
-                        (access, created) -> (productTemplateRequest.getProductId() == null
+                        (access, cEntity, created) -> (productTemplateRequest.getProductId() == null
                                         || productTemplateRequest.getProductId().isNull())
                                 ? Mono.just(created)
                                 : this.updateDependentServices(created, productTemplateRequest.getProductId()))

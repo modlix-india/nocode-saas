@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -29,7 +28,7 @@ public class ProductController
     }
 
     @GetMapping(CX_APP)
-    public Mono<ResponseEntity<BaseResponse>> readForCxApp(@RequestParam String cxAppToken) {
-        return this.service.readForCxApp(cxAppToken).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<BaseResponse>> readForCxApp() {
+        return this.service.readForCxApp().map(ResponseEntity::ok);
     }
 }

@@ -174,6 +174,21 @@ public abstract class BaseUpdatableService<
                 this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), code));
     }
 
+    protected Mono<D> checkExistsByName(ProcessorAccess access, D entity) {
+        return this.existsByName(access, entity.getName())
+                .flatMap(exists -> Boolean.TRUE.equals(exists)
+                        ? msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                entity.getName(),
+                                this.getEntityName())
+                        : Mono.just(entity));
+    }
+
+    private Mono<Boolean> existsByName(ProcessorAccess access, String name) {
+        return this.dao.existsByName(access.getAppCode(), access.getClientCode(), name);
+    }
+
     @Override
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
         return FlatMapUtil.flatMapMono(
