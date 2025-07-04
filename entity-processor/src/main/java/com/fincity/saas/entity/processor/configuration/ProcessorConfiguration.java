@@ -43,6 +43,8 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 http,
                 authService,
                 this.objectMapper,
+                "api/entity/processor/access/internal/**",
+                "api/entity/processor/access/internal",
                 "/api/entity/processor/core/function/**",
                 "/api/entity/processor/core/functions/repositoryFilter",
                 "/api/entity/processor/core/functions/repositoryFind");

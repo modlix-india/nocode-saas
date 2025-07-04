@@ -41,6 +41,7 @@ public abstract class BaseUpdatableService<
     @Getter
     protected IFeignSecurityService securityService;
 
+    @Getter
     protected CacheService cacheService;
 
     protected abstract String getCacheName();

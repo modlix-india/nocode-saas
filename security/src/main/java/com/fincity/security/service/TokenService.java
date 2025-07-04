@@ -1,7 +1,6 @@
 package com.fincity.security.service;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
@@ -18,19 +17,25 @@ import reactor.core.publisher.Mono;
 @Service
 public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecord, ULong, TokenObject, TokenDAO> {
 
-	@Autowired
-	private CacheService cacheService;
+    private final CacheService cacheService;
 
-	public Mono<Integer> evictTokensOfUser(ULong id) {
+    public TokenService(CacheService cacheService) {
+        this.cacheService = cacheService;
+    }
 
-		return this.dao.getTokensOfId(id).flatMap(e -> cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e))
-				.collectList()
-				.map(e -> 1);
-	}
+    public Mono<Integer> evictTokensOfUser(ULong id) {
+        return this.dao
+                .getTokensOfId(id)
+                .flatMap(e -> Mono.zip(
+                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e),
+                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN_ENTITY_PROCESSOR, e),
+                        (tEvicted, eEvicted) -> tEvicted && eEvicted))
+                .collectList()
+                .map(e -> 1);
+    }
 
-	@Override
-	protected Mono<ULong> getLoggedInUserId() {
-
-		return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
-	}
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
+        return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
+    }
 }
