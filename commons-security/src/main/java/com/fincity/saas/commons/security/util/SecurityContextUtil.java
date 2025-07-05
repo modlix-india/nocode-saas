@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -20,6 +22,8 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public class SecurityContextUtil {
+
+    public static final Logger logger = LoggerFactory.getLogger(SecurityContextUtil.class);
 
     public static Mono<BigInteger> getUsersClientId() {
 
@@ -70,6 +74,9 @@ public class SecurityContextUtil {
 
     public static boolean hasAuthority(String authority, Collection<? extends GrantedAuthority> collection) {
 
+        logger.info("hasAuthority: Checking if authority {} exists", authority);
+        logger.info("hasAuthority: Checking in collection {} ", collection);
+
         if (authority == null || authority.isBlank())
             return true;
 
@@ -80,6 +87,8 @@ public class SecurityContextUtil {
         AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
         JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
                 .getAsJsonPrimitive();
+
+        logger.info("hasAuthority: Does the authority {} exists : {}", authority, jp);
         return jp.isBoolean() && jp.getAsBoolean();
     }
 

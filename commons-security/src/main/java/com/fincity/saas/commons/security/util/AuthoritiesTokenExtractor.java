@@ -4,6 +4,9 @@ import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenVa
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import org.apache.logging.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
@@ -12,8 +15,9 @@ import java.util.stream.Collectors;
 
 public class AuthoritiesTokenExtractor extends TokenValueExtractor {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthoritiesTokenExtractor.class);
+
     private final Collection<? extends GrantedAuthority> authorities;
-    private Set<String> stringAuths;
 
     public AuthoritiesTokenExtractor(Collection<? extends GrantedAuthority> authorities) {
 
@@ -22,10 +26,7 @@ public class AuthoritiesTokenExtractor extends TokenValueExtractor {
 
     @Override
     protected JsonElement getValueInternal(String token) {
-        if (stringAuths == null) {
-            this.stringAuths = authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
-        }
-        return new JsonPrimitive(this.stringAuths.contains(token.trim()));
+        return new JsonPrimitive(this.authorities.parallelStream().map(GrantedAuthority::getAuthority).anyMatch(e -> e.equals(token)));
     }
 
     @Override
@@ -37,7 +38,6 @@ public class AuthoritiesTokenExtractor extends TokenValueExtractor {
     public JsonElement getStore() {
 
         JsonArray arr = new JsonArray();
-        if (stringAuths == null) return arr;
 
         authorities.stream()
                 .map(GrantedAuthority::getAuthority)
