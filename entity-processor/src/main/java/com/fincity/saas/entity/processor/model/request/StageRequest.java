@@ -34,11 +34,11 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
 
     public boolean isValid() {
 
-        if (stageType == null) return false;
+        if (stageType == null) return Boolean.FALSE;
 
         if (stageType.isHasSuccessFailure()) return isSuccess != null || isFailure != null;
 
-        return true;
+        return Boolean.TRUE;
     }
 
     @Override
@@ -51,6 +51,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
         for (StageRequest child : children) {
             String name = child.getName();
             if (!child.isValid()) return Boolean.FALSE;
+            if (name != null && name.equals(this.getName())) return Boolean.FALSE;
             if (name != null && !names.add(name)) return Boolean.FALSE;
         }
 
