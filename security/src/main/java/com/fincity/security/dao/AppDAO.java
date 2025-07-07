@@ -78,7 +78,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     @Override
-    protected Mono<Condition> filter(AbstractCondition acond) {
+    public Mono<Condition> filter(AbstractCondition acond) {
 
         Mono<Condition> condition = super.filter(acond);
 

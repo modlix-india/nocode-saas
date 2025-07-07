@@ -33,4 +33,8 @@ public abstract class BaseContentRequest<T extends BaseContentRequest<T>> extend
         this.ticketId = ticketId;
         return (T) this;
     }
+
+    public boolean hasContent() {
+        return this.getContent() != null && !this.getContent().trim().isEmpty();
+    }
 }

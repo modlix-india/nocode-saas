@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesPlatform;
 import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesStageType;
@@ -26,6 +27,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -284,6 +286,11 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_STAGES_IDX1_STAGE_NAME, Indexes.ENTITY_PROCESSOR_STAGES_IDX2_STAGE_NAME_PLATFORM);
+    }
+
+    @Override
     public Identity<EntityProcessorStagesRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorStagesRecord, ULong>) super.getIdentity();
     }
@@ -295,7 +302,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
 
     @Override
     public List<UniqueKey<EntityProcessorStagesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_STAGES_UK1_STAGES_CODE, Keys.KEY_ENTITY_PROCESSOR_STAGES_UK2_STAGES_NAME);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_STAGES_UK1_STAGES_CODE);
     }
 
     @Override

@@ -107,6 +107,12 @@ public class SecurityAppRegIntegration extends TableImpl<SecurityAppRegIntegrati
     public final TableField<SecurityAppRegIntegrationRecord, String> LOGIN_URI = createField(DSL.name("LOGIN_URI"), SQLDataType.VARCHAR(2083).nullable(false), this, "URI for login");
 
     /**
+     * The column <code>security.security_app_reg_integration.SIGNUP_URI</code>.
+     * URI for signup
+     */
+    public final TableField<SecurityAppRegIntegrationRecord, String> SIGNUP_URI = createField(DSL.name("SIGNUP_URI"), SQLDataType.VARCHAR(2083).nullable(false), this, "URI for signup");
+
+    /**
      * The column <code>security.security_app_reg_integration.CREATED_BY</code>.
      * ID of the user who created this row
      */

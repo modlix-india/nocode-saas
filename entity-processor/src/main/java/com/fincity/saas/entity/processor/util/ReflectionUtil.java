@@ -10,7 +10,7 @@ public class ReflectionUtil {
     private ReflectionUtil() {}
 
     public static <T> T getInstance(Class<T> clazz) {
-        Constructor<T> constructor = null;
+        Constructor<T> constructor;
         try {
             constructor = clazz.getDeclaredConstructor();
         } catch (NoSuchMethodException e) {

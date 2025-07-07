@@ -11,7 +11,9 @@ import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,8 +21,12 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/entity/processor/tasks")
-public class TaskController
-        extends BaseContentController<TaskRequest, EntityProcessorTasksRecord, Task, TaskDAO, TaskService> {
+public class TaskController extends BaseContentController<EntityProcessorTasksRecord, Task, TaskDAO, TaskService> {
+
+    @PostMapping(REQ_PATH)
+    public Mono<ResponseEntity<Task>> createFromRequest(@RequestBody TaskRequest taskRequest) {
+        return this.service.create(taskRequest).map(ResponseEntity::ok);
+    }
 
     @PutMapping(REQ_PATH_ID + "/reminder")
     public Mono<ResponseEntity<Task>> setReminder(

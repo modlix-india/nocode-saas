@@ -35,7 +35,7 @@ public class Stage extends BaseValueDto<Stage> {
     }
 
     public static Stage ofParent(StageRequest stageRequest) {
-        return (Stage) new Stage()
+        return new Stage()
                 .setProductTemplateId(stageRequest.getProductTemplateId().getULongId())
                 .setIsParent(Boolean.TRUE)
                 .setName(stageRequest.getName())
@@ -43,7 +43,8 @@ public class Stage extends BaseValueDto<Stage> {
                 .setStageType(stageRequest.getStageType())
                 .setIsSuccess(stageRequest.getIsSuccess())
                 .setIsFailure(stageRequest.getIsFailure())
-                .setPlatform(stageRequest.getPlatform());
+                .setPlatform(stageRequest.getPlatform())
+                .setOrder(stageRequest.getOrder());
     }
 
     public static Stage ofChild(
@@ -56,8 +57,10 @@ public class Stage extends BaseValueDto<Stage> {
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
                 .setStageType(stageType)
-                .setIsSuccess(stageRequest.getIsSuccess())
-                .setIsFailure(stageRequest.getIsFailure())
+                .setIsSuccess(
+                        stageRequest.getIsSuccess() != null ? stageRequest.getIsSuccess() : parents[0].getIsSuccess())
+                .setIsFailure(
+                        stageRequest.getIsFailure() != null ? stageRequest.getIsFailure() : parents[0].getIsFailure())
                 .setOrder(order)
                 .setPlatform(platform);
     }

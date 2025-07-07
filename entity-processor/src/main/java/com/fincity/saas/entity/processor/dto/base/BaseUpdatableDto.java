@@ -7,13 +7,14 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.IClassConvertor;
 import java.io.Serial;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -62,7 +63,7 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
     }
 
-    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(List<T> baseDtoList) {
+    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
         return baseDtoList.stream()
                 .collect(Collectors.toMap(BaseUpdatableDto::getId, Function.identity(), (a, b) -> b));
     }
@@ -95,7 +96,13 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         return (T) this;
     }
 
-    public BaseResponse toBaseResponse() {
+    @JsonIgnore
+    public BaseResponse getBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
+    }
+
+    @JsonIgnore
+    public Identity getIdentity() {
+        return Identity.of(this.getId().toBigInteger(), this.getCode());
     }
 }

@@ -4,10 +4,12 @@ import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -29,10 +31,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientUrl;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.enums.otp.OtpPurpose;
@@ -688,9 +686,9 @@ public class ClientRegistrationService {
 
                             return switch (appRegIntg.getPlatform()) {
                                 case GOOGLE -> this.appRegistrationIntegrationService
-                                        .redirectToGoogleAuthConsent(appRegIntg, state, callBackURL);
+                                        .redirectToGoogleAuthConsent(appRegIntg, state, callBackURL, request);
                                 case META -> this.appRegistrationIntegrationService
-                                        .redirectToMetaAuthConsent(appRegIntg, state, callBackURL);
+                                        .redirectToMetaAuthConsent(appRegIntg, state, callBackURL, request);
                                 default -> this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
@@ -700,6 +698,8 @@ public class ClientRegistrationService {
     }
 
     public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
+
+        if (request.getQueryParams().getFirst("code") == null) return invalidSocialCallback(request, response);
 
         String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
@@ -734,8 +734,15 @@ public class ClientRegistrationService {
 
                         (ca, app, appRegIntgToken, appRegIntg, registerRequest) -> {
 
-                            URI redirectUri = UriComponentsBuilder
-                                    .fromUri(URI.create(urlPrefix + appRegIntg.getLoginUri()))
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
+
+                            UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                                    .fromUri(URI.create(urlPrefix + redirectUrl))
                                     .queryParam("sessionId", appRegIntgToken.getState())
                                     .queryParam("userName", registerRequest.getUserName())
                                     .queryParam("emailId", registerRequest.getEmailId())
@@ -743,14 +750,57 @@ public class ClientRegistrationService {
                                     .queryParamIfPresent("firstName", Optional.ofNullable(registerRequest.getFirstName()))
                                     .queryParamIfPresent("lastName", Optional.ofNullable(registerRequest.getLastName()))
                                     .queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
-                                    .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()))
-                                    .build().toUri();
+                                    .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
 
-                            response.setStatusCode(HttpStatus.FOUND);
-                            response.getHeaders().setLocation(redirectUri);
-                            return response.setComplete();
+                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
+
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
+    }
+
+    private Mono<Void> invalidSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
+
+        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+
+        String urlPrefix = HTTPS + host;
+
+        response.setStatusCode(HttpStatus.FOUND);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
+                                request.getQueryParams().getFirst("state")),
+                        appRegIntgToken ->
+                                this.appRegistrationIntegrationService.read(appRegIntgToken.getIntegrationId()),
+                        (appRegIntgToken, appRegIntg) -> {
+
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
+
+                            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(URI.create(urlPrefix + redirectUrl))
+                                    .queryParam("error", "access_denied");
+
+                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.invalidSocialCallback"));
+    }
+
+    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntgToken, UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
+
+        appRegIntgToken.getRequestParam().forEach((key, value) -> {
+            if (value != null) {
+                uriBuilder.queryParam(key, value.toString());
+            }
+        });
+
+        URI redirectUri = uriBuilder.build().toUri();
+
+        response.setStatusCode(HttpStatus.FOUND);
+        response.getHeaders().setLocation(redirectUri);
+        return response.setComplete();
     }
 
     public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest,

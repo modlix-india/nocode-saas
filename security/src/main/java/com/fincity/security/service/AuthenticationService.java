@@ -209,10 +209,14 @@ public class AuthenticationService implements IAuthenticationService {
             ServerHttpRequest request,
             ServerHttpResponse response) {
 
-        // Get userId either from authRequest or by calling userService
-        Mono<ULong> userIdMono = authRequest.getUserId() != null
-                ? Mono.just(authRequest.getUserId())
-                : this.userService.findUserAcrossApps(authRequest.getUserName(), clientCode, authRequest.getIdentifierType());
+        Mono<ULong> userIdMono = this.userService
+                .findNonDeletedUserNClient(
+                        authRequest.getUserName(),
+                        authRequest.getUserId(),
+                        clientCode,
+                        null,
+                        authRequest.getIdentifierType())
+                .map(t -> t.getT3().getId());
 
         return userIdMono
                 .flatMap(this.profileService::getUserAppHavingProfile)
@@ -224,7 +228,9 @@ public class AuthenticationService implements IAuthenticationService {
                             .build();
 
                     // Call authenticate with the modified request
-                    return this.authenticate(authRequest, modifiedRequest, response);
+                    if (StringUtil.safeIsBlank(authRequest.getSocialRegisterState()))
+                        return this.authenticate(authRequest, modifiedRequest, response);
+                    else return this.authenticateWSocial(authRequest, modifiedRequest, response);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateUserForHavingApp"))
                 .switchIfEmpty(Mono.defer(() -> this.authError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND)));

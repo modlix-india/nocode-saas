@@ -242,6 +242,13 @@
                                             <includeExpression>.*\.VALUE</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.OBJECT_DATA</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.entity.processor.enums.Platform</userType>
                                             <includeExpression>.*\.PLATFORM</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

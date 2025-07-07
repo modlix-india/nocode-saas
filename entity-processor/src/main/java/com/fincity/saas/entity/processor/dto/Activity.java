@@ -4,6 +4,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
+import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class Activity extends BaseDto<Activity> {
 
     private ULong ticketId;
     private ULong taskId;
+    private ULong noteId;
     private String comment;
     private LocalDateTime activityDate;
     private ActivityAction activityAction;
@@ -36,6 +38,9 @@ public class Activity extends BaseDto<Activity> {
 
     public Activity() {
         super();
+        this.relationsMap.put(Fields.taskId, EntitySeries.TASK.getTable());
+        this.relationsMap.put(Fields.noteId, EntitySeries.NOTE.getTable());
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.actorId);
     }
 
     public static Activity of(ULong ticketId, ActivityAction action, ActivityObject object) {

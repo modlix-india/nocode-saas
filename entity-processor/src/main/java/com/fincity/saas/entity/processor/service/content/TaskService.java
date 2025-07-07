@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskDAO;
 import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -16,9 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
-public class TaskService extends BaseContentService<TaskRequest, EntityProcessorTasksRecord, Task, TaskDAO> {
+public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO> {
 
     private static final String TASK_CACHE = "task";
 
@@ -39,41 +41,59 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
         return EntitySeries.TASK;
     }
 
-    @Override
-    protected Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
-        return super.updateIdentities(access, taskRequest).flatMap(updated -> {
-            if (updated.getTaskTypeId() != null)
-                return taskTypeService
-                        .checkAndUpdateIdentityWithAccess(access, updated.getTaskTypeId())
-                        .map(updated::setTaskTypeId);
-
-            return Mono.just(updated);
-        });
+    public Mono<Task> create(TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.create"));
     }
 
-    @Override
-    protected Mono<Task> createContent(TaskRequest contentRequest) {
+    public Mono<Task> createInternal(ProcessorAccess access, TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.updateIdentities(access, taskRequest),
+                        (task) -> this.createContent(taskRequest),
+                        (task, content) -> content.isTicketContent()
+                                ? this.createTicketContent(access, content)
+                                : this.createOwnerContent(access, content))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
+    }
 
-        if ((contentRequest.getContent() == null
-                        || contentRequest.getContent().trim().isEmpty())
-                && contentRequest.getTaskTypeId() == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.CONTENT_MISSING,
-                    this.getEntityName());
+    private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
 
-        if (contentRequest.getDueDate() != null && contentRequest.getDueDate().isBefore(LocalDateTime.now()))
+        Mono<Identity> ticketIdMono = taskRequest.getTicketId() != null
+                ? this.checkTicket(access, taskRequest.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        Mono<Identity> ownerIdMono = ticketIdMono.flatMap(ticketId -> taskRequest.getOwnerId() != null
+                ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
+                : Mono.just(Identity.ofNull()));
+
+        Mono<Identity> taskTypeIdMono = taskRequest.getTaskTypeId() != null
+                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
+                : Mono.just(Identity.ofNull());
+
+        return Mono.zip(ticketIdMono, ownerIdMono, taskTypeIdMono)
+                .map(tuple3 -> taskRequest
+                        .setTicketId(tuple3.getT1())
+                        .setOwnerId(tuple3.getT2())
+                        .setTaskTypeId(tuple3.getT3()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updateIdentities"));
+    }
+
+    private Mono<Task> createContent(TaskRequest taskRequest) {
+
+        if (taskRequest.getDueDate() != null && taskRequest.getDueDate().isBefore(LocalDateTime.now()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.DATE_IN_PAST,
                     "Due");
 
-        return Mono.just(new Task().of(contentRequest));
+        return Mono.just(Task.of(taskRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createContent"));
     }
 
     @Override
     protected Mono<Task> updatableEntity(Task entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setName(entity.getName());
             existing.setDueDate(entity.getDueDate());
             existing.setTaskPriority(entity.getTaskPriority());
 
@@ -93,29 +113,36 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
             existing.setHasReminder(entity.isHasReminder());
             existing.setNextReminder(entity.getNextReminder());
 
-            return Mono.just(existing);
+            return Mono.just(existing).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updatableEntity"));
         });
     }
 
     public Mono<Task> setReminder(Identity taskIdentity, LocalDateTime reminderDate) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.readIdentityWithAccess(access, taskIdentity),
-                (access, task) -> this.checkTaskStatus(task, reminderDate, LocalDateTime.now(), "Reminder"),
-                (access, task, vTask) -> {
-                    vTask.setHasReminder(Boolean.TRUE);
-                    vTask.setNextReminder(reminderDate);
+                        super::hasAccess,
+                        access -> this.readIdentityWithAccess(access, taskIdentity),
+                        (access, task) -> this.checkTaskStatus(task, reminderDate, LocalDateTime.now(), "Reminder"),
+                        (access, task, vTask) -> {
+                            vTask.setHasReminder(Boolean.TRUE);
+                            vTask.setNextReminder(reminderDate);
 
-                    return this.updateInternal(access, vTask);
-                });
+                            return this.updateInternal(access, vTask);
+                        },
+                        (access, task, vTask, uTask) ->
+                                this.activityService.acReminderSet(uTask).then(Mono.just(uTask)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setReminder"));
     }
 
     public Mono<Task> setTaskCompleted(Identity taskIdentity, Boolean isCompleted, LocalDateTime completedDate) {
-        return this.setTaskStatus(taskIdentity, isCompleted, completedDate, true);
+        return this.setTaskStatus(taskIdentity, isCompleted, completedDate, true)
+                .flatMap(task -> this.activityService.acTaskComplete(task).then(Mono.just(task)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskCompleted"));
     }
 
     public Mono<Task> setTaskCancelled(Identity taskIdentity, Boolean isCancelled, LocalDateTime cancelledDate) {
-        return this.setTaskStatus(taskIdentity, isCancelled, cancelledDate, false);
+        return this.setTaskStatus(taskIdentity, isCancelled, cancelledDate, false)
+                .flatMap(task -> this.activityService.acTaskCancelled(task).then(Mono.just(task)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskCancelled"));
     }
 
     private Mono<Task> setTaskStatus(
@@ -124,24 +151,26 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
         LocalDateTime now = LocalDateTime.now();
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.readIdentityWithAccess(access, taskIdentity),
-                (access, task) -> this.checkTaskStatus(task, statusDate, now, "Status"),
-                (access, task, vTask) -> {
-                    LocalDateTime date = statusDate != null ? statusDate : now;
+                        super::hasAccess,
+                        access -> this.readIdentityWithAccess(access, taskIdentity),
+                        (access, task) -> this.checkTaskStatus(task, statusDate, now, "Status"),
+                        (access, task, vTask) -> {
+                            LocalDateTime date = statusDate != null ? statusDate : now;
 
-                    if (vTask.getDueDate() != null && vTask.getDueDate().isBefore(date)) vTask.setDelayed(Boolean.TRUE);
+                            if (vTask.getDueDate() != null && vTask.getDueDate().isBefore(date))
+                                vTask.setDelayed(Boolean.TRUE);
 
-                    if (isCompletion) {
-                        vTask.setCompleted(status);
-                        vTask.setCompletedDate(date);
-                    } else {
-                        vTask.setCancelled(status);
-                        vTask.setCancelledDate(date);
-                    }
+                            if (isCompletion) {
+                                vTask.setCompleted(status);
+                                vTask.setCompletedDate(date);
+                            } else {
+                                vTask.setCancelled(status);
+                                vTask.setCancelledDate(date);
+                            }
 
-                    return this.updateInternal(access, vTask);
-                });
+                            return this.updateInternal(access, vTask);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskStatus"));
     }
 
     private Mono<Task> checkTaskStatus(Task task, LocalDateTime statusDate, LocalDateTime now, String statusName) {
@@ -164,6 +193,6 @@ public class TaskService extends BaseContentService<TaskRequest, EntityProcessor
                     ProcessorMessageResourceService.DATE_IN_PAST,
                     statusName);
 
-        return Mono.just(task);
+        return Mono.just(task).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkTaskStatus"));
     }
 }
