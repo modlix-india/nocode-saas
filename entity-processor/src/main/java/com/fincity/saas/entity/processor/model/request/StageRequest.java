@@ -5,7 +5,6 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.util.NameUtil;
-
 import java.io.Serial;
 import java.util.Collection;
 import java.util.HashMap;
