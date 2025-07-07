@@ -450,16 +450,25 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
-        return this.createActivityInternal(
-                        ActivityAction.REASSIGN,
-                        comment,
-                        Map.of(
-                                Activity.Fields.ticketId,
-                                ticketId,
-                                ActivityAction.getOldName(Ticket.Fields.assignedUserId),
-                                oldUser,
-                                Ticket.Fields.assignedUserId,
-                                newUser))
+
+        return FlatMapUtil.flatMapMono(
+                        () -> Mono.zip(
+                                super.securityService
+                                        .getUserInternal(oldUser.toBigInteger())
+                                        .map(this::getUserIdAndValue),
+                                super.securityService
+                                        .getUserInternal(newUser.toBigInteger())
+                                        .map(this::getUserIdAndValue)),
+                        users -> this.createActivityInternal(
+                                ActivityAction.REASSIGN,
+                                comment,
+                                Map.of(
+                                        Activity.Fields.ticketId,
+                                        ticketId,
+                                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                                        users.getT1(),
+                                        Ticket.Fields.assignedUserId,
+                                        users.getT2())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassign"));
     }
 
@@ -563,5 +572,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         } else if (fieldValue instanceof ULong ulongValue) {
             consumer.accept(ulongValue);
         }
+    }
+
+    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
+        return IdAndValue.of(
+                ULongUtil.valueOf(userMap.get("id")),
+                NameUtil.assembleFullName(
+                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
     }
 }
