@@ -1,11 +1,13 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -57,8 +59,10 @@ public class Stage extends BaseValueDto<Stage> {
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
                 .setStageType(stageType)
-                .setIsSuccess(stageRequest.getIsSuccess())
-                .setIsFailure(stageRequest.getIsFailure())
+                .setIsSuccess(
+                        stageRequest.getIsSuccess() != null ? stageRequest.getIsSuccess() : parents[0].getIsSuccess())
+                .setIsFailure(
+                        stageRequest.getIsFailure() != null ? stageRequest.getIsFailure() : parents[0].getIsFailure())
                 .setOrder(order)
                 .setPlatform(platform);
     }

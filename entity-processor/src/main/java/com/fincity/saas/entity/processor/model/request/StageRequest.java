@@ -34,8 +34,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
     private Boolean isFailure;
     private Integer order;
 
-    public boolean isValid() {
-
+    public boolean isStageTypeValid() {
         if (stageType == null) return Boolean.FALSE;
 
         if (stageType.isHasSuccessFailure()) return isSuccess != null || isFailure != null;
@@ -45,6 +44,9 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
 
     @Override
     public boolean areChildrenValid() {
+
+        if (super.getChildren() == null || super.getChildren().isEmpty()) return Boolean.TRUE;
+
         Collection<StageRequest> children = super.getChildren().values();
 
         if (children.isEmpty()) return Boolean.TRUE;
@@ -54,7 +56,6 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
         String parentName = NameUtil.normalize(this.getName());
         for (StageRequest child : children) {
             String name = NameUtil.normalize(child.getName());
-            if (!child.isValid()) return Boolean.FALSE;
             if (name != null && name.equals(parentName)) return Boolean.FALSE;
             if (name != null && !names.add(name)) return Boolean.FALSE;
         }
