@@ -234,23 +234,25 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         super::hasAccess,
                         access -> super.readIdentityWithOwnerAccess(access, ticketId),
                         (access, ticket) -> {
-                            if (ticket.getAssignedUserId() != null
-                                    && ticket.getAssignedUserId().equals(ticketReassignRequest.getUserId()))
+                            if (!access.getSubOrg().contains(ticketReassignRequest.getUserId()))
+                                return this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
+
+                            ULong oldUserId = ticket.getAssignedUserId();
+
+                            if (oldUserId != null && oldUserId.equals(ticketReassignRequest.getUserId()))
                                 return Mono.just(ticket);
 
                             return FlatMapUtil.flatMapMono(
-                                    () -> Mono.just(access),
-                                    pAccess -> Mono.just(ticket),
-                                    (pAccess, cTicket) ->
-                                            this.setTicketAssignment(cTicket, ticketReassignRequest.getUserId()),
-                                    (pAccess, cTicket, aTicket) -> super.updateInternal(aTicket),
-                                    (pAccess, cTicket, aTicket, uTicket) ->
-                                            this.createNote(pAccess, ticketReassignRequest, uTicket),
-                                    (pAccess, cTicket, aTicket, uTicket, cNote) -> this.activityService
+                                    () -> this.setTicketAssignment(ticket, ticketReassignRequest.getUserId()),
+                                    super::updateInternal,
+                                    (aTicket, uTicket) -> this.createNote(access, ticketReassignRequest, uTicket),
+                                    (aTicket, uTicket, cNote) -> this.activityService
                                             .acReassign(
                                                     uTicket.getId(),
                                                     ticketReassignRequest.getComment(),
-                                                    cTicket.getAssignedUserId(),
+                                                    oldUserId,
                                                     uTicket.getAssignedUserId())
                                             .thenReturn(uTicket));
                         })

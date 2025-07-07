@@ -36,10 +36,7 @@ public class ConditionEvaluator {
 
         return switch (condition) {
             case ComplexCondition cc -> evaluateComplex(cc, json);
-            case FilterCondition fc -> evaluateFilter(fc, json).flatMap(e -> {
-                Boolean nas  = e;
-                return Mono.just(nas);
-            });
+            case FilterCondition fc -> evaluateFilter(fc, json);
             default -> Mono.just(Boolean.FALSE);
         };
     }
@@ -154,12 +151,8 @@ public class ConditionEvaluator {
             if (p1.isNumber() && p2.isNumber())
                 return compare(jsonVal, filterVal).map(result -> result == 0);
             if (p1.isBoolean() && p2.isBoolean()) return Mono.just(p1.getAsBoolean() == p2.getAsBoolean());
-            if (p1.isString() && p2.isString()) {
-                String as = p1.getAsString();
-                String a= p2.getAsString();
+            if (p1.isString() && p2.isString())
                 return Mono.just(p1.getAsString().equals(p2.getAsString()));
-            }
-
         }
 
         return Mono.just(jsonVal.toString().equals(filterVal.toString()));
@@ -170,9 +163,7 @@ public class ConditionEvaluator {
         if (!jsonVal.isJsonPrimitive() || !filterVal.isJsonPrimitive()) return Mono.just(0);
 
         if (jsonVal.getAsJsonPrimitive().isString()
-                && filterVal.getAsJsonPrimitive().isString()) {
-            return this.compareDate(jsonVal, filterVal);
-        }
+                && filterVal.getAsJsonPrimitive().isString()) return this.compareDate(jsonVal, filterVal);
 
         return this.compareNumber(jsonVal, filterVal);
     }
