@@ -109,6 +109,8 @@ public abstract class BaseValueService<
                 existing.setParentLevel1(entity.getParentLevel1());
             }
 
+            existing.setOrder(entity.getOrder());
+
             return Mono.just(existing);
         });
     }
