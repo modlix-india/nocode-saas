@@ -7,7 +7,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
-        <relativePath />
+        <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
@@ -117,7 +117,7 @@
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>			<!-- or jjwt-gson if Gson is
+            <artifactId>jjwt-jackson</artifactId>            <!-- or jjwt-gson if Gson is
 			preferred -->
             <version>0.11.5</version>
             <scope>runtime</scope>
@@ -188,6 +188,11 @@
         <dependency>
             <groupId>org.springframework.amqp</groupId>
             <artifactId>spring-rabbit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-jackson-extensions</artifactId>
+            <version>3.20.2</version>
         </dependency>
     </dependencies>
     <dependencyManagement>
@@ -292,6 +297,30 @@
                                 <database>
                                     <includes>security_.*</includes>
                                     <inputSchema>security</inputSchema>
+                                    <excludes>
+                                        security_package |
+                                        security_package_role |
+                                        security_client_package |
+                                        security_user_role |
+                                        security_role_permission |
+                                        security_user_role_permission |
+                                        security_app_reg_package |
+                                        security_app_reg_user_role |
+                                        security_org_structure |
+                                        security_role |
+                                        security_app_reg_user_role
+                                    </excludes>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>ARRANGEMENT|TOKEN_METADATA|USER_METADATA|REQUEST_PARAM</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

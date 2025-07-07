@@ -4,10 +4,12 @@ import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -28,11 +30,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
-import com.fincity.security.dao.appregistration.AppRegistrationDAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientUrl;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
+import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.enums.otp.OtpPurpose;
@@ -44,7 +42,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.ClientRegistrationRequest;
-import com.fincity.security.model.ClientRegistrationResponse;
+import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.otp.OtpGenerationRequest;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.AppService;
@@ -65,717 +63,814 @@ import reactor.util.function.Tuples;
 @Service
 public class ClientRegistrationService {
 
-	private static final String HTTP = "http://";
-	private static final String HTTPS = "https://";
-	private static final String X_FORWARDED_PORT = "X-Forwarded-Port";
-	private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
-	private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
-	private static final int VALIDITY_MINUTES = 30;
-	private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
+    private static final String HTTP = "http://";
+    private static final String HTTPS = "https://";
+    private static final String X_FORWARDED_PORT = "X-Forwarded-Port";
+    private static final String X_FORWARDED_PROTO = "X-Forwarded-Proto";
+    private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
+    private static final int VALIDITY_MINUTES = 30;
+    private static final String SOCIAL_CALLBACK_URI = "/api/security/clients/socialRegister/callback";
 
-	private final ClientDAO dao;
-	private final AppService appService;
-	private final UserService userService;
-	private final OtpService otpService;
-	private final AuthenticationService authenticationService;
-	private final ClientService clientService;
-	private final ClientHierarchyService clientHierarchyService;
-	private final EventCreationService ecService;
-	private final ClientUrlService clientUrlService;
-	private final AppRegistrationDAO appRegistrationDAO;
-	private final IFeignFilesService filesService;
-	private final AppRegistrationIntegrationService appRegistrationIntegrationService;
-	private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
-	private final SecurityMessageResourceService securityMessageResourceService;
+    private final ClientDAO dao;
+    private final AppService appService;
+    private final UserService userService;
+    private final OtpService otpService;
+    private final AuthenticationService authenticationService;
+    private final ClientService clientService;
+    private final ClientHierarchyService clientHierarchyService;
+    private final EventCreationService ecService;
+    private final ClientUrlService clientUrlService;
+    private final AppRegistrationV2DAO appRegistrationDAO;
+    private final IFeignFilesService filesService;
+    private final AppRegistrationIntegrationService appRegistrationIntegrationService;
+    private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
+    private final SecurityMessageResourceService securityMessageResourceService;
 
-	@Value("${security.subdomain.endings}")
-	private String[] subDomainEndings;
+    @Value("${security.subdomain.endings}")
+    private String[] subDomainEndings;
 
-	public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
-			OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
-			ClientHierarchyService clientHierarchyService, EventCreationService ecService,
-			ClientUrlService clientUrlService, AppRegistrationDAO appRegistrationDAO, IFeignFilesService filesService,
-			AppRegistrationIntegrationService appRegistrationIntegrationService,
-			AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
-			SecurityMessageResourceService securityMessageResourceService) {
+    public ClientRegistrationService(ClientDAO dao, AppService appService, UserService userService,
+                                     OtpService otpService, AuthenticationService authenticationService, ClientService clientService,
+                                     ClientHierarchyService clientHierarchyService, EventCreationService ecService,
+                                     ClientUrlService clientUrlService, AppRegistrationV2DAO appRegistrationDAO, IFeignFilesService filesService,
+                                     AppRegistrationIntegrationService appRegistrationIntegrationService,
+                                     AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
+                                     SecurityMessageResourceService securityMessageResourceService) {
 
-		this.dao = dao;
-		this.appService = appService;
-		this.userService = userService;
-		this.otpService = otpService;
-		this.authenticationService = authenticationService;
-		this.clientService = clientService;
-		this.clientHierarchyService = clientHierarchyService;
-		this.ecService = ecService;
-		this.clientUrlService = clientUrlService;
-		this.appRegistrationDAO = appRegistrationDAO;
-		this.filesService = filesService;
-		this.appRegistrationIntegrationService = appRegistrationIntegrationService;
-		this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
-		this.securityMessageResourceService = securityMessageResourceService;
-	}
+        this.dao = dao;
+        this.appService = appService;
+        this.userService = userService;
+        this.otpService = otpService;
+        this.authenticationService = authenticationService;
+        this.clientService = clientService;
+        this.clientHierarchyService = clientHierarchyService;
+        this.ecService = ecService;
+        this.clientUrlService = clientUrlService;
+        this.appRegistrationDAO = appRegistrationDAO;
+        this.filesService = filesService;
+        this.appRegistrationIntegrationService = appRegistrationIntegrationService;
+        this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
+        this.securityMessageResourceService = securityMessageResourceService;
+    }
 
-	private <T> Mono<T> regError(Object... params) {
-		return this.securityMessageResourceService.throwMessage(
-				msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-				SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, params);
-	}
+    private <T> Mono<T> regError(Object... params) {
+        return this.securityMessageResourceService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                SecurityMessageResourceService.CLIENT_REGISTRATION_ERROR, params);
+    }
 
-	public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
+    public Mono<Boolean> generateOtp(OtpGenerationRequest otpGenerationRequest, ServerHttpRequest request) {
 
-		String appCode = request.getHeaders().getFirst(AppService.AC);
-		String clientCode = request.getHeaders().getFirst(ClientService.CC);
+        String appCode = request.getHeaders().getFirst(AppService.AC);
+        String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
-		return FlatMapUtil.flatMapMono(
-				() -> clientService.getClientBy(clientCode),
+        return FlatMapUtil.flatMapMono(
+                        () -> clientService.getClientBy(clientCode),
 
-				client -> this.fetchAppProp(client.getId(), null, appCode, AppService.APP_PROP_REG_TYPE),
+                        client -> this.fetchAppProp(client.getId(), null, appCode, AppService.APP_PROP_REG_TYPE),
 
-				(client, regProp) -> {
+                        (client, regProp) -> {
 
-					if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
-						return this.regError("Feature not supported");
+                            if (!regProp.equals(AppService.APP_PROP_REG_TYPE_VERIFICATION))
+                                return this.regError("Feature not supported");
 
-					return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION), request);
-				})
-				.switchIfEmpty(regError("Feature not supported"))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
-	}
+                            return otpService.generateOtp(otpGenerationRequest.setPurpose(OtpPurpose.REGISTRATION), request);
+                        })
+                .switchIfEmpty(regError("Feature not supported"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.generateOtp"));
+    }
 
-	public Mono<Boolean> preRegisterCheckOne(ClientRegistrationRequest registrationRequest) {
+    public Mono<Boolean> preRegisterCheckOne(ClientRegistrationRequest registrationRequest) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> SecurityContextUtil.getUsersContextAuthentication()
-						.flatMap(ca -> ca.isAuthenticated() ? Mono.empty() : Mono.just(ca))
-						.switchIfEmpty(this.regError("Signout to register")),
+                        () -> SecurityContextUtil.getUsersContextAuthentication()
+                                .flatMap(ca -> ca.isAuthenticated() ? Mono.empty() : Mono.just(ca))
+                                .switchIfEmpty(this.regError("Logout to register")),
 
-				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
-						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
+                        ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+                                ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
-				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
+                        (ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
 
-				(ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
-						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
-				(ca, policy, subDomain, regProp) -> {
+                        (ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+                                ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
+                        (ca, policy, subDomain, regProp) -> {
 
-					if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
-						return this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
+                            if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
+                                return this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
 
-					return this.verifyClient(ca, regProp, registrationRequest.getEmailId(),
-							registrationRequest.getPhoneNumber(), registrationRequest.getOtp());
-				})
-				.switchIfEmpty(Mono.just(Boolean.FALSE))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
-	}
+                            return this.verifyClient(ca, regProp, registrationRequest.getEmailId(),
+                                    registrationRequest.getPhoneNumber(), registrationRequest.getOtp());
+                        })
+                .switchIfEmpty(Mono.just(Boolean.FALSE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+    }
 
-	public Mono<ClientRegistrationResponse> register(ClientRegistrationRequest registrationRequest,
-			ServerHttpRequest request, ServerHttpResponse response) {
+    public Mono<RegistrationResponse> register(ClientRegistrationRequest registrationRequest,
+                                               ServerHttpRequest request, ServerHttpResponse response) {
 
-		String urlPrefix = this.getUrlPrefix(request);
+        String urlPrefix = this.getUrlPrefix(request);
 
-		if (registrationRequest.getPassType() == null)
-			return this.regError("Type of password for app is required");
+        if (registrationRequest.getPassType() == null)
+            return this.regError("Type of password for app is required");
 
-		Mono<ClientRegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
+        Mono<RegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
-						ca.getUrlAppCode(), registrationRequest.getInputPassType()),
+                ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+                        ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
-				(ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
+                (ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
 
-				(ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
-						ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
+                (ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+                        ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
 
-				(ca, policy, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
+                (ca, policy, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
 
-				(ca, policy, subDomain, regProp, client) -> this.registerUser(
-						ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest, client,
-						policy),
+                (ca, policy, subDomain, regProp, client) -> this.registerUser(
+                        ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest, client,
+                        policy),
 
-				(ca, policy, subDomain, regProp, client, userTuple) -> {
-					if (safeIsBlank(registrationRequest.getSocialRegisterState())
-							&& registrationRequest.getInputPassType() != null)
-						return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(),
-								ULong.valueOf(ca.getLoggedInFromClientId())).map(TokenObject::getToken);
+                (ca, policy, subDomain, regProp, client, userTuple) -> {
+                    if (safeIsBlank(registrationRequest.getSocialRegisterState())
+                            && registrationRequest.getInputPassType() != null)
+                        return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(),
+                                ULong.valueOf(ca.getLoggedInFromClientId())).map(TokenObject::getToken);
 
 					return Mono.just("");
 				},
-				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client),
+				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
 
-				(ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
-						.createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
-								userTuple.getT2())
-						.flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
-								userTuple.getT1().getId(), userTuple.getT2(), request, response)),
+                (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
+                        .createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
+                                userTuple.getT2())
+                        .flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
+                                userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
-				(ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated,
-						res) -> {
+                (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated,
+                 res) -> {
 
-					if (safeIsBlank(subDomain))
-						return Mono.just(res);
+                    if (safeIsBlank(subDomain))
+                        return Mono.just(res);
 
-					res.setRedirectURL(subDomain);
+                    res.setRedirectURL(subDomain);
 
-					return this.clientUrlService.createForRegistration(
-							new ClientUrl().setAppCode(ca.getUrlAppCode())
-									.setUrlPattern(subDomain).setClientId(client.getId()))
-							.<ClientRegistrationResponse>map(e -> res);
-				});
+                    return this.clientUrlService.createForRegistration(
+                                    new ClientUrl().setAppCode(ca.getUrlAppCode())
+                                            .setUrlPattern(subDomain).setClientId(client.getId()))
+                            .<RegistrationResponse>map(e -> res);
+                });
 
-		return monoResponse.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
-	}
+        return monoResponse.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+    }
 
-	private String getUrlPrefix(ServerHttpRequest request) {
+    private String getUrlPrefix(ServerHttpRequest request) {
 
-		String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
-		String scheme = request.getHeaders().getFirst(X_FORWARDED_PROTO);
-		String port = request.getHeaders().getFirst(X_FORWARDED_PORT);
+        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+        String scheme = request.getHeaders().getFirst(X_FORWARDED_PROTO);
+        String port = request.getHeaders().getFirst(X_FORWARDED_PORT);
 
-		return (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
-	}
+        return (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
+    }
 
-	private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca,
-			AbstractPolicy policy) {
+    private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca,
+                                          AbstractPolicy policy) {
 
-		if (registrationRequest.isBusinessClient() && safeIsBlank(registrationRequest.getBusinessType()))
-			registrationRequest.setBusinessType(AppRegistrationService.DEFAULT_BUSINESS_TYPE);
+        if (registrationRequest.isBusinessClient() && safeIsBlank(registrationRequest.getBusinessType()))
+            registrationRequest.setBusinessType(AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE);
 
-		String password = registrationRequest.getInputPass();
+        String password = registrationRequest.getInputPass();
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null ?
-						this.clientService.validatePasswordPolicy(policy, null, registrationRequest.getInputPassType(),
-						password) : Mono.just(Boolean.TRUE),
+                        () -> !StringUtil.safeIsBlank(password) && registrationRequest.getPassType() != null
+                                ? this.clientService.validatePasswordPolicy(policy, null,
+                                registrationRequest.getInputPassType(),
+                                password)
+                                : Mono.just(Boolean.TRUE),
 
-				passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
-						: this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
-								.filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
-										msg -> new GenericException(HttpStatus.CONFLICT, msg),
-										SecurityMessageResourceService.USER_ALREADY_EXISTS,
-										registrationRequest.getIdentifier())),
+                        passValid -> registrationRequest.isBusinessClient() ? Mono.just(Boolean.TRUE)
+                                : this.userService.checkIndividualClientUser(ca.getUrlClientCode(), registrationRequest)
+                                .filter(e -> !e).switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                                        SecurityMessageResourceService.USER_ALREADY_EXISTS,
+                                        registrationRequest.getIdentifier())),
 
-				(passValid, exists) -> this.appService.getAppByCode(ca.getUrlAppCode()),
+                        (passValid, exists) -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-				(passValid, exists, app) -> this.clientService.getClientBy(ca.getLoggedInFromClientCode()),
+                        (passValid, exists, app) -> this.clientService.getClientBy(ca.getLoggedInFromClientCode()),
 
-				(passValid, exists, app, client) -> this.clientService
-						.getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()),
+                        (passValid, exists, app, client) -> this.clientService
+                                .getClientLevelType(ULong.valueOf(ca.getLoggedInFromClientId()), app.getId()),
 
-				(passValid, exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
-						levelType, registrationRequest.isBusinessClient()),
+                        (passValid, exists, app, client, levelType) -> this.checkUsageType(app.getAppUsageType(),
+                                levelType, registrationRequest.isBusinessClient()),
 
-				(passValid, exists, app, client, levelType, usageType) -> this.fetchAppProp(
-						ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
+                        (passValid, exists, app, client, levelType, usageType) -> this.fetchAppProp(
+                                ULong.valueOf(ca.getLoggedInFromClientId()), app.getId(), null, AppService.APP_PROP_URL_SUFFIX),
 
-				(passValid, exists, app, client, levelType, usageType, suffix) -> this
-						.checkSubDomainAvailability(registrationRequest.getSubDomain(),
-								registrationRequest.getSubDomainSuffix(), registrationRequest.isBusinessClient()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
-	}
+                        (passValid, exists, app, client, levelType, usageType, suffix) -> this
+                                .checkSubDomainAvailability(registrationRequest.getSubDomain(),
+                                        registrationRequest.getSubDomainSuffix(), registrationRequest.isBusinessClient()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.preRegisterCheck"));
+    }
 
-	private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType, // NOSONAR
-			boolean isBusinessClient) {
+    private Mono<Boolean> checkUsageType(SecurityAppAppUsageType usageType, ClientLevelType levelType, // NOSONAR
+                                         boolean isBusinessClient) {
 
-		// Need to put everything in one function to process all the types of the App
-		// usage type.
+        // Need to put everything in one function to process all the types of the App
+        // usage type.
 
-		if (usageType == SecurityAppAppUsageType.S)
-			return this.regError("Not allowed for Standalone Applications");
+        if (usageType == SecurityAppAppUsageType.S)
+            return this.regError("Not allowed for Standalone Applications");
 
-		if (usageType == SecurityAppAppUsageType.B)
-			return this.regError("Not allowed for Business Applications");
+        if (usageType == SecurityAppAppUsageType.B)
+            return this.regError("Not allowed for Business Applications");
 
-		if (usageType == SecurityAppAppUsageType.B2C) {
-			if (levelType != ClientLevelType.OWNER)
-				return this.regError("Only Applications owner can register for B2C Applications");
+        if (usageType == SecurityAppAppUsageType.B2C) {
+            if (levelType != ClientLevelType.OWNER)
+                return this.regError("Only Applications owner can register for B2C Applications");
 
-			if (isBusinessClient)
-				return this.regError("Business clients are not allowed for B2C Applications");
-		}
+            if (isBusinessClient)
+                return this.regError("Business clients are not allowed for B2C Applications");
+        }
 
-		if (usageType == SecurityAppAppUsageType.B2B) {
-			if (levelType != ClientLevelType.OWNER)
-				return this.regError("Only Applications owner can register for B2B Applications");
+        if (usageType == SecurityAppAppUsageType.B2B) {
+            if (levelType != ClientLevelType.OWNER)
+                return this.regError("Only Applications owner can register for B2B Applications");
 
-			if (!isBusinessClient)
-				return this.regError("Individual clients are not allowed for B2B Applications");
-		}
-
-		if (usageType == SecurityAppAppUsageType.B2X && levelType != ClientLevelType.OWNER) {
-			return this.regError("Only Applications owner can register for B2X Applications");
-		}
-
-		if (usageType == SecurityAppAppUsageType.B2B2B) {
-
-			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-				return this.regError("Only Applications owner can register for B2B2B Applications");
-
-			if (!isBusinessClient)
-				return this.regError("Individual clients are not allowed for B2B2B Applications");
-		}
-
-		if (usageType == SecurityAppAppUsageType.B2B2C) {
-			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-				return this.regError("Only Applications owner can register for B2B2C Applications");
-
-			if (levelType == ClientLevelType.OWNER && !isBusinessClient)
-				return this.regError("Business clients are required for B2B2C Applications at owner level");
-
-			if (levelType == ClientLevelType.CLIENT && isBusinessClient)
-				return this.regError("Business clients are not allowed for B2B2C Applications");
-		}
-
-		if (usageType == SecurityAppAppUsageType.B2B2X) {
-			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-				return this.regError("Only Applications owner can register for B2B2X Applications");
+            if (!isBusinessClient)
+                return this.regError("Individual clients are not allowed for B2B Applications");
+        }
+
+        if (usageType == SecurityAppAppUsageType.B2X && levelType != ClientLevelType.OWNER) {
+            return this.regError("Only Applications owner can register for B2X Applications");
+        }
+
+        if (usageType == SecurityAppAppUsageType.B2B2B) {
+
+            if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+                return this.regError("Only Applications owner can register for B2B2B Applications");
+
+            if (!isBusinessClient)
+                return this.regError("Individual clients are not allowed for B2B2B Applications");
+        }
+
+        if (usageType == SecurityAppAppUsageType.B2B2C) {
+            if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+                return this.regError("Only Applications owner can register for B2B2C Applications");
+
+            if (levelType == ClientLevelType.OWNER && !isBusinessClient)
+                return this.regError("Business clients are required for B2B2C Applications at owner level");
+
+            if (levelType == ClientLevelType.CLIENT && isBusinessClient)
+                return this.regError("Business clients are not allowed for B2B2C Applications");
+        }
+
+        if (usageType == SecurityAppAppUsageType.B2B2X) {
+            if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+                return this.regError("Only Applications owner can register for B2B2X Applications");
 
-			if (levelType == ClientLevelType.OWNER && !isBusinessClient)
-				return this.regError("Business clients are required for B2B2X Applications at owner level");
-		}
+            if (levelType == ClientLevelType.OWNER && !isBusinessClient)
+                return this.regError("Business clients are required for B2B2X Applications at owner level");
+        }
 
-		if (usageType == SecurityAppAppUsageType.B2X2C) {
-			if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
-				return this.regError("Only Applications owner can register for B2X2C Applications");
+        if (usageType == SecurityAppAppUsageType.B2X2C) {
+            if (levelType != ClientLevelType.OWNER && levelType != ClientLevelType.CLIENT)
+                return this.regError("Only Applications owner can register for B2X2C Applications");
 
-			if (levelType == ClientLevelType.CLIENT && isBusinessClient)
-				return this.regError("Business clients are not allowed for B2X2C Applications");
-		}
+            if (levelType == ClientLevelType.CLIENT && isBusinessClient)
+                return this.regError("Business clients are not allowed for B2X2C Applications");
+        }
 
-		if (usageType == SecurityAppAppUsageType.B2X2X && levelType != ClientLevelType.OWNER
-				&& levelType != ClientLevelType.CLIENT) {
-			return this.regError("Only Applications owner can register for B2X2X Applications");
-		}
+        if (usageType == SecurityAppAppUsageType.B2X2X && levelType != ClientLevelType.OWNER
+                && levelType != ClientLevelType.CLIENT) {
+            return this.regError("Only Applications owner can register for B2X2X Applications");
+        }
 
-		return Mono.just(Boolean.TRUE);
-	}
+        return Mono.just(Boolean.TRUE);
+    }
 
-	private Mono<String> fetchAppProp(ULong clientId, ULong appId, String appCode, String propName) {
+    private Mono<String> fetchAppProp(ULong clientId, ULong appId, String appCode, String propName) {
 
-		return this.appService.getProperties(clientId, appId, appCode, propName)
-				.map(props -> {
+        return this.appService.getProperties(clientId, appId, appCode, propName)
+                .map(props -> {
 
-					if (props.isEmpty())
-						return "";
+                    if (props.isEmpty())
+                        return "";
 
-					if (props.containsKey(clientId))
-						return props.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
+                    if (props.containsKey(clientId))
+                        return props.get(clientId).get(AppService.APP_PROP_REG_TYPE).getValue();
+
+                    return props.values().stream().findFirst()
+                            .map(prop -> prop.get(AppService.APP_PROP_REG_TYPE).getValue())
+                            .orElse("");
+                });
+    }
 
-					return props.values().stream().findFirst()
-							.map(prop -> prop.get(AppService.APP_PROP_REG_TYPE).getValue())
-							.orElse("");
-				});
-	}
+    private Mono<String> checkSubDomainAvailability(String subDomain, String subDomainSuffix,
+                                                    boolean isBusinessClient) {
 
-	private Mono<String> checkSubDomainAvailability(String subDomain, String subDomainSuffix,
-			boolean isBusinessClient) {
+        if (!isBusinessClient || safeIsBlank(subDomain))
+            return Mono.just("");
+
+        String finalSubDomainSuffix;
+
+        if (StringUtil.safeIsBlank(subDomainSuffix)) {
+            finalSubDomainSuffix = this.subDomainEndings[0];
+        } else {
+            boolean found = false;
+            for (String subDomainEnding : subDomainEndings) {
+                if (subDomainEnding.equals(subDomainSuffix)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.SUBDOMAIN_SUFFIX_FORBIDDEN, subDomainSuffix);
+            }
+            finalSubDomainSuffix = subDomainSuffix;
+        }
+        String fullURL = subDomain + (finalSubDomainSuffix.startsWith(".") ? "" : ".") + finalSubDomainSuffix;
 
-		if (!isBusinessClient || safeIsBlank(subDomain))
-			return Mono.just("");
+        return this.clientUrlService.checkSubDomainAvailability(subDomain, fullURL).filter(e -> e)
+                .map(e -> fullURL)
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.SUBDOMAIN_ALREADY_EXISTS, subDomain));
+    }
 
-		String finalSubDomainSuffix;
+    private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca, String regProp) {
 
-		if (StringUtil.safeIsBlank(subDomainSuffix)) {
-			finalSubDomainSuffix = this.subDomainEndings[0];
-		} else {
-			boolean found = false;
-			for (String subDomainEnding : subDomainEndings) {
-				if (subDomainEnding.equals(subDomainSuffix)) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				return this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-						SecurityMessageResourceService.SUBDOMAIN_SUFFIX_FORBIDDEN, subDomainSuffix);
-			}
-			finalSubDomainSuffix = subDomainSuffix;
-		}
-		String fullURL = subDomain + (finalSubDomainSuffix.startsWith(".") ? "" : ".") + finalSubDomainSuffix;
+        if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
+
+        Client client = new Client();
+
+        String clientName = getValidClientName(request);
+
+        if (safeIsBlank(clientName))
+            return this.securityMessageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.FIELDS_MISSING);
 
-		return this.clientUrlService.checkSubDomainAvailability(subDomain, fullURL).filter(e -> e)
-				.map(e -> fullURL)
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.CONFLICT, msg),
-						SecurityMessageResourceService.SUBDOMAIN_ALREADY_EXISTS, subDomain));
-	}
+        client.setName(clientName);
+        client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
+        client.setLocaleCode(request.getLocaleCode());
+        client.setTokenValidityMinutes(VALIDITY_MINUTES);
+
+        if (safeIsBlank(client.getName()))
+            return this.regError("Client name cannot be blank");
 
-	private Mono<Client> registerClient(ClientRegistrationRequest request, ContextAuthentication ca, String regProp) {
+        ULong loggedInFromClientId = ULongUtil.valueOf(ca.getLoggedInFromClientId());
 
-		if (safeIsBlank(regProp) || AppService.APP_PROP_REG_TYPE_NO_REGISTRATION.equals(regProp))
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE);
+        return FlatMapUtil.flatMapMono(
+
+                        () -> !StringUtil.safeIsBlank(request.getSocialRegisterState()) ? Mono.just(Boolean.TRUE)
+                                : this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
+                                request.getOtp()),
+
+                        isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
+
+                        (isVerified, app) -> this.dao.getValidClientCode(client.getName()).map(client::setCode),
+
+                        (isVerified, app, c) -> this.clientService.createForRegistration(c),
+
+                        (isVerified, app, c, createdClient) -> this.clientHierarchyService
+                                .create(loggedInFromClientId, createdClient.getId()),
+
+                        (isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
+                                .addClientRegistrationObjects(app.getId(), app.getClientId(), loggedInFromClientId,
+                                        createdClient),
+
+                        (isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
+                                .addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient)
+                                .map(clientAccessAdded -> createdClient))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));
+    }
+
+    /**
+     * We will not verify client if regProp is
+     * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION}
+     * or
+     * We have an authenticated client. In this client will be registered under this
+     * client.
+     */
+    private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
+                                       String otp) {
+
+        if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION) || SecurityContextUtil.hasAuthority("Authorities.Client_CREATE", ca.getAuthorities()))
+            return Mono.just(Boolean.TRUE);
+
+        OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
+                .setPhoneNumber(phoneNumber).setPurpose(OtpPurpose.REGISTRATION).setOtp(otp);
+
+        return this.otpService
+                .verifyOtpInternal(ca.getUrlAppCode(), otpVerificationRequest)
+                .filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName(),
+                        AuthenticationPasswordType.OTP.getName()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.verifyClient"));
+    }
+
+    private String getValidClientName(ClientRegistrationRequest request) {
+
+        if (!safeIsBlank(request.getClientName()))
+            return request.getClientName();
+
+        if (!safeIsBlank(request.getFirstName()) || !safeIsBlank(request.getLastName()))
+            return (StringUtil.safeValueOf(request.getFirstName(), "")
+                    + StringUtil.safeValueOf(request.getLastName(), ""));
+
+        if (!safeIsBlank(request.getEmailId()))
+            return request.getEmailId();
+
+        if (!safeIsBlank(request.getUserName()))
+            return request.getUserName();
+
+        return null;
+    }
+
+    private Mono<Tuple2<User, String>> registerUser(String appCode, ULong urlClientId,
+                                                    ClientRegistrationRequest request, Client client, AbstractPolicy clientPolicy) {
+
+        User user = new User();
+        user.setClientId(client.getId());
+        user.setEmailId(request.getEmailId());
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setLocaleCode(request.getLocaleCode());
+        user.setUserName(request.getUserName());
+        user.setPhoneNumber(request.getPhoneNumber());
+
+        String pass = this.generatePassword(request, clientPolicy, user);
+
+        if (pass == null)
+            return regError("Client password cannot be blank");
+
+        user.setStatusCode(SecurityUserStatusCode.ACTIVE);
+
+        return this.appService.getAppByCode(appCode)
+                .flatMap(app -> this.userService
+                        .createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user,
+                                request.getInputPassType())
+                        .map(usr -> Tuples.of(usr, pass)));
+    }
+
+    private String generatePassword(ClientRegistrationRequest request, AbstractPolicy clientPasswordPolicy, User user) {
+
+        return switch (request.getInputPassType()) {
+            case PASSWORD:
+                String password = safeIsBlank(request.getPassword()) ? clientPasswordPolicy.generate()
+                        : request.getPassword();
+                user.setPassword(password);
+                yield password;
+            case PIN:
+                String pin = safeIsBlank(request.getPin()) ? clientPasswordPolicy.generate()
+                        : request.getPin();
+                user.setPin(pin);
+                yield pin;
+            default:
+                yield null;
+        };
+    }
+
+	private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client, String appCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+				() -> this.appService.getAppByCode(appCode),
+
+                        app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+
+                        (app, levelType) -> this.appRegistrationDAO.getFileAccessForRegistration(app.getId(), app.getClientId(),
+                                ULong.valueOf(ca.getLoggedInFromClientId()), client.getTypeCode(), levelType,
+                                client.getBusinessType()),
+
+                        (app, levelType, filesAccess) -> Flux.fromIterable(filesAccess).map(e -> {
+                            IFeignFilesService.FilesAccessPath accessPath = new IFeignFilesService.FilesAccessPath();
+                            accessPath.setClientCode(client.getCode());
+                            accessPath.setAccessName(e.getAccessName());
+                            accessPath.setWriteAccess(e.isWriteAccess());
+                            accessPath.setPath(e.getPath());
+                            accessPath.setAllowSubPathAccess(e.isAllowSubPathAccess());
+                            accessPath.setResourceType(e.getResourceType());
+                            return accessPath;
+                        }).flatMap(filesService::createInternalAccessPath).collectList().map(e -> true))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.addFilesAccessPath"));
+    }
+
+    private Mono<Boolean> createRegistrationEvents(ContextAuthentication ca, Client client, String subDomain,
+                                                   String urlPrefix, User user, String token, String passwordUsed) {
+
+        Map<String, Object> clientEventData = Map.of(
+                "client", client, "subDomain", subDomain, "urlPrefix", urlPrefix);
+
+        Map<String, Object> userEventData = Map.of(
+                "client", client, "subDomain", subDomain, "urlPrefix", urlPrefix,
+                "user", user, "token", token, "passwordUsed", passwordUsed);
 
-		Client client = new Client();
-
-		String clientName = getValidClientName(request);
+        EventQueObject clientRegisteredEvent = new EventQueObject()
+                .setAppCode(ca.getUrlAppCode())
+                .setClientCode(ca.getLoggedInFromClientCode())
+                .setEventName(EventNames.CLIENT_REGISTERED)
+                .setData(clientEventData);
 
-		if (safeIsBlank(clientName))
-			return this.securityMessageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					SecurityMessageResourceService.FIELDS_MISSING);
+        EventQueObject userRegisteredEvent = new EventQueObject()
+                .setAppCode(ca.getUrlAppCode())
+                .setClientCode(ca.getLoggedInFromClientCode())
+                .setEventName(EventNames.USER_REGISTERED)
+                .setData(userEventData);
 
-		client.setName(clientName);
-		client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
-		client.setLocaleCode(request.getLocaleCode());
-		client.setTokenValidityMinutes(VALIDITY_MINUTES);
+        return Mono.zip(
+                        this.ecService.createEvent(clientRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        this.ecService.createEvent(userRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty))
+                .thenReturn(Boolean.TRUE)
+                .onErrorReturn(Boolean.FALSE);
+    }
+
+    private Mono<RegistrationResponse> getClientRegistrationResponse(
+            ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
+            ServerHttpResponse response) {
 
-		if (safeIsBlank(client.getName()))
-			return this.regError("Client name cannot be blank");
+        return this.getClientAuthenticationResponse(registrationRequest, userId, password, request, response)
+                .flatMap(auth -> Mono.just(new RegistrationResponse(true, userId, "", auth)))
+                .switchIfEmpty(Mono.just(new RegistrationResponse(true, userId, "", null)));
+    }
 
-		ULong loggedInFromClientId = ULongUtil.valueOf(ca.getLoggedInFromClientId());
+    private Mono<AuthenticationResponse> getClientAuthenticationResponse(ClientRegistrationRequest registrationRequest,
+                                                                         ULong userId, String password, ServerHttpRequest request, ServerHttpResponse response) {
 
-		return FlatMapUtil.flatMapMono(
+        AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId);
 
-				() -> !StringUtil.safeIsBlank(request.getSocialRegisterState()) ? Mono.just(Boolean.TRUE)
-						: this.verifyClient(ca, regProp, request.getEmailId(), request.getPhoneNumber(),
-								request.getOtp()),
+        if (registrationRequest.getInputPassType() != null)
+            return switch (registrationRequest.getInputPassType()) {
+                case PASSWORD ->
+                        this.authenticationService.authenticate(authRequest.setPassword(password), request, response);
+                case PIN -> this.authenticationService.authenticate(authRequest.setPin(password), request, response);
+                case OTP -> Mono.empty();
+            };
 
-				isVerified -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-				(isVerified, app) -> this.dao.getValidClientCode(client.getName()).map(client::setCode),
-
-				(isVerified, app, c) -> this.clientService.createForRegistration(c),
-
-				(isVerified, app, c, createdClient) -> this.clientHierarchyService
-						.create(loggedInFromClientId, createdClient.getId()),
-
-				(isVerified, app, c, createdClient, clientHierarchy) -> this.clientService
-						.addClientPackagesAfterRegistration(app.getId(), app.getClientId(), loggedInFromClientId,
-								createdClient),
-
-				(isVerified, app, c, createdClient, clientHierarchy, packagesAdded) -> this.appService
-						.addClientAccessAfterRegistration(ca.getUrlAppCode(), loggedInFromClientId, createdClient)
-						.map(clientAccessAdded -> createdClient))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerClient"));
-	}
+        if (!safeIsBlank(registrationRequest.getSocialRegisterState()))
+            return this.authenticationService.authenticateWSocial(
+                    authRequest.setSocialRegisterState(registrationRequest.getSocialRegisterState()), request,
+                    response);
 
-	/**
-	 * We will not verify client if regProp is
-	 * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION}
-	 * or
-	 * We have an authenticated client. In this client will be registered under this
-	 * client.
-	 */
-	private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
-			String otp) {
-
-		if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION))
-			return Mono.just(Boolean.TRUE);
-
-		if (ca.isAuthenticated())
-			return Mono.just(Boolean.TRUE);
-
-		OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
-				.setPhoneNumber(phoneNumber).setPurpose(OtpPurpose.REGISTRATION).setOtp(otp);
-
-		return this.otpService
-				.verifyOtpInternal(ca.getUrlAppCode(), otpVerificationRequest)
-				.filter(isVerified -> isVerified).map(isVerified -> Boolean.TRUE)
-				.switchIfEmpty(this.securityMessageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-						SecurityMessageResourceService.USER_PASSWORD_INVALID, AuthenticationPasswordType.OTP.getName(),
-						AuthenticationPasswordType.OTP.getName()))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.verifyClient"));
-	}
-
-	private String getValidClientName(ClientRegistrationRequest request) {
-
-		if (!safeIsBlank(request.getClientName()))
-			return request.getClientName();
-
-		if (!safeIsBlank(request.getFirstName()) || !safeIsBlank(request.getLastName()))
-			return (StringUtil.safeValueOf(request.getFirstName(), "")
-					+ StringUtil.safeValueOf(request.getLastName(), ""));
-
-		if (!safeIsBlank(request.getEmailId()))
-			return request.getEmailId();
-
-		if (!safeIsBlank(request.getUserName()))
-			return request.getUserName();
-
-		return null;
-	}
-
-	private Mono<Tuple2<User, String>> registerUser(String appCode, ULong urlClientId,
-			ClientRegistrationRequest request, Client client, AbstractPolicy clientPolicy) {
-
-		User user = new User();
-		user.setClientId(client.getId());
-		user.setEmailId(request.getEmailId());
-		user.setFirstName(request.getFirstName());
-		user.setLastName(request.getLastName());
-		user.setLocaleCode(request.getLocaleCode());
-		user.setUserName(request.getUserName());
-		user.setPhoneNumber(request.getPhoneNumber());
-
-		String pass = this.generatePassword(request, clientPolicy, user);
-
-		if (pass == null)
-			return regError("Client password cannot be blank");
-
-		user.setStatusCode(SecurityUserStatusCode.ACTIVE);
-
-		return this.appService.getAppByCode(appCode)
-				.flatMap(app -> this.userService
-						.createForRegistration(app.getId(), app.getClientId(), urlClientId, client, user,
-								request.getInputPassType())
-						.map(usr -> Tuples.of(usr, pass)));
-	}
-
-	private String generatePassword(ClientRegistrationRequest request, AbstractPolicy clientPasswordPolicy, User user) {
-
-		return switch (request.getInputPassType()) {
-			case PASSWORD:
-				String password = safeIsBlank(request.getPassword()) ? clientPasswordPolicy.generate()
-						: request.getPassword();
-				user.setPassword(password);
-				yield password;
-			case PIN:
-				String pin = safeIsBlank(request.getPin()) ? clientPasswordPolicy.generate()
-						: request.getPin();
-				user.setPin(pin);
-				yield pin;
-			default:
-				yield null;
-		};
-	}
-
-	private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client) {
-
-		return FlatMapUtil.flatMapMono(
-
-				() -> this.appService.getAppByCode(ca.getUrlAppCode()),
-
-				app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
-
-				(app, levelType) -> this.appRegistrationDAO.getFileAccessForRegistration(app.getId(), app.getClientId(),
-						ULong.valueOf(ca.getLoggedInFromClientId()), client.getTypeCode(), levelType,
-						client.getBusinessType()),
-
-				(app, levelType, filesAccess) -> Flux.fromIterable(filesAccess).map(e -> {
-					IFeignFilesService.FilesAccessPath accessPath = new IFeignFilesService.FilesAccessPath();
-					accessPath.setClientCode(client.getCode());
-					accessPath.setAccessName(e.getAccessName());
-					accessPath.setWriteAccess(e.isWriteAccess());
-					accessPath.setPath(e.getPath());
-					accessPath.setAllowSubPathAccess(e.isAllowSubPathAccess());
-					accessPath.setResourceType(e.getResourceType());
-					return accessPath;
-				}).flatMap(filesService::createInternalAccessPath).collectList().map(e -> true))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.addFilesAccessPath"));
-	}
-
-	private Mono<Boolean> createRegistrationEvents(ContextAuthentication ca, Client client, String subDomain,
-			String urlPrefix, User user, String token, String passwordUsed) {
-
-		Map<String, Object> clientEventData = Map.of(
-				"client", client, "subDomain", subDomain, "urlPrefix", urlPrefix);
-
-		Map<String, Object> userEventData = Map.of(
-				"client", client, "subDomain", subDomain, "urlPrefix", urlPrefix,
-				"user", user, "token", token, "passwordUsed", passwordUsed);
+        return Mono.empty();
+    }
 
-		EventQueObject clientRegisteredEvent = new EventQueObject()
-				.setAppCode(ca.getUrlAppCode())
-				.setClientCode(ca.getLoggedInFromClientCode())
-				.setEventName(EventNames.CLIENT_REGISTERED)
-				.setData(clientEventData);
+    public Mono<RegistrationResponse> registerWSocial(ServerHttpRequest request, ServerHttpResponse response,
+                                                      ClientRegistrationRequest registrationRequest) {
 
-		EventQueObject userRegisteredEvent = new EventQueObject()
-				.setAppCode(ca.getUrlAppCode())
-				.setClientCode(ca.getLoggedInFromClientCode())
-				.setEventName(EventNames.USER_REGISTERED)
-				.setData(userEventData);
+        if (safeIsBlank(registrationRequest.getSocialRegisterState()))
+            return this.regError("Social register state cannot be blank for social Login.");
 
-		return Mono.zip(
-				this.ecService.createEvent(clientRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty),
-				this.ecService.createEvent(userRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty))
-				.thenReturn(Boolean.TRUE)
-				.onErrorReturn(Boolean.FALSE);
-	}
+        return FlatMapUtil.flatMapMono(
 
-	private Mono<ClientRegistrationResponse> getClientRegistrationResponse(
-			ClientRegistrationRequest registrationRequest, ULong userId, String password, ServerHttpRequest request,
-			ServerHttpResponse response) {
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-		return this.getClientAuthenticationResponse(registrationRequest, userId, password, request, response)
-				.flatMap(auth -> Mono.just(new ClientRegistrationResponse(true, userId, "", auth)))
-				.switchIfEmpty(Mono.just(new ClientRegistrationResponse(true, userId, "", null)));
-	}
+                        ca -> this.appRegistrationIntegrationTokenService
+                                .verifyIntegrationState(registrationRequest.getSocialRegisterState()),
 
-	private Mono<AuthenticationResponse> getClientAuthenticationResponse(ClientRegistrationRequest registrationRequest,
-			ULong userId, String password, ServerHttpRequest request, ServerHttpResponse response) {
+                        (ca, appRegIntgToken) -> {
+                            if (!appRegIntgToken.getUsername().equals(registrationRequest.getUserName())
+                                    && !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId()))
+                                return this.regError("Username and EmailId should not be changed");
 
-		AuthenticationRequest authRequest = new AuthenticationRequest().setUserId(userId);
+                            return Mono.just(Boolean.TRUE);
+                        },
+                        (ca, appRegIntgToken, emailChecked) -> {
 
-		if (registrationRequest.getInputPassType() != null)
-			return switch (registrationRequest.getInputPassType()) {
-				case PASSWORD ->
-					this.authenticationService.authenticate(authRequest.setPassword(password), request, response);
-				case PIN -> this.authenticationService.authenticate(authRequest.setPin(password), request, response);
-				case OTP -> Mono.empty();
-			};
+                            LocalDateTime twoMinutesAgo = LocalDateTime.now().minusMinutes(2);
 
-		if (!safeIsBlank(registrationRequest.getSocialRegisterState()))
-			return this.authenticationService.authenticateWSocial(
-					authRequest.setSocialRegisterState(registrationRequest.getSocialRegisterState()), request,
-					response);
+                            if (appRegIntgToken.getCreatedAt().isBefore(twoMinutesAgo))
+                                return this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.SESSION_EXPIRED);
 
-		return Mono.empty();
-	}
+                            return this.register(registrationRequest, request, response);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
+    }
 
-	public Mono<ClientRegistrationResponse> registerWSocial(ServerHttpRequest request, ServerHttpResponse response,
-			ClientRegistrationRequest registrationRequest) {
+    public Mono<String> evokeRegisterWSocial(SecurityAppRegIntegrationPlatform platform,
+                                             ServerHttpRequest request) {
 
-		if (safeIsBlank(registrationRequest.getSocialRegisterState()))
-			return this.regError("Social register state cannot be blank for social Login.");
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-				ca -> this.appRegistrationIntegrationTokenService
-						.verifyIntegrationState(registrationRequest.getSocialRegisterState()),
+                        (ca, app) -> this.appRegistrationIntegrationService.getIntegration(platform),
 
-				(ca, appRegIntgToken) -> {
-					if (!appRegIntgToken.getUsername().equals(registrationRequest.getUserName())
-							&& !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId()))
-						return this.regError("Username and EmailId should not be changed");
+                        (ca, app, appRegIntg) -> {
 
-					return Mono.just(Boolean.TRUE);
-				},
-				(ca, appRegIntgToken, emailChecked) -> {
+                            String state = UUID.randomUUID().toString();
 
-					LocalDateTime twoMinutesAgo = LocalDateTime.now().minusMinutes(2);
+                            String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
-					if (appRegIntgToken.getCreatedAt().isBefore(twoMinutesAgo))
-						return this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.SESSION_EXPIRED);
+                            String urlPrefix = HTTPS + host;
 
-					return this.register(registrationRequest, request, response);
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
-	}
+                            String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
 
-	public Mono<String> evokeRegisterWSocial(SecurityAppRegIntegrationPlatform platform,
-			ServerHttpRequest request) {
+                            return switch (appRegIntg.getPlatform()) {
+                                case GOOGLE -> this.appRegistrationIntegrationService
+                                        .redirectToGoogleAuthConsent(appRegIntg, state, callBackURL, request);
+                                case META -> this.appRegistrationIntegrationService
+                                        .redirectToMetaAuthConsent(appRegIntg, state, callBackURL, request);
+                                default -> this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
+                            };
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
+    }
 
-		return FlatMapUtil.flatMapMono(
+    public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        if (request.getQueryParams().getFirst("code") == null) return invalidSocialCallback(request, response);
 
-				ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
-				(ca, app) -> this.appRegistrationIntegrationService.getIntegration(platform),
+        String urlPrefix = HTTPS + host;
 
-				(ca, app, appRegIntg) -> {
+        return FlatMapUtil.flatMapMono(
 
-					String state = UUID.randomUUID().toString();
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-					String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+                        ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
 
-					String urlPrefix = HTTPS + host;
+                        (ca, app) -> this.appRegistrationIntegrationTokenService
+                                .verifyIntegrationState(request.getQueryParams().getFirst("state")),
 
-					String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
+                        (ca, app, appRegIntgToken) -> this.appRegistrationIntegrationService
+                                .read(appRegIntgToken.getIntegrationId()),
 
-					return switch (appRegIntg.getPlatform()) {
-						case GOOGLE -> this.appRegistrationIntegrationService
-								.redirectToGoogleAuthConsent(appRegIntg, state, callBackURL);
-						case META -> this.appRegistrationIntegrationService
-								.redirectToMetaAuthConsent(appRegIntg, state, callBackURL);
-						default -> this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
-					};
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocial"));
-	}
+                        (ca, app, appRegIntgToken, appRegIntg) -> {
 
-	public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
+                            String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
 
-		String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
+                            return switch (appRegIntg.getPlatform()) {
+                                case GOOGLE -> this.appRegistrationIntegrationService
+                                        .getGoogleUserToken(appRegIntg, appRegIntgToken, callBackURL, request);
+                                case META -> this.appRegistrationIntegrationService.getMetaUserToken(
+                                        appRegIntg, appRegIntgToken, callBackURL, request);
+                                default -> this.securityMessageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
+                            };
+                        },
 
-		String urlPrefix = HTTPS + host;
+                        (ca, app, appRegIntgToken, appRegIntg, registerRequest) -> {
 
-		return FlatMapUtil.flatMapMono(
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                            UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                                    .fromUri(URI.create(urlPrefix + redirectUrl))
+                                    .queryParam("sessionId", appRegIntgToken.getState())
+                                    .queryParam("userName", registerRequest.getUserName())
+                                    .queryParam("emailId", registerRequest.getEmailId())
+                                    .queryParamIfPresent("phoneNumber", Optional.ofNullable(registerRequest.getPhoneNumber()))
+                                    .queryParamIfPresent("firstName", Optional.ofNullable(registerRequest.getFirstName()))
+                                    .queryParamIfPresent("lastName", Optional.ofNullable(registerRequest.getLastName()))
+                                    .queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
+                                    .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
 
-				ca -> this.appService.getAppByCode(ca.getUrlAppCode()),
+                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
 
-				(ca, app) -> this.appRegistrationIntegrationTokenService
-						.verifyIntegrationState(request.getQueryParams().getFirst("state")),
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
+    }
 
-				(ca, app, appRegIntgToken) -> this.appRegistrationIntegrationService
-						.read(appRegIntgToken.getIntegrationId()),
+    private Mono<Void> invalidSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
-				(ca, app, appRegIntgToken, appRegIntg) -> {
+        String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
-					String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
+        String urlPrefix = HTTPS + host;
 
-					return switch (appRegIntg.getPlatform()) {
-						case GOOGLE -> this.appRegistrationIntegrationService
-								.getGoogleUserToken(appRegIntg, appRegIntgToken, callBackURL, request);
-						case META -> this.appRegistrationIntegrationService.getMetaUserToken(
-								appRegIntg, appRegIntgToken, callBackURL, request);
-						default -> this.securityMessageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
-					};
-				},
+        response.setStatusCode(HttpStatus.FOUND);
 
-				(ca, app, appRegIntgToken, appRegIntg, registerRequest) -> {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
+                                request.getQueryParams().getFirst("state")),
+                        appRegIntgToken ->
+                                this.appRegistrationIntegrationService.read(appRegIntgToken.getIntegrationId()),
+                        (appRegIntgToken, appRegIntg) -> {
 
-					URI redirectUri = UriComponentsBuilder
-							.fromUri(URI.create(urlPrefix + appRegIntg.getLoginUri()))
-							.queryParam("sessionId", appRegIntgToken.getState())
-							.queryParam("userName", registerRequest.getUserName())
-							.queryParam("emailId", registerRequest.getEmailId())
-							.queryParamIfPresent("phoneNumber", Optional.ofNullable(registerRequest.getPhoneNumber()))
-							.queryParamIfPresent("firstName", Optional.ofNullable(registerRequest.getFirstName()))
-							.queryParamIfPresent("lastName", Optional.ofNullable(registerRequest.getLastName()))
-							.queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
-							.queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()))
-							.build().toUri();
+                            String redirectUrl = appRegIntgToken
+                                    .getRequestParam()
+                                    .getOrDefault("signup", "false")
+                                    .equals("true")
+                                    ? appRegIntg.getSignupUri()
+                                    : appRegIntg.getLoginUri();
 
-					response.setStatusCode(HttpStatus.FOUND);
-					response.getHeaders().setLocation(redirectUri);
-					return response.setComplete();
-				})
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
-	}
+                            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(URI.create(urlPrefix + redirectUrl))
+                                    .queryParam("error", "access_denied");
 
-	public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest,
-			ServerHttpRequest request, ServerHttpResponse response) {
+                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.invalidSocialCallback"));
+    }
 
-		String urlPrefix = getUrlPrefix(request);
+    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntgToken, UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
 
-		AuthenticationPasswordType passType = registrationRequest.getInputPassType();
+        appRegIntgToken.getRequestParam().forEach((key, value) -> {
+            if (value != null) {
+                uriBuilder.queryParam(key, value.toString());
+            }
+        });
 
-		return FlatMapUtil.flatMapMono(
+        URI redirectUri = uriBuilder.build().toUri();
 
-				SecurityContextUtil::getUsersContextAuthentication,
+        response.setStatusCode(HttpStatus.FOUND);
+        response.getHeaders().setLocation(redirectUri);
+        return response.setComplete();
+    }
 
-				ca -> this.userService.getUserForContext(registrationRequest.getUserId()),
+    public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest,
+                                                 ServerHttpRequest request, ServerHttpResponse response) {
 
-				(ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
+        String urlPrefix = getUrlPrefix(request);
 
-				(ca, user, client) -> this.getClientAuthenticationResponse(registrationRequest, user.getId(),
-						user.getInputPass(passType), request, response),
+        AuthenticationPasswordType passType = registrationRequest.getInputPassType();
 
-				(ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.userService.getUserForContext(ca.getUrlAppCode(), registrationRequest.getUserId()),
+
+                (ca, user) -> this.clientService.getClientInfoById(user.getClientId()),
+
+                (ca, user, client) -> this.getClientAuthenticationResponse(registrationRequest, user.getId(),
+                        user.getInputPass(passType), request, response),
+
+                (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 
 				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain, urlPrefix,
 						user, auth.getAccessToken(), user.getInputPass(passType))
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
+	}
+
+    public Mono<Boolean> registerApp(String appCode, ULong clientId, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.appService.getAppByCode(appCode),
+                        (ca, app) -> {
+                            return this.clientService.read(clientId);
+                        },
+                        (ca, app, client) -> this.clientService.addClientRegistrationObjects(
+                                app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
+                        (ca, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
+                                app.getAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded) ->
+                                this.addFilesAccessPath(ca, client, appCode),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
+                                this.userService.addDefaultProfiles(
+                                        app.getId(),
+                                        app.getClientId(),
+                                        ULong.valueOf(ca.getLoggedInFromClientId()),
+                                        client,
+                                        userId),
+                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
+                                this.userService.addDefaultRoles(
+                                        app.getId(),
+                                        app.getClientId(),
+                                        ULong.valueOf(ca.getLoggedInFromClientId()),
+                                        client,
+                                        userId),
+                        (ca,
+                                app,
+                                client,
+                                restrictedProfileAdded,
+                                appAccAdded,
+                                filePathAdded,
+                                userProfileAdded,
+                                userRoleAdded) -> this.userService.addDesignation(
+                                app.getId(),
+                                app.getClientId(),
+                                ULong.valueOf(ca.getLoggedInFromClientId()),
+                                client,
+                                userId))
+                .switchIfEmpty(this.securityMessageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.CONFLICT, msg),
+                        SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE));
 	}
 }

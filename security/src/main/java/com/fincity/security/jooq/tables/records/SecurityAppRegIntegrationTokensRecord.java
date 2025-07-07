@@ -7,8 +7,8 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -98,10 +98,29 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
 
     /**
      * Setter for
+     * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
+     * url from request made
+     */
+    public SecurityAppRegIntegrationTokensRecord setRequestParam(Map value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
+     * url from request made
+     */
+    public Map getRequestParam() {
+        return (Map) get(4);
+    }
+
+    /**
+     * Setter for
      * <code>security.security_app_reg_integration_tokens.TOKEN</code>. Token
      */
     public SecurityAppRegIntegrationTokensRecord setToken(String value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -110,7 +129,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.TOKEN</code>. Token
      */
     public String getToken() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
@@ -119,7 +138,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Refresh Token
      */
     public SecurityAppRegIntegrationTokensRecord setRefreshToken(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -129,7 +148,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Refresh Token
      */
     public String getRefreshToken() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -138,7 +157,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Token expiration time
      */
     public SecurityAppRegIntegrationTokensRecord setExpiresAt(LocalDateTime value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -148,7 +167,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Token expiration time
      */
     public LocalDateTime getExpiresAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(7);
     }
 
     /**
@@ -156,8 +175,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public SecurityAppRegIntegrationTokensRecord setTokenMetadata(JSON value) {
-        set(7, value);
+    public SecurityAppRegIntegrationTokensRecord setTokenMetadata(Map value) {
+        set(8, value);
         return this;
     }
 
@@ -166,8 +185,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.TOKEN_METADATA</code>.
      * Token metadata
      */
-    public JSON getTokenMetadata() {
-        return (JSON) get(7);
+    public Map getTokenMetadata() {
+        return (Map) get(8);
     }
 
     /**
@@ -176,7 +195,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Username
      */
     public SecurityAppRegIntegrationTokensRecord setUsername(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -186,7 +205,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Username
      */
     public String getUsername() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -194,8 +213,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public SecurityAppRegIntegrationTokensRecord setUserMetadata(JSON value) {
-        set(9, value);
+    public SecurityAppRegIntegrationTokensRecord setUserMetadata(Map value) {
+        set(10, value);
         return this;
     }
 
@@ -204,8 +223,8 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * <code>security.security_app_reg_integration_tokens.USER_METADATA</code>.
      * User metadata
      */
-    public JSON getUserMetadata() {
-        return (JSON) get(9);
+    public Map getUserMetadata() {
+        return (Map) get(10);
     }
 
     /**
@@ -214,7 +233,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Time when this row is created
      */
     public SecurityAppRegIntegrationTokensRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -224,7 +243,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -233,7 +252,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * of the user who created this row
      */
     public SecurityAppRegIntegrationTokensRecord setCreatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -243,7 +262,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -252,7 +271,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * of the user who updated this row
      */
     public SecurityAppRegIntegrationTokensRecord setUpdatedBy(ULong value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -262,7 +281,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(13);
     }
 
     /**
@@ -271,7 +290,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Time when this row is updated
      */
     public SecurityAppRegIntegrationTokensRecord setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -281,7 +300,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -307,13 +326,14 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
     /**
      * Create a detached, initialised SecurityAppRegIntegrationTokensRecord
      */
-    public SecurityAppRegIntegrationTokensRecord(ULong id, ULong integrationId, String authCode, String state, String token, String refreshToken, LocalDateTime expiresAt, JSON tokenMetadata, String username, JSON userMetadata, LocalDateTime createdAt, ULong createdBy, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRegIntegrationTokensRecord(ULong id, ULong integrationId, String authCode, String state, Map requestParam, String token, String refreshToken, LocalDateTime expiresAt, Map tokenMetadata, String username, Map userMetadata, LocalDateTime createdAt, ULong createdBy, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityAppRegIntegrationTokens.SECURITY_APP_REG_INTEGRATION_TOKENS);
 
         setId(id);
         setIntegrationId(integrationId);
         setAuthCode(authCode);
         setState(state);
+        setRequestParam(requestParam);
         setToken(token);
         setRefreshToken(refreshToken);
         setExpiresAt(expiresAt);

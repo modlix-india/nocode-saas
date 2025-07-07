@@ -38,6 +38,7 @@ public class ContextAuthentication implements Authentication {
 
     private String urlClientCode;
     private String urlAppCode;
+    private String verifiedAppCode;
 
     @Override
     public String getName() {

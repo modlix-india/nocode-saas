@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: entity-collector
+  freemarker:
+    check-template-location: false
+  r2dbc:
+    url: ${entity-collector.db.url}
+    username: ${entity-collector.db.username}
+    password: ${entity-collector.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+    flyway:
+      enabled: true
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${entity-collector.db.flyway.url}
+      user: ${entity-collector.db.username}
+      password: ${entity-collector.db.password}
+    boot:
+      admin:
+        client:
+          instance:
+            name: entity-collector
+    servlet:
+      multipart:
+        max-file-size: -1
+        max-request-size: -1
+    cloud:
+      gateway:
+        routes:
+          - id: entity-collector
+            uri: lb://entity-collector
+            predicates:
+              - Path=/api/entity/collector/**, /*/api/entity/collector/**, /*/*/api/entity/collector/**, /*/*/*/api/entity/collector/**, /*/*/*/*/api/entity/collector/**, /*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/*/api/entity/collector/**,
+    rabbitmq:
+      host: ${mq.host}
+      port: ${mq.port}
+      username: ${mq.username}
+      password: ${mq.password}
+
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: ecol
