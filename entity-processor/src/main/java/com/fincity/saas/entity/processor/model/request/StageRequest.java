@@ -4,6 +4,8 @@ import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.base.BaseProductTemplate;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.util.NameUtil;
+
 import java.io.Serial;
 import java.util.Collection;
 import java.util.HashMap;
@@ -48,10 +50,12 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
         if (children.isEmpty()) return Boolean.TRUE;
 
         Set<String> names = new HashSet<>();
+
+        String parentName = NameUtil.normalize(this.getName());
         for (StageRequest child : children) {
-            String name = child.getName();
+            String name = NameUtil.normalize(child.getName());
             if (!child.isValid()) return Boolean.FALSE;
-            if (name != null && name.equals(this.getName())) return Boolean.FALSE;
+            if (name != null && name.equals(parentName)) return Boolean.FALSE;
             if (name != null && !names.add(name)) return Boolean.FALSE;
         }
 
