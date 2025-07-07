@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.jooq.impl.AbstractConverter;
 import org.jooq.types.ULong;
@@ -12,8 +13,10 @@ import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
 import com.fincity.saas.commons.jooq.convertor.gson.ULongAdapter;
+import com.fincity.saas.commons.jooq.convertor.gson.ULongListAdapter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> {
 
@@ -25,6 +28,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
             .registerTypeAdapter(ArraySchemaType.class, new AdditionalType.AdditionalTypeAdapter())
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .registerTypeAdapter(ULong.class, new ULongAdapter())
+            .registerTypeAdapter(new TypeToken<List<ULong>>(){}.getType(), new ULongListAdapter())
             .create();
 
 	protected AbstractJooqConverter(Class<T> fromType, Class<U> toType) {
