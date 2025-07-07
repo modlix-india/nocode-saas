@@ -69,7 +69,7 @@ public class StageRequest extends BaseProductTemplate<StageRequest> {
         Map<String, Integer> nameCountMap = new HashMap<>();
 
         for (StageRequest child : children) {
-            String name = child.getName();
+            String name = NameUtil.normalize(child.getName());
             if (name != null) nameCountMap.merge(name, 1, Integer::sum);
         }
 
