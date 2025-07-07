@@ -280,10 +280,6 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readIdentityWithAccess(access, identity));
     }
 
-    public Mono<D> readIdentityWithOwnerAccess(Identity identity) {
-        return this.hasAccess().flatMap(access -> this.readIdentityWithOwnerAccess(access, identity));
-    }
-
     public Mono<D> readIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -301,33 +297,6 @@ public abstract class BaseUpdatableService<
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
                                 this.getEntityName(),
                                 identity.getId()));
-    }
-
-    public Mono<D> readIdentityWithOwnerAccess(ProcessorAccess access, Identity identity) {
-
-        if (identity == null || identity.isNull()) return this.identityMissingError();
-
-        return identity.isCode()
-                ? this.readByCode(access, identity.getCode())
-                        .flatMap(ticket -> this.checkUserAccess(access, ticket))
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
-                                identity.getCode()))
-                : this.readById(access, identity.getULongId())
-                        .flatMap(ticket -> this.checkUserAccess(access, ticket))
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
-                                identity.getId()));
-    }
-
-    public Mono<D> checkUserAccess(ProcessorAccess access, D entity) {
-        if (entity.getCreatedBy() == null) return Mono.empty();
-        if (!entity.getCreatedBy().equals(access.getUserId())) return Mono.empty();
-        return Mono.just(entity);
     }
 
     public Mono<D> readIdentityWithAccessEmpty(ProcessorAccess access, Identity identity) {

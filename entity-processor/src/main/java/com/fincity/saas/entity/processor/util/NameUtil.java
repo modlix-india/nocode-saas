@@ -1,12 +1,11 @@
 package com.fincity.saas.entity.processor.util;
 
+import com.fincity.saas.commons.util.StringUtil;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.fincity.saas.commons.util.StringUtil;
 
 public class NameUtil {
 
