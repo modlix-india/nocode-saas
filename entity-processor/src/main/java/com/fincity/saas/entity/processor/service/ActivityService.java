@@ -73,12 +73,18 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
         if (actorId == null || actorId.longValue() <= 0) return this.getLoggedInUser();
 
-        return this.securityService
-                .getUserInternal(actorId.toBigInteger())
-                .map(user -> IdAndValue.of(
-                        ULongUtil.valueOf(user.get("id")),
-                        NameUtil.assembleFullName(user.get("firstName"), user.get("middleName"), user.get("lastName"))))
-                .switchIfEmpty(this.getLoggedInUser());
+        return this.getUser(actorId).switchIfEmpty(this.getLoggedInUser());
+    }
+
+    private Mono<IdAndValue<ULong, String>> getUser(ULong userId) {
+        return super.securityService.getUserInternal(userId.toBigInteger()).map(this::getUserIdAndValue);
+    }
+
+    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
+        return IdAndValue.of(
+                ULongUtil.valueOf(userMap.get("id")),
+                NameUtil.assembleFullName(
+                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
     }
 
     @Override
@@ -452,13 +458,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> Mono.zip(
-                                super.securityService
-                                        .getUserInternal(oldUser.toBigInteger())
-                                        .map(this::getUserIdAndValue),
-                                super.securityService
-                                        .getUserInternal(newUser.toBigInteger())
-                                        .map(this::getUserIdAndValue)),
+                        () -> Mono.zip(this.getUser(oldUser), this.getUser(newUser)),
                         users -> this.createActivityInternal(
                                 ActivityAction.REASSIGN,
                                 comment,
@@ -572,12 +572,5 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         } else if (fieldValue instanceof ULong ulongValue) {
             consumer.accept(ulongValue);
         }
-    }
-
-    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
-        return IdAndValue.of(
-                ULongUtil.valueOf(userMap.get("id")),
-                NameUtil.assembleFullName(
-                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
     }
 }
