@@ -57,8 +57,10 @@ public class Stage extends BaseValueDto<Stage> {
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
                 .setStageType(stageType)
-                .setIsSuccess(stageRequest.getIsSuccess())
-                .setIsFailure(stageRequest.getIsFailure())
+                .setIsSuccess(
+                        stageRequest.getIsSuccess() != null ? stageRequest.getIsSuccess() : parents[0].getIsSuccess())
+                .setIsFailure(
+                        stageRequest.getIsFailure() != null ? stageRequest.getIsFailure() : parents[0].getIsFailure())
                 .setOrder(order)
                 .setPlatform(platform);
     }

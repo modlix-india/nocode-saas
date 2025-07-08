@@ -26,7 +26,6 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,9 +41,6 @@ import reactor.util.context.Context;
 
 @Service
 public class ActivityService extends BaseService<EntityProcessorActivitiesRecord, Activity, ActivityDAO> {
-
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm a");
 
     private StageService stageService;
     private TicketService ticketService;
@@ -83,14 +79,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         ULongUtil.valueOf(user.get("id")),
                         NameUtil.assembleFullName(user.get("firstName"), user.get("middleName"), user.get("lastName"))))
                 .switchIfEmpty(this.getLoggedInUser());
-    }
-
-    private String formatDate(LocalDateTime dateTime) {
-        return dateTime.format(DATE_FORMAT);
-    }
-
-    private String formatTime(LocalDateTime dateTime) {
-        return dateTime.format(TIME_FORMAT);
     }
 
     @Override
@@ -462,16 +450,25 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
-        return this.createActivityInternal(
-                        ActivityAction.REASSIGN,
-                        comment,
-                        Map.of(
-                                Activity.Fields.ticketId,
-                                ticketId,
-                                ActivityAction.getOldName(Ticket.Fields.assignedUserId),
-                                oldUser,
-                                Ticket.Fields.assignedUserId,
-                                newUser))
+
+        return FlatMapUtil.flatMapMono(
+                        () -> Mono.zip(
+                                super.securityService
+                                        .getUserInternal(oldUser.toBigInteger())
+                                        .map(this::getUserIdAndValue),
+                                super.securityService
+                                        .getUserInternal(newUser.toBigInteger())
+                                        .map(this::getUserIdAndValue)),
+                        users -> this.createActivityInternal(
+                                ActivityAction.REASSIGN,
+                                comment,
+                                Map.of(
+                                        Activity.Fields.ticketId,
+                                        ticketId,
+                                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                                        users.getT1(),
+                                        Ticket.Fields.assignedUserId,
+                                        users.getT2())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassign"));
     }
 
@@ -575,5 +572,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         } else if (fieldValue instanceof ULong ulongValue) {
             consumer.accept(ulongValue);
         }
+    }
+
+    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
+        return IdAndValue.of(
+                ULongUtil.valueOf(userMap.get("id")),
+                NameUtil.assembleFullName(
+                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
     }
 }

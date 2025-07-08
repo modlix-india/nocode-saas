@@ -6,8 +6,9 @@ import org.springframework.security.core.Authentication;
 import reactor.core.publisher.Mono;
 
 public interface IAuthenticationService {
-	
-	public static final String CACHE_NAME_TOKEN = "tokenCache";
 
-	public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, String clientCode, String appCode, ServerHttpRequest request);
+    String CACHE_NAME_TOKEN = "tokenCache";
+
+    Mono<Authentication> getAuthentication(
+		    boolean isBasic, String bearerToken, String clientCode, String appCode, ServerHttpRequest request);
 }
