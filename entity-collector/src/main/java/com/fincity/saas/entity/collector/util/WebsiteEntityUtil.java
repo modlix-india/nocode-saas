@@ -3,7 +3,7 @@ package com.fincity.saas.entity.collector.util;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
-import com.fincity.saas.entity.collector.dto.LeadDetails;
+import com.fincity.saas.entity.collector.model.LeadDetails;
 import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.service.EntityCollectorLogService;

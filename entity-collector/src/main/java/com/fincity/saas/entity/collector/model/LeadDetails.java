@@ -1,6 +1,9 @@
-package com.fincity.saas.entity.collector.dto;
+package com.fincity.saas.entity.collector.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.saas.entity.collector.dto.AbstractLeadBase;
+import com.fincity.saas.entity.collector.dto.EntityIntegration;
+import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.enums.LeadSource;
 import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import lombok.Data;

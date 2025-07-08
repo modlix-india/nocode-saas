@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.collector.dto ;
 
+import com.fincity.saas.entity.collector.model.LeadDetails;
 import lombok.Data;
 
 import java.io.Serial;

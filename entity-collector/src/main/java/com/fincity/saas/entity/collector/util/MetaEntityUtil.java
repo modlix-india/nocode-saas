@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.collector.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +9,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.collector.dto.CampaignDetails;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
-import com.fincity.saas.entity.collector.dto.LeadDetails;
+import com.fincity.saas.entity.collector.model.LeadDetails;
 import com.fincity.saas.entity.collector.enums.MetaLeadFieldType;
 import com.fincity.saas.entity.collector.enums.LeadSource;
 import com.fincity.saas.entity.collector.enums.LeadSubSource;
@@ -30,7 +29,6 @@ import reactor.util.function.Tuples;
 import java.util.*;
 
 import static com.fincity.saas.entity.collector.util.EntityUtil.populateStaticFields;
-import static org.flywaydb.core.internal.util.ClassUtils.setFieldValue;
 
 @Slf4j
 @Component
