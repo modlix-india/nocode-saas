@@ -25,6 +25,7 @@ public class UserDistribution implements Serializable {
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private List<ULong> userIds = List.of();
 
+    private String clientCode;
     private String appCode;
     private Integer percentage;
     private Integer maxLoad;

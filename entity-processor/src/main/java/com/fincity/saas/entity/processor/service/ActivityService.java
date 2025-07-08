@@ -83,7 +83,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     @Override
     public Mono<Activity> create(Activity activity) {
-        return this.createInternal(activity).contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.create"));
+        return super.hasAccess()
+                .flatMap(access -> this.createInternal(access, activity))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.create"));
     }
 
     public Mono<Page<Activity>> readPageFilter(Pageable pageable, Identity ticket, AbstractCondition condition) {
@@ -121,13 +123,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 FilterCondition.make(Activity.Fields.ticketId, ticketId).setOperator(FilterConditionOperator.EQUALS));
     }
 
-    protected Mono<Activity> createInternal(Activity activity) {
-        return super.hasAccess()
-                .flatMap(access -> {
-                    activity.setAppCode(access.getAppCode());
-                    activity.setClientCode(access.getClientCode());
-                    return super.create(activity);
-                })
+    protected Mono<Activity> createInternal(ProcessorAccess access, Activity activity) {
+        return super.create((Activity) activity.setAppCode(access.getAppCode()).setClientCode(access.getClientCode()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createInternal"));
     }
 
@@ -166,7 +163,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                     .setDescription(message)
                                     .setActorId(actor.getId());
                             this.updateActivityIds(activity, mutableContext, action.isDelete());
-                            return this.create(activity).then();
+                            return this.createInternal(access, activity).then();
                         })
                 .then()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createActivityInternal"));
