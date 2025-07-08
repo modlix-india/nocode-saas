@@ -45,27 +45,19 @@ public class GetClient extends AbstractReactiveFunction {
                 .setParameters(Map.of(
                         EVENT_DATA_CLIENT,
                         Schema.ofObject(EVENT_DATA_CLIENT)
-                                .setProperties(Map.of(
-                                        "id",
-                                        Schema.ofLong("id"),
-                                        "createdBy",
-                                        Schema.ofLong("createdBy"),
-                                        "updatedBy",
-                                        Schema.ofLong("updatedBy"),
-                                        "code",
-                                        Schema.ofString("code"),
-                                        "name",
-                                        Schema.ofString("name"),
-                                        "typeCode",
-                                        Schema.ofString("typeCode"),
-                                        "tokenValidityMinutes",
-                                        Schema.ofInteger("tokenValidityMinutes"),
-                                        "localeCode",
-                                        Schema.ofString("localeCode"),
-                                        "statusCode",
-                                        Schema.ofString("statusCode"),
-                                        "businessType",
-                                        Schema.ofString("businessType")))));
+                                .setProperties((Map.ofEntries(
+                                        Map.entry("id", Schema.ofLong("id")),
+                                        Map.entry("createdBy", Schema.ofLong("createdBy")),
+                                        Map.entry("updatedBy", Schema.ofLong("updatedBy")),
+                                        Map.entry("code", Schema.ofString("code")),
+                                        Map.entry("name", Schema.ofString("name")),
+                                        Map.entry("typeCode", Schema.ofString("typeCode")),
+                                        Map.entry("tokenValidityMinutes", Schema.ofInteger("tokenValidityMinutes")),
+                                        Map.entry("localeCode", Schema.ofString("localeCode")),
+                                        Map.entry("statusCode", Schema.ofString("statusCode")),
+                                        Map.entry("businessType", Schema.ofString("businessType")),
+                                        Map.entry("businessSize", Schema.ofString("businessSize")),
+                                        Map.entry("industry", Schema.ofString("industry")))))));
 
         return new FunctionSignature()
                 .setNamespace(NAME_SPACE)

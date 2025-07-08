@@ -28,4 +28,6 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 	private String localeCode;
 	private SecurityClientStatusCode statusCode;
 	private String businessType;
+	private String businessSize;
+	private String industry;
 }
