@@ -1273,14 +1273,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.profileService.assignedProfiles(userId, appId);
     }
 
-    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
-        return this.appService.getAppByCode(appCode).flatMap(app -> this.getProfileUsers(app.getId(), profileIds));
-    }
-
-    public Mono<List<ULong>> getProfileUsers(ULong appId, List<ULong> profiles) {
-        return this.profileService.getUsersForProfiles(appId, profiles);
-    }
-
     public Mono<Boolean> checkUserExistsAcrossApps(String userName, String email, String phoneNumber) {
 
         if (userName == null && email == null && phoneNumber == null)

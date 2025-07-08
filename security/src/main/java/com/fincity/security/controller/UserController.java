@@ -127,12 +127,6 @@ public class UserController
         return this.service.resetPassword(reqPassword).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/internal/getProfileUsers/{appCode}")
-    public Mono<ResponseEntity<List<ULong>>> getProfileUsers(
-            @PathVariable String appCode, @RequestBody List<ULong> profileIds) {
-        return this.service.getProfileUsers(appCode, profileIds).map(ResponseEntity::ok);
-    }
-
     @PostMapping("/invite")
     public Mono<ResponseEntity<UserInvite>> inviteUser(@RequestBody UserInvite invite) {
         return this.inviteService.create(invite).map(ResponseEntity::ok);
@@ -165,8 +159,8 @@ public class UserController
         return this.service.readById(id).map(ResponseEntity::ok);
     }
 
-    @PostMapping("/internal")
-    public Mono<ResponseEntity<List<UserResponse>>> getUsers(@RequestBody List<ULong> userIds) {
+    @GetMapping("/internal")
+    public Mono<ResponseEntity<List<UserResponse>>> getUsers(@RequestParam List<ULong> userIds) {
         return this.service.readByIds(userIds).map(ResponseEntity::ok);
     }
 
