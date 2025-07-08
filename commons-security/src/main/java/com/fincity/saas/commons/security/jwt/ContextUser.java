@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -21,6 +22,8 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @ToString
 public class ContextUser implements Serializable {
+
+    private static final Logger logger = org.slf4j.LoggerFactory.getLogger(ContextUser.class);
 
     @Serial
     private static final long serialVersionUID = -4905785598739255667L;
@@ -59,6 +62,9 @@ public class ContextUser implements Serializable {
 
     @JsonIgnore
     public Collection<SimpleGrantedAuthority> getAuthorities() {
+
+        logger.info("String Authorities: {}", this.stringAuthorities);
+        logger.info("Granted Authorities: {}", this.grantedAuthorities);
 
         if (this.grantedAuthorities != null && !this.grantedAuthorities.isEmpty())
             return this.grantedAuthorities;
