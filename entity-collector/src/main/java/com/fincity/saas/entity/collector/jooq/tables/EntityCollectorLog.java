@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.collector.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.saas.entity.collector.jooq.EntityCollector;
 import com.fincity.saas.entity.collector.jooq.Keys;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
@@ -21,6 +22,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -37,7 +39,6 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
-import org.jooq.jackson.extensions.converters.JSONtoJacksonConverter;
 import org.jooq.types.ULong;
 
 
@@ -81,7 +82,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * <code>entity_collector.entity_collector_log.INCOMING_ENTITY_DATA</code>.
      * Entity Data
      */
-    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("INCOMING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity Data", new JSONtoJacksonConverter<Map>(Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("INCOMING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity Data", new JSONMysqlMapConvertor<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
@@ -94,7 +95,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * <code>entity_collector.entity_collector_log.OUTGOING_ENTITY_DATA</code>.
      * Entity data forwarded to target
      */
-    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("OUTGOING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity data forwarded to target", new JSONtoJacksonConverter<Map>(Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("OUTGOING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity data forwarded to target", new JSONMysqlMapConvertor<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column <code>entity_collector.entity_collector_log.STATUS</code>.

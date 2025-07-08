@@ -14,7 +14,7 @@ import java.util.Map;
 public abstract class AbstractLeadBase implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 3814596747030554670L;
 
     private String email;
     private String fullName;
