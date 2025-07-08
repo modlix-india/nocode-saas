@@ -32,6 +32,8 @@ public class ClientRegistrationRequest implements BasePassword<ClientRegistratio
     private String otp = null;
     private boolean businessClient;
     private String businessType;
+    private String businessSize;
+    private String industry;
     private String subDomain;
     private String subDomainSuffix;
     private String socialRegisterState;
