@@ -179,7 +179,12 @@ public class ClientRegistrationService {
 
         Mono<RegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                () -> SecurityContextUtil.getUsersContextAuthentication().flatMap(context -> {
+                    if(context.isAuthenticated())
+                        context.setLoggedInFromClientCode(context.getClientCode())
+                                .setLoggedInFromClientId(context.getUser().getClientId());
+                    return Mono.just(context);
+                }),
 
                 ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
                         ca.getUrlAppCode(), registrationRequest.getInputPassType()),
@@ -426,6 +431,8 @@ public class ClientRegistrationService {
         client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
         client.setLocaleCode(request.getLocaleCode());
         client.setTokenValidityMinutes(VALIDITY_MINUTES);
+        client.setBusinessSize(request.getBusinessSize());
+        client.setIndustry(request.getIndustry());
 
         if (safeIsBlank(client.getName()))
             return this.regError("Client name cannot be blank");
