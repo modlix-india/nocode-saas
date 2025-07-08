@@ -22,72 +22,75 @@ import lombok.experimental.Accessors;
 @ToString
 public class ContextUser implements Serializable {
 
-	@Serial
-	private static final long serialVersionUID = -4905785598739255667L;
+    @Serial
+    private static final long serialVersionUID = -4905785598739255667L;
 
-	private BigInteger id;
-	private BigInteger createdBy;
-	private BigInteger updatedBy;
-	private LocalDateTime createdAt;
-	private LocalDateTime updatedAt;
-	private BigInteger clientId;
-	private String userName;
-	private String emailId;
-	private String phoneNumber;
-	private String firstName;
-	private String lastName;
-	private String middleName;
-	private String localeCode;
-	private String password;
-	private boolean passwordHashed;
-	private String pin;
-	private boolean pinHashed;
-	private boolean accountNonExpired;
-	private boolean accountNonLocked;
-	private boolean credentialsNonExpired;
-	private Short noFailedAttempt;
-	private Short noPinFailedAttempt;
-	private Short noOtpResendAttempts;
-	private Short noOtpFailedAttempt;
-	private String statusCode;
-	private LocalDateTime lockedUntil;
-	private String lockedDueTo;
-	private List<String> stringAuthorities;
+    private BigInteger id;
+    private BigInteger createdBy;
+    private BigInteger updatedBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private BigInteger clientId;
+    private String userName;
+    private String emailId;
+    private String phoneNumber;
+    private String firstName;
+    private String lastName;
+    private String middleName;
+    private String localeCode;
+    private String password;
+    private boolean passwordHashed;
+    private String pin;
+    private boolean pinHashed;
+    private boolean accountNonExpired;
+    private boolean accountNonLocked;
+    private boolean credentialsNonExpired;
+    private Short noFailedAttempt;
+    private Short noPinFailedAttempt;
+    private Short noOtpResendAttempts;
+    private Short noOtpFailedAttempt;
+    private String statusCode;
+    private LocalDateTime lockedUntil;
+    private String lockedDueTo;
+    private List<String> stringAuthorities;
 
-	@JsonIgnore
-	private Set<SimpleGrantedAuthority> grantedAuthorities;
+    @JsonIgnore
+    private Set<SimpleGrantedAuthority> grantedAuthorities;
 
-	@JsonIgnore
-	public Collection<SimpleGrantedAuthority> getAuthorities() {
+    @JsonIgnore
+    public Collection<SimpleGrantedAuthority> getAuthorities() {
 
-		if (this.stringAuthorities == null || this.stringAuthorities.isEmpty())
-			return Set.of();
+        if (this.grantedAuthorities != null && !this.grantedAuthorities.isEmpty())
+            return this.grantedAuthorities;
 
-		if (this.grantedAuthorities == null) {
-			this.grantedAuthorities = this.stringAuthorities.parallelStream()
-					.map(SimpleGrantedAuthority::new)
-					.collect(Collectors.toSet());
-		}
-		return this.grantedAuthorities;
-	}
+        if (this.stringAuthorities == null || this.stringAuthorities.isEmpty())
+            return Set.of();
 
-	@JsonIgnore
-	public String getPassword() {
-		return this.password;
-	}
+        if (this.grantedAuthorities == null) {
+            this.grantedAuthorities = this.stringAuthorities.parallelStream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toSet());
+        }
+        return this.grantedAuthorities;
+    }
 
-	@JsonIgnore
-	public boolean isPasswordHashed() {
-		return this.passwordHashed;
-	}
+    @JsonIgnore
+    public String getPassword() {
+        return this.password;
+    }
 
-	@JsonIgnore
-	public String getPin() {
-		return this.pin;
-	}
+    @JsonIgnore
+    public boolean isPasswordHashed() {
+        return this.passwordHashed;
+    }
 
-	@JsonIgnore
-	public boolean isPinHashed() {
-		return this.pinHashed;
-	}
+    @JsonIgnore
+    public String getPin() {
+        return this.pin;
+    }
+
+    @JsonIgnore
+    public boolean isPinHashed() {
+        return this.pinHashed;
+    }
 }
