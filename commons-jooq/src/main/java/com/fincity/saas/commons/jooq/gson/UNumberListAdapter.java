@@ -5,26 +5,33 @@ import java.lang.reflect.Method;
 import java.util.function.Function;
 
 import org.jooq.types.UNumber;
+import org.springframework.http.HttpStatus;
 
-public class UNumberListAdapter<R extends UNumber> extends AbstractListAdapter<R>{
+import com.fincity.saas.commons.exeception.GenericException;
 
-	protected UNumberListAdapter(Function<String, R> deserializer) {
-		super(deserializer);
-	}
+public class UNumberListAdapter<R extends UNumber> extends AbstractListAdapter<R> {
 
-	public UNumberListAdapter(Class<R> clazz) {
-		super(value -> {
-			try {
-				Method method = clazz.getDeclaredMethod("valueOf", String.class);
-				return (R) method.invoke(null, value);
-			} catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException("Unable to convert " + value + " to " + clazz.getSimpleName(), e);
-			}
-		});
-	}
+    protected UNumberListAdapter(Function<String, R> deserializer) {
+        super(deserializer);
+    }
 
-	@Override
-	protected String serializeItem(R item) {
-		return item.toString();
-	}
+    @SuppressWarnings("unchecked")
+    public UNumberListAdapter(Class<R> clazz) {
+        super(value -> {
+            try {
+                Method method = clazz.getDeclaredMethod("valueOf", String.class);
+                return (R) method.invoke(null, value);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new GenericException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Unable to convert " + value + " to " + clazz.getSimpleName(),
+                        e);
+            }
+        });
+    }
+
+    @Override
+    protected String serializeItem(R item) {
+        return item.toString();
+    }
 }
