@@ -162,7 +162,6 @@ public abstract class BaseValueService<
                 access -> this.validateEntity(entity, access),
                 (access, vEntity) -> this.applyOrder(vEntity, access),
                 (access, vEntity, aEntity) -> {
-
                     aEntity.setIsParent(Boolean.TRUE);
 
                     return super.createInternal(access, aEntity);
@@ -173,7 +172,6 @@ public abstract class BaseValueService<
     public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.validateEntity(entity, access), vEntity -> {
-
             entity.setIsParent(Boolean.FALSE);
             entity.setParentLevel0(parentEntity.getId());
 

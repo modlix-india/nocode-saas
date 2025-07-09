@@ -235,9 +235,7 @@ public abstract class BaseUpdatableService<
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
-
-            if (entity.getName() != null && !entity.getName().isEmpty())
-                existing.setName(entity.getName());
+            if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
             existing.setActive(entity.isActive());

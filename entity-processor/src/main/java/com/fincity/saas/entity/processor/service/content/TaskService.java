@@ -92,29 +92,30 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
     @Override
     protected Mono<Task> updatableEntity(Task entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setDueDate(entity.getDueDate());
+                    existing.setTaskPriority(entity.getTaskPriority());
 
-            existing.setDueDate(entity.getDueDate());
-            existing.setTaskPriority(entity.getTaskPriority());
+                    LocalDateTime now = LocalDateTime.now();
 
-            LocalDateTime now = LocalDateTime.now();
+                    if (entity.isCompleted()) {
+                        existing.setCompleted(Boolean.TRUE);
+                        existing.setCompletedDate(entity.getCompletedDate() != null ? entity.getCompletedDate() : now);
+                    }
 
-            if (entity.isCompleted()) {
-                existing.setCompleted(Boolean.TRUE);
-                existing.setCompletedDate(entity.getCompletedDate() != null ? entity.getCompletedDate() : now);
-            }
+                    if (entity.isCancelled()) {
+                        existing.setCancelled(Boolean.TRUE);
+                        existing.setCancelledDate(entity.getCancelledDate() != null ? entity.getCancelledDate() : now);
+                    }
 
-            if (entity.isCancelled()) {
-                existing.setCancelled(Boolean.TRUE);
-                existing.setCancelledDate(entity.getCancelledDate() != null ? entity.getCancelledDate() : now);
-            }
+                    existing.setDelayed(entity.isDelayed());
+                    existing.setHasReminder(entity.isHasReminder());
+                    existing.setNextReminder(entity.getNextReminder());
 
-            existing.setDelayed(entity.isDelayed());
-            existing.setHasReminder(entity.isHasReminder());
-            existing.setNextReminder(entity.getNextReminder());
-
-            return Mono.just(existing);
-        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updatableEntity"));
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updatableEntity"));
     }
 
     public Mono<Task> setReminder(Identity taskIdentity, LocalDateTime reminderDate) {

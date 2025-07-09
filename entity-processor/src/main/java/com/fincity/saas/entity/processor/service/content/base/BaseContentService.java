@@ -125,9 +125,7 @@ public abstract class BaseContentService<
                 (access, oEntity, uEntity) -> {
                     var s = oEntity;
                     var q = uEntity;
-                    return activityService
-                            .acContentUpdate(oEntity, uEntity)
-                            .then(Mono.just(uEntity));
+                    return activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity));
                 });
     }
 
