@@ -214,7 +214,7 @@ public class MetaEntityUtil {
                         }
                     }
 
-                    Map<String, String> customFields = mapper.convertValue(customFieldsNode, new TypeReference<Map<String, String>>() {});
+                    Map<String, Object> customFields = mapper.convertValue(customFieldsNode, new TypeReference<Map<String, Object>>() {});
                     LeadDetails lead = mapper.convertValue(leadNode, LeadDetails.class);
                     lead.setCustomFields(customFields);
                     populateStaticFields(lead, integration, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);

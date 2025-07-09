@@ -45,5 +45,5 @@ public abstract class AbstractLeadBase implements Serializable {
     private String platform;
     private LeadSubSource subSource;
     private LeadSource source;
-    private Map<String, String> customFields;
+    private Map<String, Object> customFields;
 }
