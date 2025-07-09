@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.collector.dto;
 
+import com.fincity.saas.entity.collector.enums.LeadSource;
+import com.fincity.saas.entity.collector.enums.LeadSubSource;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
@@ -41,7 +43,7 @@ public abstract class AbstractLeadBase implements Serializable {
     private String clientCode;
     private String appCode;
     private String platform;
-    private String subSource;
-    private String source;
+    private LeadSubSource subSource;
+    private LeadSource source;
     private Map<String, String> customFields;
 }

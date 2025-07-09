@@ -78,11 +78,12 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
     public final TableField<EntityCollectorLogRecord, ULong> ENTITY_INTEGRATION_ID = createField(DSL.name("ENTITY_INTEGRATION_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Entity integration ID");
 
     /**
+     *
      * The column
      * <code>entity_collector.entity_collector_log.INCOMING_ENTITY_DATA</code>.
      * Entity Data
      */
-    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("INCOMING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity Data", new JSONMysqlMapConvertor<JSON, Map>(JSON.class, Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> INCOMING_ENTITY_DATA = createField(DSL.name("INCOMING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity Data", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>entity_collector.entity_collector_log.IP_ADDRESS</code>.
@@ -95,7 +96,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * <code>entity_collector.entity_collector_log.OUTGOING_ENTITY_DATA</code>.
      * Entity data forwarded to target
      */
-    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("OUTGOING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity data forwarded to target", new JSONMysqlMapConvertor<JSON, Map>(JSON.class, Map.class));
+    public final TableField<EntityCollectorLogRecord, Map> OUTGOING_ENTITY_DATA = createField(DSL.name("OUTGOING_ENTITY_DATA"), SQLDataType.JSON, this, "Entity data forwarded to target", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>entity_collector.entity_collector_log.STATUS</code>.

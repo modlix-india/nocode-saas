@@ -77,8 +77,8 @@ public class EntityUtil {
         lead.setClientCode(integration.getClientCode());
         lead.setAppCode(integration.getAppCode());
         lead.setPlatform(platform);
-        lead.setSource(String.valueOf(source));
-        lead.setSubSource(String.valueOf(subSource));
+        lead.setSource(source);
+        lead.setSubSource(subSource);
     }
 
     public static String getClientIpAddress(ServerHttpRequest request) {

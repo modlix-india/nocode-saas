@@ -47,8 +47,8 @@ public class LeadDetails extends AbstractLeadBase {
         this.setState(details.getState());
         this.setCity(details.getCity());
         this.setWhatsappNumber(details.getWhatsappNumber());
-        this.setSubSource(details.getSubSource());
-        this.setSource(details.getSource());
+        this.setSubSource(LeadSubSource.lookupLiteral(String.valueOf(details.getSubSource())));
+        this.setSource(LeadSource.lookupLiteral(String.valueOf(details.getSource())));
         this.setCustomFields(details.getCustomFields());
 
         if ("FACEBOOK".equalsIgnoreCase(details.getUtmSource())) {
@@ -56,7 +56,7 @@ public class LeadDetails extends AbstractLeadBase {
         } else {
             populateStaticFields(this, integration, "WEBSITE", LeadSource.WEBSITE,
                     Boolean.parseBoolean(String.valueOf(this.getSubSource()))
-                            ? LeadSubSource.valueOf(this.getSubSource()) : LeadSubSource.WEBSITE_FORM);
+                            ? LeadSubSource.valueOf(String.valueOf(this.getSubSource())) : LeadSubSource.WEBSITE_FORM);
         }
     }
 
@@ -72,7 +72,7 @@ public class LeadDetails extends AbstractLeadBase {
         lead.setAppCode(integration.getAppCode());
         lead.setClientCode(integration.getClientCode());
         lead.setPlatform(platform);
-        lead.setSource(String.valueOf(source));
-        lead.setSubSource(String.valueOf(subSource));
+        lead.setSource((source));
+        lead.setSubSource((subSource));
     }
 }
