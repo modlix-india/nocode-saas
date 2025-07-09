@@ -4,7 +4,7 @@ import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fincity.saas.commons.jooq.util.JooqSpringContextAccessor;
+import com.fincity.saas.commons.util.SpringContextAccessor;
 import com.google.gson.Gson;
 
 public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> {
@@ -16,7 +16,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
     }
 
     private Gson gson() {
-        return JooqSpringContextAccessor.getBean(Gson.class);
+        return SpringContextAccessor.getBean(Gson.class);
     }
 
     protected abstract String toData(T databaseObject);

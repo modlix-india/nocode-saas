@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.util;
+package com.fincity.saas.commons.util;
 
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.BeansException;
