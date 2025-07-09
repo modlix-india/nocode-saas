@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.jooq.gson;
 
+import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
@@ -10,6 +11,9 @@ import org.springframework.http.HttpStatus;
 import com.fincity.saas.commons.exeception.GenericException;
 
 public class UNumberListAdapter<R extends UNumber> extends AbstractListAdapter<R> {
+
+    @Serial
+    private static final long serialVersionUID = 8515192379851188483L;
 
     protected UNumberListAdapter(Function<String, R> deserializer) {
         super(deserializer);

@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
+import java.io.Serializable;
+
 import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.fincity.saas.commons.util.SpringContextAccessor;
 import com.google.gson.Gson;
 
-public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> {
+public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> implements Serializable {
 
     protected static final Logger logger = LoggerFactory.getLogger(AbstractJooqConverter.class);
 

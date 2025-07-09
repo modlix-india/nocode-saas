@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.jooq.gson;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -11,7 +12,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
-public abstract class AbstractListAdapter<T> extends TypeAdapter<List<T>> {
+public abstract class AbstractListAdapter<T> extends TypeAdapter<List<T>> implements Serializable {
 
     private final Function<String, T> deserializer;
 
