@@ -33,6 +33,8 @@ public enum EntityProcessorActivitiesActivityAction implements EnumType {
 
     TASK_CREATE("TASK_CREATE"),
 
+    TASK_UPDATE("TASK_UPDATE"),
+
     TASK_COMPLETE("TASK_COMPLETE"),
 
     TASK_CANCELLED("TASK_CANCELLED"),
@@ -49,11 +51,15 @@ public enum EntityProcessorActivitiesActivityAction implements EnumType {
 
     NOTE_ADD("NOTE_ADD"),
 
+    NOTE_UPDATE("NOTE_UPDATE"),
+
     NOTE_DELETE("NOTE_DELETE"),
 
     ASSIGN("ASSIGN"),
 
     REASSIGN("REASSIGN"),
+
+    UPDATE("UPDATE"),
 
     REASSIGN_SYSTEM("REASSIGN_SYSTEM"),
 
