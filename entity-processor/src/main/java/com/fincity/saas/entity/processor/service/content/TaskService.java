@@ -93,7 +93,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     @Override
     protected Mono<Task> updatableEntity(Task entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setName(entity.getName());
+
             existing.setDueDate(entity.getDueDate());
             existing.setTaskPriority(entity.getTaskPriority());
 
@@ -113,8 +113,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
             existing.setHasReminder(entity.isHasReminder());
             existing.setNextReminder(entity.getNextReminder());
 
-            return Mono.just(existing).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updatableEntity"));
-        });
+            return Mono.just(existing);
+        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updatableEntity"));
     }
 
     public Mono<Task> setReminder(Identity taskIdentity, LocalDateTime reminderDate) {
@@ -126,7 +126,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                             vTask.setHasReminder(Boolean.TRUE);
                             vTask.setNextReminder(reminderDate);
 
-                            return this.updateInternal(access, vTask);
+                            return this.updateInternal(vTask);
                         },
                         (access, task, vTask, uTask) ->
                                 this.activityService.acReminderSet(uTask).then(Mono.just(uTask)))
@@ -168,7 +168,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                                 vTask.setCancelledDate(date);
                             }
 
-                            return this.updateInternal(access, vTask);
+                            return this.updateInternal(vTask);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskStatus"));
     }

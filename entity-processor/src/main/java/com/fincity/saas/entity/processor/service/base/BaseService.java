@@ -1,5 +1,14 @@
 package com.fincity.saas.entity.processor.service.base;
 
+import java.util.List;
+import java.util.Map;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -13,14 +22,8 @@ import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import java.util.List;
-import java.util.Map;
+
 import lombok.Getter;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
@@ -48,6 +51,18 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Autowired
     public void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
+    }
+
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+
+        if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
+
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
+
+        entity.setCreatedBy(access.getUserId());
+
+        return super.create(entity);
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(

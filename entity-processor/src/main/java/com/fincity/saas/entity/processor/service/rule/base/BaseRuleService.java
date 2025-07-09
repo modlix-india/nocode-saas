@@ -36,13 +36,4 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
     public Mono<D> createPublic(D entity) {
         return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
-
-    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
-        entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
-
-        entity.setCreatedBy(access.getUserId());
-
-        return super.create(entity);
-    }
 }

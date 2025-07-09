@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -20,10 +21,10 @@ public class UserDistribution implements Serializable {
     private static final long serialVersionUID = 7428944421074508272L;
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    private List<ULong> profileIds = List.of();
+    private List<ULong> profileIds;
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    private List<ULong> userIds = List.of();
+    private List<ULong> userIds;
 
     private String clientCode;
     private String appCode;
@@ -36,6 +37,19 @@ public class UserDistribution implements Serializable {
 
     @JsonIgnore
     private Integer currentCount;
+
+    public UserDistribution(UserDistribution userDistribution) {
+        this.profileIds = CloneUtil.cloneMapList(userDistribution.profileIds);
+        this.userIds = CloneUtil.cloneMapList(userDistribution.userIds);
+        this.clientCode = userDistribution.clientCode;
+        this.appCode = userDistribution.appCode;
+        this.percentage = userDistribution.percentage;
+        this.maxLoad = userDistribution.maxLoad;
+        this.weight = userDistribution.weight;
+        this.priority = userDistribution.priority;
+        this.hybridWeights = CloneUtil.cloneMapObject(userDistribution.hybridWeights);
+        this.currentCount = userDistribution.currentCount;
+    }
 
     @JsonIgnore
     public boolean isValidForType(DistributionType type) {

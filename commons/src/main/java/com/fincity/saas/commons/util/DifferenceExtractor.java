@@ -127,7 +127,7 @@ public class DifferenceExtractor {
 		return Mono.just(incoming);
 	}
 
-	private static Mono<JsonElement> extract(JsonElement incoming, JsonElement existing) {
+	public static Mono<JsonElement> extract(JsonElement incoming, JsonElement existing) {
 
 		if (incoming.equals(existing))
 			return Mono.empty();
@@ -164,7 +164,6 @@ public class DifferenceExtractor {
 
 		return Flux.concat(Flux.fromIterable(existing.keySet()), Flux.fromIterable(incoming.keySet()))
 				.distinct()
-				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(e -> extract(incoming.get(e), existing.get(e)).map(d -> Tuples.of(e, d)))
 				.reduce(new JsonObject(), (jo, tup) -> {
 					jo.add(tup.getT1(), tup.getT2());

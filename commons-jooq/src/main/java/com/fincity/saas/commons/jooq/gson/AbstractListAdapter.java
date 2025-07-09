@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jooq.convertor.gson;
+package com.fincity.saas.commons.jooq.gson;
 
 import java.io.IOException;
 import java.util.ArrayList;

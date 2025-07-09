@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -54,13 +55,9 @@ public abstract class BaseContentService<
         return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 
-    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
-        entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
-
-        entity.setCreatedBy(access.getUserId());
-
-        return super.create(entity)
+    @Override
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+        return super.createInternal(access, entity)
                 .flatMap(cContent ->
                         this.activityService.acContentCreate(cContent).then(Mono.just(cContent)));
     }
@@ -121,15 +118,20 @@ public abstract class BaseContentService<
 
     @Override
     public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
+                (access, oEntity) -> this.updateInternal(entity),
+                (access, oEntity, uEntity) -> {
+                    var s = oEntity;
+                    var q = uEntity;
+                    return activityService
+                            .acContentUpdate(oEntity, uEntity)
+                            .then(Mono.just(uEntity));
+                });
     }
 
-    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
-        if (!entity.getCreatedBy().equals(access.getUserId()))
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                    ProcessorMessageResourceService.TASK_FORBIDDEN_ACCESS);
-
+    public Mono<D> updateInternal(D entity) {
         return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
