@@ -2,7 +2,7 @@ package com.fincity.saas.commons.core.model;
 
 import com.fincity.saas.commons.core.enums.ControlFlowType;
 import com.fincity.saas.commons.core.enums.WorkflowStepType;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import java.io.Serial;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
