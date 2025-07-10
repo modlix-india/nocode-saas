@@ -379,16 +379,12 @@ public abstract class BaseUpdatableService<
         return this.readIdentityWithAccess(identity).flatMap(entity -> this.delete(entity.getId()));
     }
 
+    @SuppressWarnings("unchecked")
     public Mono<D> updateByCode(String code, D entity) {
-
         return FlatMapUtil.flatMapMono(
-                () -> this.readByCode(code),
-                e -> {
-                    if (entity.getId() == null) entity.setId(e.getId());
-                    return updatableEntity(entity);
-                },
-                (e, updatableEntity) -> this.update(updatableEntity),
-                (e, updatableEntity, updated) -> this.evictCache(updated).map(evicted -> updated));
+                () -> this.readByCode(code).map(cEntity -> (D) entity.setId(cEntity.getId())),
+                this::update,
+                (e, updated) -> this.evictCache(updated).map(evicted -> updated));
     }
 
     public Mono<Integer> deleteByCode(String code) {
