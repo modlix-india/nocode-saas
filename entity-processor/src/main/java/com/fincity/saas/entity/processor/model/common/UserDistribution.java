@@ -21,10 +21,10 @@ public class UserDistribution implements Serializable {
     private static final long serialVersionUID = 7428944421074508272L;
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    private List<ULong> profileIds;
+    private List<ULong> profileIds = List.of();
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
-    private List<ULong> userIds;
+    private List<ULong> userIds = List.of();
 
     private String clientCode;
     private String appCode;
@@ -37,6 +37,8 @@ public class UserDistribution implements Serializable {
 
     @JsonIgnore
     private Integer currentCount;
+
+    public UserDistribution() {}
 
     public UserDistribution(UserDistribution userDistribution) {
         this.profileIds = CloneUtil.cloneMapList(userDistribution.profileIds);
@@ -74,6 +76,7 @@ public class UserDistribution implements Serializable {
         return profileIds.stream().map(ULong::toBigInteger).toList();
     }
 
+    @JsonIgnore
     public UserDistribution transformToValid() {
         this.setProfileIds(this.profileIds.stream().distinct().toList());
         this.setUserIds(this.userIds.stream().distinct().toList());
