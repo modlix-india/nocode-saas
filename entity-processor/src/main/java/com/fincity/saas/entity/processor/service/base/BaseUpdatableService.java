@@ -123,6 +123,18 @@ public abstract class BaseUpdatableService<
                         ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
     }
 
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+
+        if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
+
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
+
+        entity.setCreatedBy(access.getUserId());
+
+        return super.create(entity);
+    }
+
     @Override
     public Mono<D> read(ULong id) {
         return this.hasAccess().flatMap(access -> this.readById(access, id));
@@ -223,7 +235,7 @@ public abstract class BaseUpdatableService<
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
-            existing.setName(entity.getName());
+            if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
             existing.setActive(entity.isActive());

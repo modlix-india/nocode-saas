@@ -24,6 +24,10 @@ public class TaskType extends BaseUpdatableDto<TaskType> {
         super();
     }
 
+    public TaskType(TaskType taskType) {
+        super(taskType);
+    }
+
     public static TaskType of(TaskTypeRequest taskTypeRequest) {
         return new TaskType().setName(taskTypeRequest.getName()).setDescription(taskTypeRequest.getDescription());
     }
