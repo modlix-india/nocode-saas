@@ -38,13 +38,13 @@ public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I exten
 		return Mono.from(this.dslContext.update(this.table)
 		        .set(rec)
 		        .where(this.idField.eq(entity.getId())))
-		        .thenReturn(rec.into(this.pojoClass));
+		        .then(this.readById(entity.getId()));
 	}
 
+	@SuppressWarnings("unchecked")
 	public Mono<D> update(I id, Map<String, Object> updateFields) {
 
-		if (updateFields.containsKey("createdAt"))
-			updateFields.remove("createdAt");
+		updateFields.remove("createdAt");
 
 		Map<Field<?>, Object> fields = updateFields.entrySet()
 		        .stream()

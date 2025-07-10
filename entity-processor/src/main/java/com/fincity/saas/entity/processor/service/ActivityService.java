@@ -471,7 +471,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 uNote ->
                         this.extractDifference(uNote.getT1(), uNote.getT2()).switchIfEmpty(Mono.just(new JsonObject())),
                 (uNote, dNote) -> this.createActivityInternal(
-                        ActivityAction.TASK_UPDATE,
+                        ActivityAction.NOTE_UPDATE,
                         updated.getUpdatedAt(),
                         comment,
                         Map.of(
