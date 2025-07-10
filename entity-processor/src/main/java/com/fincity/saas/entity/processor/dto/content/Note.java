@@ -24,6 +24,10 @@ public class Note extends BaseContentDto<Note> {
         super();
     }
 
+    public Note(Note note) {
+        super(note);
+    }
+
     public static Note of(NoteRequest noteRequest) {
         return new Note()
                 .setContent(noteRequest.getContent())

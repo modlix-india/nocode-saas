@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.beans.PropertyEditorSupport;
+import java.util.List;
 
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.security.dto.Profile;
@@ -107,5 +109,14 @@ public class ProfileController {
             @PathVariable("id") final ULong profileId, @PathVariable("clientId") final ULong clientId) {
         return this.service.restrictClient(profileId, clientId)
                 .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/profiles/internal/users")
+    public Mono<ResponseEntity<List<ULong>>> getProfileUsers(
+            @RequestParam List<ULong> profileIds, ServerHttpRequest request) {
+
+        String appCode = request.getHeaders().getFirst("appCode");
+
+        return this.service.getProfileUsers(appCode, profileIds).map(ResponseEntity::ok);
     }
 }

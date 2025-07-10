@@ -4484,6 +4484,14 @@ ALTER TABLE `core`.`core_tokens`
     DROP CONSTRAINT `UK_CORE_TOKEN_STATE_TOKEN_TYPE`;
 
 
+-- V46__Alter Client Add Company Details.sql (security)
+USE `security`;
+
+ALTER TABLE `security`.`security_client`
+    ADD COLUMN `BUSINESS_SIZE` VARCHAR(128) DEFAULT NULL COMMENT 'client business size input',
+    ADD COLUMN `INDUSTRY`      VARCHAR(128) DEFAULT NULL COMMENT 'client business industry';
+
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....

@@ -157,6 +157,18 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      */
     public final TableField<SecurityClientRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_client.BUSINESS_SIZE</code>. client
+     * business size input
+     */
+    public final TableField<SecurityClientRecord, String> BUSINESS_SIZE = createField(DSL.name("BUSINESS_SIZE"), SQLDataType.VARCHAR(128), this, "client business size input");
+
+    /**
+     * The column <code>security.security_client.INDUSTRY</code>. client
+     * business industry
+     */
+    public final TableField<SecurityClientRecord, String> INDUSTRY = createField(DSL.name("INDUSTRY"), SQLDataType.VARCHAR(128), this, "client business industry");
+
     private SecurityClient(Name alias, Table<SecurityClientRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

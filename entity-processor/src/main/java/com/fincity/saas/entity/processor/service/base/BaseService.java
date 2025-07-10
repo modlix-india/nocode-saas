@@ -50,6 +50,18 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         this.cacheService = cacheService;
     }
 
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+
+        if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
+
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
+
+        entity.setCreatedBy(access.getUserId());
+
+        return super.create(entity);
+    }
+
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
             Pageable pageable,
             AbstractCondition condition,

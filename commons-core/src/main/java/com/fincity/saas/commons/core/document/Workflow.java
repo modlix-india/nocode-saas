@@ -3,7 +3,7 @@ package com.fincity.saas.commons.core.document;
 import com.fincity.saas.commons.core.model.TriggerWorkflowStep;
 import com.fincity.saas.commons.core.model.WorkflowStep;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;

@@ -27,6 +27,11 @@ public class ProductStageRule extends Rule<ProductStageRule> {
         this.relationsMap.put(Fields.productId, EntitySeries.PRODUCT.getTable());
     }
 
+    public ProductStageRule(ProductStageRule productStageRule) {
+        super(productStageRule);
+        this.productId = productStageRule.productId;
+    }
+
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_STAGE_RULE;
