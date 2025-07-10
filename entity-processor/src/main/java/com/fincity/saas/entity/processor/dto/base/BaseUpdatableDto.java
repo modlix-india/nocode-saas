@@ -49,7 +49,7 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
             new HashSetValuedHashMap<>();
 
     private String code = UniqueUtil.shortUUID();
-    private String name = this.code;
+    private String name;
     private String description;
 
     @JsonIgnore
@@ -61,6 +61,27 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         super();
         this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
         this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
+    }
+
+    protected BaseUpdatableDto(BaseUpdatableDto<T> baseUpdatableDto) {
+
+        super();
+
+        this.setId(baseUpdatableDto.getId());
+        this.setCreatedAt(baseUpdatableDto.getCreatedAt());
+        this.setCreatedBy(baseUpdatableDto.getCreatedBy());
+        this.setUpdatedAt(baseUpdatableDto.getUpdatedAt());
+        this.setUpdatedBy(baseUpdatableDto.getUpdatedBy());
+
+        this.setAppCode(baseUpdatableDto.getAppCode());
+        this.setClientCode(baseUpdatableDto.getClientCode());
+        this.setFields(baseUpdatableDto.getFields());
+
+        this.code = baseUpdatableDto.code;
+        this.name = baseUpdatableDto.name;
+        this.description = baseUpdatableDto.description;
+        this.tempActive = baseUpdatableDto.tempActive;
+        this.isActive = baseUpdatableDto.isActive;
     }
 
     public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
@@ -75,13 +96,11 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     }
 
     public T setName(String name) {
-        if (name == null || name.isBlank()) this.name = this.getCode();
-        else this.name = name;
+        this.name = name;
         return (T) this;
     }
 
     public T setDescription(String description) {
-        if (description == null || description.isBlank()) return (T) this;
         this.description = description;
         return (T) this;
     }
