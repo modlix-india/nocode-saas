@@ -34,6 +34,14 @@ public class ComplexRule extends BaseRule<ComplexRule> {
         super();
     }
 
+    public ComplexRule(ComplexRule complexRule) {
+        super(complexRule);
+        this.parentConditionId = complexRule.parentConditionId;
+        this.logicalOperator = complexRule.logicalOperator;
+        this.hasComplexChild = complexRule.hasComplexChild;
+        this.hasSimpleChild = complexRule.hasSimpleChild;
+    }
+
     public static ComplexRule fromCondition(ULong ruleId, EntitySeries entitySeries, ComplexCondition condition) {
         ComplexRule complexRule = new ComplexRule()
                 .setNegate(condition.isNegate())

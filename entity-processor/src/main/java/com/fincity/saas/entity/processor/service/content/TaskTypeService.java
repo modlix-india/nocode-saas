@@ -36,7 +36,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     @Override
     public Mono<TaskType> create(TaskType taskType) {
         return super.hasAccess()
-                .flatMap(access -> this.createInternal(access, taskType))
+                .flatMap(access -> super.createInternal(access, taskType))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create"));
     }
 
@@ -58,7 +58,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                                             String.join(", ", names),
                                             this.getEntityName())
                                     : Flux.fromIterable(taskTypeRequests)
-                                            .flatMap(req -> this.createInternal(access, TaskType.of(req))));
+                                            .flatMap(req -> super.createInternal(access, TaskType.of(req))));
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[List<TaskTypeRequest>]"));
     }
@@ -73,7 +73,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
         TaskType taskType = TaskType.of(taskTypeRequest);
 
         return this.checkExistsByName(access, taskType)
-                .flatMap(cEntity -> this.createInternal(access, taskType))
+                .flatMap(cEntity -> super.createInternal(access, taskType))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskTypeRequest]"));
     }
@@ -82,17 +82,5 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
         return this.dao
                 .existsByName(appCode, clientCode, names)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.existsByName"));
-    }
-
-    private Mono<TaskType> createInternal(ProcessorAccess access, TaskType taskType) {
-
-        taskType.setAppCode(access.getAppCode());
-        taskType.setClientCode(access.getClientCode());
-
-        taskType.setCreatedBy(access.getUserId());
-
-        return super.create(taskType)
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskType]"));
     }
 }

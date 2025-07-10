@@ -262,8 +262,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private Mono<Boolean> createNote(
             ProcessorAccess access, TicketReassignRequest ticketReassignRequest, Ticket ticket) {
 
-        if (!ticketReassignRequest.hasNote() && ticketReassignRequest.getComment() == null)
-            return Mono.just(Boolean.FALSE);
+        if (!ticketReassignRequest.hasNote()) return Mono.just(Boolean.FALSE);
 
         NoteRequest noteRequest = ticketReassignRequest.getNoteRequest() != null
                 ? ticketReassignRequest.getNoteRequest()

@@ -27,6 +27,11 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
         super();
     }
 
+    protected BaseProcessorDto(BaseProcessorDto<T> baseProcessorDto) {
+        super(baseProcessorDto);
+        this.version = baseProcessorDto.version;
+    }
+
     @JsonIgnore
     public ULong getAccessUser() {
         return this.getCreatedBy();

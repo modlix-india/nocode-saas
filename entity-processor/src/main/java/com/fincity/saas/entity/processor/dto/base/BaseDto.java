@@ -60,6 +60,23 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
         this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
     }
 
+    protected BaseDto(BaseDto<T> baseDto) {
+        super();
+        this.setId(baseDto.getId());
+        this.setCreatedAt(baseDto.getCreatedAt());
+        this.setCreatedBy(baseDto.getCreatedBy());
+
+        this.setAppCode(baseDto.getAppCode());
+        this.setClientCode(baseDto.getClientCode());
+        this.setFields(baseDto.getFields());
+
+        this.code = baseDto.code;
+        this.name = baseDto.name;
+        this.description = baseDto.description;
+        this.tempActive = baseDto.tempActive;
+        this.isActive = baseDto.isActive;
+    }
+
     public T setCode() {
         if (this.code != null) return (T) this;
         this.code = UniqueUtil.shortUUID();
@@ -67,13 +84,11 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     }
 
     public T setName(String name) {
-        if (name == null || name.isBlank()) this.name = this.getCode();
-        else this.name = name;
+        this.name = name;
         return (T) this;
     }
 
     public T setDescription(String description) {
-        if (description == null || description.isBlank()) return (T) this;
         this.description = description;
         return (T) this;
     }

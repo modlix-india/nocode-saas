@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
@@ -42,6 +43,20 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
     protected Rule() {
         super();
         this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
+    }
+
+    protected Rule(Rule<T> rule) {
+        super(rule);
+        this.version = rule.version;
+        this.stageId = rule.stageId;
+        this.order = rule.order;
+        this.isDefault = rule.isDefault;
+        this.breakAtFirstMatch = rule.breakAtFirstMatch;
+        this.isSimple = rule.isSimple;
+        this.isComplex = rule.isComplex;
+        this.userDistributionType = rule.userDistributionType;
+        this.userDistribution = CloneUtil.cloneObject(rule.userDistribution);
+        this.lastAssignedUserId = rule.lastAssignedUserId;
     }
 
     public abstract ULong getEntityId();
