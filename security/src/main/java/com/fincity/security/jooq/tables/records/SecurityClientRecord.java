@@ -223,6 +223,40 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         return (LocalDateTime) get(11);
     }
 
+    /**
+     * Setter for <code>security.security_client.BUSINESS_SIZE</code>. client
+     * business size input
+     */
+    public SecurityClientRecord setBusinessSize(String value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.BUSINESS_SIZE</code>. client
+     * business size input
+     */
+    public String getBusinessSize() {
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_client.INDUSTRY</code>. client
+     * business industry
+     */
+    public SecurityClientRecord setIndustry(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.INDUSTRY</code>. client
+     * business industry
+     */
+    public String getIndustry() {
+        return (String) get(13);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -246,7 +280,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     /**
      * Create a detached, initialised SecurityClientRecord
      */
-    public SecurityClientRecord(ULong id, String code, String name, String typeCode, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityClientRecord(ULong id, String code, String name, String typeCode, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry) {
         super(SecurityClient.SECURITY_CLIENT);
 
         setId(id);
@@ -261,6 +295,8 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setBusinessSize(businessSize);
+        setIndustry(industry);
         resetChangedOnNotNull();
     }
 }
