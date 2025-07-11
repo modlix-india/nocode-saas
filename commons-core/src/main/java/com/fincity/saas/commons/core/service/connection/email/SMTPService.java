@@ -13,9 +13,11 @@ import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -55,9 +57,10 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                         () -> Mono.just(
                                 Tuples.of(toAddresses == null ? List.of() : toAddresses, template, templateData)),
                         tup -> this.getProcessedEmailDetails(toAddresses, template, templateData),
-                        (tup, details) -> {
+                        (tup, details) -> Mono.just(connection),
+                        (tup, details, conn) -> {
                             try {
-                                Properties props = System.getProperties();
+                                Properties props = new Properties();
                                 props.putAll(connProps);
 
                                 Session session = Session.getDefaultInstance(props);
