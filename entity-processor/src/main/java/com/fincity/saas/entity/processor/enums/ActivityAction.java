@@ -186,10 +186,9 @@ public enum ActivityAction implements EnumType {
     public String formatMessage(Map<String, Object> context) {
         String formattedMessage = template;
 
-        for (Map.Entry<String, Object> entry : context.entrySet()) {
+        for (Map.Entry<String, Object> entry : context.entrySet())
             formattedMessage = formattedMessage.replace(
                     "$" + entry.getKey(), this.formatMarkdown(entry.getKey(), this.getValue(entry.getValue())));
-        }
 
         return formattedMessage;
     }
