@@ -63,8 +63,7 @@ public class ContextUser implements Serializable {
     @JsonIgnore
     public Collection<SimpleGrantedAuthority> getAuthorities() {
 
-        logger.info("String Authorities: {}", this.stringAuthorities);
-        logger.info("Granted Authorities: {}", this.grantedAuthorities);
+        logger.info("Authorities: {}", this);
 
         if (this.grantedAuthorities != null && !this.grantedAuthorities.isEmpty())
             return this.grantedAuthorities;
