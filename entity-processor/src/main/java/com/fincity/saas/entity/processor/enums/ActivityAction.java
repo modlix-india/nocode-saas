@@ -75,8 +75,8 @@ public enum ActivityAction implements EnumType {
     NOTE_ADD("NOTE_ADD", "Note $%s added by $user.".formatted(Activity.Fields.noteId), keys(Activity.Fields.noteId)),
     NOTE_UPDATE(
             "NOTE_UPDATE",
-            "Note $%s was updated by $user.".formatted(Activity.Fields.taskId),
-            keys(Activity.Fields.taskId)),
+            "Note $%s was updated by $user.".formatted(Activity.Fields.noteId),
+            keys(Activity.Fields.noteId)),
     NOTE_DELETE(
             "NOTE_DELETE",
             "Note $%s deleted by $user.".formatted(Activity.Fields.noteId),
@@ -154,7 +154,7 @@ public enum ActivityAction implements EnumType {
     }
 
     public static String getOldName(String fieldName) {
-        return "~" + fieldName;
+        return "_" + fieldName;
     }
 
     public static String getDiffName(String fieldName) {
