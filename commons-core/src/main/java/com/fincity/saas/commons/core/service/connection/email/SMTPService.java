@@ -71,7 +71,7 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                                         return new PasswordAuthentication(user, password);
                                     }
                                 });
-                                
+
                                 MimeMessage message = new MimeMessage(session);
 
                                 message.setFrom(new InternetAddress(details.getFrom()));
@@ -86,9 +86,7 @@ public class SMTPService extends AbstractEmailService implements IAppEmailServic
                                 message.setSubject(details.getSubject());
                                 message.setContent(details.getBody(), "text/html");
 
-                                Transport transport = session.getTransport();
-
-                                transport.sendMessage(message, message.getAllRecipients());
+                                Transport.send(message, message.getAllRecipients());
 
                                 return Mono.just(true);
                             } catch (MessagingException mex) {
