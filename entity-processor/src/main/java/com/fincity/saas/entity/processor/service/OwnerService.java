@@ -72,7 +72,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
             return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
 
-        return this.getOrCreateTicketPhoneOwner(access.getAppCode(), access.getClientCode(), ticket)
+        return this.getOrCreateTicketPhoneOwner(access, ticket)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
     }
 
@@ -84,16 +84,16 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
     }
 
-    private Mono<Owner> getOrCreateTicketPhoneOwner(String appCode, String clientCode, Ticket ticket) {
+    private Mono<Owner> getOrCreateTicketPhoneOwner(ProcessorAccess access, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                         () -> this.dao
                                 .readByNumberAndEmail(
-                                        appCode,
-                                        clientCode,
+                                        access.getAppCode(),
+                                        access.getClientCode(),
                                         ticket.getDialCode(),
                                         ticket.getPhoneNumber(),
                                         ticket.getEmail())
-                                .switchIfEmpty(this.create(Owner.of(ticket))),
+                                .switchIfEmpty(this.createInternal(access, Owner.of(ticket))),
                         owner -> {
                             if (owner.getId() == null)
                                 return this.msgService.throwMessage(

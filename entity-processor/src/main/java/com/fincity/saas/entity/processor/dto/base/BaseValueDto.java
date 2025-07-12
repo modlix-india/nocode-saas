@@ -33,6 +33,16 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
+    protected BaseValueDto(BaseValueDto<T> baseValueDto) {
+        super(baseValueDto);
+        this.platform = baseValueDto.platform;
+        this.productTemplateId = baseValueDto.productTemplateId;
+        this.isParent = baseValueDto.isParent;
+        this.parentLevel0 = baseValueDto.parentLevel0;
+        this.parentLevel1 = baseValueDto.parentLevel1;
+        this.order = baseValueDto.order;
+    }
+
     public T setOrder(Integer order) {
         this.order = order;
         return (T) this;

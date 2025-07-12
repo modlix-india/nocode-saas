@@ -84,6 +84,11 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
     public final TableField<SecurityProfileRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID for which this profile belongs to");
 
     /**
+     * The column <code>security.security_profile.DEFAULT_PROFILE</code>.
+     */
+    public final TableField<SecurityProfileRecord, Byte> DEFAULT_PROFILE = createField(DSL.name("DEFAULT_PROFILE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
+
+    /**
      * The column <code>security.security_profile.NAME</code>. Name of the
      * profile
      */

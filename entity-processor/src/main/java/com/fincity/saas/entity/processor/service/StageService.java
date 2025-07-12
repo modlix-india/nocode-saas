@@ -123,10 +123,10 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
 
-        if (!stageRequest.isValid())
+        if (!stageRequest.isStageTypeValid())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "Please select the type of stage to continue.");
+                    "Stage Type information invalid or missing.");
 
         if (!stageRequest.areChildrenValid())
             return this.msgService.throwMessage(

@@ -32,30 +32,34 @@ public enum ActivityAction implements EnumType {
     DISCARD("DISCARD", "$entity discarded by $user.", keys("entity")),
     IMPORT(
             "IMPORT",
-            "$entity imported via '$%s' by $user.".formatted(Ticket.Fields.source),
+            "$entity imported via $%s by $user.".formatted(Ticket.Fields.source),
             keys("entity", Ticket.Fields.source)),
     STATUS_CREATE("STATUS_CREATE", "$%s created by $user.".formatted(Ticket.Fields.status), keys(Ticket.Fields.status)),
     STAGE_UPDATE(
             "STAGE_UPDATE",
-            "Stage moved from '$%s' to '$%s' by $user.".formatted(getOldName(Ticket.Fields.stage), Ticket.Fields.stage),
+            "Stage moved from $%s to $%s by $user.".formatted(getOldName(Ticket.Fields.stage), Ticket.Fields.stage),
             keys(getOldName(Ticket.Fields.stage), Ticket.Fields.stage)),
 
     // Task-related actions
     TASK_CREATE(
             "TASK_CREATE",
-            "Task '$%s' was created by $user.".formatted(Activity.Fields.taskId),
+            "Task $%s was created by $user.".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
+    TASK_UPDATE(
+            "TASK_UPDATE",
+            "Task $%s was updated by $user.".formatted(Activity.Fields.taskId),
             keys(Activity.Fields.taskId)),
     TASK_COMPLETE(
             "TASK_COMPLETE",
-            "Task '$%s' was marked as completed by $user.".formatted(Activity.Fields.taskId),
+            "Task $%s was marked as completed by $user.".formatted(Activity.Fields.taskId),
             keys(Activity.Fields.taskId)),
     TASK_CANCELLED(
             "TASK_CANCELLED",
-            "Task '$%s' was marked as cancelled by $user.".formatted(Activity.Fields.taskId),
+            "Task $%s was marked as cancelled by $user.".formatted(Activity.Fields.taskId),
             keys(Activity.Fields.taskId)),
     TASK_DELETE(
             "TASK_DELETE",
-            "Task '$%s' was deleted by $user.".formatted(Activity.Fields.taskId),
+            "Task $%s was deleted by $user.".formatted(Activity.Fields.taskId),
             keys(Activity.Fields.taskId)),
     REMINDER_SET(
             "REMINDER_SET",
@@ -63,12 +67,16 @@ public enum ActivityAction implements EnumType {
             keys(Task.Fields.nextReminder, Activity.Fields.taskId)),
 
     // Document actions
-    DOCUMENT_UPLOAD("DOCUMENT_UPLOAD", "Document '$file' uploaded by $user.", keys("file")),
-    DOCUMENT_DOWNLOAD("DOCUMENT_DOWNLOAD", "Document '$file' downloaded by $user.", keys("file")),
-    DOCUMENT_DELETE("DOCUMENT_DELETE", "Document '$file' deleted by $user.", keys("file")),
+    DOCUMENT_UPLOAD("DOCUMENT_UPLOAD", "Document $file uploaded by $user.", keys("file")),
+    DOCUMENT_DOWNLOAD("DOCUMENT_DOWNLOAD", "Document $file downloaded by $user.", keys("file")),
+    DOCUMENT_DELETE("DOCUMENT_DELETE", "Document $file deleted by $user.", keys("file")),
 
     // Note actions
     NOTE_ADD("NOTE_ADD", "Note $%s added by $user.".formatted(Activity.Fields.noteId), keys(Activity.Fields.noteId)),
+    NOTE_UPDATE(
+            "NOTE_UPDATE",
+            "Note $%s was updated by $user.".formatted(Activity.Fields.noteId),
+            keys(Activity.Fields.noteId)),
     NOTE_DELETE(
             "NOTE_DELETE",
             "Note $%s deleted by $user.".formatted(Activity.Fields.noteId),
@@ -104,8 +112,8 @@ public enum ActivityAction implements EnumType {
     // Field update actions
     FIELD_UPDATE("FIELD_UPDATE", "$fields by $user.", keys("fields")),
     CUSTOM_FIELD_UPDATE(
-            "CUSTOM_FIELD_UPDATE", "Custom field '$field' updated to '$value' by $user.", keys("field", "value")),
-    LOCATION_UPDATE("LOCATION_UPDATE", "Location updated to '$location' by $user.", keys("location")),
+            "CUSTOM_FIELD_UPDATE", "Custom field $field updated to $value by $user.", keys("field", "value")),
+    LOCATION_UPDATE("LOCATION_UPDATE", "Location updated to $location by $user.", keys("location")),
 
     // Other
     OTHER("OTHER", "$action performed on $entity by $user.", keys("action", "entity"));
@@ -133,8 +141,24 @@ public enum ActivityAction implements EnumType {
         return Set.copyOf(result);
     }
 
+    public static String getClassName(Class<?> clazz) {
+        return clazz.getSimpleName();
+    }
+
+    public static String getOldName(Class<?> clazz) {
+        return getOldName(getClassName(clazz));
+    }
+
+    public static String getDiffName(Class<?> clazz) {
+        return getDiffName(getClassName(clazz));
+    }
+
     public static String getOldName(String fieldName) {
         return "_" + fieldName;
+    }
+
+    public static String getDiffName(String fieldName) {
+        return "@" + fieldName;
     }
 
     public List<ActivityAction> getDeleteActions() {
@@ -163,9 +187,8 @@ public enum ActivityAction implements EnumType {
         String formattedMessage = template;
 
         for (Map.Entry<String, Object> entry : context.entrySet()) {
-            String key = entry.getKey();
-            String value = this.getValue(entry.getValue());
-            formattedMessage = formattedMessage.replace("$" + key, value);
+            formattedMessage = formattedMessage.replace(
+                    "$" + entry.getKey(), this.formatMarkdown(entry.getKey(), this.getValue(entry.getValue())));
         }
 
         return formattedMessage;
@@ -185,5 +208,25 @@ public enum ActivityAction implements EnumType {
                 .limit(2)
                 .map(entry -> entry.getKey() + ": " + entry.getValue())
                 .collect(Collectors.joining(", "));
+    }
+
+    private String formatMarkdown(String key, String value) {
+        if (key.contains("id")) return this.mdCode(value);
+
+        if (key.equals("user")) return this.mdItalics(this.mdBold(value));
+
+        return this.mdBold(value);
+    }
+
+    private String mdCode(String value) {
+        return "`" + value + "`";
+    }
+
+    private String mdBold(String value) {
+        return "**" + value + "**";
+    }
+
+    private String mdItalics(String value) {
+        return "*" + value + "*";
     }
 }
