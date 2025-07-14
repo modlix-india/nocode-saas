@@ -6,9 +6,11 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import jakarta.mail.Address;
+import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Multipart;
+import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.AddressException;
@@ -67,14 +69,16 @@ public class SMTPService extends AbstractEmailService implements IEmailService<S
 
                     props.putAll(connectionProps);
 
-                    Session session = Session.getDefaultInstance(props);
+                    Session session = Session.getInstance(props, new Authenticator() {
+                        @Override
+                        protected PasswordAuthentication getPasswordAuthentication() {
+                            return new PasswordAuthentication(username, password);
+                        }
+                    });
 
                     MimeMessage message = this.createMimeMessage(session, emailMessage);
 
-                    Transport transport = session.getTransport();
-
-                    transport.connect(username, password);
-                    transport.sendMessage(message, message.getAllRecipients());
+                    Transport.send(message, message.getAllRecipients());
 
                     return Boolean.TRUE;
                 })
