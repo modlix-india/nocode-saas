@@ -55,7 +55,6 @@
         <package.o.sendgrid-java.version>4.10.3</package.o.sendgrid-java.version>
         <package.o.spotless.version>2.44.3</package.o.spotless.version>
         <package.o.spring-cloud.version>2024.0.0-RC1</package.o.spring-cloud.version>
-        <saas-commons-mongo-version>2.0.0</saas-commons-mongo-version>
     </properties>
     <dependencyManagement>
         <dependencies>
