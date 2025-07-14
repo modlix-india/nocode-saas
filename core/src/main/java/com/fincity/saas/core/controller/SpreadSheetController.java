@@ -34,7 +34,7 @@ public class SpreadSheetController {
     @PostMapping()
     public Mono<Void> createSpreadSheet(@RequestBody SpreadSheetCreateRequest request, ServerHttpResponse response) {
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ByteArrayOutputStream bAOS = new ByteArrayOutputStream();
 
         JsonElement jsonElement = gson.toJsonTree(request.getData());
 
@@ -89,7 +89,7 @@ public class SpreadSheetController {
         }
 
         try {
-            DataFileWriter writer = new DataFileWriter(headers, request.getType(), baos, !request.isSkipHeader());
+            DataFileWriter writer = new DataFileWriter(headers, request.getType(), bAOS, !request.isSkipHeader());
 
             for (Map<String, Object> row : rows) {
                 writer.write(row);
@@ -98,7 +98,7 @@ public class SpreadSheetController {
             return Mono.error(e);
         }
 
-        byte[] bytes = baos.toByteArray();
+        byte[] bytes = bAOS.toByteArray();
         ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
         response.getHeaders().setContentLength(bytes.length);
         response.getHeaders().setContentType(MediaType.valueOf(request.getType().getMimeType()));

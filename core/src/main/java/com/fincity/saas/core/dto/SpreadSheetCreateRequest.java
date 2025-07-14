@@ -1,8 +1,6 @@
 package com.fincity.saas.core.dto;
 
 import com.fincity.saas.commons.util.DataFileType;
-import com.google.gson.JsonElement;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
