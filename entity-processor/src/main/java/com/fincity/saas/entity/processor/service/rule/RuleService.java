@@ -368,7 +368,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                 () -> this.checkAndUpdateStage(access, entityId, ruleRequest),
                 cRuleRequest -> this.getRuleFromRequest(access, entityId, cRuleRequest, order),
-                (cRuleRequest, rule) -> this.createOrUpdateRule(rule),
+                (cRuleRequest, rule) -> this.createOrUpdateRule(access, rule),
                 (cRuleRequest, rule, cRule) -> {
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
@@ -418,8 +418,8 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                         Mono.just(ruleRequest.getRule().setStageId(stage)).map(r -> ruleRequest));
     }
 
-    private Mono<D> createOrUpdateRule(D rule) {
-        return rule.getId() != null ? this.update(rule) : this.create(rule);
+    private Mono<D> createOrUpdateRule(ProcessorAccess access, D rule) {
+        return rule.getId() != null ? this.update(rule) : this.createInternal(access, rule);
     }
 
     private Mono<D> getRuleFromRequest(
