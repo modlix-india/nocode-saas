@@ -3,7 +3,7 @@ package com.fincity.saas.commons.core.document;
 import com.fincity.saas.commons.core.enums.ConnectionSubType;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;

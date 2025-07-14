@@ -18,4 +18,6 @@ public class Client implements Serializable {
     private String localeCode;
     private String statusCode;
     private String businessType;
+    private String businessSize;
+    private String industry;
 }

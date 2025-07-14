@@ -27,6 +27,11 @@ public class ProductTemplate extends BaseUpdatableDto<ProductTemplate> {
         super();
     }
 
+    public ProductTemplate(ProductTemplate productTemplate) {
+        super(productTemplate);
+        this.productTemplateType = productTemplate.productTemplateType;
+    }
+
     public static ProductTemplate of(ProductTemplateRequest productTemplateRequest) {
         return new ProductTemplate()
                 .setName(productTemplateRequest.getName())

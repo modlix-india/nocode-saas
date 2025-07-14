@@ -24,6 +24,17 @@ public class SimpleComplexRuleRelation extends BaseUpdatableDto<SimpleComplexRul
     private ULong simpleConditionId;
     private Integer order;
 
+    public SimpleComplexRuleRelation() {
+        super();
+    }
+
+    public SimpleComplexRuleRelation(SimpleComplexRuleRelation simpleComplexRuleRelation) {
+        super(simpleComplexRuleRelation);
+        this.complexConditionId = simpleComplexRuleRelation.complexConditionId;
+        this.simpleConditionId = simpleComplexRuleRelation.simpleConditionId;
+        this.order = simpleComplexRuleRelation.order;
+    }
+
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.SIMPLE_COMPLEX_CONDITION_RELATION;

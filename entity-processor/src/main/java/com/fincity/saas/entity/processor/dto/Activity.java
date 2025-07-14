@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -41,6 +42,20 @@ public class Activity extends BaseDto<Activity> {
         this.relationsMap.put(Fields.taskId, EntitySeries.TASK.getTable());
         this.relationsMap.put(Fields.noteId, EntitySeries.NOTE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.actorId);
+    }
+
+    public Activity(Activity activity) {
+        super(activity);
+        this.ticketId = activity.ticketId;
+        this.taskId = activity.taskId;
+        this.noteId = activity.noteId;
+        this.comment = activity.comment;
+        this.activityDate = activity.activityDate;
+        this.activityAction = activity.activityAction;
+        this.actorId = activity.actorId;
+        this.objectEntitySeries = activity.objectEntitySeries;
+        this.objectId = activity.objectId;
+        this.objectData = CloneUtil.cloneMapObject(activity.objectData);
     }
 
     public static Activity of(ULong ticketId, ActivityAction action, ActivityObject object) {

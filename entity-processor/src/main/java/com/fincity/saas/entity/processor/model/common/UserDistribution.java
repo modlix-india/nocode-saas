@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -25,6 +26,7 @@ public class UserDistribution implements Serializable {
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private List<ULong> userIds = List.of();
 
+    private String clientCode;
     private String appCode;
     private Integer percentage;
     private Integer maxLoad;
@@ -35,6 +37,21 @@ public class UserDistribution implements Serializable {
 
     @JsonIgnore
     private Integer currentCount;
+
+    public UserDistribution() {}
+
+    public UserDistribution(UserDistribution userDistribution) {
+        this.profileIds = CloneUtil.cloneMapList(userDistribution.profileIds);
+        this.userIds = CloneUtil.cloneMapList(userDistribution.userIds);
+        this.clientCode = userDistribution.clientCode;
+        this.appCode = userDistribution.appCode;
+        this.percentage = userDistribution.percentage;
+        this.maxLoad = userDistribution.maxLoad;
+        this.weight = userDistribution.weight;
+        this.priority = userDistribution.priority;
+        this.hybridWeights = CloneUtil.cloneMapObject(userDistribution.hybridWeights);
+        this.currentCount = userDistribution.currentCount;
+    }
 
     @JsonIgnore
     public boolean isValidForType(DistributionType type) {
@@ -59,6 +76,7 @@ public class UserDistribution implements Serializable {
         return profileIds.stream().map(ULong::toBigInteger).toList();
     }
 
+    @JsonIgnore
     public UserDistribution transformToValid() {
         this.setProfileIds(this.profileIds.stream().distinct().toList());
         this.setUserIds(this.userIds.stream().distinct().toList());

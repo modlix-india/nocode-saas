@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service.rule.base;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
-import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.UpdatableRecord;
@@ -35,14 +34,5 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
 
     public Mono<D> createPublic(D entity) {
         return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
-    }
-
-    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
-        entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
-
-        entity.setCreatedBy(access.getUserId());
-
-        return super.create(entity);
     }
 }

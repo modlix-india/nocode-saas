@@ -46,6 +46,20 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
     }
 
+    public Ticket(Ticket ticket) {
+        super(ticket);
+        this.ownerId = ticket.ownerId;
+        this.assignedUserId = ticket.assignedUserId;
+        this.dialCode = ticket.dialCode;
+        this.phoneNumber = ticket.phoneNumber;
+        this.email = ticket.email;
+        this.productId = ticket.productId;
+        this.stage = ticket.stage;
+        this.status = ticket.status;
+        this.source = ticket.source;
+        this.subSource = ticket.subSource;
+    }
+
     public static Ticket of(TicketRequest ticketRequest) {
         return new Ticket()
                 .setDialCode(

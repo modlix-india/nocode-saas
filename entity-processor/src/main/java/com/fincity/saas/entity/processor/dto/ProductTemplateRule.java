@@ -27,6 +27,11 @@ public class ProductTemplateRule extends Rule<ProductTemplateRule> {
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
+    public ProductTemplateRule(ProductTemplateRule productTemplateRule) {
+        super(productTemplateRule);
+        this.productTemplateId = productTemplateRule.productTemplateId;
+    }
+
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TEMPLATE_RULE;

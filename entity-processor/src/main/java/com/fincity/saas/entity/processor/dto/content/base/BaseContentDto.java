@@ -35,6 +35,15 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
         this.relationsMap.put(Fields.ticketId, EntitySeries.TICKET.getTable());
     }
 
+    protected BaseContentDto(BaseContentDto<T> baseContentDto) {
+        super(baseContentDto);
+        this.version = baseContentDto.version;
+        this.content = baseContentDto.content;
+        this.hasAttachment = baseContentDto.hasAttachment;
+        this.ownerId = baseContentDto.ownerId;
+        this.ticketId = baseContentDto.ticketId;
+    }
+
     @JsonIgnore
     public boolean isTicketContent() {
         return ticketId != null;

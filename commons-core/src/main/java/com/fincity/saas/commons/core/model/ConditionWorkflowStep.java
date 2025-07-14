@@ -1,7 +1,7 @@
 package com.fincity.saas.commons.core.model;
 
 import com.fincity.saas.commons.core.enums.WorkflowStepType;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;

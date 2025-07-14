@@ -39,6 +39,20 @@ public class Task extends BaseContentDto<Task> {
         this.relationsMap.put(Fields.taskTypeId, EntitySeries.TASK_TYPE.getTable());
     }
 
+    public Task(Task task) {
+        super(task);
+        this.taskTypeId = task.taskTypeId;
+        this.dueDate = task.dueDate;
+        this.taskPriority = task.taskPriority;
+        this.isCompleted = task.isCompleted;
+        this.completedDate = task.completedDate;
+        this.isCancelled = task.isCancelled;
+        this.cancelledDate = task.cancelledDate;
+        this.isDelayed = task.isDelayed;
+        this.hasReminder = task.hasReminder;
+        this.nextReminder = task.nextReminder;
+    }
+
     public static Task of(TaskRequest taskRequest) {
         return new Task()
                 .setName(taskRequest.getName())

@@ -45,6 +45,10 @@ public enum ActivityAction implements EnumType {
             "TASK_CREATE",
             "Task $%s was created by $user.".formatted(Activity.Fields.taskId),
             keys(Activity.Fields.taskId)),
+    TASK_UPDATE(
+            "TASK_UPDATE",
+            "Task $%s was updated by $user.".formatted(Activity.Fields.taskId),
+            keys(Activity.Fields.taskId)),
     TASK_COMPLETE(
             "TASK_COMPLETE",
             "Task $%s was marked as completed by $user.".formatted(Activity.Fields.taskId),
@@ -69,6 +73,10 @@ public enum ActivityAction implements EnumType {
 
     // Note actions
     NOTE_ADD("NOTE_ADD", "Note $%s added by $user.".formatted(Activity.Fields.noteId), keys(Activity.Fields.noteId)),
+    NOTE_UPDATE(
+            "NOTE_UPDATE",
+            "Note $%s was updated by $user.".formatted(Activity.Fields.noteId),
+            keys(Activity.Fields.noteId)),
     NOTE_DELETE(
             "NOTE_DELETE",
             "Note $%s deleted by $user.".formatted(Activity.Fields.noteId),
@@ -133,8 +141,24 @@ public enum ActivityAction implements EnumType {
         return Set.copyOf(result);
     }
 
+    public static String getClassName(Class<?> clazz) {
+        return clazz.getSimpleName();
+    }
+
+    public static String getOldName(Class<?> clazz) {
+        return getOldName(getClassName(clazz));
+    }
+
+    public static String getDiffName(Class<?> clazz) {
+        return getDiffName(getClassName(clazz));
+    }
+
     public static String getOldName(String fieldName) {
         return "_" + fieldName;
+    }
+
+    public static String getDiffName(String fieldName) {
+        return "@" + fieldName;
     }
 
     public List<ActivityAction> getDeleteActions() {
