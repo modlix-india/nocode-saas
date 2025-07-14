@@ -130,8 +130,6 @@ public abstract class BaseUpdatableService<
         entity.setAppCode(access.getAppCode());
         entity.setClientCode(access.getClientCode());
 
-        entity.setCreatedBy(access.getUserId());
-
         return super.create(entity);
     }
 
