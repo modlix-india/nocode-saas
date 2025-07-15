@@ -39,12 +39,12 @@
         <!-- internal -->
         <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
         <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
-        <package.i.saas-commons-core-version>1.0.0</package.i.saas-commons-core-version>
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
         <package.i.saas-commons-mongo-version>2.0.0</package.i.saas-commons-mongo-version>
         <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
+        <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
         <!-- open source -->
         <package.o.feign-reactor.version>4.2.1</package.o.feign-reactor.version>
         <package.o.freemarker-gae.version>2.3.34</package.o.freemarker-gae.version>
@@ -105,9 +105,9 @@
             <version>${package.i.saas-commons-security-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-core</artifactId>
-            <version>${package.i.saas-commons-core-version}</version>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>${package.o.com.googlecode.libphonenumber.version}</version>
         </dependency>
         <dependency>
             <groupId>com.playtika.reactivefeign</groupId>
@@ -290,6 +290,25 @@
                                     <includes>${database.schema.name}_.*</includes>
                                     <inputSchema>${database.schema.name}</inputSchema>
                                     <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.METADATA</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.call.CallStatus</userType>
+                                            <includeExpression>.*\.CALL_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.call.exotel.ExotelCallStatus</userType>
+                                            <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
                                     </forcedTypes>
                                 </database>
                                 <generate>

@@ -13,6 +13,15 @@ import reactor.core.publisher.Mono;
 @Service
 public class MessageResourceService extends AbstractMessageService {
 
+    public static final String MESSAGE_PREFIX = "MESSAGE_";
+
+    public static final String UKNOWN_ERROR = "unknown_error";
+    public static final String FORBIDDEN_CREATE = "forbidden_create";
+    public static final String FORBIDDEN_UPDATE = "forbidden_update";
+    public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
+    public static final String CONNECTION_DETAILS_MISSING = "connection_details_missing";
+    public static final String MAIL_SEND_ERROR = "mail_send_error";
+
     public static final String VERSION_MISMATCH = "version_mismatch";
     public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
     public static final String LOGIN_REQUIRED = "login_required";
@@ -22,6 +31,10 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String INVALID_USER_ACCESS = "invalid_user_access";
     public static final String IDENTITY_MISSING = "identity_missing";
     public static final String IDENTITY_WRONG = "identity_wrong";
+
+    public static final String UNABLE_TO_FETCH_INTERNAL_RESOURCE = "unable_to_fetch_internal_resource";
+
+    public static final String UNABLE_TO_FETCH_EXTERNAL_RESOURCE = "unable_to_fetch_external_resource";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
