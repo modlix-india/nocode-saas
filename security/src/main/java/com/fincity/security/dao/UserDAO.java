@@ -410,11 +410,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .where(DSL.and(conditions));
     }
 
-    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
+    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, ULong userId, String clientCode, String appCode,
                                                    AuthenticationIdentifierType identifierType, SecurityUserStatusCode... userStatusCodes) {
 
         return Flux
-                .from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType,
+                .from(this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode, identifierType,
                         userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
                 .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
     }
