@@ -2,10 +2,9 @@ package com.fincity.saas.notification.configuration;
 
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import java.util.stream.Stream;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import lombok.Getter;
 
 @Getter
 @Component

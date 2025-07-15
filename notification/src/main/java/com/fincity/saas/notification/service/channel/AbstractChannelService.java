@@ -1,8 +1,8 @@
 package com.fincity.saas.notification.service.channel;
 
-import com.fincity.saas.notification.document.common.core.Connection;
 import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
+import com.fincity.saas.notification.oserver.core.document.Connection;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

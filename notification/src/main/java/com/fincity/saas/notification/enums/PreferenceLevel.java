@@ -1,6 +1,6 @@
 package com.fincity.saas.notification.enums;
 
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import java.util.HashSet;
 import java.util.List;
