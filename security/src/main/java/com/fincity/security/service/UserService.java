@@ -1005,6 +1005,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.dao
                 .getAllClientsBy(
                         authRequest.getUserName(),
+                        authRequest.getUserId(),
                         clientCode,
                         appCode,
                         authRequest.getIdentifierType(),
