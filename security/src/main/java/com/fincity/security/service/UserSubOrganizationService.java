@@ -104,8 +104,11 @@ public class UserSubOrganizationService
                         .toArray(String[]::new));
     }
 
-    public Mono<Boolean> evictOwnerCache(ULong clientId) {
-        return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER));
+    public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
+        return Mono.zip(
+                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
+                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId))
+                ).map(evicted -> evicted.getT1() && evicted.getT2());
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {

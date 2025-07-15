@@ -122,11 +122,8 @@ public abstract class BaseContentService<
                 super::hasAccess,
                 access -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
                 (access, oEntity) -> this.updateInternal(entity),
-                (access, oEntity, uEntity) -> {
-                    var s = oEntity;
-                    var q = uEntity;
-                    return activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity));
-                });
+                (access, oEntity, uEntity) ->
+                        activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
     }
 
     public Mono<D> updateInternal(D entity) {

@@ -132,7 +132,7 @@ public class DifferenceExtractor {
 		if (incoming.equals(existing))
 			return Mono.empty();
 
-		if (existing.isJsonNull())
+		if (existing == null || existing.isJsonNull())
 			return Mono.just(incoming);
 
 		if (existing.isJsonPrimitive() || existing.isJsonArray())

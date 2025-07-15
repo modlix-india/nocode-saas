@@ -16,7 +16,6 @@ import com.fincity.saas.entity.processor.dao.ActivityDAO;
 import com.fincity.saas.entity.processor.dto.Activity;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
@@ -55,8 +54,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             AbstractDTO.Fields.createdAt,
             AbstractUpdatableDTO.Fields.updatedBy,
             AbstractUpdatableDTO.Fields.updatedAt,
-            BaseDto.Fields.code,
-            BaseProcessorDto.Fields.version);
+            BaseDto.Fields.code);
 
     private StageService stageService;
     private TicketService ticketService;
@@ -471,7 +469,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 uNote ->
                         this.extractDifference(uNote.getT1(), uNote.getT2()).switchIfEmpty(Mono.just(new JsonObject())),
                 (uNote, dNote) -> this.createActivityInternal(
-                        ActivityAction.TASK_UPDATE,
+                        ActivityAction.NOTE_UPDATE,
                         updated.getUpdatedAt(),
                         comment,
                         Map.of(
