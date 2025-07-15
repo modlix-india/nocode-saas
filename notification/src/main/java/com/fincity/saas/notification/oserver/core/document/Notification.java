@@ -1,7 +1,7 @@
-package com.fincity.saas.notification.document.common.core;
+package com.fincity.saas.notification.oserver.core.document;
 
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.template.NotificationTemplate;
 import java.io.Serial;

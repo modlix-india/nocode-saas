@@ -50,7 +50,7 @@ public class NotificationMessageListener {
     }
 
     @RabbitListener(
-            queues = "#{mqNameProvider.getEmailBroadcastQueues()}",
+            queues = "#{mqNameProvider.getEmailQueues()}",
             containerFactory = "directMessageListener",
             messageConverter = "jsonMessageConverter")
     public Mono<Void> handleEmailNotification(
@@ -61,7 +61,7 @@ public class NotificationMessageListener {
     }
 
     @RabbitListener(
-            queues = "#{mqNameProvider.getInAppBroadcastQueues()}",
+            queues = "#{mqNameProvider.getInAppQueues()}",
             containerFactory = "directMessageListener",
             messageConverter = "jsonMessageConverter")
     public Mono<Void> handleInAppNotification(

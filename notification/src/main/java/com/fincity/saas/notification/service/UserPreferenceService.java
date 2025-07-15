@@ -37,16 +37,7 @@ public class UserPreferenceService
 
     private static final Map<String, List<String>> DEFAULT_USER_PREFERENCE_MAP =
             HashMap.newHashMap(PreferenceLevel.values().length);
-
-    static {
-        DEFAULT_USER_PREFERENCE_MAP.put(
-                PreferenceLevel.CHANNEL.getLiteral(),
-                new ArrayList<>(List.of(NotificationChannelType.EMAIL.getLiteral())));
-        DEFAULT_USER_PREFERENCE_MAP.put(PreferenceLevel.NOTIFICATION.getLiteral(), new ArrayList<>());
-    }
-
     private static final ULong DEFAULT_USER_PREFERENCE_ID = ULong.MIN;
-
     private static final UserPreference DEFAULT_USER_PREFERENCE = (UserPreference) new UserPreference()
             .setAppId(ULongUtil.valueOf(0))
             .setUserId(ULong.valueOf(0))
@@ -54,6 +45,13 @@ public class UserPreferenceService
             .setEnabled(Boolean.TRUE)
             .setPreferences(DEFAULT_USER_PREFERENCE_MAP)
             .setId(DEFAULT_USER_PREFERENCE_ID);
+
+    static {
+        DEFAULT_USER_PREFERENCE_MAP.put(
+                PreferenceLevel.CHANNEL.getLiteral(),
+                new ArrayList<>(List.of(NotificationChannelType.EMAIL.getLiteral())));
+        DEFAULT_USER_PREFERENCE_MAP.put(PreferenceLevel.NOTIFICATION.getLiteral(), new ArrayList<>());
+    }
 
     private final NotificationMessageResourceService messageResourceService;
 
@@ -275,10 +273,10 @@ public class UserPreferenceService
     }
 
     private Mono<UserPreference> getUserPreferenceInternal(ULong appId, ULong userId) {
-        return this.cacheValueOrGet(
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
                 () -> this.dao.getUserPreference(appId, userId).switchIfEmpty(this.getDefaultPreferences()),
-                appId,
-                userId);
+                this.getCacheKey(appId, userId));
     }
 
     private boolean isDefaultPreference(UserPreference userPreference) {

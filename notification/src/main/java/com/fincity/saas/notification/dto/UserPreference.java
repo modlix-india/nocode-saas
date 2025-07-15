@@ -1,7 +1,7 @@
 package com.fincity.saas.notification.dto;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.notification.enums.PreferenceLevel;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;

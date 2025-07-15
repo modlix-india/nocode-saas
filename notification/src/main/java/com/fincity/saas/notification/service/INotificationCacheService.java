@@ -3,7 +3,6 @@ package com.fincity.saas.notification.service;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.notification.model.request.NotificationCacheRequest;
 import java.util.Map;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import reactor.core.publisher.Mono;
 
@@ -40,13 +39,5 @@ public interface INotificationCacheService<T> {
                     (entitiesEvicted, cacheEvicted) -> cacheEvicted);
 
         return this.getCacheService().evict(this.getCacheName(), this.getCacheKey(cacheRequest));
-    }
-
-    default Mono<T> cacheValueOrGet(Supplier<Mono<T>> supplier, Object... entityNames) {
-        return this.getCacheService().cacheValueOrGet(this.getCacheName(), supplier, this.getCacheKey(entityNames));
-    }
-
-    default Mono<T> cacheValueOrGet(Supplier<Mono<T>> supplier, String... entityNames) {
-        return this.getCacheService().cacheValueOrGet(this.getCacheName(), supplier, this.getCacheKey(entityNames));
     }
 }

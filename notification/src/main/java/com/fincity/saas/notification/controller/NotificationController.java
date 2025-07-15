@@ -1,6 +1,5 @@
 package com.fincity.saas.notification.controller;
 
-import com.fincity.saas.notification.document.common.core.Notification;
 import com.fincity.saas.notification.model.request.NotificationRequest;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.model.response.NotificationResponse;
@@ -14,18 +13,12 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/notification")
-public class NotificationController
-        implements INotificationCacheController<Notification, NotificationProcessingService> {
+public class NotificationController {
 
     private final NotificationProcessingService notificationProcessingService;
 
     public NotificationController(NotificationProcessingService notificationProcessingService) {
         this.notificationProcessingService = notificationProcessingService;
-    }
-
-    @Override
-    public NotificationProcessingService getService() {
-        return notificationProcessingService;
     }
 
     @PostMapping()

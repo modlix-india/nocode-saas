@@ -9,7 +9,6 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.notification.document.common.core.Notification;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
@@ -24,6 +23,7 @@ import com.fincity.saas.notification.model.response.NotificationResponse;
 import com.fincity.saas.notification.model.response.SendResponse;
 import com.fincity.saas.notification.model.template.NotificationTemplate;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
+import com.fincity.saas.notification.oserver.core.document.Notification;
 import com.fincity.saas.notification.service.template.NotificationTemplateProcessor;
 import java.math.BigInteger;
 import java.util.EnumMap;
@@ -112,7 +112,7 @@ public class NotificationProcessingService {
 
         return sentNotificationService
                 .toPlatformNotification(request)
-                .flatMap(pRequest -> notificationProducer.broadcast(request))
+                .flatMap(pRequest -> notificationProducer.sendToQueues(request))
                 .map(NotificationResponse::ofSuccess)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.sendNotification"));
     }

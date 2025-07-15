@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.notification.dao.AbstractCodeDao;
 import java.io.Serializable;
+import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import reactor.core.publisher.Mono;
 
@@ -19,6 +20,14 @@ public abstract class AbstractCodeService<
     protected abstract String getCacheName();
 
     protected abstract CacheService getCacheService();
+
+    protected String getCacheKey(Object... entityNames) {
+        return String.join(":", Stream.of(entityNames).map(Object::toString).toArray(String[]::new));
+    }
+
+    protected String getCacheKey(String... entityNames) {
+        return String.join(":", entityNames);
+    }
 
     public Mono<D> getByCode(String code) {
         return this.getCacheService().cacheValueOrGet(this.getCacheName(), () -> this.dao.getByCode(code), code);

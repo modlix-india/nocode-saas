@@ -5,23 +5,24 @@ import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import lombok.Getter;
+
+@Getter
 @Component
 public class MqNameProvider {
 
-    @Value("${events.mq.exchange.fanout:notification.fanout.exchange}")
-    private String fanoutExchangeName;
+    @Value("${events.mq.queue.prefix:notification.queue}")
+    private String queueNamePrefix;
 
-    public String[] getEmailBroadcastQueues() {
-        return new String[] {NotificationChannelType.EMAIL.getMqQueueName(fanoutExchangeName)};
+    public String[] getEmailQueues() {
+        return new String[] {NotificationChannelType.EMAIL.getMqQueueName(getQueueNamePrefix())};
     }
 
-    public String[] getInAppBroadcastQueues() {
-        return new String[] {NotificationChannelType.IN_APP.getMqQueueName(fanoutExchangeName)};
+    public String[] getInAppQueues() {
+        return new String[] {NotificationChannelType.IN_APP.getMqQueueName(getQueueNamePrefix())};
     }
 
-    public String[] getAllBroadcastQueues() {
-        return Stream.of(getEmailBroadcastQueues(), getInAppBroadcastQueues())
-                .flatMap(Stream::of)
-                .toArray(String[]::new);
+    public String[] getAllQueues() {
+        return Stream.of(getEmailQueues(), getInAppQueues()).flatMap(Stream::of).toArray(String[]::new);
     }
 }

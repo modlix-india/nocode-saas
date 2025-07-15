@@ -1,4 +1,4 @@
-package com.fincity.saas.notification.enums.common.core;
+package com.fincity.saas.notification.oserver.core.enums;
 
 import java.util.Set;
 

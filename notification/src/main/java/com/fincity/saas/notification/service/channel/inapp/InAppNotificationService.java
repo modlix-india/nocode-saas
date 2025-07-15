@@ -14,8 +14,6 @@ import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.service.AbstractCodeService;
 import com.fincity.saas.notification.service.channel.IChannelStorageService;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
