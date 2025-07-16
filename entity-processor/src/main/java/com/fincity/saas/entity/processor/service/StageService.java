@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
@@ -123,10 +124,10 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
 
-        if (!stageRequest.isValid())
+        if (!stageRequest.isStageTypeValid())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "Please select the type of stage to continue.");
+                    "Stage Type information invalid or missing.");
 
         if (!stageRequest.areChildrenValid())
             return this.msgService.throwMessage(
@@ -312,9 +313,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                         super::hasAccess,
                         access -> super.productTemplateService.checkAndUpdateIdentityWithAccess(
                                 access, reorderRequest.getProductTemplateId()),
-                        (access, productTemplateId) -> Flux.fromIterable(
-                                        reorderRequest.getStageOrders().entrySet())
-                                .flatMap(entry -> this.checkAndUpdateIdentityWithAccess(access, entry.getKey())
+                        (access, productTemplateId) -> Flux.fromIterable(reorderRequest.getStageOrders())
+                                .flatMap(entry -> this.checkAndUpdateIdentityWithAccess(access, entry.getId())
                                         .map(identity -> Tuples.of(identity.getULongId(), entry.getValue())))
                                 .collectMap(Tuple2::getT1, Tuple2::getT2),
                         (access, productTemplateId, requestStageIds) -> this.getAllValues(

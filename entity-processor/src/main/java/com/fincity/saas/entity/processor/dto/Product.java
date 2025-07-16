@@ -28,6 +28,11 @@ public class Product extends BaseProcessorDto<Product> {
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
+    public Product(Product product) {
+        super(product);
+        this.productTemplateId = product.productTemplateId;
+    }
+
     public static Product of(ProductRequest productRequest) {
         return new Product().setName(productRequest.getName()).setDescription(productRequest.getDescription());
     }

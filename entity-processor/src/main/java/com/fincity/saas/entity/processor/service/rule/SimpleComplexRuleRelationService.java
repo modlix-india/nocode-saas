@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.dao.rule.SimpleComplexRuleRelationDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorSimpleComplexRuleRelationsRecord;
-import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
@@ -38,17 +37,6 @@ public class SimpleComplexRuleRelationService
         return super.hasAccess()
                 .flatMap(access -> this.createInternal(access, entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleComplexRuleRelationService.create"));
-    }
-
-    public Mono<SimpleComplexRuleRelation> createInternal(ProcessorAccess access, SimpleComplexRuleRelation entity) {
-
-        entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
-
-        entity.setCreatedBy(access.getUserId());
-
-        return super.create(entity)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleComplexRuleRelationService.createInternal"));
     }
 
     public Mono<Integer> deleteByComplexRuleId(ULong complexRuleId) {

@@ -109,6 +109,8 @@ public abstract class BaseValueService<
                 existing.setParentLevel1(entity.getParentLevel1());
             }
 
+            existing.setOrder(entity.getOrder());
+
             return Mono.just(existing);
         });
     }
@@ -160,12 +162,9 @@ public abstract class BaseValueService<
                 access -> this.validateEntity(entity, access),
                 (access, vEntity) -> this.applyOrder(vEntity, access),
                 (access, vEntity, aEntity) -> {
-                    aEntity.setAppCode(access.getAppCode());
-                    aEntity.setClientCode(access.getClientCode());
-                    aEntity.setCreatedBy(access.getUserId());
                     aEntity.setIsParent(Boolean.TRUE);
 
-                    return super.create(aEntity);
+                    return super.createInternal(access, aEntity);
                 },
                 (access, vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
@@ -173,16 +172,12 @@ public abstract class BaseValueService<
     public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.validateEntity(entity, access), vEntity -> {
-            entity.setName(vEntity.getName());
-            entity.setAppCode(parentEntity.getAppCode());
-            entity.setClientCode(parentEntity.getClientCode());
-            entity.setCreatedBy(parentEntity.getCreatedBy());
             entity.setIsParent(Boolean.FALSE);
             entity.setParentLevel0(parentEntity.getId());
 
             if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
 
-            return super.create(entity);
+            return super.createInternal(access, entity);
         });
     }
 

@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.model.response.rule.RuleResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -367,7 +368,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                 () -> this.checkAndUpdateStage(access, entityId, ruleRequest),
                 cRuleRequest -> this.getRuleFromRequest(access, entityId, cRuleRequest, order),
-                (cRuleRequest, rule) -> this.createOrUpdateRule(rule),
+                (cRuleRequest, rule) -> this.createOrUpdateRule(access, rule),
                 (cRuleRequest, rule, cRule) -> {
                     if (rule.isComplex() && ruleRequest.getCondition() instanceof ComplexCondition complexCondition)
                         return complexRuleService
@@ -417,15 +418,15 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                         Mono.just(ruleRequest.getRule().setStageId(stage)).map(r -> ruleRequest));
     }
 
-    private Mono<D> createOrUpdateRule(D rule) {
-        return rule.getId() != null ? this.update(rule) : this.create(rule);
+    private Mono<D> createOrUpdateRule(ProcessorAccess access, D rule) {
+        return rule.getId() != null ? this.update(rule) : this.createInternal(access, rule);
     }
 
     private Mono<D> getRuleFromRequest(
             ProcessorAccess access, Identity entityId, RuleRequest ruleRequest, Integer order) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getOrCreateRule(access, entityId, ruleRequest, order),
-                rule -> this.updateUserDistribution(ruleRequest, rule),
+                rule -> this.updateUserDistribution(access, ruleRequest, rule),
                 (rule, uRule) -> {
                     uRule.setAppCode(access.getAppCode());
                     uRule.setClientCode(access.getClientCode());
@@ -502,7 +503,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                         order));
     }
 
-    private Mono<D> updateUserDistribution(RuleRequest ruleRequest, D rule) {
+    private Mono<D> updateUserDistribution(ProcessorAccess access, RuleRequest ruleRequest, D rule) {
 
         DistributionType distributionType = ruleRequest.getRule().getUserDistributionType();
 
@@ -518,7 +519,17 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                     distributionType);
 
         rule.setUserDistributionType(distributionType);
-        rule.setUserDistribution(ruleRequest.getRule().getUserDistribution().transformToValid());
+
+        UserDistribution userDistribution =
+                ruleRequest.getRule().getUserDistribution().transformToValid();
+
+        userDistribution.setAppCode(access.getAppCode());
+
+        if (userDistribution.getAppCode() == null) userDistribution.setAppCode(access.getAppCode());
+
+        if (userDistribution.getClientCode() == null) userDistribution.setClientCode(access.getClientCode());
+
+        rule.setUserDistribution(userDistribution);
 
         return Mono.just(rule);
     }

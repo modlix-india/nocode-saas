@@ -1,0 +1,4 @@
+USE `security`;
+
+ALTER TABLE `security`.`security_profile`
+    ADD COLUMN `DEFAULT_PROFILE` TINYINT NOT NULL DEFAULT 0 AFTER `CLIENT_ID`;

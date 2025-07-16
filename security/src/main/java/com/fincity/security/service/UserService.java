@@ -350,7 +350,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             return this.setPasswordEntities(createdUser, pass);
                         },
                         (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) ->
-                                this.evictOwnerCache(passSet.getClientId()).map(evicted -> passSet))
+                                this.evictOwnerCache(passSet.getClientId(), passSet.getId()).map(evicted -> passSet))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
@@ -543,7 +543,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Integer> evictTokensAndOwnerCache(ULong userId, ULong clientId) {
         return Mono.zip(
                 this.evictTokens(userId),
-                this.evictOwnerCache(clientId),
+                this.evictOwnerCache(clientId, userId),
                 (tEvicted, oEvicted) -> tEvicted == 1 && oEvicted == 1 ? 1 : 0);
     }
 
@@ -551,8 +551,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.tokenService.evictTokensOfUser(id);
     }
 
-    private Mono<Integer> evictOwnerCache(ULong clientId) {
-        return this.userSubOrgService.evictOwnerCache(clientId).map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
+    private Mono<Integer> evictOwnerCache(ULong clientId, ULong userId) {
+        return this.userSubOrgService.evictOwnerCache(clientId, userId).map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
     }
 
     @Override
@@ -1005,6 +1005,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.dao
                 .getAllClientsBy(
                         authRequest.getUserName(),
+                        authRequest.getUserId(),
                         clientCode,
                         appCode,
                         authRequest.getIdentifierType(),
@@ -1271,14 +1272,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<Profile>> assignedProfiles(ULong userId, ULong appId) {
         return this.profileService.assignedProfiles(userId, appId);
-    }
-
-    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
-        return this.appService.getAppByCode(appCode).flatMap(app -> this.getProfileUsers(app.getId(), profileIds));
-    }
-
-    public Mono<List<ULong>> getProfileUsers(ULong appId, List<ULong> profiles) {
-        return this.profileService.getUsersForProfiles(appId, profiles);
     }
 
     public Mono<Boolean> checkUserExistsAcrossApps(String userName, String email, String phoneNumber) {

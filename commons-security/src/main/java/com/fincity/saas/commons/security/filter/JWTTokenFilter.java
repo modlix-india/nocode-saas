@@ -55,10 +55,6 @@ public class JWTTokenFilter implements WebFilter {
 
 				ca -> {
 
-					if (cc != null && !"SYSTEM".equals(cc) && ca.isAuthenticated()
-							&& !cc.equals(((ContextAuthentication) ca).getLoggedInFromClientCode()))
-						return Mono.error(new AuthenticationException("Trying to access with a cross site token."));
-
 					ContextAuthentication newCA = mapper.convertValue(ca, ContextAuthentication.class)
 							.setUrlAppCode(ac)
 							.setUrlClientCode(cc);

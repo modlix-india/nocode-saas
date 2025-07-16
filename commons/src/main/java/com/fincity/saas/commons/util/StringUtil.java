@@ -99,24 +99,17 @@ public class StringUtil {
     }
 
     public static String toTitleCase(String str) {
-        if (str == null || str.isEmpty())
-            return null;
+        if (str == null || str.isEmpty()) return str;
 
         char[] chars = str.trim().toCharArray();
         boolean newWord = true;
 
-        chars[0] = Character.toUpperCase(chars[0]);
-
         for (int i = 0; i < chars.length; i++) {
-            if (!Character.isSpaceChar(chars[i])) {
+            if (Character.isWhitespace(chars[i])) {
                 newWord = true;
             } else {
-                if (newWord) {
-                    chars[i] = Character.toUpperCase(chars[i]);
-                    newWord = false;
-                } else {
-                    chars[i] = Character.toLowerCase(chars[i]);
-                }
+                chars[i] = newWord ? Character.toTitleCase(chars[i]) : Character.toLowerCase(chars[i]);
+                newWord = false;
             }
         }
         return new String(chars);

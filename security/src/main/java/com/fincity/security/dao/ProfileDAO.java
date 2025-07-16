@@ -321,6 +321,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                             profile.getDescription())
                                     .set(SECURITY_PROFILE.ARRANGEMENT,
                                             profile.getArrangement())
+                                    .set(SECURITY_PROFILE.DEFAULT_PROFILE, profile.isDefaultProfile() ? ByteUtil.ONE : ByteUtil.ZERO)
                                     .where(SECURITY_PROFILE.ID
                                             .eq(profile.getId()))),
 
@@ -596,8 +597,19 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         appCode == null || appCode.equals("nothing") ? DSL.trueCondition() :
                                 SECURITY_APP.APP_CODE.eq(appCode)));
 
+        // If no profiles are assigned to the user in an app we shall search for default profiles.
         return Flux.from(query).map(Record1::value1)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toSet())
+                .flatMap(e -> {
+                    if (!e.isEmpty()) return Mono.just(e);
+
+                    return Flux.from(this.dslContext.select(SECURITY_PROFILE.ID).from(SECURITY_PROFILE)
+                                    .leftJoin(SECURITY_APP)
+                                    .on(SECURITY_PROFILE.APP_ID.eq(SECURITY_APP.ID))
+                                    .where(SECURITY_PROFILE.DEFAULT_PROFILE.eq(ByteUtil.ONE).and(SECURITY_APP.APP_CODE.eq(appCode))))
+                            .map(Record1::value1)
+                            .collect(Collectors.toSet());
+                });
     }
 
     public Mono<Boolean> isBeingUsedByManagingClients(ULong clientId, ULong profileId, ULong rootProfileId) {
@@ -795,15 +807,27 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDAO.getRolesForAssignmentInApp"));
     }
 
+
     public Mono<Boolean> checkIfUserHasAnyProfile(ULong userId, String appCode) {
 
-        return Mono.from(this.dslContext.selectCount().from(SECURITY_PROFILE_USER)
-                .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
-                .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
-                .where(DSL.and(
-                        SECURITY_PROFILE_USER.USER_ID.eq(userId),
-                        SECURITY_APP.APP_CODE.eq((appCode))
-                ))).map(Record1::value1).map(count -> count > 0);
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.from(this.dslContext.selectCount().from(SECURITY_PROFILE_USER)
+                        .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                        .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                        .where(DSL.and(
+                                SECURITY_PROFILE_USER.USER_ID.eq(userId),
+                                SECURITY_APP.APP_CODE.eq((appCode))
+                        ))).map(Record1::value1),
+
+                profileCount -> {
+                    if (profileCount > 0) return Mono.just(true);
+
+                    return Mono.from(this.dslContext.selectCount().from(SECURITY_PROFILE)
+                                    .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                                    .where(SECURITY_APP.APP_CODE.eq(appCode).and(SECURITY_PROFILE.DEFAULT_PROFILE.eq(ByteUtil.ONE))))
+                            .map(Record1::value1).map(count -> count > 0);
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileDAO.checkIfUserHasAnyProfile"));
     }
 
     public Flux<ULong> getAssignedProfileIds(ULong userId, ULong appId) {

@@ -28,6 +28,20 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
     private ULong productStageRuleId;
     private boolean negate = false;
 
+    protected BaseRule() {
+        super();
+        this.relationsMap.put(Fields.productTemplateRuleId, EntitySeries.PRODUCT_TEMPLATE_RULE.getTable());
+        this.relationsMap.put(Fields.productStageRuleId, EntitySeries.PRODUCT_STAGE_RULE.getTable());
+    }
+
+    protected BaseRule(BaseRule<T> baseRule) {
+        super(baseRule);
+        this.version = baseRule.version;
+        this.productTemplateRuleId = baseRule.productTemplateRuleId;
+        this.productStageRuleId = baseRule.productStageRuleId;
+        this.negate = baseRule.negate;
+    }
+
     public T setProductTemplateRuleId(ULong productTemplateRuleId) {
         this.productTemplateRuleId = productTemplateRuleId;
         return (T) this;

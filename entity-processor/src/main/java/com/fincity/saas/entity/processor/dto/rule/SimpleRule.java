@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
@@ -35,6 +36,17 @@ public class SimpleRule extends BaseRule<SimpleRule> {
 
     public SimpleRule() {
         super();
+    }
+
+    public SimpleRule(SimpleRule simpleRule) {
+        super(simpleRule);
+        this.hasParent = simpleRule.hasParent;
+        this.field = simpleRule.field;
+        this.comparisonOperator = simpleRule.comparisonOperator;
+        this.value = CloneUtil.cloneObject(simpleRule.value);
+        this.isValueField = simpleRule.isValueField;
+        this.isToValueField = simpleRule.isToValueField;
+        this.matchOperator = simpleRule.matchOperator;
     }
 
     public static SimpleRule fromCondition(ULong ruleId, EntitySeries entitySeries, FilterCondition condition) {

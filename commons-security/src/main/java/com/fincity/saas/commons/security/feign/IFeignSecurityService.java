@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.cloud.openfeign.CollectionFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -160,12 +161,14 @@ public interface IFeignSecurityService {
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
     Mono<Map<String, Object>> getUserInternal(@PathVariable("id") BigInteger id);
 
-    @PostMapping(value = "${security.feign.getUser:/api/security/users/internal}")
-    Mono<List<Map<String, Object>>> getUserInternal(@RequestBody List<BigInteger> userIds);
+    @GetMapping(value = "${security.feign.getUser:/api/security/users/internal}")
+    Mono<List<Map<String, Object>>> getUserInternal(@RequestParam List<BigInteger> userIds);
 
-    @PostMapping("${security.feign.getProfileUsers:/api/security/users/internal/getProfileUsers/{appCode}}")
-    Mono<List<BigInteger>> getProfileUsers(@PathVariable String appCode, @RequestBody List<BigInteger> profileIds);
+    @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
+    Mono<List<BigInteger>> getProfileUsers(
+            @RequestHeader("appCode") String headerAppCode, @RequestParam List<BigInteger> profileIds);
 
-    @GetMapping("${security.feign.getUserSubOrgInternal:/api/security/users/internal/{userId}/sub-org}")
-    Mono<List<BigInteger>> getUserSubOrgInternal(@PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
+    @GetMapping(value = "${security.feign.getUserSubOrgInternal:/api/security/users/internal/{userId}/sub-org}")
+    Mono<List<BigInteger>> getUserSubOrgInternal(
+            @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
 }

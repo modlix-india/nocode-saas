@@ -34,6 +34,13 @@ public class Stage extends BaseValueDto<Stage> {
                 BaseValueDto.Fields.parentLevel1, this.getEntitySeries().getTable());
     }
 
+    public Stage(Stage stage) {
+        super(stage);
+        this.stageType = stage.stageType;
+        this.isSuccess = stage.isSuccess;
+        this.isFailure = stage.isFailure;
+    }
+
     public static Stage ofParent(StageRequest stageRequest) {
         return new Stage()
                 .setProductTemplateId(stageRequest.getProductTemplateId().getULongId())
@@ -57,8 +64,10 @@ public class Stage extends BaseValueDto<Stage> {
                 .setName(stageRequest.getName())
                 .setDescription(stageRequest.getDescription())
                 .setStageType(stageType)
-                .setIsSuccess(stageRequest.getIsSuccess())
-                .setIsFailure(stageRequest.getIsFailure())
+                .setIsSuccess(
+                        stageRequest.getIsSuccess() != null ? stageRequest.getIsSuccess() : parents[0].getIsSuccess())
+                .setIsFailure(
+                        stageRequest.getIsFailure() != null ? stageRequest.getIsFailure() : parents[0].getIsFailure())
                 .setOrder(order)
                 .setPlatform(platform);
     }
