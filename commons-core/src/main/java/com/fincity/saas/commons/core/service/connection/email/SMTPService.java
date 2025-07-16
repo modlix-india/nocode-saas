@@ -10,11 +10,9 @@ import com.fincity.saas.commons.util.StringUtil;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;

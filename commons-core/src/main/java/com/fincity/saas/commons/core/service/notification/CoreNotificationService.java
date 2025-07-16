@@ -66,49 +66,17 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
 
     public Mono<Notification> validate(Notification entity) {
 
+        if (entity.getNotificationType() == null || !NotificationType.isLiteralValid(entity.getNotificationType()))
+            return this.messageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, "Invalid notification type give: $"),
+                    entity.getNotificationType());
+
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> {
-                            if (entity.getNotificationType() == null
-                                    || !NotificationType.isLiteralValid(entity.getNotificationType()))
-                                return this.messageResourceService.throwMessage(
-                                        msg -> new GenericException(
-                                                HttpStatus.BAD_REQUEST, "Invalid notification type give: $"),
-                                        entity.getNotificationType());
-
-                            return Mono.just(entity);
-                        },
+                        ca -> Mono.just(entity),
                         (ca, vEntity) -> this.validateConnections(
-                                entity.getAppCode(), entity.getClientCode(), entity.getChannelConnections()),
-                        (ca, vEntity, validConnections) -> {
-                            for (Map.Entry<String, Notification.NotificationTemplate> channelEntry :
-                                    vEntity.getChannelDetails().entrySet()) {
-
-                                if (NotificationChannelType.EMAIL.getLiteral().equals(channelEntry.getKey())
-                                        && !channelEntry.getValue().isValidForEmail()) {
-                                    return this.messageResourceService.throwMessage(
-                                            msg -> new GenericException(
-                                                    HttpStatus.BAD_REQUEST,
-                                                    "Please provide delivery details for email"),
-                                            entity.getNotificationType());
-                                }
-
-                                Notification.DeliveryOptions deliveryOptions =
-                                        channelEntry.getValue().getDeliveryOptions();
-
-                                if (deliveryOptions != null && !deliveryOptions.isValid()) {
-                                    return this.messageResourceService.throwMessage(
-                                            msg -> new GenericException(
-                                                    HttpStatus.BAD_REQUEST, "Invalid cron expression given: $"),
-                                            entity.getNotificationType());
-                                }
-
-                                if (deliveryOptions == null)
-                                    channelEntry.getValue().setDeliveryOptions(new Notification.DeliveryOptions());
-                            }
-
-                            return Mono.just(vEntity);
-                        })
+                                vEntity.getAppCode(), vEntity.getClientCode(), vEntity.getChannelConnections()),
+                        (ca, vEntity, validConnections) -> this.validateChannelDetails(vEntity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.updatableEntity"));
     }
 
@@ -127,20 +95,61 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                 .then(Mono.just(Boolean.TRUE));
     }
 
+    private Mono<Notification> validateChannelDetails(Notification entity) {
+        for (Map.Entry<String, Notification.NotificationTemplate> entry :
+                entity.getChannelDetails().entrySet()) {
+
+            if (NotificationChannelType.EMAIL.getLiteral().equals(entry.getKey())
+                    && !entry.getValue().isValidForEmail())
+                return this.messageResourceService.throwMessage(
+                        msg -> new GenericException(
+                                HttpStatus.BAD_REQUEST, "Please provide delivery details for email"),
+                        entity.getNotificationType());
+
+            Notification.DeliveryOptions options = entry.getValue().getDeliveryOptions();
+
+            if (options != null && !options.isValid())
+                return this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, "Invalid cron expression '$' given: $"),
+                        options.getCronStatement(),
+                        entity.getNotificationType());
+
+            if (options == null) entry.getValue().setDeliveryOptions(new Notification.DeliveryOptions());
+        }
+
+        return Mono.just(entity);
+    }
+
     @Override
     public Mono<Notification> update(Notification entity) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.validate(entity),
-                        super::update,
-                        (validated, updated) -> this.notificationProcessingService
-                                .evictNotificationCache(updated)
+                        () -> this.validate(entity), super::update, (validated, updated) -> this.evictNotificationCache(
+                                        updated)
                                 .map(x -> updated))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.update"));
+    }
+
+    @Override
+    public Mono<Boolean> delete(String id) {
+        return FlatMapUtil.flatMapMono(
+                        () -> super.read(id),
+                        notification -> super.delete(id),
+                        (notification, deleted) ->
+                                this.evictNotificationCache(notification).map(evicted -> deleted))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.delete"));
     }
 
     public Mono<Notification> readInternalNotification(String name, String appCode, String clientCode) {
         return super.readInternal(name, appCode, clientCode)
                 .map(ObjectWithUniqueID::getObject)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
+    }
+
+    private Mono<Boolean> evictNotificationCache(Notification notification) {
+        return Mono.zip(
+                this.notificationProcessingService.evictCache(notification.getAppCode(), notification.getName()),
+                this.notificationProcessingService.evictNotificationChannelCache(
+                        notification.getChannelTemplateCodes()),
+                (notificationEvicted, channelEvicted) -> notificationEvicted && channelEvicted);
     }
 }

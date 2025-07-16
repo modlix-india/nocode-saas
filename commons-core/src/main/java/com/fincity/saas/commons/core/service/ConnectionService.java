@@ -27,8 +27,7 @@ import reactor.util.context.Context;
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
 
     @Autowired(required = false)
-    @Qualifier("pubRedisAsyncCommand")
-    private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+    @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
     private CoreNotificationProcessingService coreNotificationProcessingService;
 
@@ -61,22 +60,36 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
     @Override
     public Mono<Connection> update(Connection entity) {
-        return super.update(entity).flatMap(e -> {
-            if (pubAsyncCommand == null) return Mono.just(e);
 
-            return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
-                    .map(x -> e);
-        });
+        return FlatMapUtil.flatMapMono(
+                () -> super.update(entity),
+                updated -> {
+                    if (pubAsyncCommand == null) return Mono.just(updated);
+
+                    return Mono.fromCompletionStage(
+                                    pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
+                            .map(x -> updated);
+                },
+                (updated, published) -> coreNotificationProcessingService
+                        .evictCache(updated.getAppCode(), updated.getName())
+                        .map(evicted -> updated));
     }
 
     @Override
     public Mono<Boolean> delete(String id) {
-        return super.delete(id).flatMap(e -> {
-            if (pubAsyncCommand == null) return Mono.just(e);
 
-            return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
-                    .map(x -> e);
-        });
+        return FlatMapUtil.flatMapMono(
+                () -> super.read(id),
+                connection -> super.delete(id),
+                (connection, deleted) -> {
+                    if (pubAsyncCommand == null) return Mono.just(deleted);
+
+                    return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
+                            .map(x -> deleted);
+                },
+                (connection, deleted, published) -> coreNotificationProcessingService
+                        .evictCache(connection.getAppCode(), connection.getName())
+                        .map(evicted -> deleted));
     }
 
     @Override
@@ -100,9 +113,9 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
     public Mono<Connection> read(String name, String appCode, String clientCode, ConnectionType type) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.read(name, appCode, clientCode).<Connection>map(ObjectWithUniqueID::getObject),
+                        () -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
                         conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
-                        (conn, typedConn) -> Mono.<Connection>justOrEmpty(
+                        (conn, typedConn) -> Mono.justOrEmpty(
                                 typedConn.getClientCode().equals(clientCode)
                                                 || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
                                         ? typedConn

@@ -15,8 +15,5 @@ public class NotificationCacheRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 7902977016851977819L;
 
-    private String appCode;
-    private String clientCode;
-    private String entityName;
     private Map<String, String> channelEntities;
 }

@@ -15,16 +15,9 @@ public class NotificationCacheRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 7766241875367352716L;
 
-    private String appCode;
-    private String clientCode;
-    private String entityName;
     private Map<String, String> channelEntities;
 
     public boolean hasChannelEntities() {
         return this.channelEntities != null && !this.channelEntities.isEmpty();
-    }
-
-    public boolean isEmpty() {
-        return this.appCode == null || this.clientCode == null || this.entityName == null;
     }
 }

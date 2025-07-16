@@ -37,10 +37,10 @@ public abstract class AbstractMessageService<T extends AbstractMessageService<T>
     }
 
     private Mono<Connection> getConnection(SendRequest request) {
-        return this.connectionService.getNotificationConn(
+        return this.connectionService.getNotificationConnection(
                 request.getAppCode(),
-                request.getClientCode(),
-                request.getConnections().get(this.getChannelType().getLiteral()));
+                request.getConnections().get(this.getChannelType().getLiteral()),
+                request.getClientCode());
     }
 
     private Mono<Boolean> notificationSent(SendRequest sendRequest) {

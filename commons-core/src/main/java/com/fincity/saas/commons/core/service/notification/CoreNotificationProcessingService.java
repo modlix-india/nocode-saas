@@ -1,8 +1,6 @@
 package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.document.Connection;
-import com.fincity.saas.commons.core.document.common.notification.Notification;
 import com.fincity.saas.commons.core.feign.IFeignNotificationService;
 import com.fincity.saas.commons.core.model.notification.NotificationCacheRequest;
 import com.fincity.saas.commons.core.model.notification.NotificationRequest;
@@ -11,11 +9,13 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import java.math.BigInteger;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,6 +28,7 @@ public class CoreNotificationProcessingService {
     private final IFeignSecurityService securityService;
 
     private CoreMessageResourceService coreMsgService;
+    private CacheService cacheService;
 
     public CoreNotificationProcessingService(
             IFeignNotificationService notificationService, IFeignSecurityService securityService) {
@@ -38,6 +39,16 @@ public class CoreNotificationProcessingService {
     @Autowired
     private void setCoreMsgService(CoreMessageResourceService coreMsgService) {
         this.coreMsgService = coreMsgService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setCacheService(CacheService cacheService) {
+        this.cacheService = cacheService;
+    }
+
+    private String getCacheNames(String... entityNames) {
+        return String.join("_", entityNames);
     }
 
     public Mono<Boolean> processAndSendNotification(
@@ -74,24 +85,14 @@ public class CoreNotificationProcessingService {
                         Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
     }
 
-    public Mono<Boolean> evictConnectionCache(Connection connection) {
-
-        NotificationCacheRequest notificationCacheRequest = new NotificationCacheRequest()
-                .setAppCode(connection.getAppCode())
-                .setClientCode(connection.getClientCode())
-                .setEntityName(connection.getName());
-
-        return notificationService.evictNotificationConnectionCache(notificationCacheRequest);
+    public Mono<Boolean> evictCache(String appCode, String entityName) {
+        return this.cacheService
+                .evictAll(this.getCacheNames(appCode, entityName))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.evictCache"));
     }
 
-    public Mono<Boolean> evictNotificationCache(Notification notification) {
-
-        NotificationCacheRequest notificationCacheRequest = new NotificationCacheRequest()
-                .setAppCode(notification.getAppCode())
-                .setClientCode(notification.getClientCode())
-                .setEntityName(notification.getName())
-                .setChannelEntities(notification.getChannelTemplateCodes());
-
-        return notificationService.evictNotificationCache(notificationCacheRequest);
+    public Mono<Boolean> evictNotificationChannelCache(Map<String, String> channelEntities) {
+        return this.notificationService.evictNotificationCache(
+                new NotificationCacheRequest().setChannelEntities(channelEntities));
     }
 }

@@ -18,11 +18,6 @@ public class NotificationCacheEvictionController {
         this.notificationConnectionService = notificationConnectionService;
     }
 
-    @PostMapping("/connections/evict")
-    public Mono<Boolean> evictConnectionInfoCache(@RequestBody NotificationCacheRequest cacheRequest) {
-        return this.notificationConnectionService.evictConnectionInfoCache(cacheRequest);
-    }
-
     @PostMapping("/notifications/evict")
     public Mono<Boolean> evictNotificationInfoCache(@RequestBody NotificationCacheRequest cacheRequest) {
         return this.notificationConnectionService.evictNotificationInfoCache(cacheRequest);
