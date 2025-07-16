@@ -321,6 +321,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                             profile.getDescription())
                                     .set(SECURITY_PROFILE.ARRANGEMENT,
                                             profile.getArrangement())
+                                    .set(SECURITY_PROFILE.DEFAULT_PROFILE, profile.isDefaultProfile() ? ByteUtil.ONE : ByteUtil.ZERO)
                                     .where(SECURITY_PROFILE.ID
                                             .eq(profile.getId()))),
 
