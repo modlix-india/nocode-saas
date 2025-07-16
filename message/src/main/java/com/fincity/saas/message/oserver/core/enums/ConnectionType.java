@@ -15,10 +15,9 @@ public enum ConnectionType {
 
     REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
-    MESSAGE(
-            ConnectionSubType.MESSAGE_EXOTEL,
-            ConnectionSubType.MESSAGE_WHATSAPP,
-            ConnectionSubType.MESSAGE_WHATSAPP_TEMPLATE);
+    MESSAGE(ConnectionSubType.MESSAGE_WHATSAPP, ConnectionSubType.MESSAGE_WHATSAPP_TEMPLATE),
+
+    CALL(ConnectionSubType.CALL_EXOTEL);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 

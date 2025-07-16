@@ -1,8 +1,9 @@
-package com.fincity.saas.message.model.request.call.exotel;
+package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.enums.call.exotel.ExotelCallStatus;
-import com.fincity.saas.message.model.response.call.exotel.ExotelLeg;
+import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
+import com.fincity.saas.message.model.response.call.provider.exotel.ExotelLeg;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ import lombok.experimental.FieldNameConstants;
 @Data
 @Accessors(chain = true)
 @FieldNameConstants
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ExotelCallStatusCallback implements Serializable {
 
     @Serial

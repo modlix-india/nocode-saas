@@ -1,7 +1,7 @@
-package com.fincity.saas.message.model.response.call.exotel;
+package com.fincity.saas.message.model.response.call.provider.exotel;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.enums.call.exotel.ExotelCallStatus;
+import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;

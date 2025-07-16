@@ -1,7 +1,7 @@
 package com.fincity.saas.message.enums;
 
 import com.fincity.saas.message.dto.call.Call;
-import com.fincity.saas.message.dto.call.exotel.ExotelCall;
+import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import lombok.Getter;
 import org.jooq.EnumType;
 import org.jooq.Table;

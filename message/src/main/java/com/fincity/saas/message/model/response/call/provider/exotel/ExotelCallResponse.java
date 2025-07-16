@@ -1,4 +1,4 @@
-package com.fincity.saas.message.model.response.call.exotel;
+package com.fincity.saas.message.model.response.call.provider.exotel;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serial;

@@ -1,4 +1,4 @@
-package com.fincity.saas.message.model.response.call.exotel;
+package com.fincity.saas.message.model.response.call.provider.exotel;
 
 import java.io.Serial;
 import java.io.Serializable;

@@ -1,4 +1,4 @@
-package com.fincity.saas.message.enums.call.exotel;
+package com.fincity.saas.message.enums.call.provider.exotel;
 
 import lombok.Getter;
 import org.jooq.EnumType;

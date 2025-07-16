@@ -4,7 +4,7 @@
 package com.fincity.saas.message.jooq.tables;
 
 
-import com.fincity.saas.message.enums.call.exotel.ExotelCallStatus;
+import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageCalls.MessageCallsPath;

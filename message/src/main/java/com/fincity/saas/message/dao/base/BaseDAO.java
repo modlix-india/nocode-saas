@@ -1,6 +1,6 @@
 package com.fincity.saas.message.dao.base;
 
-import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowDAO;
+import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.saas.message.dto.base.BaseDto;
 import lombok.Getter;
 import org.jooq.Condition;
@@ -11,7 +11,7 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 
 @Getter
-public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>> extends AbstractFlowDAO<R, ULong, D> {
+public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>> extends AbstractDAO<R, ULong, D> {
 
     private static final String IS_ACTIVE = "IS_ACTIVE";
 
