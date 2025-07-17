@@ -14,6 +14,8 @@ import com.fincity.security.dto.OneTimeToken;
 import com.fincity.security.model.*;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
@@ -59,6 +61,8 @@ import reactor.util.function.Tuple3;
 
 @Service
 public class AuthenticationService implements IAuthenticationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
 
     private final UserService userService;
 
@@ -130,7 +134,7 @@ public class AuthenticationService implements IAuthenticationService {
     @Value("${jwt.token.default.refresh:10}")
     private Integer defaultRefreshInMinutes;
 
-    public Mono<Integer> revoke(ServerHttpRequest request) {
+    public Mono<Integer> revoke(boolean ssoLogout, ServerHttpRequest request) {
 
         String bearerToken = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
@@ -152,6 +156,8 @@ public class AuthenticationService implements IAuthenticationService {
 
         if (bearerToken == null) return Mono.just(1);
 
+        if (ssoLogout) return this.ssoRevoke();
+
         final String finToken = bearerToken;
 
         return cacheService.evict(CACHE_NAME_TOKEN, finToken)
@@ -168,6 +174,15 @@ public class AuthenticationService implements IAuthenticationService {
                         .defaultIfEmpty(1));
     }
 
+    private Mono<Integer> ssoRevoke() {
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.tokenService.deleteTokens(ca.getUser().getId())
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ssoRevoke"));
+    }
+
     public Mono<Boolean> generateOtp(AuthenticationRequest authRequest, ServerHttpRequest request) {
 
         if (!authRequest.isGenerateOtp()) return Mono.just(Boolean.FALSE);
@@ -176,8 +191,6 @@ public class AuthenticationService implements IAuthenticationService {
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
         OtpPurpose purpose = OtpPurpose.LOGIN;
-
-        if (authRequest.getIdentifierType() == null) authRequest.setIdentifierType();
 
         return FlatMapUtil.flatMapMono(
                         () -> this.userService.findNonDeletedUserNClient(
@@ -198,7 +211,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setResend(authRequest.isResend())
                                 .setPurpose(purpose)),
                         (app, tup, linCCheck, targetReq) -> this.otpService.generateOtpInternal(targetReq))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OtpService.generateOtp : [" + purpose.name() + "]"))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateOtp : [" + purpose.name() + "]"))
                 .switchIfEmpty(Mono.just(Boolean.FALSE))
                 .log();
     }
@@ -241,8 +254,6 @@ public class AuthenticationService implements IAuthenticationService {
 
         String appCode = request.getHeaders().getFirst(AppService.AC);
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
-
-        if (authRequest.getIdentifierType() == null) authRequest.setIdentifierType();
 
         AuthenticationPasswordType passwordType = authRequest.getInputPassType();
 
@@ -292,6 +303,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 .switchIfEmpty(Mono.defer(() ->
                                         this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))));
     }
+
     public Mono<AuthenticationResponse> authenticateWSocial(
             AuthenticationRequest authRequest, ServerHttpRequest request, ServerHttpResponse response) {
 
@@ -322,23 +334,23 @@ public class AuthenticationService implements IAuthenticationService {
                                             if (BooleanUtil.safeValueOf(e)) return Mono.just(tup);
                                             return Mono.empty();
                                         })),
-                        tup -> this.userService
-                                .checkUserAndClient(tup, clientCode)
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
-                        (tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
-                                authRequest.getSocialRegisterState()),
-                        (tup, linCCheck, user, appRegIntgToken) -> Mono.just(
-                                        appRegIntgToken.getUsername().equals(authRequest.getUserName()))
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (tup, linCCheck, user, appRegIntgToken, usernameChecked) -> {
-                            appRegIntgToken.setCreatedBy(user.getId());
-                            appRegIntgToken.setUpdatedBy(user.getId());
+                                tup -> this.userService
+                                        .checkUserAndClient(tup, clientCode)
+                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
+                                (tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
+                                        authRequest.getSocialRegisterState()),
+                                (tup, linCCheck, user, appRegIntgToken) -> Mono.just(
+                                                appRegIntgToken.getUsername().equals(authRequest.getUserName()))
+                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                (tup, linCCheck, user, appRegIntgToken, usernameChecked) -> {
+                                    appRegIntgToken.setCreatedBy(user.getId());
+                                    appRegIntgToken.setUpdatedBy(user.getId());
 
-                            return this.integrationTokenDao.update(appRegIntgToken);
-                        },
-                        (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) ->
-                                logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, appCode, user, tup.getT2(), tup.getT1()))
+                                    return this.integrationTokenDao.update(appRegIntgToken);
+                                },
+                                (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) ->
+                                        logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, appCode, user, tup.getT2(), tup.getT1()))
                         .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate")))
                 .switchIfEmpty(
                         // If findNonDeletedUserNClient returns empty, try authenticateUserForHavingApp
@@ -477,7 +489,7 @@ public class AuthenticationService implements IAuthenticationService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.resetUserAttempts"));
     }
 
-    private Mono<AuthenticationResponse>  logAndMakeToken(
+    private Mono<AuthenticationResponse> logAndMakeToken(
             boolean rememberMe,
             boolean isCookie,
             ServerHttpRequest request,
@@ -592,9 +604,13 @@ public class AuthenticationService implements IAuthenticationService {
                 .onErrorResume(e -> this.makeAnonySpringAuthentication(request))
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
+
+                        if (StringUtil.safeIsBlank(ca.getVerifiedAppCode()))
+                            logger.error("Danger!, Will Robinson. Verified App Code is missing. {}", ca);
+
                         return this.userService
                                 .getUserAuthorities(
-                                        ca.getVerifiedAppCode(),
+                                        ca.getVerifiedAppCode() == null ? appCode : ca.getVerifiedAppCode(),
                                         ULong.valueOf(ca.getUser().getClientId()),
                                         ULong.valueOf(ca.getUser().getId()))
                                 .map(ca.getUser()::setStringAuthorities)
@@ -806,7 +822,7 @@ public class AuthenticationService implements IAuthenticationService {
                                             Instant.now().plus(Duration.ofMinutes(this.defaultRefreshInMinutes)),
                                             ZoneOffset.UTC)
                                     .isAfter(ca.getAccessTokenExpiryAt()))
-                                return this.revoke(request).map(e -> true);
+                                return this.revoke(false, request).map(e -> true);
 
                             return Mono.just(false);
                         },

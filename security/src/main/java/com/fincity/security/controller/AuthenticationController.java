@@ -58,8 +58,8 @@ public class AuthenticationController {
     }
 
     @GetMapping(value = "revoke")
-    public Mono<ResponseEntity<Void>> revoke(ServerHttpRequest request) {
-        return this.service.revoke(request).map(e -> ResponseEntity.ok().build());
+    public Mono<ResponseEntity<Void>> revoke(@RequestParam(name = "ssoLogout", defaultValue = "false", required = false) boolean ssoLogout, ServerHttpRequest request) {
+        return this.service.revoke(ssoLogout, request).map(e -> ResponseEntity.ok().build());
     }
 
     @GetMapping(value = "refreshToken")
@@ -88,7 +88,7 @@ public class AuthenticationController {
                             else
                                 errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-                            return this.service.revoke(request).flatMap(e -> Mono.defer(() -> errorMono));
+                            return this.service.revoke(false, request).flatMap(e -> Mono.defer(() -> errorMono));
 
                         },
 

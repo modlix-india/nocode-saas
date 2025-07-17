@@ -12,27 +12,26 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class AuthenticationRequest implements BasePassword<AuthenticationRequest> {
 
-	private String userName;
-	private String password;
-	private ULong userId;
-	private String otp = null;
-	private boolean isResend = false;
-	private String pin = null;
+    private String userName;
+    private String password;
+    private ULong userId;
+    private String otp = null;
+    private boolean isResend = false;
+    private String pin = null;
 
-	private String socialRegisterState;
+    private String socialRegisterState;
 
-	private AuthenticationIdentifierType identifierType;
-	private boolean rememberMe = false;
-	private boolean cookie = false;
-	private boolean generateOtp = false;
+    private AuthenticationIdentifierType identifierType;
+    private boolean rememberMe = false;
+    private boolean cookie = false;
+    private boolean generateOtp = false;
 
-	@JsonIgnore
-	public AuthenticationRequest setIdentifierType() {
-		if (this.identifierType == null)
-			this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
-					.indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
-							: AuthenticationIdentifierType.EMAIL_ID;
+    @JsonIgnore
+    public AuthenticationIdentifierType getIdentifierType() {
+        if (this.identifierType != null) return this.identifierType;
 
-		return this;
-	}
+        return this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
+                .indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
+                : AuthenticationIdentifierType.EMAIL_ID;
+    }
 }
