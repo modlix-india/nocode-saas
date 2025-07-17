@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import com.fincity.saas.message.util.IClassConvertor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -19,7 +21,8 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractUpdatableDTO<ULong, ULong> {
+public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractUpdatableDTO<ULong, ULong>
+        implements IClassConvertor {
 
     public static final int CODE_LENGTH = 22;
 

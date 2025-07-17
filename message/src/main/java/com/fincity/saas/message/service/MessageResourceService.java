@@ -23,6 +23,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String MAIL_SEND_ERROR = "mail_send_error";
 
     public static final String INVALID_CONNECTION_TYPE = "invalid_connection_type";
+    public static final String URL_CREATION_ERROR = "url_creation_error";
     public static final String MISSING_CALL_PARAMETERS = "missing_call_parameters";
     public static final String MISSING_CONNECTION_DETAILS = "missing_connection_details";
 

@@ -1,5 +1,6 @@
 package com.fincity.saas.message.service.call.provider.exotel;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.call.exotel.ExotelDAO;
 import com.fincity.saas.message.dto.call.Call;
@@ -31,15 +32,18 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
-    private URI createExotelUrl(String apiKey, String apiToken, String subDomain, String sid) {
+    private Mono<URI> createExotelUrl(String apiKey, String apiToken, String subDomain, String sid) {
         String schema = "https";
         String userInfo = apiKey + ":" + apiToken;
         String path = "/v1/Accounts/" + sid + "/Calls/connect";
 
         try {
-            return new URI(schema, userInfo, subDomain, -1, path, null, null);
+            return Mono.just(new URI(schema, userInfo, subDomain, -1, path, null, null));
         } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.URL_CREATION_ERROR,
+                    this.getProvider());
         }
     }
 
@@ -56,10 +60,10 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     @Override
     public Mono<Call> toCall(ExotelCall providerObject) {
         Call call = new Call()
-                .setFrom(providerObject.getFrom())
                 .setFromDialCode(providerObject.getFromDialCode())
-                .setTo(providerObject.getTo())
+                .setFrom(providerObject.getFrom())
                 .setToDialCode(providerObject.getToDialCode())
+                .setTo(providerObject.getTo())
                 .setCallerId(providerObject.getCallerId())
                 .setCallProvider(this.getProvider())
                 .setIsOutbound(
@@ -83,6 +87,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         }
 
         if (providerObject.getId() != null) call.setExotelCallId(providerObject.getId());
+        call.setMetadata(providerObject.toMap());
 
         return Mono.just(call);
     }
@@ -107,10 +112,14 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
         if (callerId == null) return super.throwMissingParam("callerId");
 
-        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(from, to, callerId, true);
-        applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
+        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(from, to, callerId, Boolean.TRUE);
+        this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
 
-        return makeExotelCall(exotelCallRequest, connection).flatMap(this::toCall);
+        return FlatMapUtil.flatMapMono(
+                () -> this.makeExotelCall(exotelCallRequest, connection),
+                exotelCall -> this.createInternal(access, exotelCall),
+                (exotelCall, created) ->
+                        this.toCall(exotelCall).map(call -> call.setConnectionName(connection.getName())));
     }
 
     private void applyConnectionDetailsToRequest(ExotelCallRequest request, Map<String, Object> details) {
@@ -135,22 +144,22 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     private Mono<ExotelCall> makeExotelCall(ExotelCallRequest request, Connection conn) {
         Map<String, Object> details = conn.getConnectionDetails();
 
-        return Mono.zip(
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.zip(
                         super.getRequiredConnectionDetail(details, "apiKey"),
                         super.getRequiredConnectionDetail(details, "apiToken"),
-                        super.getRequiredConnectionDetail(details, "accountSid"),
-                        super.getRequiredConnectionDetail(details, "subdomain"))
-                .flatMap(tuple -> {
-                    URI uri = this.createExotelUrl(tuple.getT1(), tuple.getT2(), tuple.getT4(), tuple.getT3());
-
-                    return request.toFormDataAsync().flatMap(formData -> WebClient.create()
-                            .post()
-                            .uri(uri)
-                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                            .body(BodyInserters.fromFormData(formData))
-                            .retrieve()
-                            .bodyToMono(ExotelCallResponse.class)
-                            .map(response -> new ExotelCall(request).update(response)));
-                });
+                        super.getRequiredConnectionDetail(details, "subdomain"),
+                        super.getRequiredConnectionDetail(details, "accountSid")),
+                requiredParam -> this.createExotelUrl(
+                        requiredParam.getT1(), requiredParam.getT2(), requiredParam.getT3(), requiredParam.getT4()),
+                (requiredParam, uri) -> request.toFormDataAsync(),
+                (requiredParam, uri, formData) -> WebClient.create()
+                        .post()
+                        .uri(uri)
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body(BodyInserters.fromFormData(formData))
+                        .retrieve()
+                        .bodyToMono(ExotelCallResponse.class)
+                        .map(response -> new ExotelCall(request).update(response)));
     }
 }

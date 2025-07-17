@@ -16,7 +16,7 @@ public abstract class AbstractCallProviderService<
         extends BaseUpdatableService<R, D, O> implements IAppCallService<D> {
 
     protected <T> Mono<T> throwMissingParam(String paramName) {
-        return this.getMsgService()
+        return super.msgService
                 .throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         MessageResourceService.MISSING_CALL_PARAMETERS,
@@ -47,14 +47,12 @@ public abstract class AbstractCallProviderService<
 
     protected Mono<String> getRequiredConnectionDetail(Map<String, Object> details, String key) {
         String val = (String) details.get(key);
-        if (val == null) {
-            return this.getMsgService()
-                    .throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            MessageResourceService.MISSING_CONNECTION_DETAILS,
-                            this.getProvider(),
-                            key);
-        }
+        if (val == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CONNECTION_DETAILS,
+                    this.getProvider(),
+                    key);
         return Mono.just(val);
     }
 }

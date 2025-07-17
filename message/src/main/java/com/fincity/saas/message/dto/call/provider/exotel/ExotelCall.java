@@ -54,9 +54,8 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     }
 
     public ExotelCall update(ExotelCallResponse exotelCallResponse) {
-        if (exotelCallResponse == null || exotelCallResponse.getCall() == null) {
+        if (exotelCallResponse == null || exotelCallResponse.getCall() == null)
             return this;
-        }
 
         var call = exotelCallResponse.getCall();
 
