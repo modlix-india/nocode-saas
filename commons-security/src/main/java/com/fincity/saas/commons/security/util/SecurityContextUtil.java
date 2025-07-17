@@ -74,9 +74,6 @@ public class SecurityContextUtil {
 
     public static boolean hasAuthority(String authority, Collection<? extends GrantedAuthority> collection) {
 
-        logger.info("hasAuthority: Checking if authority {} exists", authority);
-        logger.info("hasAuthority: Checking in collection {} ", collection);
-
         if (authority == null || authority.isBlank())
             return true;
 
@@ -87,8 +84,7 @@ public class SecurityContextUtil {
         AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
         JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
                 .getAsJsonPrimitive();
-
-        logger.info("hasAuthority: Does the authority {} exists : {}", authority, jp);
+        
         return jp.isBoolean() && jp.getAsBoolean();
     }
 
