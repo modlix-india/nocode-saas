@@ -61,7 +61,7 @@ public class AppController
 
     @GetMapping("/applyAppCodePrefix")
     public Mono<ResponseEntity<String>> applyAppCodePrefix(@RequestParam String appCode) {
-        String prefix = appCode;
+        String prefix = appCodeSuffix;
 
         if (!StringUtils.isNullOrEmpty(appCodeSuffix)) {
             if (prefix.startsWith("."))
