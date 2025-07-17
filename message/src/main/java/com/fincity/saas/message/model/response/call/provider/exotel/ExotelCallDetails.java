@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
@@ -24,10 +23,10 @@ public class ExotelCallDetails implements Serializable {
     private String parentCallSid;
 
     @JsonProperty("DateCreated")
-    private LocalDateTime dateCreated;
+    private String dateCreated;
 
     @JsonProperty("DateUpdated")
-    private LocalDateTime dateUpdated;
+    private String dateUpdated;
 
     @JsonProperty("AccountSid")
     private String accountSid;
@@ -51,7 +50,7 @@ public class ExotelCallDetails implements Serializable {
     private String endTime;
 
     @JsonProperty("Duration")
-    private Integer duration;
+    private Long duration;
 
     @JsonProperty("Price")
     private String price;

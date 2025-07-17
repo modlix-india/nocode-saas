@@ -1,7 +1,7 @@
 package com.fincity.saas.message.service.call.provider;
 
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.message.dao.base.BaseUpdatableDAO;
+import com.fincity.saas.message.dao.call.provider.AbstractCallProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
@@ -12,8 +12,10 @@ import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractCallProviderService<
-                R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
+                R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends AbstractCallProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IAppCallService<D> {
+
+    public static final String CALL_BACK_URI = "/api/call/callback";
 
     protected <T> Mono<T> throwMissingParam(String paramName) {
         return super.msgService.throwMessage(
@@ -53,5 +55,15 @@ public abstract class AbstractCallProviderService<
                     this.getProvider(),
                     key);
         return Mono.just(val);
+    }
+
+    protected Mono<D> findByUniqueField(String id) {
+        return this.dao.findByUniqueField(id);
+    }
+
+    protected Mono<String> getCallBackUrl(String appCode, String clientCode) {
+        return this.securityService
+                .getAppUrl(appCode, clientCode)
+                .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri());
     }
 }

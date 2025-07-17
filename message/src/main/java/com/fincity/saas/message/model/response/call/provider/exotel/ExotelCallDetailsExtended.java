@@ -18,7 +18,7 @@ public class ExotelCallDetailsExtended implements Serializable {
     private static final long serialVersionUID = 6936806395046152143L;
 
     @JsonProperty("ConversationDuration")
-    private Integer conversationDuration;
+    private Long conversationDuration;
 
     @JsonProperty("Leg1Status")
     private ExotelCallStatus leg1Status;

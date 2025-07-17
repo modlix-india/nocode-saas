@@ -72,7 +72,8 @@ public class ExotelCallRequest implements Serializable, IClassConvertor {
     };
 
     @JsonProperty("StatusCallbackContentType")
-    private String statusCallbackContentType = ExotelStatusCallbackContentType.JSON.getExotelName();
+    private String statusCallbackContentType =
+            ExotelStatusCallbackContentType.getDefault().getExotelName();
 
     public static ExotelCallRequest of(String from, String to, String callerId) {
         return new ExotelCallRequest().setFrom(from).setTo(to).setCallerId(callerId);

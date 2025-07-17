@@ -31,6 +31,7 @@ public class Keys {
     public static final UniqueKey<MessageCallsRecord> KEY_MESSAGE_CALLS_UK1_CALLS_CODE = Internal.createUniqueKey(MessageCalls.MESSAGE_CALLS, DSL.name("KEY_message_calls_UK1_CALLS_CODE"), new TableField[] { MessageCalls.MESSAGE_CALLS.CODE }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_PRIMARY = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_PRIMARY"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.ID }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK1_EXOTEL_CALLS_CODE = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK1_EXOTEL_CALLS_CODE"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.CODE }, true);
+    public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK2_EXOTEL_CALLS_SID = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK2_EXOTEL_CALLS_SID"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.SID }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions

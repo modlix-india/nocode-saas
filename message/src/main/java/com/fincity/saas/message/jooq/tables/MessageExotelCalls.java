@@ -311,7 +311,7 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
 
     @Override
     public List<UniqueKey<MessageExotelCallsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_EXOTEL_CALLS_UK1_EXOTEL_CALLS_CODE);
+        return Arrays.asList(Keys.KEY_MESSAGE_EXOTEL_CALLS_UK1_EXOTEL_CALLS_CODE, Keys.KEY_MESSAGE_EXOTEL_CALLS_UK2_EXOTEL_CALLS_SID);
     }
 
     private transient MessageCallsPath _messageCalls;
