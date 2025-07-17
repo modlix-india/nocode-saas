@@ -64,7 +64,7 @@ public class ContextUser implements Serializable {
     public Collection<SimpleGrantedAuthority> getAuthorities() {
 
         if (this.grantedAuthorities == null && this.stringAuthorities == null)
-            logger.error("Danger! Will Robinson ... {}", this);
+            logger.error("Danger!, Will Robinson. No Authorities found. {}", this);
 
         if (this.grantedAuthorities != null && !this.grantedAuthorities.isEmpty())
             return this.grantedAuthorities;

@@ -605,8 +605,8 @@ public class AuthenticationService implements IAuthenticationService {
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
 
-                        if (StringUtil.safeIsBlank(ca.getUser().getClientId()))
-                            logger.error("Danger! Will Robinson ... {}", ca);
+                        if (StringUtil.safeIsBlank(ca.getVerifiedAppCode()))
+                            logger.error("Danger!, Will Robinson. Verified App Code is missing. {}", ca);
 
                         return this.userService
                                 .getUserAuthorities(
