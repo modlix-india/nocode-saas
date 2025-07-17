@@ -2,13 +2,12 @@ package com.fincity.saas.message.dto.base;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.message.util.IClassConvertor;
 import java.io.Serial;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.fincity.saas.message.util.IClassConvertor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

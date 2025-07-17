@@ -7,7 +7,6 @@ import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
-import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
 import jakarta.annotation.PostConstruct;
@@ -26,13 +25,9 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
 
     private final EnumMap<ConnectionSubType, IAppCallService<?>> services = new EnumMap<>(ConnectionSubType.class);
 
-    public CallService(
-            ExotelCallService exotelCallService,
-            CallConnectionService connectionService,
-            MessageResourceService msgService) {
+    public CallService(ExotelCallService exotelCallService, CallConnectionService connectionService) {
         this.exotelCallService = exotelCallService;
         this.connectionService = connectionService;
-        this.msgService = msgService;
     }
 
     @PostConstruct

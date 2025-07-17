@@ -3,12 +3,14 @@ package com.fincity.saas.message.dto.call.provider.exotel;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
+import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallDetails;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallDetailsExtended;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelLeg;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,7 +26,11 @@ import lombok.experimental.FieldNameConstants;
 public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 6195102404059168734L;
+
+    private static final String EXOTEL_DATA_TIME = "yyyy-MM-dd HH:mm:ss";
+
+    private static final DateTimeFormatter EXOTEL_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(EXOTEL_DATA_TIME);
 
     private String sid;
     private String parentCallSid;
@@ -54,72 +60,60 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     }
 
     public ExotelCall update(ExotelCallResponse exotelCallResponse) {
-        if (exotelCallResponse == null || exotelCallResponse.getCall() == null)
-            return this;
+        if (exotelCallResponse == null || exotelCallResponse.getCall() == null) return this;
 
-        var call = exotelCallResponse.getCall();
+        ExotelCallDetails call = exotelCallResponse.getCall();
 
         this.sid = call.getSid();
         this.parentCallSid = call.getParentCallSid();
         this.accountSid = call.getAccountSid();
-        this.from = call.getFrom();
-        this.to = call.getTo();
         this.exotelCallStatus = call.getStatus();
 
-        // Parse startTime and endTime
-        if (call.getStartTime() != null) {
+        if (call.getStartTime() != null)
             try {
-                this.startTime = LocalDateTime.parse(call.getStartTime().replace(" ", "T"));
+                this.startTime = LocalDateTime.parse(call.getStartTime(), EXOTEL_DATE_TIME_FORMATTER);
             } catch (Exception e) {
                 // Ignore parsing errors
             }
-        }
 
-        if (call.getEndTime() != null) {
+        if (call.getEndTime() != null)
             try {
-                this.endTime = LocalDateTime.parse(call.getEndTime().replace(" ", "T"));
+                this.endTime = LocalDateTime.parse(call.getEndTime(), EXOTEL_DATE_TIME_FORMATTER);
             } catch (Exception e) {
                 // Ignore parsing errors
             }
-        }
 
-        // Parse duration
-        if (call.getDuration() != null) {
+        if (call.getDuration() != null)
             try {
                 this.duration = Long.valueOf(call.getDuration());
             } catch (Exception e) {
                 // Ignore parsing errors
             }
-        }
 
-        // Parse price
-        if (call.getPrice() != null) {
+        if (call.getPrice() != null)
             try {
                 this.price = Double.valueOf(call.getPrice());
             } catch (Exception e) {
                 // Ignore parsing errors
             }
-        }
 
         this.direction = call.getDirection();
         this.answeredBy = call.getAnsweredBy();
         this.recordingUrl = call.getRecordingUrl();
 
-        // Update extended details if available
-        if (call.getDetails() != null) {
-            this.conversationDuration = call.getDetails().getConversationDuration() != null
-                    ? Long.valueOf(call.getDetails().getConversationDuration())
-                    : null;
-            this.leg1Status = call.getDetails().getLeg1Status();
-            this.leg2Status = call.getDetails().getLeg2Status();
-
-            if (call.getDetails().getLegs() != null) {
-                this.legs = call.getDetails().getLegs().stream()
-                        .map(ExotelCallDetailsExtended.LegWrapper::getLeg)
-                        .toList();
-            }
-        }
-
+        if (call.getDetails() != null) this.updateDetails(call.getDetails());
         return this;
+    }
+
+    public void updateDetails(ExotelCallDetailsExtended details) {
+        this.conversationDuration =
+                details.getConversationDuration() != null ? Long.valueOf(details.getConversationDuration()) : null;
+        this.leg1Status = details.getLeg1Status();
+        this.leg2Status = details.getLeg2Status();
+
+        if (details.getLegs() != null)
+            this.legs = details.getLegs().stream()
+                    .map(ExotelCallDetailsExtended.LegWrapper::getLeg)
+                    .toList();
     }
 }

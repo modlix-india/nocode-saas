@@ -9,12 +9,11 @@ import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelStartPla
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelStatusCallbackContentType;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelStatusCallbackEvents;
 import com.fincity.saas.message.util.IClassConvertor;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
-import java.io.Serial;
-import java.io.Serializable;
 
 @Data
 @Accessors(chain = true)
@@ -68,7 +67,9 @@ public class ExotelCallRequest implements Serializable, IClassConvertor {
     private String statusCallback;
 
     @JsonProperty("StatusCallbackEvents")
-    private String[] statusCallbackEvents = {ExotelStatusCallbackEvents.getDefault().getExotelName()};
+    private String[] statusCallbackEvents = {
+        ExotelStatusCallbackEvents.getDefault().getExotelName()
+    };
 
     @JsonProperty("StatusCallbackContentType")
     private String statusCallbackContentType = ExotelStatusCallbackContentType.JSON.getExotelName();
