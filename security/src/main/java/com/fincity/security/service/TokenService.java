@@ -14,6 +14,8 @@ import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 
 import reactor.core.publisher.Mono;
 
+import java.math.BigInteger;
+
 @Service
 public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecord, ULong, TokenObject, TokenDAO> {
 
@@ -27,7 +29,10 @@ public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecor
         return this.dao
                 .getTokensOfId(id)
                 .flatMap(e ->
-                        cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e))
+                {
+                    logger.debug("Evicting : {}", e);
+                    return cacheService.evict(IAuthenticationService.CACHE_NAME_TOKEN, e);
+                })
                 .collectList()
                 .map(e -> 1);
     }
@@ -35,5 +40,12 @@ public class TokenService extends AbstractJOOQDataService<SecurityUserTokenRecor
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
+    }
+
+    public Mono<Integer> deleteTokens(BigInteger id) {
+        ULong ulId = ULong.valueOf(id);
+
+        return this.evictTokensOfUser(ulId)
+                .flatMap(e -> this.dao.deleteAllTokens(ulId));
     }
 }

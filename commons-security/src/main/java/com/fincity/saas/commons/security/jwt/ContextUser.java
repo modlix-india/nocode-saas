@@ -63,7 +63,8 @@ public class ContextUser implements Serializable {
     @JsonIgnore
     public Collection<SimpleGrantedAuthority> getAuthorities() {
 
-        logger.info("Authorities: {}", this);
+        if (this.grantedAuthorities == null && this.stringAuthorities == null)
+            logger.error("Danger!, Will Robinson. No Authorities found. {}", this);
 
         if (this.grantedAuthorities != null && !this.grantedAuthorities.isEmpty())
             return this.grantedAuthorities;
@@ -97,5 +98,10 @@ public class ContextUser implements Serializable {
     @JsonIgnore
     public boolean isPinHashed() {
         return this.pinHashed;
+    }
+
+    public ContextUser setStringAuthorities(List<String> stringAuthorities) {
+        this.stringAuthorities = stringAuthorities;
+        return this;
     }
 }
