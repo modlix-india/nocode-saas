@@ -2,6 +2,8 @@ package com.fincity.security.controller;
 
 import java.util.List;
 
+import com.fincity.saas.commons.util.StringUtil;
+import com.mysql.cj.util.StringUtils;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -57,6 +59,21 @@ public class AppController
                 .header("X-Frame-Options", SAME_ORIGIN).body(appCode + appCodeSuffix));
     }
 
+    @GetMapping("/applyAppCodePrefix")
+    public Mono<ResponseEntity<String>> applyAppCodePrefix(@RequestParam String appCode) {
+        String prefix = appCode;
+
+        if (!StringUtils.isNullOrEmpty(appCodeSuffix)) {
+            if (prefix.startsWith("."))
+                prefix = prefix.substring(1) + ".";
+        }
+
+        return Mono.just(ResponseEntity.ok().header("ETag", "W/" + appCode)
+                .header("Cache-Control", "max-age: " + cacheAge)
+                .header("x-frame-options", SAME_ORIGIN)
+                .header("X-Frame-Options", SAME_ORIGIN).body(prefix + appCode));
+    }
+
     @GetMapping("/internal/hasReadAccess")
     public Mono<ResponseEntity<Boolean>> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode) {
 
@@ -66,7 +83,7 @@ public class AppController
 
     @GetMapping("/internal/appInheritance")
     public Mono<ResponseEntity<List<String>>> appInheritance(@RequestParam String appCode,
-            @RequestParam String urlClientCode, @RequestParam String clientCode) {
+                                                             @RequestParam String urlClientCode, @RequestParam String clientCode) {
 
         return this.service.appInheritance(appCode, urlClientCode, clientCode)
                 .map(ResponseEntity::ok);
@@ -81,7 +98,7 @@ public class AppController
 
     @DeleteMapping("/everything/{id}")
     public Mono<ResponseEntity<Boolean>> deleteByAppId(@PathVariable(PATH_VARIABLE_ID) final ULong id,
-            @RequestParam(required = false) final Boolean forceDelete) {
+                                                       @RequestParam(required = false) final Boolean forceDelete) {
 
         return this.service.deleteEverything(id, BooleanUtil.safeValueOf(forceDelete))
                 .filter(BooleanUtil::safeValueOf)
@@ -91,7 +108,7 @@ public class AppController
 
     @GetMapping("/hasDeleteAccess")
     public Mono<ResponseEntity<Boolean>> hasDeleteAccess(@RequestParam String deleteAppCode,
-            @RequestParam String deleteClientCode) {
+                                                         @RequestParam String deleteClientCode) {
         return this.service.hasDeleteAccess(deleteAppCode, deleteClientCode)
                 .defaultIfEmpty(Boolean.FALSE).map(ResponseEntity::ok);
     }
@@ -120,7 +137,7 @@ public class AppController
 
     @PostMapping("/{id}/access")
     public Mono<ResponseEntity<Boolean>> addClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-            @RequestBody final ApplicationAccessRequest request) {
+                                                         @RequestBody final ApplicationAccessRequest request) {
         return this.service.addClientAccess(appId, request.getClientId(), request.isWriteAccess())
                 .map(ResponseEntity::ok);
     }
@@ -134,15 +151,15 @@ public class AppController
 
     @DeleteMapping("/{id}/access")
     public Mono<ResponseEntity<Boolean>> removeClientAccess(@PathVariable(PATH_VARIABLE_ID) final ULong appId,
-            @RequestParam final ULong accessId) {
+                                                            @RequestParam final ULong accessId) {
         return this.service.removeClient(appId, accessId)
                 .map(ResponseEntity::ok);
     }
 
     @GetMapping("/clients/{appCode}")
     public Mono<ResponseEntity<Page<Client>>> getAppClients(@PathVariable final String appCode,
-            @RequestParam(required = false) Boolean onlyWriteAccess, @RequestParam(required = false) String name,
-            Pageable pageable) {
+                                                            @RequestParam(required = false) Boolean onlyWriteAccess, @RequestParam(required = false) String name,
+                                                            Pageable pageable) {
         return this.service.getAppClients(appCode, onlyWriteAccess, name, pageable)
                 .map(ResponseEntity::ok);
     }
@@ -166,8 +183,8 @@ public class AppController
 
     @DeleteMapping("/property")
     public Mono<ResponseEntity<Boolean>> deleteProperty(@RequestParam ULong clientId,
-            @RequestParam ULong appId,
-            @RequestParam String name) {
+                                                        @RequestParam ULong appId,
+                                                        @RequestParam String name) {
 
         return this.service.deleteProperty(clientId, appId, name)
                 .map(ResponseEntity::ok);
@@ -216,7 +233,7 @@ public class AppController
 
     @DeleteMapping("/dependency")
     public Mono<ResponseEntity<Boolean>> removeDependency(@RequestParam String appCode,
-            @RequestParam String dependencyCode) {
+                                                          @RequestParam String dependencyCode) {
         return this.service.removeAppDependency(appCode, dependencyCode).map(ResponseEntity::ok);
     }
 }
