@@ -59,7 +59,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     @Override
     public Mono<Call> toCall(ExotelCall providerObject) {
-        Call call = new Call()
+        return Mono.just(new Call()
                 .setFromDialCode(providerObject.getFromDialCode())
                 .setFrom(providerObject.getFrom())
                 .setToDialCode(providerObject.getToDialCode())
@@ -68,28 +68,13 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .setCallProvider(this.getProvider())
                 .setIsOutbound(
                         ExotelDirection.getByName(providerObject.getDirection()).isOutbound())
+                .setStatus(providerObject.getExotelCallStatus().toCallStatus())
                 .setStartTime(providerObject.getStartTime())
                 .setEndTime(providerObject.getEndTime())
                 .setDuration(providerObject.getDuration())
-                .setRecordingUrl(providerObject.getRecordingUrl());
-
-        if (providerObject.getExotelCallStatus() != null) {
-            switch (providerObject.getExotelCallStatus()) {
-                case COMPLETED -> call.setStatus(CallStatus.COMPLETE);
-                case FAILED -> call.setStatus(CallStatus.FAILED);
-                case BUSY -> call.setStatus(CallStatus.BUSY);
-                case NO_ANSWER -> call.setStatus(CallStatus.NO_ANSWER);
-                case CANCELED -> call.setStatus(CallStatus.CANCELED);
-                default -> call.setStatus(CallStatus.UNKNOWN);
-            }
-        } else {
-            call.setStatus(CallStatus.ORIGINATE);
-        }
-
-        if (providerObject.getId() != null) call.setExotelCallId(providerObject.getId());
-        call.setMetadata(providerObject.toMap());
-
-        return Mono.just(call);
+                .setRecordingUrl(providerObject.getRecordingUrl())
+                .setExotelCallId(providerObject.getId() != null ? providerObject.getId() : null)
+                .setMetadata(providerObject.toMap()));
     }
 
     @Override
