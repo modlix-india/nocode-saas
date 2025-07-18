@@ -1,5 +1,9 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import static com.fincity.saas.message.util.SetterUtil.parseEnumIfPresent;
+import static com.fincity.saas.message.util.SetterUtil.parseLongIfPresent;
+import static com.fincity.saas.message.util.SetterUtil.setIfPresent;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
@@ -81,68 +85,47 @@ public class ExotelPassThruCallback implements Serializable {
     @JsonProperty("OutgoingPhoneNumber")
     private String outgoingPhoneNumber;
 
-    public static ExotelPassThruCallback fromFormData(MultiValueMap<String, String> formData) {
+    public static ExotelPassThruCallback of(MultiValueMap<String, String> formData) {
         ExotelPassThruCallback callback = new ExotelPassThruCallback();
 
-        if (formData.containsKey("CallSid")) callback.setCallSid(formData.getFirst("CallSid"));
-        if (formData.containsKey("CallFrom")) callback.setCallFrom(formData.getFirst("CallFrom"));
-        if (formData.containsKey("CallTo")) callback.setCallTo(formData.getFirst("CallTo"));
+        setIfPresent(formData, "CallSid", callback::setCallSid);
+        setIfPresent(formData, "CallFrom", callback::setCallFrom);
+        setIfPresent(formData, "CallTo", callback::setCallTo);
+        setIfPresent(formData, "Direction", callback::setDirection);
+        setIfPresent(formData, "Created", callback::setCreated);
+        setIfPresent(formData, "StartTime", callback::setStartTime);
+        setIfPresent(formData, "EndTime", callback::setEndTime);
+        setIfPresent(formData, "CallType", callback::setCallType);
+        setIfPresent(formData, "DialWhomNumber", callback::setDialWhomNumber);
+        setIfPresent(formData, "From", callback::setFrom);
+        setIfPresent(formData, "To", callback::setTo);
+        setIfPresent(formData, "CurrentTime", callback::setCurrentTime);
+        setIfPresent(formData, "CustomField", callback::setCustomField);
+        setIfPresent(formData, "RecordingUrl", callback::setRecordingUrl);
+        setIfPresent(formData, "OutgoingPhoneNumber", callback::setOutgoingPhoneNumber);
 
-        if (formData.containsKey("CallStatus")) {
-            String statusStr = formData.getFirst("CallStatus");
-            for (ExotelCallStatus status : ExotelCallStatus.values()) {
-                if (status.getDisplayName().equals(statusStr)) {
-                    callback.setCallStatus(status);
-                    break;
-                }
-            }
+        parseLongIfPresent(formData, "DialCallDuration", callback::setDialCallDuration);
+
+        parseEnumIfPresent(
+                formData,
+                "CallStatus",
+                ExotelCallStatus.class,
+                status -> status.getDisplayName().equals(formData.getFirst("CallStatus")),
+                callback::setCallStatus);
+
+        parseEnumIfPresent(
+                formData,
+                "DialCallStatus",
+                ExotelCallStatus.class,
+                status -> status.getDisplayName().equals(formData.getFirst("DialCallStatus")),
+                callback::setDialCallStatus);
+
+        String digits = formData.getFirst("digits");
+        if (digits != null) {
+            digits = digits.trim();
+            if (digits.startsWith("\"") && digits.endsWith("\"")) digits = digits.substring(1, digits.length() - 1);
+            callback.setDigits(digits);
         }
-
-        if (formData.containsKey("Direction")) callback.setDirection(formData.getFirst("Direction"));
-        if (formData.containsKey("Created")) callback.setCreated(formData.getFirst("Created"));
-
-        if (formData.containsKey("DialCallDuration")) {
-            try {
-                callback.setDialCallDuration(Long.parseLong(formData.getFirst("DialCallDuration")));
-            } catch (NumberFormatException e) {
-                // Ignore parsing errors
-            }
-        }
-
-        if (formData.containsKey("StartTime")) callback.setStartTime(formData.getFirst("StartTime"));
-        if (formData.containsKey("EndTime")) callback.setEndTime(formData.getFirst("EndTime"));
-        if (formData.containsKey("CallType")) callback.setCallType(formData.getFirst("CallType"));
-        if (formData.containsKey("DialWhomNumber")) callback.setDialWhomNumber(formData.getFirst("DialWhomNumber"));
-        if (formData.containsKey("From")) callback.setFrom(formData.getFirst("From"));
-        if (formData.containsKey("To")) callback.setTo(formData.getFirst("To"));
-        if (formData.containsKey("CurrentTime")) callback.setCurrentTime(formData.getFirst("CurrentTime"));
-
-        // Optional parameters
-        if (formData.containsKey("DialCallStatus")) {
-            String statusStr = formData.getFirst("DialCallStatus");
-            for (ExotelCallStatus status : ExotelCallStatus.values()) {
-                if (status.getDisplayName().equals(statusStr)) {
-                    callback.setDialCallStatus(status);
-                    break;
-                }
-            }
-        }
-
-        if (formData.containsKey("digits")) {
-            String digits = formData.getFirst("digits");
-            if (digits != null) {
-                digits = digits.trim();
-                if (digits.startsWith("\"") && digits.endsWith("\"")) {
-                    digits = digits.substring(1, digits.length() - 1);
-                }
-                callback.setDigits(digits);
-            }
-        }
-
-        if (formData.containsKey("CustomField")) callback.setCustomField(formData.getFirst("CustomField"));
-        if (formData.containsKey("RecordingUrl")) callback.setRecordingUrl(formData.getFirst("RecordingUrl"));
-        if (formData.containsKey("OutgoingPhoneNumber"))
-            callback.setOutgoingPhoneNumber(formData.getFirst("OutgoingPhoneNumber"));
 
         return callback;
     }

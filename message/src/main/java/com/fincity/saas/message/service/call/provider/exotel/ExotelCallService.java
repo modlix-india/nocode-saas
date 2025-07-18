@@ -10,6 +10,7 @@ import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirectio
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.request.call.CallRequest;
+import com.fincity.saas.message.model.request.call.IncomingCallRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnectAppletRequest;
@@ -23,12 +24,10 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -36,32 +35,14 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple3;
 
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExotelCallService.class);
-
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
+    private static final Logger logger = LoggerFactory.getLogger(ExotelCallService.class);
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
-
-    @Value("${app.exotel.connect.default.outgoing-phone-number:}")
-    private String defaultOutgoingPhoneNumber;
-
-    @Value("${app.exotel.connect.default.record:false}")
-    private boolean defaultRecord;
-
-    @Value("${app.exotel.connect.default.recording-channels:single}")
-    private String defaultRecordingChannels;
-
-    @Value("${app.exotel.connect.default.max-ringing-duration:30}")
-    private int defaultMaxRingingDuration;
-
-    @Value("${app.exotel.connect.default.max-conversation-duration:900}")
-    private int defaultMaxConversationDuration;
-
-    @Value("${app.exotel.connect.default.music-on-hold.type:default_tone}")
-    private String defaultMusicOnHoldType;
 
     private Mono<URI> createExotelUrl(String apiKey, String apiToken, String subDomain, String sid) {
         String schema = "https";
@@ -192,6 +173,86 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
+    public Mono<ExotelConnectAppletResponse> connectCall(
+            IncomingCallRequest incomingCallRequest, Connection connection) {
+        if (connection.getConnectionType() != ConnectionType.CALL
+                || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL)
+            return this.getMsgService()
+                    .throwMessage(
+                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                            MessageResourceService.INVALID_CONNECTION_TYPE);
+
+        if (incomingCallRequest.getDestination() == null
+                || incomingCallRequest.getDestination().isEmpty()) return super.throwMissingParam("destination");
+
+        Map<String, Object> providerRequest = incomingCallRequest.getProviderIncomingRequest();
+
+        if (providerRequest == null || providerRequest.isEmpty())
+            return super.throwMissingParam("provider information");
+
+        //TODO: Right now only supporting single destination number
+        String destinationNumber =
+                incomingCallRequest.getDestination().getFirst().getNumber();
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasPublicAccess,
+                        publicAccess -> this.createExotelCall(providerRequest, destinationNumber),
+                        (publicAccess, exotelCall) -> {
+                            Mono<ExotelCall> exotelCreated = createInternal(publicAccess, exotelCall);
+
+                            Mono<Call> callCreated = toCall(exotelCall)
+                                    .map(call -> call.setConnectionName(connection.getName()))
+                                    .flatMap(call -> super.callService.createInternal(publicAccess, call));
+
+                            Mono<ExotelConnectAppletResponse> responseCreated =
+                                    createResponse(destinationNumber, connection);
+
+                            return Mono.zip(exotelCreated, callCreated, responseCreated)
+                                    .map(Tuple3::getT3);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
+    }
+
+    private Mono<ExotelCall> createExotelCall(Map<String, Object> providerRequest, String destinationNumber) {
+        ExotelConnectAppletRequest exotelRequest = ExotelConnectAppletRequest.of(providerRequest);
+        ExotelCall exotelCall = new ExotelCall(exotelRequest);
+
+        if (exotelCall.getDirection() == null) exotelCall.setDirection(ExotelDirection.INBOUND.name());
+
+        exotelCall.setRecordingUrl(exotelRequest.getRecordingUrl());
+        exotelCall.setTo(destinationNumber);
+        return Mono.just(exotelCall);
+    }
+
+    private Mono<ExotelConnectAppletResponse> createResponse(String destination, Connection connection) {
+        ExotelConnectAppletResponse response = new ExotelConnectAppletResponse();
+
+        this.applyConnectionDetailsToResponse(response, connection.getConnectionDetails());
+
+        response.setDestination(new ExotelConnectAppletResponse.Destination().setNumbers(List.of(destination)));
+
+        return Mono.just(response);
+    }
+
+    private void applyConnectionDetailsToResponse(ExotelConnectAppletResponse response, Map<String, Object> details) {
+        response.setFetchAfterAttempt(super.getConnectionDetail(
+                details, ExotelConnectAppletResponse.Fields.fetchAfterAttempt, Boolean.class));
+        response.setDoRecord(
+                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.doRecord, Boolean.class));
+        response.setMaxRingingDuration(
+                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.maxRingingDuration, Long.class));
+        response.setMaxConversationDuration(super.getConnectionDetail(
+                details, ExotelConnectAppletResponse.Fields.maxConversationDuration, Long.class));
+
+        ExotelConnectAppletResponse.ParallelRinging parallelRinging = new ExotelConnectAppletResponse.ParallelRinging();
+        parallelRinging.setActivate(super.getConnectionDetail(
+                details, ExotelConnectAppletResponse.ParallelRinging.Fields.activate, Boolean.class));
+        parallelRinging.setMaxParallelAttempts(super.getConnectionDetail(
+                details, ExotelConnectAppletResponse.ParallelRinging.Fields.maxParallelAttempts, Integer.class));
+
+        response.setParallelRinging(parallelRinging);
+    }
+
     public Mono<ExotelCall> processCallStatusCallback(ExotelCallStatusCallback callback) {
         if (callback.getCallSid() == null) {
             logger.error("CallerSid not provided in Exotel CallBack. Discarding...");
@@ -233,66 +294,5 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                     logger.error("Error processing Exotel Passthru callback", e);
                     return Mono.empty();
                 });
-    }
-
-    public Mono<ExotelConnectAppletResponse> processConnectAppletRequest(ExotelConnectAppletRequest request) {
-        logger.debug("Processing Connect applet request: {}", request);
-
-        return FlatMapUtil.flatMapMono(
-                        () -> {
-                            if (request.getCallSid() != null) {
-                                return this.findByUniqueField(request.getCallSid())
-                                        .switchIfEmpty(Mono.defer(() -> Mono.just(new ExotelCall(request))));
-                            } else {
-                                return Mono.just(new ExotelCall(request));
-                            }
-                        },
-                        exotelCall -> exotelCall.getId() != null ? this.update(exotelCall) : this.create(exotelCall),
-                        (exotelCall, savedCall) -> {
-                            List<String> destinationNumbers = getDestinationNumbers(request);
-
-                            ExotelConnectAppletResponse response = ExotelConnectAppletResponse.builder()
-                                    .fetchAfterAttempt(false)
-                                    .destinationNumbers(destinationNumbers)
-                                    .outgoingPhoneNumber(
-                                            defaultOutgoingPhoneNumber.isEmpty() ? null : defaultOutgoingPhoneNumber)
-                                    .record(defaultRecord)
-                                    .recordingChannels(defaultRecordingChannels)
-                                    .maxRingingDuration(defaultMaxRingingDuration)
-                                    .maxConversationDuration(defaultMaxConversationDuration)
-                                    .musicOnHold(defaultMusicOnHoldType, null)
-                                    .build();
-
-                            logger.debug("Generated Connect applet response: {}", response);
-                            return Mono.just(response);
-                        })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processConnectAppletRequest"))
-                .onErrorResume(e -> {
-                    logger.error("Error processing Connect applet request", e);
-                    // Return a default response in case of error
-                    return Mono.just(createDefaultResponse());
-                });
-    }
-
-    private List<String> getDestinationNumbers(ExotelConnectAppletRequest request) {
-        // This is a placeholder implementation.
-        // In a real application, you would determine the destination numbers based on the request.
-        // For example, you might look up the agent numbers based on the caller's number,
-        // the time of day, the IVR selection (digits), etc.
-
-        // For now, we'll just return a hardcoded number
-        return Arrays.asList("+919876543210");
-    }
-
-    private ExotelConnectAppletResponse createDefaultResponse() {
-        return ExotelConnectAppletResponse.builder()
-                .fetchAfterAttempt(false)
-                .destinationNumbers(Arrays.asList("+919876543210"))
-                .record(defaultRecord)
-                .recordingChannels(defaultRecordingChannels)
-                .maxRingingDuration(defaultMaxRingingDuration)
-                .maxConversationDuration(defaultMaxConversationDuration)
-                .musicOnHold(defaultMusicOnHoldType, null)
-                .build();
     }
 }

@@ -1,13 +1,16 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import static com.fincity.saas.message.util.SetterUtil.parseLong;
+import static com.fincity.saas.message.util.SetterUtil.setIfPresent;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Map;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.springframework.util.MultiValueMap;
 
 @Data
 @Accessors(chain = true)
@@ -16,7 +19,7 @@ import org.springframework.util.MultiValueMap;
 public class ExotelConnectAppletRequest implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2774681647500516971L;
 
     @JsonProperty("CallSid")
     private String callSid;
@@ -60,7 +63,6 @@ public class ExotelConnectAppletRequest implements Serializable {
     @JsonProperty("CurrentTime")
     private String currentTime;
 
-    // Optional parameters that may be present depending on conditions
     @JsonProperty("DialCallStatus")
     private String dialCallStatus;
 
@@ -73,55 +75,35 @@ public class ExotelConnectAppletRequest implements Serializable {
     @JsonProperty("RecordingUrl")
     private String recordingUrl;
 
-    /**
-     * Creates an ExotelConnectAppletRequest from query parameters.
-     *
-     * @param queryParams The query parameters from the HTTP request
-     * @return The created ExotelConnectAppletRequest
-     */
-    public static ExotelConnectAppletRequest fromQueryParams(MultiValueMap<String, String> queryParams) {
-        ExotelConnectAppletRequest request = new ExotelConnectAppletRequest();
+    public static ExotelConnectAppletRequest of(Map<String, Object> map) {
+        ExotelConnectAppletRequest req = new ExotelConnectAppletRequest();
 
-        if (queryParams.containsKey("CallSid")) request.setCallSid(queryParams.getFirst("CallSid"));
-        if (queryParams.containsKey("CallFrom")) request.setCallFrom(queryParams.getFirst("CallFrom"));
-        if (queryParams.containsKey("CallTo")) request.setCallTo(queryParams.getFirst("CallTo"));
-        if (queryParams.containsKey("Direction")) request.setDirection(queryParams.getFirst("Direction"));
-        if (queryParams.containsKey("Created")) request.setCreated(queryParams.getFirst("Created"));
+        setIfPresent(map, "CallSid", req::setCallSid);
+        setIfPresent(map, "CallFrom", req::setCallFrom);
+        setIfPresent(map, "CallTo", req::setCallTo);
+        setIfPresent(map, "Direction", req::setDirection);
+        setIfPresent(map, "Created", req::setCreated);
+        setIfPresent(map, "StartTime", req::setStartTime);
+        setIfPresent(map, "EndTime", req::setEndTime);
+        setIfPresent(map, "CallType", req::setCallType);
+        setIfPresent(map, "DialWhomNumber", req::setDialWhomNumber);
+        setIfPresent(map, "flow_id", req::setFlowId);
+        setIfPresent(map, "From", req::setFrom);
+        setIfPresent(map, "To", req::setTo);
+        setIfPresent(map, "CurrentTime", req::setCurrentTime);
+        setIfPresent(map, "DialCallStatus", req::setDialCallStatus);
+        setIfPresent(map, "CustomField", req::setCustomField);
+        setIfPresent(map, "RecordingUrl", req::setRecordingUrl);
 
-        if (queryParams.containsKey("DialCallDuration")) {
-            try {
-                request.setDialCallDuration(Long.parseLong(queryParams.getFirst("DialCallDuration")));
-            } catch (NumberFormatException e) {
-            }
+        Object digitObj = map.get("digits");
+        if (digitObj != null) {
+            String digits = digitObj.toString().trim();
+            if (digits.startsWith("\"") && digits.endsWith("\"")) digits = digits.substring(1, digits.length() - 1);
+            req.setDigits(digits);
         }
 
-        if (queryParams.containsKey("StartTime")) request.setStartTime(queryParams.getFirst("StartTime"));
-        if (queryParams.containsKey("EndTime")) request.setEndTime(queryParams.getFirst("EndTime"));
-        if (queryParams.containsKey("CallType")) request.setCallType(queryParams.getFirst("CallType"));
-        if (queryParams.containsKey("DialWhomNumber"))
-            request.setDialWhomNumber(queryParams.getFirst("DialWhomNumber"));
-        if (queryParams.containsKey("flow_id")) request.setFlowId(queryParams.getFirst("flow_id"));
-        if (queryParams.containsKey("From")) request.setFrom(queryParams.getFirst("From"));
-        if (queryParams.containsKey("To")) request.setTo(queryParams.getFirst("To"));
-        if (queryParams.containsKey("CurrentTime")) request.setCurrentTime(queryParams.getFirst("CurrentTime"));
+        req.setDialCallDuration(parseLong(map.get("DialCallDuration")));
 
-        if (queryParams.containsKey("DialCallStatus"))
-            request.setDialCallStatus(queryParams.getFirst("DialCallStatus"));
-
-        if (queryParams.containsKey("digits")) {
-            String digits = queryParams.getFirst("digits");
-            if (digits != null) {
-                digits = digits.trim();
-                if (digits.startsWith("\"") && digits.endsWith("\"")) {
-                    digits = digits.substring(1, digits.length() - 1);
-                }
-                request.setDigits(digits);
-            }
-        }
-
-        if (queryParams.containsKey("CustomField")) request.setCustomField(queryParams.getFirst("CustomField"));
-        if (queryParams.containsKey("RecordingUrl")) request.setRecordingUrl(queryParams.getFirst("RecordingUrl"));
-
-        return request;
+        return req;
     }
 }

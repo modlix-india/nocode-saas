@@ -43,13 +43,13 @@ public class CallbackController {
             return exchange.getRequest()
                     .getBody()
                     .next()
-                    .flatMap(dataBuffer -> ExotelCallStatusCallback.fromDataBuffer(dataBuffer, objectMapper))
+                    .map(dataBuffer -> ExotelCallStatusCallback.of(dataBuffer, objectMapper))
                     .flatMap(exotelCallService::processCallStatusCallback)
                     .map(result -> ExotelCallStatusCallbackResponse.success())
                     .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));
         } else {
             return exchange.getFormData()
-                    .map(ExotelCallStatusCallback::fromFormData)
+                    .map(ExotelCallStatusCallback::of)
                     .flatMap(exotelCallService::processCallStatusCallback)
                     .map(result -> ExotelCallStatusCallbackResponse.success())
                     .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));
@@ -61,7 +61,7 @@ public class CallbackController {
             consumes = {MediaType.APPLICATION_FORM_URLENCODED_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public Mono<ExotelCallStatusCallbackResponse> handleExotelPassThruCallback(ServerWebExchange exchange) {
         return exchange.getFormData()
-                .map(ExotelPassThruCallback::fromFormData)
+                .map(ExotelPassThruCallback::of)
                 .flatMap(exotelCallService::processPassThruCallback)
                 .map(result -> ExotelCallStatusCallbackResponse.success())
                 .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));

@@ -1,8 +1,12 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
+import static com.fincity.saas.message.util.SetterUtil.parseEnumIfPresent;
+import static com.fincity.saas.message.util.SetterUtil.setIfPresent;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelLeg;
 import java.io.IOException;
@@ -13,8 +17,8 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpStatus;
 import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
 
 @Data
 @Accessors(chain = true)
@@ -70,45 +74,34 @@ public class ExotelCallStatusCallback implements Serializable {
     @JsonProperty("Legs")
     private List<ExotelLeg> legs;
 
-    public static Mono<ExotelCallStatusCallback> fromDataBuffer(DataBuffer dataBuffer, ObjectMapper objectMapper) {
+    public static ExotelCallStatusCallback of(DataBuffer dataBuffer, ObjectMapper objectMapper) {
         try {
             byte[] bytes = new byte[dataBuffer.readableByteCount()];
             dataBuffer.read(bytes);
-            ExotelCallStatusCallback callback = objectMapper.readValue(bytes, ExotelCallStatusCallback.class);
-            return Mono.just(callback);
+            return objectMapper.readValue(bytes, ExotelCallStatusCallback.class);
         } catch (IOException e) {
-            return Mono.error(new RuntimeException("Error parsing JSON request: " + e.getMessage()));
+            throw new GenericException(HttpStatus.BAD_REQUEST, "Error parsing JSON request: " + e.getMessage());
         }
     }
 
-    public static ExotelCallStatusCallback fromFormData(MultiValueMap<String, String> formData) {
+    public static ExotelCallStatusCallback of(MultiValueMap<String, String> formData) {
         ExotelCallStatusCallback callback = new ExotelCallStatusCallback();
 
-        if (formData.containsKey("CallSid")) callback.setCallSid(formData.getFirst("CallSid"));
+        setIfPresent(formData, "CallSid", callback::setCallSid);
+        setIfPresent(formData, "RecordingUrl", callback::setRecordingUrl);
+        setIfPresent(formData, "EventType", callback::setEventType);
+        setIfPresent(formData, "To", callback::setTo);
+        setIfPresent(formData, "From", callback::setFrom);
+        setIfPresent(formData, "PhoneNumberSid", callback::setPhoneNumberSid);
+        setIfPresent(formData, "Direction", callback::setDirection);
+        setIfPresent(formData, "CustomField", callback::setCustomField);
 
-        if (formData.containsKey("Status")) {
-            String statusStr = formData.getFirst("Status");
-            for (ExotelCallStatus status : ExotelCallStatus.values()) {
-                if (status.getDisplayName().equals(statusStr)) {
-                    callback.setStatus(status);
-                    break;
-                }
-            }
-        }
-
-        if (formData.containsKey("RecordingUrl")) callback.setRecordingUrl(formData.getFirst("RecordingUrl"));
-
-        if (formData.containsKey("EventType")) callback.setEventType(formData.getFirst("EventType"));
-
-        if (formData.containsKey("To")) callback.setTo(formData.getFirst("To"));
-
-        if (formData.containsKey("From")) callback.setFrom(formData.getFirst("From"));
-
-        if (formData.containsKey("PhoneNumberSid")) callback.setPhoneNumberSid(formData.getFirst("PhoneNumberSid"));
-
-        if (formData.containsKey("Direction")) callback.setDirection(formData.getFirst("Direction"));
-
-        if (formData.containsKey("CustomField")) callback.setCustomField(formData.getFirst("CustomField"));
+        parseEnumIfPresent(
+                formData,
+                "Status",
+                ExotelCallStatus.class,
+                status -> status.getDisplayName().equals(formData.getFirst("Status")),
+                callback::setStatus);
 
         return callback;
     }

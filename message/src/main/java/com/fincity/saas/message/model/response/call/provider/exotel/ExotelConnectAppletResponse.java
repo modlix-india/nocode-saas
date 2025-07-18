@@ -28,16 +28,16 @@ public class ExotelConnectAppletResponse implements Serializable {
     private String outgoingPhoneNumber;
 
     @JsonProperty("record")
-    private Boolean record;
+    private Boolean doRecord;
 
     @JsonProperty("recording_channels")
     private String recordingChannels;
 
     @JsonProperty("max_ringing_duration")
-    private Integer maxRingingDuration;
+    private Long maxRingingDuration;
 
     @JsonProperty("max_conversation_duration")
-    private Integer maxConversationDuration;
+    private Long maxConversationDuration;
 
     @JsonProperty("music_on_hold")
     private MusicOnHold musicOnHold;
@@ -51,9 +51,6 @@ public class ExotelConnectAppletResponse implements Serializable {
     @JsonProperty("start_call_playback")
     private StartCallPlayback startCallPlayback;
 
-    /**
-     * Destination class for the numbers to dial.
-     */
     @Data
     @Accessors(chain = true)
     @FieldNameConstants
@@ -116,89 +113,5 @@ public class ExotelConnectAppletResponse implements Serializable {
 
         @JsonProperty("value")
         private String value;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private final ExotelConnectAppletResponse response = new ExotelConnectAppletResponse();
-        private Destination destination;
-        private MusicOnHold musicOnHold;
-        private ParallelRinging parallelRinging;
-        private StartCallPlayback startCallPlayback;
-
-        public Builder fetchAfterAttempt(Boolean fetchAfterAttempt) {
-            response.setFetchAfterAttempt(fetchAfterAttempt);
-            return this;
-        }
-
-        public Builder destinationNumbers(List<String> numbers) {
-            if (destination == null) {
-                destination = new Destination();
-                response.setDestination(destination);
-            }
-            destination.setNumbers(numbers);
-            return this;
-        }
-
-        public Builder outgoingPhoneNumber(String outgoingPhoneNumber) {
-            response.setOutgoingPhoneNumber(outgoingPhoneNumber);
-            return this;
-        }
-
-        public Builder record(Boolean record) {
-            response.setRecord(record);
-            return this;
-        }
-
-        public Builder recordingChannels(String recordingChannels) {
-            response.setRecordingChannels(recordingChannels);
-            return this;
-        }
-
-        public Builder maxRingingDuration(Integer maxRingingDuration) {
-            response.setMaxRingingDuration(maxRingingDuration);
-            return this;
-        }
-
-        public Builder maxConversationDuration(Integer maxConversationDuration) {
-            response.setMaxConversationDuration(maxConversationDuration);
-            return this;
-        }
-
-        public Builder musicOnHold(String type, String value) {
-            musicOnHold = new MusicOnHold().setType(type);
-            if (value != null) {
-                musicOnHold.setValue(value);
-            }
-            response.setMusicOnHold(musicOnHold);
-            return this;
-        }
-
-        public Builder parallelRinging(Boolean activate, Integer maxParallelAttempts) {
-            parallelRinging = new ParallelRinging().setActivate(activate).setMaxParallelAttempts(maxParallelAttempts);
-            response.setParallelRinging(parallelRinging);
-            return this;
-        }
-
-        public Builder dialPassthruEventUrl(String dialPassthruEventUrl) {
-            response.setDialPassthruEventUrl(dialPassthruEventUrl);
-            return this;
-        }
-
-        public Builder startCallPlayback(String playbackTo, String type, String value) {
-            startCallPlayback = new StartCallPlayback()
-                    .setPlaybackTo(playbackTo)
-                    .setType(type)
-                    .setValue(value);
-            response.setStartCallPlayback(startCallPlayback);
-            return this;
-        }
-
-        public ExotelConnectAppletResponse build() {
-            return response;
-        }
     }
 }
