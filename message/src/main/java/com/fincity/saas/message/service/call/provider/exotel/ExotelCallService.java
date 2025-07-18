@@ -173,31 +173,40 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
-    public Mono<ExotelConnectAppletResponse> connectCall(
-            IncomingCallRequest incomingCallRequest, Connection connection) {
-        if (connection.getConnectionType() != ConnectionType.CALL
-                || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL)
-            return this.getMsgService()
-                    .throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            MessageResourceService.INVALID_CONNECTION_TYPE);
+    public Mono<ExotelConnectAppletResponse> connectCall(IncomingCallRequest incomingCallRequest) {
 
         if (incomingCallRequest.getDestination() == null
-                || incomingCallRequest.getDestination().isEmpty()) return super.throwMissingParam("destination");
+                || incomingCallRequest.getDestination().isEmpty()) {
+            logger.error("Missing required parameter: destination");
+            return Mono.empty();
+        }
 
         Map<String, Object> providerRequest = incomingCallRequest.getProviderIncomingRequest();
 
-        if (providerRequest == null || providerRequest.isEmpty())
-            return super.throwMissingParam("provider information");
+        if (providerRequest == null || providerRequest.isEmpty()) {
+            logger.error("Missing required parameter: provider information");
+            return Mono.empty();
+        }
 
-        //TODO: Right now only supporting single destination number
+        // TODO: Right now only supporting single destination number
         String destinationNumber =
                 incomingCallRequest.getDestination().getFirst().getNumber();
 
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
-                        publicAccess -> this.createExotelCall(providerRequest, destinationNumber),
-                        (publicAccess, exotelCall) -> {
+                        publicAccess -> super.callConnectionService.getConnection(
+                                publicAccess.getAppCode(),
+                                incomingCallRequest.getConnectionName(),
+                                publicAccess.getClientCode()),
+                        (publicAccess, connection) -> this.createExotelCall(providerRequest, destinationNumber),
+                        (publicAccess, connection, exotelCall) -> {
+                            if (connection.getConnectionType() != ConnectionType.CALL
+                                    || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL) {
+                                logger.error("Invalid connection type: Expected CALL/CALL_EXOTEL but got {}/{}",
+                                        connection.getConnectionType(), connection.getConnectionSubType());
+                                return Mono.empty();
+                            }
+
                             Mono<ExotelCall> exotelCreated = createInternal(publicAccess, exotelCall);
 
                             Mono<Call> callCreated = toCall(exotelCall)

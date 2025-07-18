@@ -5,20 +5,24 @@ import com.fincity.saas.message.dao.call.provider.AbstractCallProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
+import com.fincity.saas.message.service.call.CallConnectionService;
 import com.fincity.saas.message.service.call.CallService;
 import com.fincity.saas.message.service.call.IAppCallService;
-import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 public abstract class AbstractCallProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends AbstractCallProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IAppCallService<D> {
 
+    public static final String CALL_BACK_URI = "/api/call/callback";
     protected CallService callService;
+    protected CallConnectionService callConnectionService;
 
     @Lazy
     @Autowired
@@ -26,7 +30,11 @@ public abstract class AbstractCallProviderService<
         this.callService = callService;
     }
 
-    public static final String CALL_BACK_URI = "/api/call/callback";
+    @Lazy
+    @Autowired
+    private void setCallConnectionService(CallConnectionService callConnectionService) {
+        this.callConnectionService = callConnectionService;
+    }
 
     protected <T> Mono<T> throwMissingParam(String paramName) {
         return super.msgService.throwMessage(
