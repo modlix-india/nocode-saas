@@ -9,7 +9,6 @@ import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.jooq.Condition;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -37,7 +36,8 @@ public class CoreTokenDAO extends AbstractUpdatableDAO<CoreTokensRecord, ULong, 
                 .map(result -> Tuples.of(result.get(CORE_TOKENS.TOKEN), result.get(CORE_TOKENS.EXPIRES_AT)));
     }
 
-    public Mono<CoreToken> getActiveToken(String clientCode, String appCode, String connectionName, CoreTokensTokenType tokenType) {
+    public Mono<CoreToken> getActiveToken(
+            String clientCode, String appCode, String connectionName, CoreTokensTokenType tokenType) {
         return Mono.from(this.dslContext
                         .selectFrom(CORE_TOKENS)
                         .where(CORE_TOKENS.CLIENT_CODE.eq(clientCode))
