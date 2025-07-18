@@ -122,6 +122,16 @@ public abstract class BaseUpdatableService<
 
         entity.setAppCode(access.getAppCode());
         entity.setClientCode(access.getClientCode());
+        entity.setUserId(access.getUserId());
+
+        return super.create(entity);
+    }
+
+    public Mono<D> createInternal(MessageAccess publicAccess, ULong userId, D entity) {
+
+        entity.setAppCode(publicAccess.getAppCode());
+        entity.setClientCode(publicAccess.getClientCode());
+        entity.setUserId(userId);
 
         return super.create(entity);
     }

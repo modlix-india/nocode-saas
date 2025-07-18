@@ -1,20 +1,25 @@
 package com.fincity.saas.message.service.call.provider;
 
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.message.dao.call.provider.AbstractCallProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.model.common.IdAndValue;
+import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.call.CallConnectionService;
 import com.fincity.saas.message.service.call.CallService;
 import com.fincity.saas.message.service.call.IAppCallService;
+import com.fincity.saas.message.service.call.event.CallEventService;
+import com.fincity.saas.message.util.PhoneUtil;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
-
-import java.util.Map;
 
 public abstract class AbstractCallProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends AbstractCallProviderDAO<R, D>>
@@ -23,6 +28,7 @@ public abstract class AbstractCallProviderService<
     public static final String CALL_BACK_URI = "/api/call/callback";
     protected CallService callService;
     protected CallConnectionService callConnectionService;
+    protected CallEventService callEventService;
 
     @Lazy
     @Autowired
@@ -34,6 +40,12 @@ public abstract class AbstractCallProviderService<
     @Autowired
     private void setCallConnectionService(CallConnectionService callConnectionService) {
         this.callConnectionService = callConnectionService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setCallEventService(CallEventService callEventService) {
+        this.callEventService = callEventService;
     }
 
     protected <T> Mono<T> throwMissingParam(String paramName) {
@@ -84,5 +96,12 @@ public abstract class AbstractCallProviderService<
         return this.securityService
                 .getAppUrl(appCode, clientCode)
                 .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri());
+    }
+
+    protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
+        return this.securityService
+                .getUserInternal(userId.toBigInteger())
+                .map(user -> IdAndValue.of(
+                        ULongUtil.valueOf(user.get("id")), PhoneUtil.parse(String.valueOf(user.get("phoneNumber")))));
     }
 }

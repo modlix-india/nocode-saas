@@ -8,7 +8,9 @@ import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirection;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
+import com.fincity.saas.message.model.common.IdAndValue;
 import com.fincity.saas.message.model.common.MessageAccess;
+import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.model.request.call.IncomingCallRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
@@ -26,8 +28,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -35,13 +36,11 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple3;
 
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO> {
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
-    private static final Logger logger = LoggerFactory.getLogger(ExotelCallService.class);
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
     private Mono<URI> createExotelUrl(String apiKey, String apiToken, String subDomain, String sid) {
@@ -77,6 +76,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     @Override
     public Mono<Call> toCall(ExotelCall providerObject) {
         return Mono.just(new Call()
+                        .setUserId(providerObject.getUserId())
                         .setFromDialCode(providerObject.getFromDialCode())
                         .setFrom(providerObject.getFrom())
                         .setToDialCode(providerObject.getToDialCode())
@@ -105,24 +105,26 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             MessageResourceService.INVALID_CONNECTION_TYPE);
 
-        String from = callRequest.getFromNumber().getNumber();
         String to = callRequest.getToNumber().getNumber();
         String callerId = callRequest.getCallerId();
 
-        if (from == null) return super.throwMissingParam("from");
+        if (to == null) return super.throwMissingParam(ExotelCallRequest.Fields.to);
 
-        if (to == null) return super.throwMissingParam("to");
+        if (callerId == null) return super.throwMissingParam(ExotelCallRequest.Fields.callerId);
 
-        if (callerId == null) return super.throwMissingParam("callerId");
-
-        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(from, to, callerId, Boolean.TRUE);
+        ExotelCallRequest exotelCallRequest = ExotelCallRequest.of(to, callerId, Boolean.TRUE);
         this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.makeExotelCall(exotelCallRequest, connection),
-                        exotelCall -> this.createInternal(access, exotelCall),
-                        (exotelCall, created) ->
-                                this.toCall(exotelCall).map(call -> call.setConnectionName(connection.getName())))
+                        () -> super.getUserIdAndPhone(callRequest.getUserId()),
+                        user -> this.makeExotelCall(exotelCallRequest, user, connection),
+                        (user, exotelCall) -> this.createInternal(access, exotelCall),
+                        (user, exotelCall, created) ->
+                                this.toCall(exotelCall).map(call -> call.setConnectionName(connection.getName())),
+                        (user, exotelCall, eCreated, cCreated) -> super.callEventService
+                                .sendMakeCallEvent(
+                                        access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
+                                .thenReturn(cCreated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCall"));
     }
 
@@ -145,8 +147,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         request.setCustomField(super.getConnectionDetail(details, ExotelCallRequest.Fields.customField, String.class));
     }
 
-    private Mono<ExotelCall> makeExotelCall(ExotelCallRequest request, Connection conn) {
+    private Mono<ExotelCall> makeExotelCall(
+            ExotelCallRequest request, IdAndValue<ULong, PhoneNumber> userInfo, Connection conn) {
         Map<String, Object> details = conn.getConnectionDetails();
+
+        request.setFrom(userInfo.getValue().getNumber());
 
         return FlatMapUtil.flatMapMono(
                         () -> super.getCallBackUrl(conn.getAppCode(), conn.getClientCode()),
@@ -169,15 +174,16 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                 .body(BodyInserters.fromFormData(formData))
                                 .retrieve()
                                 .bodyToMono(ExotelCallResponse.class)
-                                .map(response -> new ExotelCall(request).update(response)))
+                                .map(response -> new ExotelCall(request)
+                                        .setUserId(userInfo.getId())
+                                        .update(response)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
     public Mono<ExotelConnectAppletResponse> connectCall(IncomingCallRequest incomingCallRequest) {
 
-        if (incomingCallRequest.getDestination() == null
-                || incomingCallRequest.getDestination().isEmpty()) {
-            logger.error("Missing required parameter: destination");
+        if (incomingCallRequest.getUserId() == null) {
+            logger.error("Missing required parameter: UserId");
             return Mono.empty();
         }
 
@@ -188,36 +194,43 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
             return Mono.empty();
         }
 
-        // TODO: Right now only supporting single destination number
-        String destinationNumber =
-                incomingCallRequest.getDestination().getFirst().getNumber();
-
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
-                        publicAccess -> super.callConnectionService.getConnection(
+                        publicAccess -> super.getUserIdAndPhone(incomingCallRequest.getUserId()),
+                        (publicAccess, user) -> super.callConnectionService.getConnection(
                                 publicAccess.getAppCode(),
                                 incomingCallRequest.getConnectionName(),
                                 publicAccess.getClientCode()),
-                        (publicAccess, connection) -> this.createExotelCall(providerRequest, destinationNumber),
-                        (publicAccess, connection, exotelCall) -> {
+                        (publicAccess, user, connection) -> this.createExotelCall(
+                                providerRequest, user.getValue().getNumber()),
+                        (publicAccess, user, connection, exotelCall) -> {
                             if (connection.getConnectionType() != ConnectionType.CALL
                                     || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL) {
-                                logger.error("Invalid connection type: Expected CALL/CALL_EXOTEL but got {}/{}",
-                                        connection.getConnectionType(), connection.getConnectionSubType());
+                                logger.error(
+                                        "Invalid connection type: Expected CALL/CALL_EXOTEL but got {}/{}",
+                                        connection.getConnectionType(),
+                                        connection.getConnectionSubType());
                                 return Mono.empty();
                             }
 
-                            Mono<ExotelCall> exotelCreated = createInternal(publicAccess, exotelCall);
+                            Mono<ExotelCall> exotelCreated = this.createInternal(publicAccess, exotelCall);
 
-                            Mono<Call> callCreated = toCall(exotelCall)
+                            Mono<Call> callCreated = this.toCall(exotelCall)
                                     .map(call -> call.setConnectionName(connection.getName()))
-                                    .flatMap(call -> super.callService.createInternal(publicAccess, call));
+                                    .flatMap(call -> super.callService.createInternal(
+                                            publicAccess, incomingCallRequest.getUserId(), call));
 
                             Mono<ExotelConnectAppletResponse> responseCreated =
-                                    createResponse(destinationNumber, connection);
+                                    createResponse(user.getValue().getNumber(), connection);
 
                             return Mono.zip(exotelCreated, callCreated, responseCreated)
-                                    .map(Tuple3::getT3);
+                                    .flatMap(tuple -> super.callEventService
+                                            .sendIncomingCallEvent(
+                                                    publicAccess.getAppCode(),
+                                                    publicAccess.getClientCode(),
+                                                    user.getId(),
+                                                    tuple.getT1())
+                                            .thenReturn(tuple.getT3()));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
     }
@@ -237,7 +250,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         ExotelConnectAppletResponse response = new ExotelConnectAppletResponse();
 
         this.applyConnectionDetailsToResponse(response, connection.getConnectionDetails());
-
         response.setDestination(new ExotelConnectAppletResponse.Destination().setNumbers(List.of(destination)));
 
         return Mono.just(response);
@@ -270,7 +282,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
         return FlatMapUtil.flatMapMono(
                         () -> this.findByUniqueField(callback.getCallSid()),
-                        exotelCall -> this.update(exotelCall.update(callback)))
+                        exotelCall -> this.update(exotelCall.update(callback)),
+                        (exotelCall, updated) -> super.callEventService
+                                .sendCallStatusEvent(
+                                        updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
+                                .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processCallStatusCallback"))
                 .switchIfEmpty(Mono.defer(() -> {
                     logger.error("Exotel CallSid not found. Discarding...");
@@ -289,16 +305,17 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         }
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.findByUniqueField(callback.getCallSid()).switchIfEmpty(Mono.defer(() -> {
-                            ExotelCall newCall = new ExotelCall();
-                            newCall.setSid(callback.getCallSid());
-                            return Mono.just(newCall);
-                        })),
-                        exotelCall -> {
-                            exotelCall.update(callback);
-                            return exotelCall.getId() != null ? this.update(exotelCall) : this.create(exotelCall);
-                        })
+                        () -> this.findByUniqueField(callback.getCallSid()),
+                        exotelCall -> this.update(exotelCall.update(callback)),
+                        (exotelCall, updated) -> super.callEventService
+                                .sendPassthruCallbackEvent(
+                                        updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
+                                .thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processPassThruCallback"))
+                .switchIfEmpty(Mono.defer(() -> {
+                    logger.error("Exotel CallSid not found. Discarding...");
+                    return Mono.empty();
+                }))
                 .onErrorResume(e -> {
                     logger.error("Error processing Exotel Passthru callback", e);
                     return Mono.empty();

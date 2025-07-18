@@ -67,6 +67,16 @@ entity-processor:
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
 
+message:
+  mongo:
+    uri: mongodb://localhost:27017/message?authSource=admin
+  db:
+    url: r2dbc:mysql://localhost:3306/message?serverTimezone=UTC
+    username: root
+    password: Vishwas123#
+    flyway:
+      url: jdbc:mysql://localhost:3306/message
+
 spring:
   flyway:
     enabled: false

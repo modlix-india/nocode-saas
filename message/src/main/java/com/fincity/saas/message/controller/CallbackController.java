@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
-import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping(AbstractCallProviderService.CALL_BACK_URI)
 public class CallbackController {
 
-    private static final String EXOTEL_PROVIDER_URI = "/" + ConnectionSubType.CALL_EXOTEL.getProvider();
     private final ExotelCallService exotelCallService;
     private final ObjectMapper objectMapper;
 

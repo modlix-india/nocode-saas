@@ -304,7 +304,7 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.message.enums.call.exotel.ExotelCallStatus</userType>
+                                            <userType>com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus</userType>
                                             <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>

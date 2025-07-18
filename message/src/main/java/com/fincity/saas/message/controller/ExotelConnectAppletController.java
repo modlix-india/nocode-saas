@@ -25,10 +25,9 @@ public class ExotelConnectAppletController {
 
     @PostMapping("/call")
     public Mono<ExotelConnectAppletResponse> connectCall(@RequestBody IncomingCallRequest request) {
-        return exotelCallService.connectCall(request)
-                .onErrorResume(e -> {
-                    logger.error("Error in connectCall: {}", e.getMessage(), e);
-                    return Mono.empty();
-                });
+        return exotelCallService.connectCall(request).onErrorResume(e -> {
+            logger.error("Error in connectCall: {}", e.getMessage(), e);
+            return Mono.empty();
+        });
     }
 }

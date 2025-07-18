@@ -3,8 +3,10 @@ package com.fincity.saas.message.feign;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 
+@ReactiveFeignClient(name = "core")
 public interface IFeignCoreService {
 
     String CONNECTION_PATH = "/api/core/connections/internal";

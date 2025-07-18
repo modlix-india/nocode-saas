@@ -30,6 +30,7 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
     private String appCode;
     private String clientCode;
+    private ULong userId;
 
     private String code = UniqueUtil.shortUUID();
 
@@ -51,9 +52,25 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
         this.setAppCode(baseUpdatableDto.getAppCode());
         this.setClientCode(baseUpdatableDto.getClientCode());
+        this.setUserId(baseUpdatableDto.getUserId());
 
         this.code = baseUpdatableDto.code;
         this.isActive = baseUpdatableDto.isActive;
+    }
+
+    public T setAppCode(String appCode) {
+        this.appCode = appCode;
+        return (T) this;
+    }
+
+    public T setClientCode(String clientCode) {
+        this.clientCode = clientCode;
+        return (T) this;
+    }
+
+    public T setUserId(ULong userId) {
+        this.userId = userId;
+        return (T) this;
     }
 
     public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
