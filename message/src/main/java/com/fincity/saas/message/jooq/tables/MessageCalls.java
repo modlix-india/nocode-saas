@@ -82,16 +82,16 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
     public final TableField<MessageCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this Call.");
 
     /**
-     * The column <code>message.message_calls.CODE</code>. Unique Code to
-     * identify this row.
-     */
-    public final TableField<MessageCallsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
-
-    /**
      * The column <code>message.message_calls.USER_ID</code>. ID of the user
      * associated with this Call.
      */
     public final TableField<MessageCallsRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user associated with this Call.");
+
+    /**
+     * The column <code>message.message_calls.CODE</code>. Unique Code to
+     * identify this row.
+     */
+    public final TableField<MessageCallsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
      * The column <code>message.message_calls.FROM_DIAL_CODE</code>. Dial code

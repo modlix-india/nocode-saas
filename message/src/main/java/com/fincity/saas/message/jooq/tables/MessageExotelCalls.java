@@ -80,6 +80,12 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code related to this Exotel Call.");
 
     /**
+     * The column <code>message.message_exotel_calls.USER_ID</code>. ID of the
+     * user associated with this Exotel Call.
+     */
+    public final TableField<MessageExotelCallsRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user associated with this Exotel Call.");
+
+    /**
      * The column <code>message.message_exotel_calls.CODE</code>. Unique Code to
      * identify this row.
      */

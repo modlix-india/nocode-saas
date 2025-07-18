@@ -73,28 +73,11 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     }
 
     /**
-     * Setter for <code>message.message_calls.CODE</code>. Unique Code to
-     * identify this row.
-     */
-    public MessageCallsRecord setCode(String value) {
-        set(3, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.CODE</code>. Unique Code to
-     * identify this row.
-     */
-    public String getCode() {
-        return (String) get(3);
-    }
-
-    /**
      * Setter for <code>message.message_calls.USER_ID</code>. ID of the user
      * associated with this Call.
      */
     public MessageCallsRecord setUserId(ULong value) {
-        set(4, value);
+        set(3, value);
         return this;
     }
 
@@ -103,7 +86,24 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * associated with this Call.
      */
     public ULong getUserId() {
-        return (ULong) get(4);
+        return (ULong) get(3);
+    }
+
+    /**
+     * Setter for <code>message.message_calls.CODE</code>. Unique Code to
+     * identify this row.
+     */
+    public MessageCallsRecord setCode(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_calls.CODE</code>. Unique Code to
+     * identify this row.
+     */
+    public String getCode() {
+        return (String) get(4);
     }
 
     /**
@@ -469,14 +469,14 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     /**
      * Create a detached, initialised MessageCallsRecord
      */
-    public MessageCallsRecord(ULong id, String appCode, String clientCode, String code, ULong userId, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String callerId, String connectionName, String callProvider, Byte isOutbound, CallStatus callStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, String recordingUrl, ULong exotelCallId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String callerId, String connectionName, String callProvider, Byte isOutbound, CallStatus callStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, String recordingUrl, ULong exotelCallId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageCalls.MESSAGE_CALLS);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
-        setCode(code);
         setUserId(userId);
+        setCode(code);
         setFromDialCode(fromDialCode);
         setFromPhone(fromPhone);
         setToDialCode(toDialCode);

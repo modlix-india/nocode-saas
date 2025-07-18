@@ -54,8 +54,13 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         this.setClientCode(baseUpdatableDto.getClientCode());
         this.setUserId(baseUpdatableDto.getUserId());
 
-        this.code = baseUpdatableDto.code;
-        this.isActive = baseUpdatableDto.isActive;
+        this.setCode(baseUpdatableDto.getCode());
+        this.setActive(baseUpdatableDto.isActive());
+    }
+
+    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
+        return baseDtoList.stream()
+                .collect(Collectors.toMap(BaseUpdatableDto::getId, Function.identity(), (a, b) -> b));
     }
 
     public T setAppCode(String appCode) {
@@ -71,11 +76,6 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     public T setUserId(ULong userId) {
         this.userId = userId;
         return (T) this;
-    }
-
-    public static <T extends BaseUpdatableDto<T>> Map<ULong, T> toIdMap(Collection<T> baseDtoList) {
-        return baseDtoList.stream()
-                .collect(Collectors.toMap(BaseUpdatableDto::getId, Function.identity(), (a, b) -> b));
     }
 
     public T setCode() {
