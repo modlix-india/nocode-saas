@@ -33,6 +33,10 @@ spring:
           uri: lb://entity-processor
           predicates:
             - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**,
+        - id: message
+          uri: lb://message
+          predicates:
+            - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**,
         - id: ui
           uri: lb://ui
           predicates:

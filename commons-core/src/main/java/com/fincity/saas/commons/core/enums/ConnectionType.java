@@ -13,6 +13,8 @@ public enum ConnectionType {
 
     TEXT_MESSAGE,
 
+    CALL(ConnectionSubType.EXOTEL),
+
     REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2);
 
     private final Set<ConnectionSubType> allowedSubtypes;
