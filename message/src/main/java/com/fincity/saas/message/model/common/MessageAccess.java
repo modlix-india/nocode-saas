@@ -2,6 +2,7 @@ package com.fincity.saas.message.model.common;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -19,6 +20,7 @@ public final class MessageAccess implements Serializable {
     private String clientCode;
     private ULong userId;
     private boolean hasAccessFlag;
+    private ContextUser user;
 
     public static MessageAccess of(String appCode, String clientCode, ULong userId, boolean hasAccessFlag) {
         return new MessageAccess()

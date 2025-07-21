@@ -36,7 +36,7 @@ public class CallEventService extends AbstractServerSentEventService {
                 .setClientCode(clientCode)
                 .setUserId(userId.toBigInteger())
                 .setData(data.toMap());
-        return sendCallEvent(event);
+        return this.sendCallEvent(event);
     }
 
     public <E extends IClassConvertor> Mono<Void> sendIncomingCallEvent(
@@ -47,7 +47,7 @@ public class CallEventService extends AbstractServerSentEventService {
                 .setClientCode(clientCode)
                 .setUserId(userId.toBigInteger())
                 .setData(data.toMap());
-        return sendCallEvent(event);
+        return this.sendCallEvent(event);
     }
 
     public <E extends IClassConvertor> Mono<Void> sendCallStatusEvent(
@@ -58,7 +58,7 @@ public class CallEventService extends AbstractServerSentEventService {
                 .setClientCode(clientCode)
                 .setUserId(userId.toBigInteger())
                 .setData(data.toMap());
-        return sendCallEvent(event);
+        return this.sendCallEvent(event);
     }
 
     public <E extends IClassConvertor> Mono<Void> sendPassthruCallbackEvent(
@@ -69,6 +69,6 @@ public class CallEventService extends AbstractServerSentEventService {
                 .setClientCode(clientCode)
                 .setUserId(userId.toBigInteger())
                 .setData(data.toMap());
-        return sendCallEvent(event);
+        return this.sendCallEvent(event);
     }
 }

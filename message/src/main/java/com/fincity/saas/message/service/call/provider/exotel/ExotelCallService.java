@@ -8,9 +8,7 @@ import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirection;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
-import com.fincity.saas.message.model.common.IdAndValue;
 import com.fincity.saas.message.model.common.MessageAccess;
-import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.model.request.call.IncomingCallRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
@@ -24,11 +22,11 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
+import com.fincity.saas.message.util.PhoneUtil;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -116,12 +114,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.getUserIdAndPhone(callRequest.getUserId()),
-                        user -> this.makeExotelCall(exotelCallRequest, user, connection),
-                        (user, exotelCall) -> this.createInternal(access, exotelCall),
-                        (user, exotelCall, created) ->
+                        () -> this.makeExotelCall(access, exotelCallRequest, connection),
+                        exotelCall -> this.createInternal(access, exotelCall),
+                        (exotelCall, created) ->
                                 this.toCall(exotelCall).map(call -> call.setConnectionName(connection.getName())),
-                        (user, exotelCall, eCreated, cCreated) -> super.callEventService
+                        (exotelCall, eCreated, cCreated) -> super.callEventService
                                 .sendMakeCallEvent(
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
                                 .thenReturn(cCreated))
@@ -147,11 +144,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         request.setCustomField(super.getConnectionDetail(details, ExotelCallRequest.Fields.customField, String.class));
     }
 
-    private Mono<ExotelCall> makeExotelCall(
-            ExotelCallRequest request, IdAndValue<ULong, PhoneNumber> userInfo, Connection conn) {
+    private Mono<ExotelCall> makeExotelCall(MessageAccess messageAccess, ExotelCallRequest request, Connection conn) {
         Map<String, Object> details = conn.getConnectionDetails();
 
-        request.setFrom(userInfo.getValue().getNumber());
+        request.setFrom(
+                PhoneUtil.parse(messageAccess.getUser().getPhoneNumber()).getNumber());
 
         return FlatMapUtil.flatMapMono(
                         () -> super.getCallBackUrl(conn.getAppCode(), conn.getClientCode()),
@@ -175,7 +172,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                 .retrieve()
                                 .bodyToMono(ExotelCallResponse.class)
                                 .map(response -> new ExotelCall(request)
-                                        .setUserId(userInfo.getId())
+                                        .setUserId(messageAccess.getUserId())
                                         .update(response)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }

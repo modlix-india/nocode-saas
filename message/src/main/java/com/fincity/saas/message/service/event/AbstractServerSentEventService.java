@@ -18,24 +18,25 @@ public abstract class AbstractServerSentEventService {
     protected final Map<String, Many<MessageServerEvent>> eventSinks = new ConcurrentHashMap<>();
 
     public Flux<MessageServerEvent> getEventStream(String appCode, String clientCode, BigInteger userId) {
-        String key = getEventSinkKey(appCode, clientCode, userId);
-        Many<MessageServerEvent> sink =
-                eventSinks.computeIfAbsent(key, k -> Sinks.many().multicast().onBackpressureBuffer());
-        return sink.asFlux();
+        return this.getSink(appCode, clientCode, userId).asFlux();
     }
 
     public Mono<Void> sendEvent(MessageServerEvent event) {
         if (event == null || event.getAppCode() == null || event.getClientCode() == null)
             return Mono.error(new IllegalArgumentException("Event, appCode, and clientCode cannot be null"));
 
-        String key = getEventSinkKey(event.getAppCode(), event.getClientCode(), event.getUserId());
-        Many<MessageServerEvent> sink =
-                eventSinks.computeIfAbsent(key, k -> Sinks.many().multicast().onBackpressureBuffer());
+        Many<MessageServerEvent> sink = getSink(event.getAppCode(), event.getClientCode(), event.getUserId());
 
         return Mono.fromRunnable(() -> {
             Sinks.EmitResult result = sink.tryEmitNext(event);
             if (result.isFailure()) logger.error("Failed to emit event: {}", result);
         });
+    }
+
+    private Many<MessageServerEvent> getSink(String appCode, String clientCode, BigInteger userId) {
+        return eventSinks.computeIfAbsent(
+                getEventSinkKey(appCode, clientCode, userId),
+                k -> Sinks.many().multicast().onBackpressureBuffer());
     }
 
     protected String getEventSinkKey(String appCode, String clientCode, BigInteger userId) {

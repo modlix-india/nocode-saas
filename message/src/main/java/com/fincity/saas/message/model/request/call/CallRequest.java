@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fincity.saas.message.model.common.PhoneNumber;
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -13,7 +12,6 @@ public class CallRequest {
 
     private String appCode;
     private String clientCode;
-    private ULong userId;
     private PhoneNumber toNumber;
     private String callerId;
     private String connectionName;
