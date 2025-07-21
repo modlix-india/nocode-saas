@@ -10,7 +10,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.security.dto.OneTimeToken;
+import com.fincity.security.dto.*;
 import com.fincity.security.model.*;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.types.ULong;
@@ -43,9 +43,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
@@ -949,5 +946,32 @@ public class AuthenticationService implements IAuthenticationService {
                                 logAndMakeToken(false, false, request, response, appCode, user, tup.getT2(), tup.getT1()))
                 .switchIfEmpty(this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateWithOneTimeToken"));
+    }
+
+    public Mono<UserAccess> getUserAppAccess(UserAppAccessRequest request, ServerHttpRequest httpRequest) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.appService.getAppByCode(request.getAppCode()),
+
+                        (ca, app) ->
+                                this.profileService.checkIfUserHasAnyProfile(ULong.valueOf(ca.getUser().getId()), request.getAppCode()),
+
+                        (ca, app, appAccess) -> this.userService.checkIfUserIsOwner(ULong.valueOf(ca.getUser().getId())),
+
+                        (ca, app, appAccess, ownerAccess) -> this.oneTimeTokenService.create(new OneTimeToken()
+                                .setIpAddress(getRemoteAddressFrom(httpRequest))
+                                .setUserId(ULong.valueOf(ca.getUser().getId()))),
+
+                        (ca, app, appAccess, ownerAccess, token) -> Mono.just(new UserAccess()
+                                .setApp(appAccess)
+                                .setOwner(ownerAccess)
+                                .setAppOneTimeToken(token.getToken())
+                                .setAppURL(this.fillValues(request.getCallbackUrl(), token.getToken()))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkUserAccess"))
+                .switchIfEmpty(Mono.error(new GenericException(
+                        HttpStatus.UNAUTHORIZED,"access denied for app code: " + request.getAppCode())));
     }
 }
