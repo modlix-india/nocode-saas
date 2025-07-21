@@ -199,4 +199,5 @@ public class UserController
     public Mono<ResponseEntity<User>> updateDesignation(@PathVariable ULong userId, @PathVariable ULong designationId) {
         return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);
     }
+
 }

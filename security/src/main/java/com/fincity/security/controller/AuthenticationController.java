@@ -1,7 +1,10 @@
 package com.fincity.security.controller;
 
+import com.fincity.security.dto.UserAccess;
 import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
+import com.fincity.security.model.UserAppAccessRequest;
 import jakarta.ws.rs.PathParam;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -128,6 +131,11 @@ public class AuthenticationController {
 
                         contextAuthentication -> Mono.just(ResponseEntity.ok(contextAuthentication)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
+    }
+
+    @PostMapping("user/access")
+    public Mono<ResponseEntity<UserAccess>> getUserAccess(@RequestBody UserAppAccessRequest request, ServerHttpRequest httpRequest) {
+        return this.service.getUserAppAccess(request, httpRequest).map(ResponseEntity::ok);
     }
 
 }

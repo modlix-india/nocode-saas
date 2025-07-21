@@ -6,13 +6,14 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jooq.Condition;
@@ -552,5 +553,23 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .from(SECURITY_USER)
                         .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
+    }
+
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
+
+        return Mono.from(this.dslContext
+                        .select(SECURITY_V2_ROLE.NAME)
+                        .from(SECURITY_PROFILE)
+                        .leftJoin(SECURITY_PROFILE_USER)
+                        .on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                        .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
+                        .and(SECURITY_V2_ROLE.NAME.eq("Owner"))
+                        .limit(1))
+                .map(Objects::nonNull)
+                .defaultIfEmpty(false);
     }
 }
