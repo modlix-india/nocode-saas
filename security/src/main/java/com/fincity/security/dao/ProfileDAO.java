@@ -851,12 +851,25 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     }
 
     public Mono<ULong> getUserAppHavingProfile(ULong userId) {
+        if (userId == null) return Mono.empty();
+
         return Mono.from(this.dslContext
                         .select(SECURITY_PROFILE.APP_ID)
                         .from(SECURITY_PROFILE)
                         .leftJoin(SECURITY_PROFILE_USER)
                         .on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                         .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
+                        .orderBy(
+                                // Prioritize profiles with Owner role
+                                DSL.case_()
+                                        .when(SECURITY_V2_ROLE.NAME.eq("Owner"), 1)
+                                        .otherwise(2),
+                                SECURITY_PROFILE.ID
+                        )
                         .limit(1))
                 .map(Record1::value1);
     }
