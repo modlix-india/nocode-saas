@@ -970,6 +970,8 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setOwner(ownerAccess)
                                 .setAppOneTimeToken(token.getToken())
                                 .setAppURL(this.fillValues(request.getCallbackUrl(), token.getToken()))))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkUserAccess"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkUserAccess"))
+                .switchIfEmpty(Mono.error(new GenericException(
+                        HttpStatus.UNAUTHORIZED,"access denied for app code: " + request.getAppCode())));
     }
 }
