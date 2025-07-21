@@ -1318,6 +1318,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                         (ca, app, appAccess, ownerAccess) -> Mono.just(new UserAccess(appAccess, ownerAccess)))
 
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkIfUserIsOwner"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkUserAccess"));
     }
 }
