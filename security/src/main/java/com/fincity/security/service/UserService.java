@@ -1309,4 +1309,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
     }
+
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication, ca -> this.dao.checkIfUserIsOwner(userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkIfUserIsOwner"));
+    }
 }

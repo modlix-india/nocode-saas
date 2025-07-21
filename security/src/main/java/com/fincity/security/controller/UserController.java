@@ -199,4 +199,10 @@ public class UserController
     public Mono<ResponseEntity<User>> updateDesignation(@PathVariable ULong userId, @PathVariable ULong designationId) {
         return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);
     }
+
+    @GetMapping("/isOwner")
+    public Mono<ResponseEntity<Boolean>> isOwner(@RequestParam ULong userId) {
+        return this.service.checkIfUserIsOwner(userId).map(ResponseEntity::ok);
+    }
+
 }
