@@ -19,5 +19,7 @@ public class UserAccess implements Serializable {
 
     private Boolean app;
     private Boolean owner;
+    private String appOneTimeToken;
+    private String appURL;
 
 }

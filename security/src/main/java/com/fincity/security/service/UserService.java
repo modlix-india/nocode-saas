@@ -1305,19 +1305,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
     }
 
-    public Mono<UserAccess> checkUserAccess(ULong userId, String appCode) {
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId){
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                        SecurityContextUtil::getUsersContextAuthentication,
+        if( userId == null ) return Mono.empty();
 
-                        ca -> this.appService.getAppByCode(appCode),
-
-                        (ca, app) -> this.profileService.checkIfUserHasAnyProfile(userId, appCode),
-
-                        (ca, app, appAccess) -> this.dao.checkIfUserIsOwner(userId),
-
-                        (ca, app, appAccess, ownerAccess) -> Mono.just(new UserAccess(appAccess, ownerAccess)))
-
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkUserAccess"));
+        return this.dao.checkIfUserIsOwner(userId);
     }
 }

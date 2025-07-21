@@ -200,9 +200,4 @@ public class UserController
         return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/access")
-    public Mono<ResponseEntity<UserAccess>> isOwner(@RequestParam ULong userId, @RequestParam String appCode) {
-        return this.service.checkUserAccess(userId, appCode).map(ResponseEntity::ok);
-    }
-
 }
