@@ -243,7 +243,7 @@ public class AuthenticationService implements IAuthenticationService {
                     else return this.authenticateWSocial(authRequest, modifiedRequest, response);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticateUserForHavingApp"))
-                .switchIfEmpty(Mono.defer(() -> this.authError(SecurityMessageResourceService.USER_IDENTIFICATION_NOT_FOUND)));
+                .switchIfEmpty(Mono.defer(() -> this.authError(SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE)));
     }
 
     public Mono<AuthenticationResponse> authenticate(
