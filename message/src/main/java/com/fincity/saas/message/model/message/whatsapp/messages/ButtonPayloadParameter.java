@@ -1,0 +1,19 @@
+package com.fincity.saas.message.model.message.whatsapp.messages;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.model.message.whatsapp.messages.type.ParameterType;
+import lombok.Data;
+import lombok.experimental.Accessors;
+
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ButtonPayloadParameter extends Parameter {
+    @JsonProperty("payload")
+    private String payload;
+
+    public ButtonPayloadParameter() {
+        super(ParameterType.PAYLOAD);
+    }
+}
