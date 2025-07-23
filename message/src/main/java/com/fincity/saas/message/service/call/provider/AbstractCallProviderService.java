@@ -2,6 +2,7 @@ package com.fincity.saas.message.service.call.provider;
 
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.message.configuration.WebClientConfig;
 import com.fincity.saas.message.dao.call.provider.AbstractCallProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.model.common.IdAndValue;
@@ -13,13 +14,14 @@ import com.fincity.saas.message.service.call.CallService;
 import com.fincity.saas.message.service.call.IAppCallService;
 import com.fincity.saas.message.service.call.event.CallEventService;
 import com.fincity.saas.message.util.PhoneUtil;
-import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 public abstract class AbstractCallProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends AbstractCallProviderDAO<R, D>>
@@ -29,6 +31,7 @@ public abstract class AbstractCallProviderService<
     protected CallService callService;
     protected CallConnectionService callConnectionService;
     protected CallEventService callEventService;
+    protected WebClientConfig webClientConfig;
 
     @Lazy
     @Autowired
@@ -46,6 +49,11 @@ public abstract class AbstractCallProviderService<
     @Autowired
     private void setCallEventService(CallEventService callEventService) {
         this.callEventService = callEventService;
+    }
+
+    @Autowired
+    private void setWebClientConfig(WebClientConfig webClientConfig) {
+        this.webClientConfig = webClientConfig;
     }
 
     protected <T> Mono<T> throwMissingParam(String paramName) {

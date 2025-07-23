@@ -31,8 +31,4 @@ public class UrlButton extends Button {
         super(ButtonType.URL, text);
     }
 
-    public UrlButton setUrlExample(List<String> urlExample) {
-        this.urlExample = urlExample;
-        return this;
-    }
 }

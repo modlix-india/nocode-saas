@@ -23,38 +23,21 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.util.PhoneUtil;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO> {
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
-
-    private Mono<URI> createExotelUrl(String apiKey, String apiToken, String subDomain, String sid) {
-        String schema = "https";
-        String userInfo = apiKey + ":" + apiToken;
-        String path = "/v1/Accounts/" + sid + "/Calls/connect";
-
-        try {
-            return Mono.just(new URI(schema, userInfo, subDomain, -1, path, null, null));
-        } catch (URISyntaxException e) {
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    MessageResourceService.URL_CREATION_ERROR,
-                    this.getProvider());
-        }
-    }
 
     @Override
     protected String getCacheName() {
@@ -146,27 +129,18 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     private Mono<ExotelCall> makeExotelCall(MessageAccess messageAccess, ExotelCallRequest request, Connection conn) {
         Map<String, Object> details = conn.getConnectionDetails();
+        String accountSid = (String) details.get("accountSid");
 
         request.setFrom(
                 PhoneUtil.parse(messageAccess.getUser().getPhoneNumber()).getNumber());
 
         return FlatMapUtil.flatMapMono(
                         () -> super.getCallBackUrl(conn.getAppCode(), conn.getClientCode()),
-                        callBackUri -> Mono.zip(
-                                super.getRequiredConnectionDetail(details, "apiKey"),
-                                super.getRequiredConnectionDetail(details, "apiToken"),
-                                super.getRequiredConnectionDetail(details, "subdomain"),
-                                super.getRequiredConnectionDetail(details, "accountSid")),
-                        (callBackUri, requiredParam) -> this.createExotelUrl(
-                                requiredParam.getT1(),
-                                requiredParam.getT2(),
-                                requiredParam.getT3(),
-                                requiredParam.getT4()),
-                        (callBackUri, requiredParam, uri) ->
-                                request.setStatusCallback(callBackUri).toFormDataAsync(),
-                        (callBackUri, requiredParam, uri, formData) -> WebClient.create()
+                        callBackUri -> request.setStatusCallback(callBackUri).toFormDataAsync(),
+                        (callBackUri, formData) -> webClientConfig.createExotelWebClient(conn),
+                        (callBackUri, formData, webClient) -> webClient
                                 .post()
-                                .uri(uri)
+                                .uri("/v1/Accounts/" + accountSid + "/Calls/connect")
                                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                 .body(BodyInserters.fromFormData(formData))
                                 .retrieve()
