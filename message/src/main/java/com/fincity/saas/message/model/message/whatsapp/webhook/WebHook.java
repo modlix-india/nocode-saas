@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public final class WebHook {
+
     private static final ObjectMapper mapper =
             new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public static WebHookEvent constructEvent(String payload) throws JsonProcessingException {
-
         return mapper.readValue(payload, WebHookEvent.class);
     }
 }

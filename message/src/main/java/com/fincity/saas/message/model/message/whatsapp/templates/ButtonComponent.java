@@ -2,39 +2,27 @@ package com.fincity.saas.message.model.message.whatsapp.templates;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.ComponentType;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
-
-
-// TODO: review
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
-@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ButtonComponent extends Component<ButtonComponent> {
 
-    private List<Button> buttons;
+    @Serial
+    private static final long serialVersionUID = -3377486597127427215L;
 
+    private List<Button> buttons;
 
     public ButtonComponent() {
         super(ComponentType.BUTTONS);
     }
-
-
-    public List<Button> getButtons() {
-        return buttons;
-    }
-
-
-    public ButtonComponent setButtons(List<Button> buttons) {
-        this.buttons = buttons;
-        return this;
-    }
-
 
     public ButtonComponent addButton(Button button) {
         if (this.buttons == null) this.buttons = new ArrayList<>();

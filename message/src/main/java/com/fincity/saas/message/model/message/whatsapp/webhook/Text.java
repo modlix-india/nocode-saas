@@ -1,5 +1,20 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-public record Text(@JsonProperty("body") String body) {}
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public final class Text implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -5172839366262667383L;
+
+    @JsonProperty("body")
+    private String body;
+}

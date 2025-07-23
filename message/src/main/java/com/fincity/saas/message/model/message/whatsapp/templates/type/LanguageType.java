@@ -2,151 +2,118 @@ package com.fincity.saas.message.model.message.whatsapp.templates.type;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-
 public enum LanguageType {
-
-    
-    AF("af"),
-    
-    SQ("sq"),
-    
-    AR("ar"),
-    
-    AZ("az"),
-    
-    BN("bn"),
-    
-    BG("bg"),
-    
-    CA("ca"),
-    
-    ZH_CN("zh_CN"),
-    
-    ZH_HK("zh_HK"),
-    
-    ZH_TW("zh_TW"),
-    
-    HR("hr"),
-    
-    CS("cs"),
-    
-    DA("da"),
-    
-    NL("nl"),
-    
-    EN("en"),
-    
-    EN_GB("en_GB"),
-    
-    EN_US("en_US"),
-    
-    ET("et"),
-    
-    FIL("fil"),
-    
-    FI("fi"),
-    
-    FR("fr"),
-    
-    KA("ka"),
-    
-    DE("de"),
-    
-    EL("el"),
-    
-    GU("gu"),
-    
-    HA("ha"),
-    
-    ha("he"),
-    
-    HI("hi"),
-    
-    HU("hu"),
-    
-    ID("id"),
-    
-    GA("ga"),
-    
-    IT("it"),
-    
-    JA("ja"),
-    
-    KN("kn"),
-    
-    KK("kk"),
-    
-    RW_RW("rw_RW"),
-    
-    KO("ko"),
-    
-    KY_KG("ky_KG"),
-    
-    LO("lo"),
-    
-    LV("lv"),
-    
-    LT("lt"),
-    
-    MK("mk"),
-    
-    MS("ms"),
-    
-    ML("ml"),
-    
-    MR("mr"),
-    
-    NB("nb"),
-    
-    FA("fa"),
-    
-    PL("pl"),
-    
-    PT_BR("pt_BR"),
-    
-    PT_PT("pt_PT"),
-    
-    PA("pa"),
-    
-    RO("ro"),
-    
-    RU("ru"),
-    
-    SR("sr"),
-    
-    SK("sk"),
-    
-    SL("sl"),
-    
-    ES("es"),
-    
-    ES_AR("es_AR"),
-    
-    ES_ES("es_ES"),
-    
-    ES_MX("es_MX"),
-    
-    SW("sw"),
-    
-    SV("sv"),
-    
-    TA("ta"),
-    
-    TE("te"),
-    
-    TH("th"),
-    
-    TR("tr"),
-    
-    UK("uk"),
-    
-    UR("ur"),
-    
-    UZ("uz"),
-    
-    VI("vi"),
-    
-    ZU("zu");
+    AFRIKAANS("af"),
+    ALBANIAN("sq"),
+    ARABIC("ar"),
+    ARABIC_EGYPT("ar_EG"),
+    ARABIC_UAE("ar_AE"),
+    ARABIC_LEBANON("ar_LB"),
+    ARABIC_MOROCCO("ar_MA"),
+    ARABIC_QATAR("ar_QA"),
+    AZERBAIJANI("az"),
+    BELARUSIAN("be_BY"),
+    BENGALI("bn"),
+    BENGALI_INDIA("bn_IN"),
+    BULGARIAN("bg"),
+    CATALAN("ca"),
+    CHINESE_CHINA("zh_CN"),
+    CHINESE_HONGKONG("zh_HK"),
+    CHINESE_TAIWAN("zh_TW"),
+    CROATIAN("hr"),
+    CZECH("cs"),
+    DANISH("da"),
+    DARI("prs_AF"),
+    DUTCH("nl"),
+    DUTCH_BELGIUM("nl_BE"),
+    ENGLISH("en"),
+    ENGLISH_UK("en_GB"),
+    ENGLISH_US("en_US"),
+    ENGLISH_UAE("en_AE"),
+    ENGLISH_AUSTRALIA("en_AU"),
+    ENGLISH_CANADA("en_CA"),
+    ENGLISH_GHANA("en_GH"),
+    ENGLISH_IRELAND("en_IE"),
+    ENGLISH_INDIA("en_IN"),
+    ENGLISH_JAMAICA("en_JM"),
+    ENGLISH_MALAYSIA("en_MY"),
+    ENGLISH_NEWZEALAND("en_NZ"),
+    ENGLISH_QATAR("en_QA"),
+    ENGLISH_SINGAPORE("en_SG"),
+    ENGLISH_UGANDA("en_UG"),
+    ENGLISH_SOUTHAFRICA("en_ZA"),
+    ESTONIAN("et"),
+    FILIPINO("fil"),
+    FINNISH("fi"),
+    FRENCH("fr"),
+    FRENCH_BELGIUM("fr_BE"),
+    FRENCH_CANADA("fr_CA"),
+    FRENCH_SWITZERLAND("fr_CH"),
+    FRENCH_IVORYCOAST("fr_CI"),
+    FRENCH_MOROCCO("fr_MA"),
+    GEORGIAN("ka"),
+    GERMAN("de"),
+    GERMAN_AUSTRIA("de_AT"),
+    GERMAN_SWITZERLAND("de_CH"),
+    GREEK("el"),
+    GUJARATI("gu"),
+    HAUSA("ha"),
+    HEBREW("he"),
+    HINDI("hi"),
+    HUNGARIAN("hu"),
+    INDONESIAN("id"),
+    IRISH("ga"),
+    ITALIAN("it"),
+    JAPANESE("ja"),
+    KANNADA("kn"),
+    KAZAKH("kk"),
+    KINYARWANDA("rw_RW"),
+    KOREAN("ko"),
+    KYRGYZ("ky_KG"),
+    LAO("lo"),
+    LATVIAN("lv"),
+    LITHUANIAN("lt"),
+    MACEDONIAN("mk"),
+    MALAY("ms"),
+    MALAYALAM("ml"),
+    MARATHI("mr"),
+    NORWEGIAN("nb"),
+    PASHTO("ps_AF"),
+    PERSIAN("fa"),
+    POLISH("pl"),
+    PORTUGUESE_BRAZIL("pt_BR"),
+    PORTUGUESE_PORTUGAL("pt_PT"),
+    PUNJABI("pa"),
+    ROMANIAN("ro"),
+    RUSSIAN("ru"),
+    SERBIAN("sr"),
+    SINHALA("si_LK"),
+    SLOVAK("sk"),
+    SLOVENIAN("sl"),
+    SPANISH("es"),
+    SPANISH_ARGENTINA("es_AR"),
+    SPANISH_CHILE("es_CL"),
+    SPANISH_COLOMBIA("es_CO"),
+    SPANISH_COSTARICA("es_CR"),
+    SPANISH_DOMINICAN("es_DO"),
+    SPANISH_ECUADOR("es_EC"),
+    SPANISH_HONDURAS("es_HN"),
+    SPANISH_MEXICO("es_MX"),
+    SPANISH_PANAMA("es_PA"),
+    SPANISH_PERU("es_PE"),
+    SPANISH_SPAIN("es_ES"),
+    SPANISH_URUGUAY("es_UY"),
+    SWAHILI("sw"),
+    SWEDISH("sv"),
+    TAMIL("ta"),
+    TELUGU("te"),
+    THAI("th"),
+    TURKISH("tr"),
+    UKRAINIAN("uk"),
+    URDU("ur"),
+    UZBEK("uz"),
+    VIETNAMESE("vi"),
+    ZULU("zu");
 
     private final String value;
 
@@ -154,7 +121,6 @@ public enum LanguageType {
         this.value = value;
     }
 
-    
     @JsonValue
     public String getValue() {
         return value;

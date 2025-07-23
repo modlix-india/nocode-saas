@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.ButtonType;
-
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -22,44 +22,20 @@ import lombok.experimental.Accessors;
     @JsonSubTypes.Type(value = QuickReplyButton.class, name = "QUICK_REPLY"), //
     @JsonSubTypes.Type(value = VoiceCallButton.class, name = "VOICE_CALL")
 })
-public class Button {
+public class Button implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -5334174774675056911L;
 
     private ButtonType type;
     private String text;
-
-
-    protected Button() {}
-
 
     protected Button(ButtonType type, String text) {
         this.type = type;
         this.text = text;
     }
 
-
     public Button(ButtonType buttonType) {
         this.type = buttonType;
-    }
-
-
-    public ButtonType getType() {
-        return type;
-    }
-
-
-    public Button setType(ButtonType type) {
-        this.type = type;
-        return this;
-    }
-
-
-    public String getText() {
-        return text;
-    }
-
-
-    public Button setText(String text) {
-        this.text = text;
-        return this;
     }
 }

@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.ComponentType;
-
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -22,9 +22,12 @@ import lombok.experimental.Accessors;
     @JsonSubTypes.Type(value = FooterComponent.class, name = "FOOTER"), //
     @JsonSubTypes.Type(value = HeaderComponent.class, name = "HEADER"), //
     @JsonSubTypes.Type(value = BodyComponent.class, name = "BODY")
-}) //
-public class Component<T extends Component<T>> {
-    
+})
+public class Component<T extends Component<T>> implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 6956973960386534666L;
+
     @JsonProperty("type")
     private ComponentType type;
 
@@ -34,46 +37,7 @@ public class Component<T extends Component<T>> {
     @JsonProperty("example")
     private Example example;
 
-    
-    protected Component() {}
-
-    
     protected Component(ComponentType type) {
         this.type = type;
-    }
-
-    
-    public String getText() {
-        return text;
-    }
-
-    
-    @SuppressWarnings("unchecked")
-    public T setText(String text) {
-        this.text = text;
-        return (T) this;
-    }
-
-    
-    public Example getExample() {
-        return example;
-    }
-
-    
-    @SuppressWarnings("unchecked")
-    public T setExample(Example example) {
-        this.example = example;
-        return (T) this;
-    }
-
-    
-    public ComponentType getType() {
-        return type;
-    }
-
-    
-    public Component<T> setType(ComponentType type) {
-        this.type = type;
-        return this;
     }
 }

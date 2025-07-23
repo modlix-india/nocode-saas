@@ -1,27 +1,79 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
+import com.whatsapp.api.domain.messages.type.MessageType;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-public record Message(
-        @JsonProperty("reaction") Reaction reaction,
-        @JsonProperty("image") Image image,
-        @JsonProperty("sticker") Sticker sticker,
-        @JsonProperty("location") Location location,
-        @JsonProperty("contacts") List<Contact> contacts,
-        @JsonProperty("button") Button button,
-        @JsonProperty("context") Context context,
-        @JsonProperty("from") String from,
-        @JsonProperty("id") String id,
-        @JsonProperty("text") Text text,
-        @JsonProperty("errors") List<Error> errors,
-        @JsonProperty("type") MessageType type,
-        @JsonProperty("interactive") Interactive interactive,
-        @JsonProperty("timestamp") String timestamp,
-        @JsonProperty("referral") Referral referral,
-        @JsonProperty("order") Order order,
-        @JsonProperty("system") System system,
-        @JsonProperty("video") Video video,
-        @JsonProperty("audio") Audio audio,
-        @JsonProperty("document") Document document) {}
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public final class Message implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 6162760594885532126L;
+
+    @JsonProperty("reaction")
+    private Reaction reaction;
+
+    @JsonProperty("image")
+    private Image image;
+
+    @JsonProperty("sticker")
+    private Sticker sticker;
+
+    @JsonProperty("location")
+    private Location location;
+
+    @JsonProperty("contacts")
+    private List<Contact> contacts;
+
+    @JsonProperty("button")
+    private Button button;
+
+    @JsonProperty("context")
+    private Context context;
+
+    @JsonProperty("from")
+    private String from;
+
+    @JsonProperty("id")
+    private String id;
+
+    @JsonProperty("text")
+    private Text text;
+
+    @JsonProperty("errors")
+    private List<Error> errors;
+
+    @JsonProperty("type")
+    private MessageType type;
+
+    @JsonProperty("interactive")
+    private Interactive interactive;
+
+    @JsonProperty("timestamp")
+    private String timestamp;
+
+    @JsonProperty("referral")
+    private Referral referral;
+
+    @JsonProperty("order")
+    private Order order;
+
+    @JsonProperty("system")
+    private System system;
+
+    @JsonProperty("video")
+    private Video video;
+
+    @JsonProperty("audio")
+    private Audio audio;
+
+    @JsonProperty("document")
+    private Document document;
+}

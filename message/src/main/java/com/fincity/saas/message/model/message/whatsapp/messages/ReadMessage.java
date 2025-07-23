@@ -1,32 +1,26 @@
 package com.fincity.saas.message.model.message.whatsapp.messages;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-public class ReadMessage {
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ReadMessage implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -2219087164774254661L;
 
     @JsonProperty("messaging_product")
-    private final String messagingProduct = "whatsapp";
+    private String messagingProduct = "whatsapp";
 
     @JsonProperty("status")
     private String status = "read";
 
     @JsonProperty("message_id")
     private String messageId;
-
-    public ReadMessage(String messageId) {
-        super();
-        this.messageId = messageId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public String getMessageId() {
-        return messageId;
-    }
-
-    public String getMessagingProduct() {
-        return messagingProduct;
-    }
 }

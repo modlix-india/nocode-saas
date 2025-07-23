@@ -1,13 +1,23 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-public record Metadata(
-        /*
-        The ID of the phone number receiving the Webhooks. You can use this phone_number_id to send messages back to customers.
-         */
-        @JsonProperty("phone_number_id") String phoneNumberId,
-        /*
-        The phone number of the business account that is receiving the Webhooks.
-         */
-        @JsonProperty("display_phone_number") String displayPhoneNumber) {}
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public final class Metadata implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -2539533120386924308L;
+
+    @JsonProperty("phone_number_id")
+    private String phoneNumberId;
+
+    @JsonProperty("display_phone_number")
+    private String displayPhoneNumber;
+}

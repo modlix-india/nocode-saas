@@ -3,13 +3,18 @@ package com.fincity.saas.message.model.message.whatsapp.messages;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.HeaderType;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Header {
+public class Header implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 8197688963513345341L;
 
     @JsonProperty("type")
     private HeaderType type;
@@ -25,55 +30,4 @@ public class Header {
 
     @JsonProperty("video")
     private Video video;
-
-    public Header(HeaderType type) {
-        this.type = type;
-    }
-
-    public Header() {}
-
-    public HeaderType getType() {
-        return type;
-    }
-
-    public Header setType(HeaderType type) {
-        this.type = type;
-        return this;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public Header setText(String text) {
-        this.text = text;
-        return this;
-    }
-
-    public Document getDocument() {
-        return document;
-    }
-
-    public Header setDocument(Document document) {
-        this.document = document;
-        return this;
-    }
-
-    public Image getImage() {
-        return image;
-    }
-
-    public Header setImage(Image image) {
-        this.image = image;
-        return this;
-    }
-
-    public Video getVideo() {
-        return video;
-    }
-
-    public Header setVideo(Video video) {
-        this.video = video;
-        return this;
-    }
 }

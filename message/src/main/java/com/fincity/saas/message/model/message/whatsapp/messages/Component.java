@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.ComponentType;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
@@ -16,11 +18,14 @@ import lombok.experimental.Accessors;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = As.EXISTING_PROPERTY, property = "type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = ButtonComponent.class, name = "button"), //
-    @JsonSubTypes.Type(value = HeaderComponent.class, name = "header"), //
+    @JsonSubTypes.Type(value = ButtonComponent.class, name = "button"),
+    @JsonSubTypes.Type(value = HeaderComponent.class, name = "header"),
     @JsonSubTypes.Type(value = BodyComponent.class, name = "body")
 })
-public abstract class Component<T extends Component<T>> {
+public abstract class Component<T extends Component<T>> implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 3862379974837128880L;
 
     @JsonProperty("type")
     private ComponentType type;

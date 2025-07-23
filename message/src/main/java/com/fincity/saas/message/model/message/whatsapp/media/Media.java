@@ -1,18 +1,19 @@
 package com.fincity.saas.message.model.message.whatsapp.media;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.experimental.Accessors;
-
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-@NoArgsConstructor
-public final class Media {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class Media implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 8274534464059037341L;
 
     @JsonProperty("sha256")
     private String sha256;

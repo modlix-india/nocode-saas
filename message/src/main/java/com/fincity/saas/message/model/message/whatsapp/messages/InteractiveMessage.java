@@ -5,15 +5,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.InteractiveMessageType;
 import com.whatsapp.api.domain.messages.builder.IInteractiveMessageBuilder.IInteractiveAction;
 import com.whatsapp.api.domain.messages.builder.IInteractiveMessageBuilder.IInteractiveType;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class InteractiveMessage implements IInteractiveAction, IInteractiveType {
+public class InteractiveMessage implements IInteractiveAction, IInteractiveType, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -1823615047017247166L;
 
     @JsonProperty("action")
     public Action action;
@@ -30,55 +33,8 @@ public class InteractiveMessage implements IInteractiveAction, IInteractiveType 
     @JsonProperty("footer")
     public Footer footer;
 
-    private InteractiveMessage() {}
-
     public static IInteractiveAction build() {
         return new InteractiveMessage();
-    }
-
-    public Action getAction() {
-        return action;
-    }
-
-    public IInteractiveType setAction(Action action) {
-        this.action = action;
-        return this;
-    }
-
-    public InteractiveMessageType getType() {
-        return type;
-    }
-
-    public InteractiveMessage setType(InteractiveMessageType type) {
-        this.type = type;
-        return this;
-    }
-
-    public Header getHeader() {
-        return header;
-    }
-
-    public InteractiveMessage setHeader(Header header) {
-        this.header = header;
-        return this;
-    }
-
-    public Body getBody() {
-        return body;
-    }
-
-    public InteractiveMessage setBody(Body body) {
-        this.body = body;
-        return this;
-    }
-
-    public Footer getFooter() {
-        return footer;
-    }
-
-    public InteractiveMessage setFooter(Footer footer) {
-        this.footer = footer;
-        return this;
     }
 
     @Override

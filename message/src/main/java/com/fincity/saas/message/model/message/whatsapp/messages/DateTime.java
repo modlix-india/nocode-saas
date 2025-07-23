@@ -1,12 +1,20 @@
 package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.CalendarType;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-@JsonInclude(Include.NON_NULL)
-public class DateTime {
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class DateTime implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1707960782396009592L;
 
     @JsonProperty("fallback_value")
     private String fallbackValue;
@@ -31,76 +39,4 @@ public class DateTime {
 
     @JsonProperty("minute")
     private Integer minute;
-
-    public String getFallbackValue() {
-        return fallbackValue;
-    }
-
-    public DateTime setFallbackValue(String fallbackValue) {
-        this.fallbackValue = fallbackValue;
-        return this;
-    }
-
-    public CalendarType getCalendar() {
-        return calendar;
-    }
-
-    public DateTime setCalendar(CalendarType calendar) {
-        this.calendar = calendar;
-        return this;
-    }
-
-    public Integer getMonth() {
-        return month;
-    }
-
-    public DateTime setMonth(Integer month) {
-        this.month = month;
-        return this;
-    }
-
-    public Integer getHour() {
-        return hour;
-    }
-
-    public DateTime setHour(Integer hour) {
-        this.hour = hour;
-        return this;
-    }
-
-    public Integer getYear() {
-        return year;
-    }
-
-    public DateTime setYear(Integer year) {
-        this.year = year;
-        return this;
-    }
-
-    public Integer getDayOfMonth() {
-        return dayOfMonth;
-    }
-
-    public DateTime setDayOfMonth(Integer dayOfMonth) {
-        this.dayOfMonth = dayOfMonth;
-        return this;
-    }
-
-    public Integer getDayOfWeek() {
-        return dayOfWeek;
-    }
-
-    public DateTime setDayOfWeek(Integer dayOfWeek) {
-        this.dayOfWeek = dayOfWeek;
-        return this;
-    }
-
-    public Integer getMinute() {
-        return minute;
-    }
-
-    public DateTime setMinute(Integer minute) {
-        this.minute = minute;
-        return this;
-    }
 }

@@ -1,8 +1,26 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
 
-public record Pricing(
-        @JsonProperty("pricing_model") String pricingModel,
-        @JsonProperty("category") String category,
-        @JsonProperty("billable") boolean billable) {}
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public final class Pricing implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -1002871746227092062L;
+
+    @JsonProperty("pricing_model")
+    private String pricingModel;
+
+    @JsonProperty("category")
+    private String category;
+
+    @JsonProperty("billable")
+    private boolean billable;
+}
