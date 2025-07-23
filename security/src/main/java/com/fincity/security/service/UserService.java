@@ -765,7 +765,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
+                                    null,
                                     authRequest.getIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
@@ -802,7 +802,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
+                                    null ,
                                     authRequest.getIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
@@ -840,7 +840,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
+                                    null,
                                     authRequest.getIdentifierType());
                         },
                         (ca, userTup) -> Mono.zip(
