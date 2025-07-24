@@ -6,12 +6,9 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.oserver.core.document.Connection;
-import java.util.EnumMap;
+import com.fincity.saas.notification.oserver.core.enums.ConnectionType;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-
-import com.fincity.saas.notification.oserver.core.enums.ConnectionType;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +20,8 @@ import reactor.core.publisher.Mono;
 public class NotificationConnectionService {
 
     private static final String NOTIFICATION_CONNECTION_TYPE = ConnectionType.NOTIFICATION.name();
+
+    private static final String CHANNEL_CONNECTIONS = "channelConnections";
 
     private CacheService cacheService;
 
@@ -49,21 +48,22 @@ public class NotificationConnectionService {
         return String.join("_", entityNames);
     }
 
-    public Mono<Map<NotificationChannelType, Connection>> getNotificationConnections(
-            String appCode, String clientCode, Map<NotificationChannelType, String> channelConnections) {
+    @SuppressWarnings("unchecked")
+    public Mono<Map<NotificationChannelType, String>> getNotificationConnections(
+            String appCode, String clientCode, String notificationConnectionName) {
 
-        if (channelConnections == null || channelConnections.isEmpty()) return Mono.empty();
-
-        Map<NotificationChannelType, Connection> connections = new EnumMap<>(NotificationChannelType.class);
+        if (notificationConnectionName == null || notificationConnectionName.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
                 () -> this.securityService.appInheritance(appCode, clientCode, clientCode),
-                inheritance -> Flux.fromIterable(channelConnections.entrySet())
-                        .flatMap(connection -> this.getNotificationConn(
-                                        appCode, connection.getValue(), clientCode, inheritance)
-                                .filter(Objects::nonNull)
-                                .doOnNext(connDetails -> connections.put(connection.getKey(), connDetails)))
-                        .then(Mono.just(connections)));
+                inheritance -> this.getNotificationConn(appCode, notificationConnectionName, clientCode, inheritance),
+                (inheritance, connection) -> {
+                    if (connection == null || !connection.getConnectionDetails().containsKey(CHANNEL_CONNECTIONS))
+                        return Mono.empty();
+
+                    return Mono.just(NotificationChannelType.getChannelTypeMap((Map<String, String>)
+                            connection.getConnectionDetails().get(CHANNEL_CONNECTIONS)));
+                });
     }
 
     public Mono<Connection> getNotificationConnection(String appCode, String connectionName, String clientCode) {

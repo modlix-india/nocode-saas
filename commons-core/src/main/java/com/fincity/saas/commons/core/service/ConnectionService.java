@@ -4,7 +4,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
-import com.fincity.saas.commons.core.service.notification.CoreNotificationProcessingService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
@@ -17,7 +16,6 @@ import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -29,19 +27,11 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     @Autowired(required = false)
     @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
-    private CoreNotificationProcessingService coreNotificationProcessingService;
-
     @Value("${redis.connection.eviction.channel:connectionChannel}")
     private String channel;
 
     protected ConnectionService() {
         super(Connection.class);
-    }
-
-    @Lazy
-    @Autowired
-    private void setNotificationService(CoreNotificationProcessingService coreNotificationProcessingService) {
-        this.coreNotificationProcessingService = coreNotificationProcessingService;
     }
 
     @Override
@@ -70,8 +60,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                                     pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
                             .map(x -> updated);
                 },
-                (updated, published) -> coreNotificationProcessingService
-                        .evictCache(updated.getAppCode(), updated.getName())
+                (updated, published) -> this.cacheService
+                        .evictAll(this.getOutsideServerCacheName(updated.getAppCode(), updated.getName()))
                         .map(evicted -> updated));
     }
 
@@ -87,8 +77,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                     return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
                             .map(x -> deleted);
                 },
-                (connection, deleted, published) -> coreNotificationProcessingService
-                        .evictCache(connection.getAppCode(), connection.getName())
+                (connection, deleted, published) -> this.cacheService
+                        .evictAll(this.getOutsideServerCacheName(connection.getAppCode(), connection.getName()))
                         .map(evicted -> deleted));
     }
 

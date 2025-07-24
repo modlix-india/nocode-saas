@@ -24,13 +24,13 @@ public class Notification extends AbstractOverridableDTO<Notification> {
     private static final long serialVersionUID = 4924671644117461908L;
 
     private String notificationType;
-    private Map<String, String> channelConnections;
+    private String connectionName;
     private Map<String, NotificationTemplate> channelDetails;
 
     public Notification(Notification notification) {
         super(notification);
         this.notificationType = notification.notificationType;
-        this.channelConnections = CloneUtil.cloneMapObject(notification.channelConnections);
+        this.connectionName = notification.connectionName;
         this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
     }
 
@@ -46,9 +46,5 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
     public Map<NotificationChannelType, NotificationTemplate> getChannelDetailMap() {
         return NotificationChannelType.getChannelTypeMap(this.channelDetails);
-    }
-
-    public Map<NotificationChannelType, String> getChannelConnectionMap() {
-        return NotificationChannelType.getChannelTypeMap(this.channelConnections);
     }
 }

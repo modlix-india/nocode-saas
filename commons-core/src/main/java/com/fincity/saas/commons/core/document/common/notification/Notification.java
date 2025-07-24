@@ -3,6 +3,7 @@ package com.fincity.saas.commons.core.document.common.notification;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.enums.common.notification.NotificationRecipientType;
+import com.fincity.saas.commons.difference.IDifferentiable;
 import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
@@ -41,13 +42,13 @@ public class Notification extends AbstractOverridableDTO<Notification> {
     private static final long serialVersionUID = 4924671644117461908L;
 
     private String notificationType;
-    private Map<String, String> channelConnections;
+    private String connectionName;
     private Map<String, NotificationTemplate> channelDetails;
 
     public Notification(Notification notification) {
         super(notification);
         this.notificationType = notification.notificationType;
-        this.channelConnections = CloneUtil.cloneMapObject(notification.channelConnections);
+        this.connectionName = notification.connectionName;
         this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
     }
 
@@ -76,14 +77,11 @@ public class Notification extends AbstractOverridableDTO<Notification> {
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
-                        cc -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
-                        (cc, ch) -> {
-                            this.channelConnections = (Map<String, String>) cc;
-
+                        () -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails), ch -> {
                             this.channelDetails = (Map<String, NotificationTemplate>) ch;
 
                             if (this.notificationType == null) this.notificationType = base.notificationType;
+                            if (this.connectionName == null) this.connectionName = base.connectionName;
 
                             return Mono.just(this);
                         })
@@ -97,15 +95,12 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> Mono.just(this),
-                        obj -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
-                        (obj, cc) -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
-                        (obj, cc, ch) -> {
-                            obj.channelConnections = (Map<String, String>) cc;
-
+                        obj -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
+                        (obj, ch) -> {
                             obj.channelDetails = (Map<String, NotificationTemplate>) ch;
 
                             if (obj.notificationType == null) obj.notificationType = base.notificationType;
-
+                            if (obj.connectionName == null) obj.connectionName = base.connectionName;
                             return Mono.just(obj);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.makeOverride"));
@@ -114,7 +109,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
     @Data
     @Accessors(chain = true)
     @NoArgsConstructor
-    public static class NotificationTemplate implements Serializable {
+    public static class NotificationTemplate implements Serializable, IDifferentiable<NotificationTemplate> {
 
         @Serial
         private static final long serialVersionUID = 1054865111921742820L;
@@ -146,12 +141,69 @@ public class Notification extends AbstractOverridableDTO<Notification> {
             return this.recipientExpressions.containsKey(NotificationRecipientType.FROM.getLiteral())
                     && this.recipientExpressions.containsKey(NotificationRecipientType.TO.getLiteral());
         }
+
+        @Override
+        public Mono<NotificationTemplate> extractDifference(NotificationTemplate inc) { // NOSONAR
+            if (inc == null) return Mono.just(new NotificationTemplate());
+
+            return FlatMapUtil.flatMapMonoWithNull(
+                    () -> DifferenceExtractor.extract(inc.deliveryOptions, this.deliveryOptions), de -> {
+                        NotificationTemplate diff = new NotificationTemplate();
+
+                        if (!this.code.equals(inc.code)) diff.setCode(this.code);
+
+                        if (!this.templateParts.equals(inc.templateParts))
+                            diff.setTemplateParts(CloneUtil.cloneMapObject(this.templateParts));
+
+                        if (!this.variableSchema.equals(inc.variableSchema))
+                            diff.setVariableSchema(CloneUtil.cloneMapObject(this.variableSchema));
+
+                        if (!this.resources.equals(inc.resources))
+                            diff.setResources(CloneUtil.cloneMapObject(this.resources));
+
+                        if (!this.defaultLanguage.equals(inc.defaultLanguage))
+                            diff.setDefaultLanguage(this.defaultLanguage);
+
+                        if (!this.languageExpression.equals(inc.languageExpression))
+                            diff.setLanguageExpression(this.languageExpression);
+
+                        if (!this.recipientExpressions.equals(inc.recipientExpressions))
+                            diff.setRecipientExpressions(CloneUtil.cloneMapObject(this.recipientExpressions));
+
+                        if (de != null) diff.setDeliveryOptions(this.deliveryOptions);
+                        return Mono.just(diff);
+                    });
+        }
+
+        @Override
+        public Mono<NotificationTemplate> applyOverride(NotificationTemplate override) { // NOSONAR
+            if (override == null) return Mono.just(new NotificationTemplate());
+
+            return FlatMapUtil.flatMapMonoWithNull(
+                    () -> Mono.just(this),
+                    obj -> DifferenceApplicator.apply(override.deliveryOptions, this.deliveryOptions),
+                    (obj, de) -> {
+                        if (de != null) obj.setDeliveryOptions((DeliveryOptions) de);
+                        if (override.code != null) obj.code = override.code;
+                        if (override.templateParts != null)
+                            obj.templateParts = CloneUtil.cloneMapObject(override.templateParts);
+                        if (override.variableSchema != null)
+                            obj.variableSchema = CloneUtil.cloneMapObject(override.variableSchema);
+                        if (override.resources != null) obj.resources = CloneUtil.cloneMapObject(override.resources);
+                        if (override.defaultLanguage != null) obj.defaultLanguage = override.defaultLanguage;
+                        if (override.languageExpression != null) obj.languageExpression = override.languageExpression;
+                        if (override.recipientExpressions != null)
+                            obj.recipientExpressions = CloneUtil.cloneMapObject(override.recipientExpressions);
+
+                        return Mono.just(obj);
+                    });
+        }
     }
 
     @Data
     @Accessors(chain = true)
     @NoArgsConstructor
-    public static class DeliveryOptions implements Serializable {
+    public static class DeliveryOptions implements Serializable, IDifferentiable<DeliveryOptions> {
 
         @Serial
         private static final long serialVersionUID = 3684669126118045688L;
@@ -168,6 +220,34 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
         public boolean isValid() {
             return this.instant ? Boolean.TRUE : CronExpression.isValidExpression(this.cronStatement);
+        }
+
+        @Override
+        public Mono<DeliveryOptions> extractDifference(DeliveryOptions inc) {
+
+            DeliveryOptions deliveryOptions = new DeliveryOptions();
+
+            if (inc.instant != this.instant) deliveryOptions.instant = this.instant;
+            if (inc.cronStatement == null || !inc.cronStatement.equals(this.cronStatement))
+                deliveryOptions.cronStatement = this.cronStatement;
+            if (inc.allowUnsubscribing != this.allowUnsubscribing)
+                deliveryOptions.allowUnsubscribing = this.allowUnsubscribing;
+
+            return Mono.just(deliveryOptions);
+        }
+
+        @Override
+        public Mono<DeliveryOptions> applyOverride(DeliveryOptions override) {
+            if (override == null) return Mono.just(this);
+
+            if (override.instant != this.instant) this.instant = override.instant;
+
+            if (override.cronStatement != null) this.cronStatement = override.cronStatement;
+
+            if (override.allowUnsubscribing != this.allowUnsubscribing)
+                this.allowUnsubscribing = override.allowUnsubscribing;
+
+            return Mono.just(this);
         }
     }
 }

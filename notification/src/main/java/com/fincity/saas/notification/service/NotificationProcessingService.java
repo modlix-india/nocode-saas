@@ -152,7 +152,7 @@ public class NotificationProcessingService {
                         (ca, userEntity, notiInfo, userPref) -> this.applyUserPreferences(userPref, notiInfo),
                         (ca, userEntity, notiInfo, userPref, channelDetails) ->
                                 this.connectionService.getNotificationConnections(
-                                        appCode, clientCode, notiInfo.getChannelConnectionMap()),
+                                        appCode, clientCode, notiInfo.getConnectionName()),
                         (ca, userEntity, notiInfo, userPref, channelDetails, connInfo) -> {
                             if (connInfo == null || connInfo.isEmpty())
                                 return Mono.just(SendRequest.of(
@@ -176,7 +176,7 @@ public class NotificationProcessingService {
                                     notiInfo.getNotificationType(),
                                     userPref,
                                     toSend,
-                                    notiInfo.getChannelConnections(),
+                                    NotificationChannelType.getChannelMap(connInfo),
                                     objectMap);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processNotification"));

@@ -15,7 +15,11 @@ import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -25,8 +29,17 @@ import reactor.util.context.Context;
 @Service
 public class CoreNotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
 
+    private static final String CHANNEL_CONNECTIONS = "channelConnections";
+
     private final ConnectionService connectionService;
     private final CoreNotificationProcessingService notificationProcessingService;
+
+    @Autowired(required = false)
+    @Qualifier("pubRedisAsyncCommand")
+    private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+
+    @Value("${redis.connection.eviction.channel:notificationChannel}")
+    private String channel;
 
     protected CoreNotificationService(
             ConnectionService connectionService, CoreNotificationProcessingService notificationProcessingService) {
@@ -45,7 +58,7 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                                 AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
                     existing.setNotificationType(entity.getNotificationType());
-                    existing.setChannelConnections(entity.getChannelConnections());
+                    existing.setConnectionName(entity.getConnectionName());
                     existing.updateChannelDetails(entity.getChannelDetails());
 
                     existing.setVersion(existing.getVersion() + 1);
@@ -75,24 +88,39 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> Mono.just(entity),
                         (ca, vEntity) -> this.validateConnections(
-                                vEntity.getAppCode(), vEntity.getClientCode(), vEntity.getChannelConnections()),
+                                vEntity.getAppCode(), vEntity.getClientCode(), vEntity.getConnectionName()),
                         (ca, vEntity, validConnections) -> this.validateChannelDetails(vEntity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.updatableEntity"));
     }
 
-    private Mono<Boolean> validateConnections(String appCode, String clientCode, Map<String, String> connections) {
-        return Flux.fromIterable(connections.values())
-                .flatMap(connection -> this.connectionService
-                        .hasConnection(connection, appCode, clientCode, ConnectionType.NOTIFICATION)
-                        .flatMap(hasConnection -> {
-                            if (Boolean.FALSE.equals(hasConnection))
-                                return this.messageResourceService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        CoreMessageResourceService.CONNECTION_NOT_AVAILABLE,
-                                        connection);
-                            return Mono.just(Boolean.TRUE);
-                        }))
-                .then(Mono.just(Boolean.TRUE));
+    @SuppressWarnings("unchecked")
+    private Mono<Boolean> validateConnections(String appCode, String clientCode, String connectionName) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.connectionService.read(connectionName, appCode, clientCode, ConnectionType.NOTIFICATION),
+                connection -> {
+                    if (connection.getConnectionDetails() == null
+                            || !connection.getConnectionDetails().containsKey(CHANNEL_CONNECTIONS))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                CoreMessageResourceService.CONNECTION_NOT_AVAILABLE,
+                                connectionName);
+
+                    return Mono.just((Map<String, String>)
+                            connection.getConnectionDetails().get(CHANNEL_CONNECTIONS));
+                },
+                (connection, channelConnections) -> Flux.fromIterable(channelConnections.values())
+                        .flatMap(cConnection -> this.connectionService
+                                .hasConnection(cConnection, appCode, clientCode, ConnectionType.NOTIFICATION)
+                                .flatMap(hasConnection -> {
+                                    if (Boolean.FALSE.equals(hasConnection))
+                                        return this.messageResourceService.throwMessage(
+                                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                CoreMessageResourceService.CONNECTION_NOT_AVAILABLE,
+                                                cConnection);
+                                    return Mono.just(Boolean.TRUE);
+                                }))
+                        .then(Mono.just(Boolean.TRUE)));
     }
 
     private Mono<Notification> validateChannelDetails(Notification entity) {
@@ -147,7 +175,8 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
 
     private Mono<Boolean> evictNotificationCache(Notification notification) {
         return Mono.zip(
-                this.notificationProcessingService.evictCache(notification.getAppCode(), notification.getName()),
+                this.cacheService.evictAll(
+                        super.getOutsideServerCacheName(notification.getAppCode(), notification.getName())),
                 this.notificationProcessingService.evictNotificationChannelCache(
                         notification.getChannelTemplateCodes()),
                 (notificationEvicted, channelEvicted) -> notificationEvicted && channelEvicted);

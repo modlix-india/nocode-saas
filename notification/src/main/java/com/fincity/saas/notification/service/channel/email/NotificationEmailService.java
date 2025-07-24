@@ -8,8 +8,11 @@ import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.mq.action.service.AbstractMessageService;
 import com.fincity.saas.notification.oserver.core.document.Connection;
+import com.fincity.saas.notification.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 import jakarta.annotation.PostConstruct;
+
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -22,7 +25,7 @@ public class NotificationEmailService extends AbstractMessageService<Notificatio
 
     private final SendGridService sendGridService;
     private final SMTPService smtpService;
-    private final Map<String, IEmailService<?>> services = new HashMap<>();
+    private final Map<ConnectionSubType, IEmailService<?>> services = new EnumMap<>(ConnectionSubType.class);
     private final NotificationMessageResourceService msgService;
 
     public NotificationEmailService(
@@ -34,16 +37,15 @@ public class NotificationEmailService extends AbstractMessageService<Notificatio
 
     @PostConstruct
     public void init() {
-        this.services.put("sendgrid", sendGridService);
-        this.services.put("smtp", smtpService);
+        this.services.put(ConnectionSubType.SENDGRID, sendGridService);
+        this.services.put(ConnectionSubType.SMTP, smtpService);
     }
 
     @Override
     public Mono<Boolean> execute(SendRequest request, Connection connection) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> Mono.justOrEmpty(this.services.get(
-                                        connection.getConnectionSubType().getProvider()))
+                        () -> Mono.justOrEmpty(this.services.get(connection.getConnectionSubType()))
                                 .switchIfEmpty(msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                         NotificationMessageResourceService.CONNECTION_DETAILS_MISSING,

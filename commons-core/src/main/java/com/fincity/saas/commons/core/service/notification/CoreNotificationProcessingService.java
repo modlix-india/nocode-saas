@@ -9,13 +9,11 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import java.math.BigInteger;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,7 +26,6 @@ public class CoreNotificationProcessingService {
     private final IFeignSecurityService securityService;
 
     private CoreMessageResourceService coreMsgService;
-    private CacheService cacheService;
 
     public CoreNotificationProcessingService(
             IFeignNotificationService notificationService, IFeignSecurityService securityService) {
@@ -39,16 +36,6 @@ public class CoreNotificationProcessingService {
     @Autowired
     private void setCoreMsgService(CoreMessageResourceService coreMsgService) {
         this.coreMsgService = coreMsgService;
-    }
-
-    @Lazy
-    @Autowired
-    private void setCacheService(CacheService cacheService) {
-        this.cacheService = cacheService;
-    }
-
-    private String getCacheNames(String... entityNames) {
-        return String.join("_", entityNames);
     }
 
     public Mono<Boolean> processAndSendNotification(
@@ -83,12 +70,6 @@ public class CoreNotificationProcessingService {
                                         .setChannelObjectMap(objectMap)))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
-    }
-
-    public Mono<Boolean> evictCache(String appCode, String entityName) {
-        return this.cacheService
-                .evictAll(this.getCacheNames(appCode, entityName))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.evictCache"));
     }
 
     public Mono<Boolean> evictNotificationChannelCache(Map<String, String> channelEntities) {

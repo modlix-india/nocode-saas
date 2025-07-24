@@ -9,6 +9,7 @@ import com.fincity.saas.notification.model.message.channel.WebPushMessage;
 import com.fincity.saas.notification.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -70,6 +71,13 @@ public enum NotificationChannelType implements EnumType {
                         Map.Entry::getValue,
                         (existing, replacement) -> replacement,
                         () -> new EnumMap<>(NotificationChannelType.class)));
+    }
+
+    public static <T> Map<String, T> getChannelMap(Map<NotificationChannelType, T> channelMap) {
+        if (channelMap == null || channelMap.isEmpty()) return new HashMap<>();
+
+        return channelMap.entrySet().stream()
+                .collect(Collectors.toMap(t -> t.getKey().getLiteral(), Map.Entry::getValue));
     }
 
     @Override
