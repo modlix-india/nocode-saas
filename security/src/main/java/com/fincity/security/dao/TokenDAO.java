@@ -11,17 +11,25 @@ import com.fincity.security.dto.TokenObject;
 import com.fincity.security.jooq.tables.records.SecurityUserTokenRecord;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.util.function.Function;
 
 @Component
 public class TokenDAO extends AbstractDAO<SecurityUserTokenRecord, ULong, TokenObject> {
 
-	protected TokenDAO() {
-		super(TokenObject.class, SECURITY_USER_TOKEN, SECURITY_USER_TOKEN.ID);
-	}
+    protected TokenDAO() {
+        super(TokenObject.class, SECURITY_USER_TOKEN, SECURITY_USER_TOKEN.ID);
+    }
 
-	public Flux<String> getTokensOfId(ULong userId) {
+    public Flux<String> getTokensOfId(ULong userId) {
 
-		return Flux.from(this.dslContext.select(SECURITY_USER_TOKEN.TOKEN).from(SECURITY_USER_TOKEN)
-				.where(SECURITY_USER_TOKEN.USER_ID.eq(userId))).map(Record1::value1);
-	}
+        return Flux.from(this.dslContext.select(SECURITY_USER_TOKEN.TOKEN).from(SECURITY_USER_TOKEN)
+                .where(SECURITY_USER_TOKEN.USER_ID.eq(userId))).map(Record1::value1);
+    }
+
+    public Mono<Integer> deleteAllTokens(ULong id) {
+
+        return Mono.from(this.dslContext.deleteFrom(SECURITY_USER_TOKEN).where(SECURITY_USER_TOKEN.USER_ID.eq(id)));
+    }
 }
