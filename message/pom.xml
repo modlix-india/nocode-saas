@@ -105,6 +105,11 @@
             <version>${package.i.saas-commons-security-version}</version>
         </dependency>
         <dependency>
+            <groupId>com.github.Bindambc</groupId>
+            <artifactId>whatsapp-business-java-api</artifactId>
+            <version>v0.6.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.googlecode.libphonenumber</groupId>
             <artifactId>libphonenumber</artifactId>
             <version>${package.o.com.googlecode.libphonenumber.version}</version>
@@ -239,6 +244,10 @@
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
             <url>https://repo.spring.io/milestone</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
     <build>
