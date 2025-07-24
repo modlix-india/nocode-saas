@@ -867,31 +867,40 @@ public class ClientRegistrationService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.appService.getAppByCode(appCode),
-                        (ca, app) -> {
-                            return this.clientService.read(clientId);
-                        },
-                        (ca, app, client) -> this.clientService.addClientRegistrationObjects(
+
+                        ca -> this.userService.checkIfUserIsOwner(userId).flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                        (ca, isOwner) -> this.appService.getAppByCode(appCode),
+
+                        (ca, isOwner, app) -> this.clientService.readInternal(clientId),
+
+                        (ca, isOwner, app, client) -> this.clientService.addClientRegistrationObjects(
                                 app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
-                        (ca, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
+
+                        (ca, isOwner, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
                                 app.getAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded) ->
                                 this.addFilesAccessPath(ca, client, appCode),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
                                 this.userService.addDefaultProfiles(
                                         app.getId(),
                                         app.getClientId(),
                                         ULong.valueOf(ca.getLoggedInFromClientId()),
                                         client,
                                         userId),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
                                 this.userService.addDefaultRoles(
                                         app.getId(),
                                         app.getClientId(),
                                         ULong.valueOf(ca.getLoggedInFromClientId()),
                                         client,
                                         userId),
+
                         (ca,
+                                isOwner,
                                 app,
                                 client,
                                 restrictedProfileAdded,

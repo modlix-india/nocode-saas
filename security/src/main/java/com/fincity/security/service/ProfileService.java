@@ -483,7 +483,7 @@ public class ProfileService
 
         if (userId == null) return Mono.empty();
 
-        return  this.dao.getUserAppHavingProfile(userId);
+        return this.dao.getUserAppHavingProfile(userId);
 
     }
 

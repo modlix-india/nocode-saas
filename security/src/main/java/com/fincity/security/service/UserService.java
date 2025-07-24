@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,12 +49,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Profile;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
-import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -770,8 +765,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
-                                    authRequest.getIdentifierType());
+                                    null,
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -807,8 +802,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
-                                    authRequest.getIdentifierType());
+                                    null,
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -845,8 +840,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    ca.getUrlAppCode(),
-                                    authRequest.getIdentifierType());
+                                    null,
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> Mono.zip(
                                         this.checkUserAndClient(userTup, ca.getUrlClientCode()),
@@ -1003,7 +998,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         authRequest.getUserId(),
                         clientCode,
                         appCode,
-                        authRequest.getIdentifierType(),
+                        authRequest.getComputedIdentifierType(),
                         userStatusCodes)
                 .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
                 .flatMap(e -> this.clientService.getClientInfoById(e.getValue()).map(c -> Tuples.of(e.getKey(), c)))
@@ -1308,5 +1303,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
+    }
+
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
+
+        if (userId == null) return Mono.empty();
+
+        return this.dao.checkIfUserIsOwner(userId);
     }
 }
