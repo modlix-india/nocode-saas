@@ -27,7 +27,7 @@ public class AuthenticationRequest implements BasePassword<AuthenticationRequest
     private boolean generateOtp = false;
 
     @JsonIgnore
-    public AuthenticationIdentifierType getIdentifierType() {
+    public AuthenticationIdentifierType getComputedIdentifierType() {
         if (this.identifierType != null) return this.identifierType;
 
         return this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
