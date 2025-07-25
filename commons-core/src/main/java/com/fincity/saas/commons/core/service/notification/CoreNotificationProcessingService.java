@@ -2,7 +2,6 @@ package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.feign.IFeignNotificationService;
-import com.fincity.saas.commons.core.model.notification.NotificationCacheRequest;
 import com.fincity.saas.commons.core.model.notification.NotificationRequest;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -70,10 +69,5 @@ public class CoreNotificationProcessingService {
                                         .setChannelObjectMap(objectMap)))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
-    }
-
-    public Mono<Boolean> evictNotificationChannelCache(Map<String, String> channelEntities) {
-        return this.notificationService.evictNotificationCache(
-                new NotificationCacheRequest().setChannelEntities(channelEntities));
     }
 }

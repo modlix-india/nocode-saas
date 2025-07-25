@@ -6,6 +6,7 @@ import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.model.template.NotificationTemplate;
 import java.io.Serial;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -46,5 +47,11 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
     public Map<NotificationChannelType, NotificationTemplate> getChannelDetailMap() {
         return NotificationChannelType.getChannelTypeMap(this.channelDetails);
+    }
+
+    public Map<NotificationChannelType, String> getChannelTemplateCodeMap() {
+        return NotificationChannelType.getChannelTypeMap(this.getChannelDetails().entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, entry -> entry.getValue().getCode(), (a, b) -> b)));
     }
 }

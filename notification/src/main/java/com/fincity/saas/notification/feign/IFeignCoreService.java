@@ -23,7 +23,7 @@ public interface IFeignCoreService {
             @RequestParam String connectionType);
 
     @GetMapping(NOTIFICATION_PATH)
-    Mono<Notification> getNotificationInfo(
+    Mono<Notification> getNotification(
             @RequestParam String urlClientCode,
             @RequestParam String notificationName,
             @RequestParam String appCode,

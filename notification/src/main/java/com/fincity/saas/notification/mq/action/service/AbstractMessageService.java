@@ -7,7 +7,7 @@ import com.fincity.saas.notification.enums.channel.ChannelType;
 import com.fincity.saas.notification.exception.NotificationDeliveryException;
 import com.fincity.saas.notification.model.request.SendRequest;
 import com.fincity.saas.notification.oserver.core.document.Connection;
-import com.fincity.saas.notification.service.NotificationConnectionService;
+import com.fincity.saas.notification.oserver.core.service.NotificationConnectionService;
 import com.fincity.saas.notification.service.SentNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,10 +37,10 @@ public abstract class AbstractMessageService<T extends AbstractMessageService<T>
     }
 
     private Mono<Connection> getConnection(SendRequest request) {
-        return this.connectionService.getNotificationConnection(
+        return this.connectionService.getCoreDocument(
                 request.getAppCode(),
-                request.getConnections().get(this.getChannelType().getLiteral()),
-                request.getClientCode());
+                request.getClientCode(),
+                request.getConnections().get(this.getChannelType().getLiteral()));
     }
 
     private Mono<Boolean> notificationSent(SendRequest sendRequest) {

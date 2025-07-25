@@ -6,13 +6,11 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.notification.dto.UserPreference;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.exception.TemplateProcessingException;
-import com.fincity.saas.notification.feign.IFeignCoreService;
 import com.fincity.saas.notification.model.message.NotificationMessage;
 import com.fincity.saas.notification.model.message.channel.EmailMessage;
 import com.fincity.saas.notification.model.request.NotificationChannel;
@@ -24,15 +22,20 @@ import com.fincity.saas.notification.model.response.SendResponse;
 import com.fincity.saas.notification.model.template.NotificationTemplate;
 import com.fincity.saas.notification.mq.NotificationMessageProducer;
 import com.fincity.saas.notification.oserver.core.document.Notification;
+import com.fincity.saas.notification.oserver.core.service.NotificationConnectionService;
+import com.fincity.saas.notification.oserver.core.service.NotificationService;
 import com.fincity.saas.notification.service.template.NotificationTemplateProcessor;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import java.math.BigInteger;
 import java.util.EnumMap;
 import java.util.Map;
-import lombok.Getter;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -46,51 +49,32 @@ public class NotificationProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationProcessingService.class);
 
-    private static final String NOTIFICATION_INFO_CACHE = "notificationInfo";
-
     private static final String NOTIFICATION = "Notification";
 
-    private final IFeignCoreService coreService;
     private final NotificationMessageResourceService messageResourceService;
 
+    private final NotificationService notificationService;
     private final UserPreferenceService userPreferenceService;
     private final NotificationConnectionService connectionService;
     private final NotificationTemplateProcessor notificationTemplateProcessor;
     private final NotificationMessageProducer notificationProducer;
     private final SentNotificationService sentNotificationService;
 
-    @Getter
-    private CacheService cacheService;
-
     public NotificationProcessingService(
-            IFeignCoreService coreService,
             NotificationMessageResourceService messageResourceService,
+            NotificationService notificationService,
             UserPreferenceService userPreferenceService,
             NotificationConnectionService connectionService,
             NotificationTemplateProcessor notificationTemplateProcessor,
             NotificationMessageProducer notificationProducer,
             SentNotificationService sentNotificationService) {
-        this.coreService = coreService;
         this.messageResourceService = messageResourceService;
+        this.notificationService = notificationService;
         this.userPreferenceService = userPreferenceService;
         this.connectionService = connectionService;
         this.notificationTemplateProcessor = notificationTemplateProcessor;
         this.notificationProducer = notificationProducer;
         this.sentNotificationService = sentNotificationService;
-    }
-
-    @Autowired
-    public void setCacheService(CacheService cacheService) {
-        this.cacheService = cacheService;
-    }
-
-    public String getCacheName() {
-        return NOTIFICATION_INFO_CACHE;
-    }
-
-    public Mono<Boolean> evictChannelEntities(Map<String, String> templates) {
-        Map<NotificationChannelType, String> resultMap = NotificationChannelType.getChannelTypeMap(templates);
-        return notificationTemplateProcessor.evictTemplateCache(resultMap);
     }
 
     public Mono<NotificationResponse> processAndSendNotification(NotificationRequest notificationRequest) {
@@ -145,21 +129,21 @@ public class NotificationProcessingService {
         return FlatMapUtil.flatMapMonoWithNull(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getAppClientUserEntity(ca, appCode, clientCode, userId),
-                        (ca, userEntity) -> this.getNotificationInfo(
+                        (ca, userEntity) -> this.getNotification(
                                 userEntity.getT1(), ca.getUrlClientCode(), userEntity.getT2(), notificationName),
-                        (ca, userEntity, notiInfo) ->
+                        (ca, userEntity, notification) ->
                                 this.userPreferenceService.getUserPreference(userEntity.getT1(), userEntity.getT3()),
-                        (ca, userEntity, notiInfo, userPref) -> this.applyUserPreferences(userPref, notiInfo),
-                        (ca, userEntity, notiInfo, userPref, channelDetails) ->
+                        (ca, userEntity, notification, userPref) -> this.applyUserPreferences(userPref, notification),
+                        (ca, userEntity, notification, userPref, channelDetails) ->
                                 this.connectionService.getNotificationConnections(
-                                        appCode, clientCode, notiInfo.getConnectionName()),
-                        (ca, userEntity, notiInfo, userPref, channelDetails, connInfo) -> {
+                                        appCode, clientCode, notification.getConnectionName()),
+                        (ca, userEntity, notification, userPref, channelDetails, connInfo) -> {
                             if (connInfo == null || connInfo.isEmpty())
                                 return Mono.just(SendRequest.of(
                                         userEntity.getT1(),
                                         userEntity.getT2(),
                                         userEntity.getT3().toBigInteger(),
-                                        notiInfo.getNotificationType()));
+                                        notification.getNotificationType()));
 
                             Map<NotificationChannelType, NotificationTemplate> toSend =
                                     new EnumMap<>(NotificationChannelType.class);
@@ -173,7 +157,7 @@ public class NotificationProcessingService {
                                     userEntity.getT1(),
                                     userEntity.getT2(),
                                     userEntity.getT3().toBigInteger(),
-                                    notiInfo.getNotificationType(),
+                                    notification.getNotificationType(),
                                     userPref,
                                     toSend,
                                     NotificationChannelType.getChannelMap(connInfo),
@@ -190,7 +174,7 @@ public class NotificationProcessingService {
                 ULongUtil.valueOf(userId == null ? ca.getUser().getId() : userId)));
     }
 
-    private Mono<Notification> getNotificationInfo(
+    private Mono<Notification> getNotification(
             String appCode, String urlClientCode, String clientCode, String notificationName) {
 
         if (StringUtil.safeIsBlank(notificationName))
@@ -199,22 +183,13 @@ public class NotificationProcessingService {
                     AbstractMessageService.OBJECT_NOT_FOUND,
                     NOTIFICATION);
 
-        return this.getNotificationInfoInternal(appCode, urlClientCode, clientCode, notificationName)
+        return this.notificationService
+                .getCoreDocument(appCode, urlClientCode, clientCode, notificationName)
                 .switchIfEmpty(this.messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         AbstractMessageService.OBJECT_NOT_FOUND,
                         NOTIFICATION,
                         notificationName));
-    }
-
-    private Mono<Notification> getNotificationInfoInternal(
-            String appCode, String urlClientCode, String clientCode, String notificationName) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> coreService.getNotificationInfo(urlClientCode, notificationName, appCode, clientCode),
-                appCode,
-                clientCode,
-                notificationName);
     }
 
     private Mono<Map<NotificationChannelType, NotificationTemplate>> applyUserPreferences(

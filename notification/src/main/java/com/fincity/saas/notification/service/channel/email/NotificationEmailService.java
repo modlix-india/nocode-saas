@@ -11,9 +11,7 @@ import com.fincity.saas.notification.oserver.core.document.Connection;
 import com.fincity.saas.notification.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.notification.service.NotificationMessageResourceService;
 import jakarta.annotation.PostConstruct;
-
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

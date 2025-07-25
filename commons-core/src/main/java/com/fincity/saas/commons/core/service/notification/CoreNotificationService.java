@@ -32,20 +32,16 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
     private static final String CHANNEL_CONNECTIONS = "channelConnections";
 
     private final ConnectionService connectionService;
-    private final CoreNotificationProcessingService notificationProcessingService;
 
     @Autowired(required = false)
-    @Qualifier("pubRedisAsyncCommand")
-    private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+    @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
     @Value("${redis.connection.eviction.channel:notificationChannel}")
     private String channel;
 
-    protected CoreNotificationService(
-            ConnectionService connectionService, CoreNotificationProcessingService notificationProcessingService) {
+    protected CoreNotificationService(ConnectionService connectionService) {
         super(Notification.class);
         this.connectionService = connectionService;
-        this.notificationProcessingService = notificationProcessingService;
     }
 
     @Override
@@ -174,11 +170,16 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
     }
 
     private Mono<Boolean> evictNotificationCache(Notification notification) {
-        return Mono.zip(
-                this.cacheService.evictAll(
+        return FlatMapUtil.flatMapMono(
+                () -> this.cacheService.evictAll(
                         super.getOutsideServerCacheName(notification.getAppCode(), notification.getName())),
-                this.notificationProcessingService.evictNotificationChannelCache(
-                        notification.getChannelTemplateCodes()),
-                (notificationEvicted, channelEvicted) -> notificationEvicted && channelEvicted);
+                evicted -> Mono.fromCompletionStage(pubAsyncCommand.publish(
+                                this.channel,
+                                "Notification : %s, AppCode : %s, ClientCode : %s"
+                                        .formatted(
+                                                notification.getName(),
+                                                notification.getAppCode(),
+                                                notification.getClientCode())))
+                        .map(x -> evicted));
     }
 }
