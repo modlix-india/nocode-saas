@@ -49,7 +49,7 @@ import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 
-public abstract class AbstractBaseConfiguration implements WebFluxConfigurer, IOpenApi30Config{
+public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
 
     protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
 

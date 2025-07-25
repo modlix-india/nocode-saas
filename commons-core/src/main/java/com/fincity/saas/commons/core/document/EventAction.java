@@ -38,8 +38,7 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> applyOverride(EventAction base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return DifferenceApplicator.apply(this.tasks, base.tasks)
                 .defaultIfEmpty(Map.of())
@@ -52,8 +51,7 @@ public class EventAction extends AbstractOverridableDTO<EventAction> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<EventAction> makeOverride(EventAction base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return Mono.just(this)
                 .flatMap(e -> DifferenceExtractor.extract(e.tasks, base.tasks).map(k -> {

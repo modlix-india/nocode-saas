@@ -46,7 +46,7 @@ public class OAuth2RestService extends AbstractRestTokenService {
     private static final String TOKEN_KEY = "tokenKey";
     private static final String REFRESH_TOKEN_KEY = "refreshTokenKey";
     private static final String TOKEN_EXPIRES_AT_KEY = "expireAtKey";
-    private static final String REFRESH_TOKEN_EXPIRES_AT_KEY ="refreshExpireAtKey";
+    private static final String REFRESH_TOKEN_EXPIRES_AT_KEY = "refreshExpireAtKey";
     private static final String IS_LIFETIME_TOKEN = "isLifeTimeToken";
 
     private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
@@ -92,7 +92,8 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
                     return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode())
                             .flatMap(token -> {
-                                if (token.getExpiresAt() == null || token.getExpiresAt().isAfter(LocalDateTime.now())) {
+                                if (token.getExpiresAt() == null
+                                        || token.getExpiresAt().isAfter(LocalDateTime.now())) {
                                     return Mono.just(token.getToken());
                                 }
 
@@ -101,8 +102,12 @@ public class OAuth2RestService extends AbstractRestTokenService {
                                 }
 
                                 return cacheService
-                                        .evict(CACHE_NAME_REST_OAUTH2,
-                                                getCacheKeys(connection.getName(), token.getClientCode(), token.getAppCode()))
+                                        .evict(
+                                                CACHE_NAME_REST_OAUTH2,
+                                                getCacheKeys(
+                                                        connection.getName(),
+                                                        token.getClientCode(),
+                                                        token.getAppCode()))
                                         .flatMap(v -> createClientCredentialsToken(connection));
                             })
                             .switchIfEmpty(Mono.defer(() -> {
@@ -235,27 +240,20 @@ public class OAuth2RestService extends AbstractRestTokenService {
         String callbackURI = basePageURL + request.getPath();
 
         return FlatMapUtil.flatMapMono(
-
                 () -> this.coreTokenDAO.getCoreTokenByState(state),
-
                 coreToken -> this.connectionService.read(
                         coreToken.getConnectionName(),
                         coreToken.getAppCode(),
                         coreToken.getClientCode(),
                         ConnectionType.REST_API),
-
                 (coreToken, connection) -> this.coreTokenDAO.revokeToken(
                         coreToken.getClientCode(), coreToken.getAppCode(), coreToken.getConnectionName(), null),
-
                 (coreToken, connection, invPrev) -> cacheService.evict(
                         CACHE_NAME_REST_OAUTH2,
                         getCacheKeys(connection.getName(), coreToken.getClientCode(), coreToken.getAppCode())),
-
                 (coreToken, connection, invPrev, evictCache) ->
                         fetchTokenWithAuthCode(connection, request, callbackURI),
-
                 (coreToken, connection, invPrev, evictCache, tObject) -> updateTokens(coreToken, connection, tObject),
-
                 (coreToken, connection, invPrev, evictCache, tup, updated) -> {
                     String fullPageURI =
                             basePageURL + connection.getConnectionDetails().get("pagePath");
@@ -271,11 +269,12 @@ public class OAuth2RestService extends AbstractRestTokenService {
                 });
     }
 
-    private Mono<Map<String, Object>> fetchTokenWithAuthCode(Connection connection, ServerHttpRequest request, String callbackURI) {
+    private Mono<Map<String, Object>> fetchTokenWithAuthCode(
+            Connection connection, ServerHttpRequest request, String callbackURI) {
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> tokenDetails = (Map<String, Object>)
-                connection.getConnectionDetails().get("tokenDetails");
+        Map<String, Object> tokenDetails =
+                (Map<String, Object>) connection.getConnectionDetails().get("tokenDetails");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> queryParams =
@@ -303,13 +302,16 @@ public class OAuth2RestService extends AbstractRestTokenService {
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
     }
 
-    private Mono<Tuple2<CoreToken, CoreToken>> updateTokens(CoreToken coreToken, Connection connection, Map<String, Object> tokenResponse) {
+    private Mono<Tuple2<CoreToken, CoreToken>> updateTokens(
+            CoreToken coreToken, Connection connection, Map<String, Object> tokenResponse) {
 
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
         // Update access token
         Mono<CoreToken> accessTokenUpdate = this.coreTokenDAO.update(coreToken
-                .setToken(tokenResponse.get((String) connectionDetails.get(TOKEN_KEY)).toString())
+                .setToken(tokenResponse
+                        .get((String) connectionDetails.get(TOKEN_KEY))
+                        .toString())
                 .setExpiresAt(calculateExpiryTime(connectionDetails, tokenResponse, CoreTokensTokenType.ACCESS))
                 .setIsLifetimeToken((Boolean) connectionDetails.get(IS_LIFETIME_TOKEN))
                 .setTokenMetadata(tokenResponse));
@@ -326,7 +328,8 @@ public class OAuth2RestService extends AbstractRestTokenService {
                     .setConnectionName(connection.getName())
                     .setUserId(coreToken.getUserId())
                     .setExpiresAt(calculateExpiryTime(connectionDetails, tokenResponse, CoreTokensTokenType.REFRESH))
-                    .setIsLifetimeToken(calculateExpiryTime(connectionDetails, tokenResponse, CoreTokensTokenType.REFRESH) == null)
+                    .setIsLifetimeToken(
+                            calculateExpiryTime(connectionDetails, tokenResponse, CoreTokensTokenType.REFRESH) == null)
                     .setTokenType(CoreTokensTokenType.REFRESH)
                     .setToken(tokenResponse.get(refreshTokenKey).toString())
                     .setTokenMetadata(tokenResponse));
@@ -384,15 +387,11 @@ public class OAuth2RestService extends AbstractRestTokenService {
     public Mono<Boolean> revokeConnectionToken(String connectionName) {
 
         return FlatMapUtil.flatMapMono(
-
                         SecurityContextUtil::getUsersContextAuthentication,
-
                         ca -> this.coreTokenDAO.getActiveToken(
                                 ca.getClientCode(), ca.getUrlAppCode(), connectionName, CoreTokensTokenType.ACCESS),
-
                         (ca, coreToken) -> this.coreTokenDAO.revokeToken(
                                 ca.getClientCode(), ca.getUrlAppCode(), connectionName, null),
-
                         (ca, coreToken, revoked) -> cacheService.evict(
                                 CACHE_NAME_REST_OAUTH2,
                                 getCacheKeys(connectionName, coreToken.getClientCode(), coreToken.getAppCode())))
@@ -457,42 +456,43 @@ public class OAuth2RestService extends AbstractRestTokenService {
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
 
         return FlatMapUtil.flatMapMono(
-
-                () -> this.coreTokenDAO.revokeToken(clientCode, appCode, connection.getName(), CoreTokensTokenType.ACCESS),
-
-                revoked -> this.coreTokenDAO.getActiveToken(clientCode, appCode, connection.getName(), CoreTokensTokenType.REFRESH),
-
-                (revoked, refreshToken) -> fetchTokenWithRefreshToken(refreshToken.getToken(), connectionDetails),
-
-                (revoked,refreshToken, tokenResponse) -> this.coreTokenDAO.create(new CoreToken()
-                        .setClientCode(refreshToken.getClientCode())
-                        .setAppCode(refreshToken.getAppCode())
-                        .setState(refreshToken.getState())
-                        .setConnectionName(refreshToken.getConnectionName())
-                        .setUserId(refreshToken.getUserId())
-                        .setTokenType(CoreTokensTokenType.ACCESS)
-                        .setToken(tokenResponse.get((String) connectionDetails.get(TOKEN_KEY)).toString())
-                        .setExpiresAt(calculateExpiryTime(connectionDetails, tokenResponse, CoreTokensTokenType.ACCESS))
-                        .setIsLifetimeToken((Boolean) connectionDetails.get(IS_LIFETIME_TOKEN))
-                        .setTokenMetadata(tokenResponse)),
-
-                (revoked, refreshToken, tokenResponse, updatedToken) -> cacheService.evict(
-                                                            CACHE_NAME_REST_OAUTH2,
-                                                            getCacheKeys(connection.getName(), clientCode, appCode)),
-
-                (revoked, refreshToken, tokenResponse, updatedToken, evictCache) ->
-                        Mono.just(updatedToken.getToken()))
+                        () -> this.coreTokenDAO.revokeToken(
+                                clientCode, appCode, connection.getName(), CoreTokensTokenType.ACCESS),
+                        revoked -> this.coreTokenDAO.getActiveToken(
+                                clientCode, appCode, connection.getName(), CoreTokensTokenType.REFRESH),
+                        (revoked, refreshToken) ->
+                                fetchTokenWithRefreshToken(refreshToken.getToken(), connectionDetails),
+                        (revoked, refreshToken, tokenResponse) -> this.coreTokenDAO.create(new CoreToken()
+                                .setClientCode(refreshToken.getClientCode())
+                                .setAppCode(refreshToken.getAppCode())
+                                .setState(refreshToken.getState())
+                                .setConnectionName(refreshToken.getConnectionName())
+                                .setUserId(refreshToken.getUserId())
+                                .setTokenType(CoreTokensTokenType.ACCESS)
+                                .setToken(tokenResponse
+                                        .get((String) connectionDetails.get(TOKEN_KEY))
+                                        .toString())
+                                .setExpiresAt(calculateExpiryTime(
+                                        connectionDetails, tokenResponse, CoreTokensTokenType.ACCESS))
+                                .setIsLifetimeToken((Boolean) connectionDetails.get(IS_LIFETIME_TOKEN))
+                                .setTokenMetadata(tokenResponse)),
+                        (revoked, refreshToken, tokenResponse, updatedToken) -> cacheService.evict(
+                                CACHE_NAME_REST_OAUTH2, getCacheKeys(connection.getName(), clientCode, appCode)),
+                        (revoked, refreshToken, tokenResponse, updatedToken, evictCache) ->
+                                Mono.just(updatedToken.getToken()))
                 .switchIfEmpty(Mono.defer(() -> Mono.error(new GenericException(
                         HttpStatus.BAD_REQUEST, "Access denied: Integration token unavailable or expired"))));
     }
 
-    private Mono<Map<String, Object>> fetchTokenWithRefreshToken(String refreshToken, Map<String, Object> connectionDetails) {
+    private Mono<Map<String, Object>> fetchTokenWithRefreshToken(
+            String refreshToken, Map<String, Object> connectionDetails) {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> updateToken = (Map<String, Object>) connectionDetails.get("updateToken");
 
         @SuppressWarnings("unchecked")
-        Map<String, String> queryParams = (Map<String, String>) updateToken.getOrDefault("queryParams", Collections.emptyMap());
+        Map<String, String> queryParams =
+                (Map<String, String>) updateToken.getOrDefault("queryParams", Collections.emptyMap());
 
         String tokenURL = (String) updateToken.get("url");
 
