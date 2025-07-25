@@ -3,11 +3,12 @@ package com.fincity.saas.message.model.message.whatsapp.messages;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
+import lombok.Data;
+import lombok.experimental.Accessors;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-import lombok.Data;
-import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
@@ -18,10 +19,10 @@ public class Message implements Serializable {
     private static final long serialVersionUID = -9202268963191141253L;
 
     @JsonProperty("messaging_product")
-    private final String messagingProduct = "whatsapp";
+    private static final String messagingProduct = "whatsapp"; // NOSONAR
 
     @JsonProperty("recipient_type")
-    private final String recipientType = "individual";
+    private static final String recipientType = "individual"; // NOSONAR
 
     @JsonProperty("context")
     private Context context;

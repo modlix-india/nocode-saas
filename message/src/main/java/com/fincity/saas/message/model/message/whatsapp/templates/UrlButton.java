@@ -30,5 +30,4 @@ public class UrlButton extends Button {
     public UrlButton(String text) {
         super(ButtonType.URL, text);
     }
-
 }

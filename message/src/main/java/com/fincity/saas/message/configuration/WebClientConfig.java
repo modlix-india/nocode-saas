@@ -6,6 +6,10 @@ import com.fincity.saas.message.configuration.interceptor.ReactiveAuthentication
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.MessageConnectionService;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Base64;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,11 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Base64;
-import java.util.Map;
 
 @Configuration
 @RequiredArgsConstructor
@@ -29,16 +28,17 @@ public class WebClientConfig {
 
     public Mono<WebClient> createWhatsappWebClient(String appCode, String clientCode) {
         return this.getConnectionDetails(appCode, "whatsapp", clientCode, ConnectionSubType.MESSAGE_WHATSAPP)
-                .map(connection -> {
-                    String token = (String) connection.getConnectionDetails().getOrDefault("token", "");
-                    String baseUrl = (String)
-                            connection.getConnectionDetails().getOrDefault("baseUrl", DEFAULT_WHATSAPP_BASE_URL);
+                .flatMap(this::createWhatsappWebClient);
+    }
 
-                    return WebClient.builder()
-                            .baseUrl(baseUrl)
-                            .filter(new ReactiveAuthenticationInterceptor(token, ReactiveAuthenticationScheme.BEARER))
-                            .build();
-                });
+    public Mono<WebClient> createWhatsappWebClient(Connection connection) {
+        String token = (String) connection.getConnectionDetails().getOrDefault("token", "");
+        String baseUrl = (String) connection.getConnectionDetails().getOrDefault("baseUrl", DEFAULT_WHATSAPP_BASE_URL);
+
+        return Mono.just(WebClient.builder()
+                .baseUrl(baseUrl)
+                .filter(new ReactiveAuthenticationInterceptor(token, ReactiveAuthenticationScheme.BEARER))
+                .build());
     }
 
     public Mono<WebClient> createExotelWebClient(String appCode, String clientCode) {

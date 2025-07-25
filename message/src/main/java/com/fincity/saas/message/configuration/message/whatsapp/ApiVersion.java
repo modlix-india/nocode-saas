@@ -2,11 +2,8 @@ package com.fincity.saas.message.configuration.message.whatsapp;
 
 import lombok.Getter;
 
-import java.util.Arrays;
-
 @Getter
 public enum ApiVersion {
-
     UNVERSIONED(null),
 
     VERSION_16_0("v16.0"),
@@ -23,25 +20,13 @@ public enum ApiVersion {
 
     VERSION_22_0("v22.0"),
 
-    LATEST("v22.0");
+    VERSION_23_0("v23.0"),
 
-    private final String urlElement;
+    LATEST("v23.0");
 
-    ApiVersion(String urlElement) {
-        this.urlElement = urlElement;
-    }
+    private final String value;
 
-    public static ApiVersion getVersionFromString(String urlElementStr) {
-        if (urlElementStr == null)
-            return UNVERSIONED;
-
-        return Arrays.stream(ApiVersion.values())
-                .filter(v -> urlElementStr.equals(v.getUrlElement()))
-                .findFirst()
-                .orElse(UNVERSIONED);
-    }
-
-    public boolean isUrlElementRequired() {
-        return null != this.urlElement;
+    ApiVersion(String value) {
+        this.value = value;
     }
 }

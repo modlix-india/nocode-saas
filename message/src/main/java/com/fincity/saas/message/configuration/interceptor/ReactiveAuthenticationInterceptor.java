@@ -5,7 +5,6 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import reactor.core.publisher.Mono;
 
 public class ReactiveAuthenticationInterceptor implements ExchangeFilterFunction {
@@ -34,18 +33,16 @@ public class ReactiveAuthenticationInterceptor implements ExchangeFilterFunction
         ClientRequest newRequest = ClientRequest.from(request)
                 .header(headerName, scheme.format(token))
                 .build();
-        
+
         // Proceed with the modified request
         return next.exchange(newRequest);
     }
-    
+
     public WebClient.Builder addToWebClientBuilder(WebClient.Builder builder) {
         return builder.filter(this);
     }
-    
+
     public WebClient createWebClient() {
-        return WebClient.builder()
-                .filter(this)
-                .build();
+        return WebClient.builder().filter(this).build();
     }
 }
