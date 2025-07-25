@@ -3,6 +3,7 @@ package com.fincity.saas.message.service.call.provider.exotel;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
@@ -139,7 +140,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         (callBackUri, formData) -> webClientConfig.createExotelWebClient(conn),
                         (callBackUri, formData, webClient) -> webClient
                                 .post()
-                                .uri("/v1/Accounts/" + accountSid + "/Calls/connect")
+                                .uri(ExotelApiConfig.getCallUrl(accountSid))
                                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                 .body(BodyInserters.fromFormData(formData))
                                 .retrieve()

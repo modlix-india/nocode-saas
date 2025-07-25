@@ -2,6 +2,8 @@ package com.fincity.saas.message.service.message.provider.whatsapp.business;
 
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
 import com.fincity.saas.message.configuration.message.whatsapp.WhatsappApiConfig;
+import com.fincity.saas.message.model.message.whatsapp.config.CommerceDataItem;
+import com.fincity.saas.message.model.message.whatsapp.config.GraphCommerceSettings;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.model.message.whatsapp.phone.RequestCode;
@@ -10,13 +12,10 @@ import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.MessageTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
-import com.whatsapp.api.domain.config.CommerceDataItem;
-import com.whatsapp.api.domain.config.GraphCommerceSettings;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -28,7 +27,7 @@ public class WhatsappBusinessManagementApi {
     private final WebClient webClient;
 
     public WhatsappBusinessManagementApi(WebClient webClient) {
-        this.apiVersion = WhatsappApiConfig.getApiVersion();
+        this.apiVersion = WhatsappApiConfig.API_VERSION;
         this.webClient = webClient;
         this.apiService = new WhatsappBusinessManagementApiServiceImpl(webClient);
     }
@@ -110,152 +109,153 @@ public class WhatsappBusinessManagementApi {
         return apiService.updateWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, commerceDataItem);
     }
 
-    private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient) implements WhatsappBusinessManagementApiService {
+    private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient)
+            implements WhatsappBusinessManagementApiService {
 
         @Override
-            public Mono<Template> createMessageTemplate(
-                    String apiVersion, String whatsappBusinessAccountId, MessageTemplate messageTemplate) {
-                return webClient
-                        .post()
-                        .uri(
-                                "/{api-version}/{whatsapp-business-account-ID}/message_templates",
-                                apiVersion,
-                                whatsappBusinessAccountId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(messageTemplate)
-                        .retrieve()
-                        .bodyToMono(Template.class);
-            }
-
-            @Override
-            public Mono<Template> updateMessageTemplate(
-                    String apiVersion,
-                    String whatsappBusinessAccountId,
-                    String messageTemplateId,
-                    MessageTemplate messageTemplate) {
-                return webClient
-                        .post()
-                        .uri(
-                                "/{api-version}/{whatsapp-business-account-ID}/message_templates/{message-template-id}",
-                                apiVersion,
-                                whatsappBusinessAccountId,
-                                messageTemplateId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(messageTemplate)
-                        .retrieve()
-                        .bodyToMono(Template.class);
-            }
-
-            @Override
-            public Mono<Response> deleteMessageTemplate(String apiVersion, String whatsappBusinessAccountId, String name) {
-                return webClient
-                        .delete()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/{api-version}/{whatsapp-business-account-ID}/message_templates")
-                                .queryParam("name", name)
-                                .build(apiVersion, whatsappBusinessAccountId))
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
-
-            @Override
-            public Mono<MessageTemplates> retrieveTemplates(String apiVersion, String whatsappBusinessAccountId) {
-                return webClient
-                        .get()
-                        .uri(
-                                "/{api-version}/{whatsapp-business-account-ID}/message_templates",
-                                apiVersion,
-                                whatsappBusinessAccountId)
-                        .retrieve()
-                        .bodyToMono(MessageTemplates.class);
-            }
-
-            @Override
-            public Mono<MessageTemplates> retrieveTemplates(
-                    String apiVersion, String whatsappBusinessAccountId, Map<String, Object> filters) {
-                return webClient
-                        .get()
-                        .uri(uriBuilder -> {
-                            uriBuilder.path("/{api-version}/{whatsapp-business-account-ID}/message_templates");
-                            filters.forEach(uriBuilder::queryParam);
-                            return uriBuilder.build(apiVersion, whatsappBusinessAccountId);
-                        })
-                        .retrieve()
-                        .bodyToMono(MessageTemplates.class);
-            }
-
-            @Override
-            public Mono<PhoneNumber> retrievePhoneNumber(
-                    String apiVersion, String phoneNumberId, Map<String, Object> queryParams) {
-                return webClient
-                        .get()
-                        .uri(uriBuilder -> {
-                            uriBuilder.path("/{api-version}/{phone-number-ID}");
-                            queryParams.forEach(uriBuilder::queryParam);
-                            return uriBuilder.build(apiVersion, phoneNumberId);
-                        })
-                        .retrieve()
-                        .bodyToMono(PhoneNumber.class);
-            }
-
-            @Override
-            public Mono<PhoneNumbers> retrievePhoneNumbers(String apiVersion, String whatsappBusinessAccountId) {
-                return webClient
-                        .get()
-                        .uri(
-                                "/{api-version}/{whatsapp-business-account-ID}/phone_numbers",
-                                apiVersion,
-                                whatsappBusinessAccountId)
-                        .retrieve()
-                        .bodyToMono(PhoneNumbers.class);
-            }
-
-            @Override
-            public Mono<Response> requestCode(String apiVersion, String phoneNumberId, RequestCode requestCode) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{phone-number-ID}/request_code", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(requestCode)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
-
-            @Override
-            public Mono<Response> verifyCode(String apiVersion, String phoneNumberId, VerifyCode verifyCode) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{phone-number-ID}/verify_code", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(verifyCode)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
-
-            @Override
-            public Mono<GraphCommerceSettings> getWhatsappCommerceSettings(
-                    String apiVersion, String phoneNumberId, Map<String, String> queryParams) {
-                return webClient
-                        .get()
-                        .uri(uriBuilder -> {
-                            uriBuilder.path("/{api-version}/{phone-number-ID}/whatsapp_commerce_settings");
-                            queryParams.forEach(uriBuilder::queryParam);
-                            return uriBuilder.build(apiVersion, phoneNumberId);
-                        })
-                        .retrieve()
-                        .bodyToMono(GraphCommerceSettings.class);
-            }
-
-            @Override
-            public Mono<Response> updateWhatsappCommerceSettings(
-                    String apiVersion, String phoneNumberId, CommerceDataItem commerceDataItem) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{phone-number-ID}/whatsapp_commerce_settings", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(commerceDataItem)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
+        public Mono<Template> createMessageTemplate(
+                String apiVersion, String whatsappBusinessAccountId, MessageTemplate messageTemplate) {
+            return webClient
+                    .post()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/message_templates",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(messageTemplate)
+                    .retrieve()
+                    .bodyToMono(Template.class);
         }
+
+        @Override
+        public Mono<Template> updateMessageTemplate(
+                String apiVersion,
+                String whatsappBusinessAccountId,
+                String messageTemplateId,
+                MessageTemplate messageTemplate) {
+            return webClient
+                    .post()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/message_templates/{message-template-id}",
+                            apiVersion,
+                            whatsappBusinessAccountId,
+                            messageTemplateId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(messageTemplate)
+                    .retrieve()
+                    .bodyToMono(Template.class);
+        }
+
+        @Override
+        public Mono<Response> deleteMessageTemplate(String apiVersion, String whatsappBusinessAccountId, String name) {
+            return webClient
+                    .delete()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/{api-version}/{whatsapp-business-account-ID}/message_templates")
+                            .queryParam("name", name)
+                            .build(apiVersion, whatsappBusinessAccountId))
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<MessageTemplates> retrieveTemplates(String apiVersion, String whatsappBusinessAccountId) {
+            return webClient
+                    .get()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/message_templates",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .retrieve()
+                    .bodyToMono(MessageTemplates.class);
+        }
+
+        @Override
+        public Mono<MessageTemplates> retrieveTemplates(
+                String apiVersion, String whatsappBusinessAccountId, Map<String, Object> filters) {
+            return webClient
+                    .get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{whatsapp-business-account-ID}/message_templates");
+                        filters.forEach(uriBuilder::queryParam);
+                        return uriBuilder.build(apiVersion, whatsappBusinessAccountId);
+                    })
+                    .retrieve()
+                    .bodyToMono(MessageTemplates.class);
+        }
+
+        @Override
+        public Mono<PhoneNumber> retrievePhoneNumber(
+                String apiVersion, String phoneNumberId, Map<String, Object> queryParams) {
+            return webClient
+                    .get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{phone-number-ID}");
+                        queryParams.forEach(uriBuilder::queryParam);
+                        return uriBuilder.build(apiVersion, phoneNumberId);
+                    })
+                    .retrieve()
+                    .bodyToMono(PhoneNumber.class);
+        }
+
+        @Override
+        public Mono<PhoneNumbers> retrievePhoneNumbers(String apiVersion, String whatsappBusinessAccountId) {
+            return webClient
+                    .get()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/phone_numbers",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .retrieve()
+                    .bodyToMono(PhoneNumbers.class);
+        }
+
+        @Override
+        public Mono<Response> requestCode(String apiVersion, String phoneNumberId, RequestCode requestCode) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{phone-number-ID}/request_code", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestCode)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<Response> verifyCode(String apiVersion, String phoneNumberId, VerifyCode verifyCode) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{phone-number-ID}/verify_code", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(verifyCode)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<GraphCommerceSettings> getWhatsappCommerceSettings(
+                String apiVersion, String phoneNumberId, Map<String, String> queryParams) {
+            return webClient
+                    .get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{phone-number-ID}/whatsapp_commerce_settings");
+                        queryParams.forEach(uriBuilder::queryParam);
+                        return uriBuilder.build(apiVersion, phoneNumberId);
+                    })
+                    .retrieve()
+                    .bodyToMono(GraphCommerceSettings.class);
+        }
+
+        @Override
+        public Mono<Response> updateWhatsappCommerceSettings(
+                String apiVersion, String phoneNumberId, CommerceDataItem commerceDataItem) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{phone-number-ID}/whatsapp_commerce_settings", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(commerceDataItem)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+    }
 }

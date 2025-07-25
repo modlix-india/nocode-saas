@@ -9,7 +9,7 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
         <relativePath/>
-        <!-- lookup parent from repository -->
+        <!-- lookup parent from a repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>message</artifactId>
@@ -103,11 +103,6 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>
             <version>${package.i.saas-commons-security-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.Bindambc</groupId>
-            <artifactId>whatsapp-business-java-api</artifactId>
-            <version>v0.6.1</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.libphonenumber</groupId>
@@ -244,10 +239,6 @@
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
             <url>https://repo.spring.io/milestone</url>
-        </repository>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
         </repository>
     </repositories>
     <build>

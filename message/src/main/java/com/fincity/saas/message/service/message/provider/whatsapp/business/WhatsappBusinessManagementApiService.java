@@ -1,5 +1,7 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.business;
 
+import com.fincity.saas.message.model.message.whatsapp.config.CommerceDataItem;
+import com.fincity.saas.message.model.message.whatsapp.config.GraphCommerceSettings;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.model.message.whatsapp.phone.RequestCode;
@@ -8,8 +10,6 @@ import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.MessageTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
-import com.whatsapp.api.domain.config.CommerceDataItem;
-import com.whatsapp.api.domain.config.GraphCommerceSettings;
 import java.util.Map;
 import reactor.core.publisher.Mono;
 

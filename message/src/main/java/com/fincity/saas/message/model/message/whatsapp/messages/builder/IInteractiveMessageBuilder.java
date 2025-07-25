@@ -7,12 +7,10 @@ import com.fincity.saas.message.model.message.whatsapp.messages.type.Interactive
 public interface IInteractiveMessageBuilder {
 
     interface IInteractiveAction {
-
         IInteractiveType setAction(Action action);
     }
 
     interface IInteractiveType {
-
         InteractiveMessage setType(InteractiveMessageType type);
     }
 }

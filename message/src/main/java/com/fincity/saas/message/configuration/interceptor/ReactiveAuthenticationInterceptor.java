@@ -29,12 +29,10 @@ public class ReactiveAuthenticationInterceptor implements ExchangeFilterFunction
 
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
-        // Create a new request with the Authorization header
         ClientRequest newRequest = ClientRequest.from(request)
                 .header(headerName, scheme.format(token))
                 .build();
 
-        // Proceed with the modified request
         return next.exchange(newRequest);
     }
 

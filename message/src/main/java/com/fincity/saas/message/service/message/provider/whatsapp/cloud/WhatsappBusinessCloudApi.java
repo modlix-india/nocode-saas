@@ -25,7 +25,7 @@ public class WhatsappBusinessCloudApi {
     private final WebClient webClient;
 
     public WhatsappBusinessCloudApi(WebClient webClient) {
-        this.apiVersion = WhatsappApiConfig.getApiVersion();
+        this.apiVersion = WhatsappApiConfig.API_VERSION;
         this.webClient = webClient;
         this.apiService = new WhatsappBusinessCloudApiServiceImpl(webClient);
     }
@@ -67,94 +67,94 @@ public class WhatsappBusinessCloudApi {
     private record WhatsappBusinessCloudApiServiceImpl(WebClient webClient) implements WhatsappBusinessCloudApiService {
 
         @Override
-            public Mono<MessageResponse> sendMessage(String apiVersion, String phoneNumberId, Message message) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{Phone-Number-ID}/messages", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(message)
-                        .retrieve()
-                        .bodyToMono(MessageResponse.class);
-            }
-
-            @Override
-            public Mono<UploadResponse> uploadMedia(
-                    String apiVersion, String phoneNumberId, String fileName, String fileType, byte[] fileContent) {
-                MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
-                bodyBuilder
-                        .part("file", new ByteArrayResource(fileContent) {
-                            @Override
-                            public String getFilename() {
-                                return fileName;
-                            }
-                        })
-                        .header("Content-Type", fileType);
-                bodyBuilder.part("messaging_product", "whatsapp");
-
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{Phone-Number-ID}/media", apiVersion, phoneNumberId)
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .body(BodyInserters.fromMultipartData(bodyBuilder.build()))
-                        .retrieve()
-                        .bodyToMono(UploadResponse.class);
-            }
-
-            @Override
-            public Mono<Media> retrieveMediaUrl(String apiVersion, String mediaId) {
-                return webClient
-                        .get()
-                        .uri("/{api-version}/{media-id}", apiVersion, mediaId)
-                        .retrieve()
-                        .bodyToMono(Media.class);
-            }
-
-            @Override
-            public Mono<MediaFile> downloadMediaFile(String url) {
-                return webClient
-                        .get()
-                        .uri(url)
-                        .header("User-Agent", "curl/7.64.1")
-                        .retrieve()
-                        .toEntity(byte[].class)
-                        .map(response -> {
-                            String contentDisposition = response.getHeaders().getFirst("Content-Disposition");
-                            String fileName =
-                                    contentDisposition != null ? contentDisposition.split("=")[1] : "unknown_file";
-                            byte[] bytes = response.getBody();
-                            return new MediaFile().setFileName(fileName).setContent(bytes);
-                        });
-            }
-
-            @Override
-            public Mono<Response> deleteMedia(String apiVersion, String mediaId) {
-                return webClient
-                        .delete()
-                        .uri("/{api-version}/{media-id}", apiVersion, mediaId)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
-
-            @Override
-            public Mono<Response> markMessageAsRead(String apiVersion, String phoneNumberId, ReadMessage message) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{Phone-Number-ID}/messages", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(message)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
-
-            @Override
-            public Mono<Response> twoStepVerification(String apiVersion, String phoneNumberId, TwoStepCode twoStepCode) {
-                return webClient
-                        .post()
-                        .uri("/{api-version}/{Phone-Number-ID}", apiVersion, phoneNumberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(twoStepCode)
-                        .retrieve()
-                        .bodyToMono(Response.class);
-            }
+        public Mono<MessageResponse> sendMessage(String apiVersion, String phoneNumberId, Message message) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{Phone-Number-ID}/messages", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(message)
+                    .retrieve()
+                    .bodyToMono(MessageResponse.class);
         }
+
+        @Override
+        public Mono<UploadResponse> uploadMedia(
+                String apiVersion, String phoneNumberId, String fileName, String fileType, byte[] fileContent) {
+            MultipartBodyBuilder bodyBuilder = new MultipartBodyBuilder();
+            bodyBuilder
+                    .part("file", new ByteArrayResource(fileContent) {
+                        @Override
+                        public String getFilename() {
+                            return fileName;
+                        }
+                    })
+                    .header("Content-Type", fileType);
+            bodyBuilder.part("messaging_product", "whatsapp");
+
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{Phone-Number-ID}/media", apiVersion, phoneNumberId)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(bodyBuilder.build()))
+                    .retrieve()
+                    .bodyToMono(UploadResponse.class);
+        }
+
+        @Override
+        public Mono<Media> retrieveMediaUrl(String apiVersion, String mediaId) {
+            return webClient
+                    .get()
+                    .uri("/{api-version}/{media-id}", apiVersion, mediaId)
+                    .retrieve()
+                    .bodyToMono(Media.class);
+        }
+
+        @Override
+        public Mono<MediaFile> downloadMediaFile(String url) {
+            return webClient
+                    .get()
+                    .uri(url)
+                    .header("User-Agent", "curl/7.64.1")
+                    .retrieve()
+                    .toEntity(byte[].class)
+                    .map(response -> {
+                        String contentDisposition = response.getHeaders().getFirst("Content-Disposition");
+                        String fileName =
+                                contentDisposition != null ? contentDisposition.split("=")[1] : "unknown_file";
+                        byte[] bytes = response.getBody();
+                        return new MediaFile().setFileName(fileName).setContent(bytes);
+                    });
+        }
+
+        @Override
+        public Mono<Response> deleteMedia(String apiVersion, String mediaId) {
+            return webClient
+                    .delete()
+                    .uri("/{api-version}/{media-id}", apiVersion, mediaId)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<Response> markMessageAsRead(String apiVersion, String phoneNumberId, ReadMessage message) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{Phone-Number-ID}/messages", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(message)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<Response> twoStepVerification(String apiVersion, String phoneNumberId, TwoStepCode twoStepCode) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{Phone-Number-ID}", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(twoStepCode)
+                    .retrieve()
+                    .bodyToMono(Response.class);
+        }
+    }
 }

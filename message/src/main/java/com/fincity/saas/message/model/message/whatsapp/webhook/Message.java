@@ -2,7 +2,7 @@ package com.fincity.saas.message.model.message.whatsapp.webhook;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.whatsapp.api.domain.messages.type.MessageType;
+import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;

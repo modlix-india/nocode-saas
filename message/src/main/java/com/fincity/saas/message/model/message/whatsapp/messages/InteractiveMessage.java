@@ -2,9 +2,9 @@ package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.model.message.whatsapp.messages.builder.IInteractiveMessageBuilder.IInteractiveAction;
+import com.fincity.saas.message.model.message.whatsapp.messages.builder.IInteractiveMessageBuilder.IInteractiveType;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.InteractiveMessageType;
-import com.whatsapp.api.domain.messages.builder.IInteractiveMessageBuilder.IInteractiveAction;
-import com.whatsapp.api.domain.messages.builder.IInteractiveMessageBuilder.IInteractiveType;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -35,16 +35,5 @@ public class InteractiveMessage implements IInteractiveAction, IInteractiveType,
 
     public static IInteractiveAction build() {
         return new InteractiveMessage();
-    }
-
-    @Override
-    public IInteractiveType setAction(com.whatsapp.api.domain.messages.Action action) {
-        return null;
-    }
-
-    @Override
-    public com.whatsapp.api.domain.messages.InteractiveMessage setType(
-            com.whatsapp.api.domain.messages.type.InteractiveMessageType type) {
-        return null;
     }
 }
