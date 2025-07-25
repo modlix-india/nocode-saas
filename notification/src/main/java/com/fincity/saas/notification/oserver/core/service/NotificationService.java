@@ -33,7 +33,7 @@ public class NotificationService extends AbstractCoreService<Notification> {
     @Autowired(required = false) // NOSONAR
     private StatefulRedisPubSubConnection<String, String> subConnect;
 
-    @Value("${redis.connection.eviction.channel:notificationChannel}")
+    @Value("${redis.notification.eviction.channel:notificationChannel}")
     private String channel;
 
     public NotificationService(NotificationTemplateProcessor notificationTemplateProcessor) {

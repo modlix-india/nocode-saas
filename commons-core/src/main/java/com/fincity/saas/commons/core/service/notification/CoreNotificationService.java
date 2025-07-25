@@ -33,10 +33,10 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
 
     private final ConnectionService connectionService;
 
-    @Autowired(required = false)
+    @Autowired(required = false) //NOSONAR
     @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
-    @Value("${redis.connection.eviction.channel:notificationChannel}")
+    @Value("${redis.notification.eviction.channel:notificationChannel}")
     private String channel;
 
     protected CoreNotificationService(ConnectionService connectionService) {
