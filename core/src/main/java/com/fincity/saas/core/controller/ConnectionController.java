@@ -1,6 +1,7 @@
 package com.fincity.saas.core.controller;
 
 import com.fincity.saas.commons.core.document.Connection;
+import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;

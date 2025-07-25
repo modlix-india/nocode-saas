@@ -1,10 +1,8 @@
 package com.fincity.saas.commons.security.feign;
 
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.cloud.openfeign.CollectionFormat;
+import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,13 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import com.fincity.saas.commons.security.dto.App;
-import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 @reactivefeign.spring.config.ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
