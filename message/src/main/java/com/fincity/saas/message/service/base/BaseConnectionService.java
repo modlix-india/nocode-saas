@@ -40,7 +40,7 @@ public abstract class BaseConnectionService {
 
     public abstract ConnectionType getConnectionType();
 
-    public Mono<Connection> getConnection(String appCode, String connectionName, String clientCode) {
+    public Mono<Connection> getConnection(String appCode, String clientCode, String connectionName) {
         return FlatMapUtil.flatMapMono(
                 () -> this.securityService.appInheritance(appCode, clientCode, clientCode),
                 inheritance ->

@@ -23,7 +23,7 @@ import org.springframework.util.MultiValueMap;
 public class ExotelPassThruCallback implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 8142641621599260894L;
 
     @JsonProperty("CallSid")
     private String callSid;

@@ -25,14 +25,14 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
 
     private final EnumMap<ConnectionSubType, IAppCallService<?>> services = new EnumMap<>(ConnectionSubType.class);
 
-    public CallService(ExotelCallService exotelCallService, CallConnectionService connectionService) {
-        this.exotelCallService = exotelCallService;
+    public CallService(CallConnectionService connectionService, ExotelCallService exotelCallService) {
         this.connectionService = connectionService;
+        this.exotelCallService = exotelCallService;
     }
 
     @PostConstruct
     public void init() {
-        this.services.put(ConnectionSubType.CALL_EXOTEL, exotelCallService);
+        this.services.put(ConnectionSubType.EXOTEL, exotelCallService);
     }
 
     @Override
@@ -44,7 +44,7 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.connectionService.getConnection(
-                                access.getAppCode(), callRequest.getConnectionName(), access.getClientCode()),
+                                access.getAppCode(), access.getClientCode(), callRequest.getConnectionName()),
                         (access, connection) -> services.get(connection.getConnectionSubType())
                                 .makeCall(access, callRequest, connection),
                         (access, connection, call) -> this.createInternal(access, call))

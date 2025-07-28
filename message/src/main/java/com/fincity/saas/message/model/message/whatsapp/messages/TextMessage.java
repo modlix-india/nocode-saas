@@ -2,6 +2,7 @@ package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.util.NameUtil;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
@@ -20,4 +21,10 @@ public class TextMessage implements Serializable {
 
     @JsonProperty("body")
     private String body;
+
+    public TextMessage setBody(String body) {
+        this.body = body;
+        this.previewUrl = NameUtil.containsUrl(body);
+        return this;
+    }
 }

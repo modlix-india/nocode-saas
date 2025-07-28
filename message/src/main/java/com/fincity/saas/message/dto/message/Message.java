@@ -1,6 +1,8 @@
 package com.fincity.saas.message.dto.message;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.enums.message.MessageStatus;
+import com.fincity.saas.message.util.NameUtil;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.util.Map;
@@ -28,6 +30,15 @@ public class Message extends BaseUpdatableDto<Message> {
     private String connectionName;
     private String messageProvider;
     private Boolean isOutbound;
+    private MessageStatus messageStatus;
+    private String sentTime;
+    private String deliveredTime;
+    private String readTime;
     private ULong whatsappMessageId;
     private Map<String, Object> metadata;
+
+    public Message setMessageProvider(String messageProvider) {
+        this.messageProvider = NameUtil.normalizeToUpper(messageProvider);
+        return this;
+    }
 }

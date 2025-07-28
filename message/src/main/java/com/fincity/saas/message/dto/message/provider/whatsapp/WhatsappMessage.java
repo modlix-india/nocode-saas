@@ -1,9 +1,10 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.enums.message.MessageStatus;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
+import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
-import com.fincity.saas.message.model.message.whatsapp.webhook.type.MessageStatus;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private String messageId;
 
+    private String phoneNumberId;
     private Integer fromDialCode = PhoneUtil.getDefaultCallingCode();
     private String from;
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();
@@ -42,6 +44,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private boolean isOutbound;
 
     private Message message;
+    private MessageResponse messageResponse;
 
     public WhatsappMessage() {
         super();
@@ -88,7 +91,6 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 // ignored
             }
         }
-
         return this;
     }
 

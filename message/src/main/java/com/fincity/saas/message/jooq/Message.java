@@ -6,6 +6,8 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
+import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 
 import java.util.Arrays;
 import java.util.List;
@@ -39,6 +41,16 @@ public class Message extends SchemaImpl {
     public final MessageExotelCalls MESSAGE_EXOTEL_CALLS = MessageExotelCalls.MESSAGE_EXOTEL_CALLS;
 
     /**
+     * The table <code>message.message_messages</code>.
+     */
+    public final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
+
+    /**
+     * The table <code>message.message_whatsapp_messages</code>.
+     */
+    public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
+
+    /**
      * No further instances allowed
      */
     private Message() {
@@ -55,7 +67,9 @@ public class Message extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             MessageCalls.MESSAGE_CALLS,
-            MessageExotelCalls.MESSAGE_EXOTEL_CALLS
+            MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
+            MessageMessages.MESSAGE_MESSAGES,
+            MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES
         );
     }
 }

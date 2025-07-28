@@ -2,6 +2,7 @@ package com.fincity.saas.message.dto.call;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.call.CallStatus;
+import com.fincity.saas.message.util.NameUtil;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -38,4 +39,9 @@ public class Call extends BaseUpdatableDto<Call> {
     private String recordingUrl;
     private ULong exotelCallId;
     private Map<String, Object> metadata;
+
+    public Call setCallProvider(String callProvider) {
+        this.callProvider = NameUtil.normalizeToUpper(callProvider);
+        return this;
+    }
 }

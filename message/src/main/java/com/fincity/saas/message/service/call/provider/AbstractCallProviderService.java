@@ -3,10 +3,12 @@ package com.fincity.saas.message.service.call.provider;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.message.configuration.WebClientConfig;
-import com.fincity.saas.message.dao.call.provider.AbstractCallProviderDAO;
+import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.model.common.IdAndValue;
 import com.fincity.saas.message.model.common.PhoneNumber;
+import com.fincity.saas.message.oserver.core.document.Connection;
+import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.call.CallConnectionService;
@@ -23,7 +25,7 @@ import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractCallProviderService<
-                R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends AbstractCallProviderDAO<R, D>>
+                R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IAppCallService<D> {
 
     public static final String CALL_BACK_URI = "/api/call/callback";
@@ -53,6 +55,16 @@ public abstract class AbstractCallProviderService<
     @Autowired
     private void setWebClientConfig(WebClientConfig webClientConfig) {
         this.webClientConfig = webClientConfig;
+    }
+
+    protected Mono<Boolean> isValidConnection(Connection connection) {
+        if (connection.getConnectionType() != ConnectionType.CALL
+                || connection.getConnectionSubType().getProvider().equals(this.getProvider()))
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.INVALID_CONNECTION_TYPE);
+
+        return Mono.just(Boolean.TRUE);
     }
 
     protected <T> Mono<T> throwMissingParam(String paramName) {

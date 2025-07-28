@@ -1,18 +1,20 @@
 package com.fincity.saas.message.model.request.call;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fincity.saas.message.model.common.PhoneNumber;
+import com.fincity.saas.message.model.request.BaseMessageRequest;
+import java.io.Serial;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class CallRequest {
+@EqualsAndHashCode(callSuper = true)
+public class CallRequest extends BaseMessageRequest {
 
-    private String appCode;
-    private String clientCode;
+    @Serial
+    private static final long serialVersionUID = 6013191012022643981L;
+
     private PhoneNumber toNumber;
     private String callerId;
-    private String connectionName;
 }

@@ -1,19 +1,20 @@
 package com.fincity.saas.message.model.request.call;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fincity.saas.message.model.request.BaseMessageRequest;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Map;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class IncomingCallRequest {
+@EqualsAndHashCode(callSuper = true)
+public class IncomingCallRequest extends BaseMessageRequest implements Serializable {
 
-    private String appCode;
-    private String clientCode;
-    private ULong userId;
-    private String connectionName;
+    @Serial
+    private static final long serialVersionUID = 4574664927812256563L;
+
     private Map<String, Object> providerIncomingRequest;
 }

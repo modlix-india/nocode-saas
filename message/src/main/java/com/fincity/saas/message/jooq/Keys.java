@@ -6,8 +6,12 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
+import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
@@ -32,10 +36,15 @@ public class Keys {
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_PRIMARY = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_PRIMARY"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.ID }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK1_EXOTEL_CALLS_CODE = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK1_EXOTEL_CALLS_CODE"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.CODE }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK2_EXOTEL_CALLS_SID = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK2_EXOTEL_CALLS_SID"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.SID }, true);
+    public static final UniqueKey<MessageMessagesRecord> KEY_MESSAGE_MESSAGES_PRIMARY = Internal.createUniqueKey(MessageMessages.MESSAGE_MESSAGES, DSL.name("KEY_message_messages_PRIMARY"), new TableField[] { MessageMessages.MESSAGE_MESSAGES.ID }, true);
+    public static final UniqueKey<MessageMessagesRecord> KEY_MESSAGE_MESSAGES_UK1_MESSAGES_CODE = Internal.createUniqueKey(MessageMessages.MESSAGE_MESSAGES, DSL.name("KEY_message_messages_UK1_MESSAGES_CODE"), new TableField[] { MessageMessages.MESSAGE_MESSAGES.CODE }, true);
+    public static final UniqueKey<MessageWhatsappMessagesRecord> KEY_MESSAGE_WHATSAPP_MESSAGES_PRIMARY = Internal.createUniqueKey(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, DSL.name("KEY_message_whatsapp_messages_PRIMARY"), new TableField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.ID }, true);
+    public static final UniqueKey<MessageWhatsappMessagesRecord> KEY_MESSAGE_WHATSAPP_MESSAGES_UK1_WHATSAPP_MESSAGES_CODE = Internal.createUniqueKey(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, DSL.name("KEY_message_whatsapp_messages_UK1_WHATSAPP_MESSAGES_CODE"), new TableField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.CODE }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
     public static final ForeignKey<MessageCallsRecord, MessageExotelCallsRecord> FK1_CALLS_EXOTEL_CALLS_ID = Internal.createForeignKey(MessageCalls.MESSAGE_CALLS, DSL.name("FK1_CALLS_EXOTEL_CALLS_ID"), new TableField[] { MessageCalls.MESSAGE_CALLS.EXOTEL_CALL_ID }, Keys.KEY_MESSAGE_EXOTEL_CALLS_PRIMARY, new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.ID }, true);
+    public static final ForeignKey<MessageMessagesRecord, MessageWhatsappMessagesRecord> FK1_MESSAGES_WHATSAPP_MESSAGES_ID = Internal.createForeignKey(MessageMessages.MESSAGE_MESSAGES, DSL.name("FK1_MESSAGES_WHATSAPP_MESSAGES_ID"), new TableField[] { MessageMessages.MESSAGE_MESSAGES.WHATSAPP_MESSAGE_ID }, Keys.KEY_MESSAGE_WHATSAPP_MESSAGES_PRIMARY, new TableField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.ID }, true);
 }

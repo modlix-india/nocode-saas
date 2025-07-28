@@ -11,13 +11,11 @@ public enum ConnectionType {
 
     MAIL(ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
 
-    TEXT_MESSAGE,
-
     REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
-    MESSAGE(ConnectionSubType.MESSAGE_WHATSAPP, ConnectionSubType.MESSAGE_WHATSAPP_TEMPLATE),
+    CALL(ConnectionSubType.EXOTEL),
 
-    CALL(ConnectionSubType.CALL_EXOTEL);
+    TEXT_MESSAGE(ConnectionSubType.WHATSAPP);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 

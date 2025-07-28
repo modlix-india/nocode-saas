@@ -1,7 +1,6 @@
 package com.fincity.saas.message.service.call.provider.exotel;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
@@ -21,12 +20,10 @@ import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnec
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
-import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -36,7 +33,7 @@ import reactor.util.context.Context;
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO> {
 
-    public static final String EXOTEL_PROVIDER_URI = "/exotel";
+    public static final String EXOTEL_PROVIDER_URI = "/" + ConnectionSubType.EXOTEL.getProvider();
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
     @Override
@@ -46,7 +43,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     @Override
     public String getProvider() {
-        return ConnectionSubType.CALL_EXOTEL.getProvider();
+        return ConnectionSubType.EXOTEL.getProvider();
     }
 
     @Override
@@ -78,14 +75,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     @Override
     public Mono<Call> makeCall(MessageAccess access, CallRequest callRequest, Connection connection) {
-
-        if (connection.getConnectionType() != ConnectionType.CALL
-                || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL)
-            return this.getMsgService()
-                    .throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            MessageResourceService.INVALID_CONNECTION_TYPE);
-
         String to = callRequest.getToNumber().getNumber();
         String callerId = callRequest.getCallerId();
 
@@ -97,11 +86,12 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         this.applyConnectionDetailsToRequest(exotelCallRequest, connection.getConnectionDetails());
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.makeExotelCall(access, exotelCallRequest, connection),
-                        exotelCall -> this.createInternal(access, exotelCall),
-                        (exotelCall, created) ->
+                        () -> super.isValidConnection(connection),
+                        vConn -> this.makeExotelCall(access, exotelCallRequest, connection),
+                        (vConn, exotelCall) -> this.createInternal(access, exotelCall),
+                        (vConn, exotelCall, created) ->
                                 this.toCall(exotelCall).map(call -> call.setConnectionName(connection.getName())),
-                        (exotelCall, eCreated, cCreated) -> super.callEventService
+                        (vConn, exotelCall, eCreated, cCreated) -> super.callEventService
                                 .sendMakeCallEvent(
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
                                 .thenReturn(cCreated))
@@ -170,13 +160,13 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         publicAccess -> super.getUserIdAndPhone(incomingCallRequest.getUserId()),
                         (publicAccess, user) -> super.callConnectionService.getConnection(
                                 publicAccess.getAppCode(),
-                                incomingCallRequest.getConnectionName(),
-                                publicAccess.getClientCode()),
+                                publicAccess.getClientCode(),
+                                incomingCallRequest.getConnectionName()),
                         (publicAccess, user, connection) -> this.createExotelCall(
                                 providerRequest, user.getValue().getNumber()),
                         (publicAccess, user, connection, exotelCall) -> {
                             if (connection.getConnectionType() != ConnectionType.CALL
-                                    || connection.getConnectionSubType() != ConnectionSubType.CALL_EXOTEL) {
+                                    || connection.getConnectionSubType() != ConnectionSubType.EXOTEL) {
                                 logger.error(
                                         "Invalid connection type: Expected CALL/CALL_EXOTEL but got {}/{}",
                                         connection.getConnectionType(),
