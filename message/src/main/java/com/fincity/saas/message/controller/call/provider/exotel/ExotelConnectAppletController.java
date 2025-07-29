@@ -1,4 +1,4 @@
-package com.fincity.saas.message.controller;
+package com.fincity.saas.message.controller.call.provider.exotel;
 
 import com.fincity.saas.message.model.request.call.IncomingCallRequest;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnectAppletResponse;
@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/exotel/connect")
+@RequestMapping("/api/call/exotel")
 public class ExotelConnectAppletController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExotelConnectAppletController.class);
@@ -23,7 +23,7 @@ public class ExotelConnectAppletController {
         this.exotelCallService = exotelCallService;
     }
 
-    @PostMapping("/call")
+    @PostMapping("/connect")
     public Mono<ExotelConnectAppletResponse> connectCall(@RequestBody IncomingCallRequest request) {
         return exotelCallService.connectCall(request).onErrorResume(e -> {
             logger.error("Error in connectCall: {}", e.getMessage(), e);

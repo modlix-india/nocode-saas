@@ -1,16 +1,22 @@
-package com.fincity.saas.message.controller;
+package com.fincity.saas.message.controller.message.provider.whatsapp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.model.message.whatsapp.webhook.WebHook;
 import com.fincity.saas.message.model.message.whatsapp.webhook.WebHookEvent;
+import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -20,24 +26,23 @@ public class WhatsappWebhookController {
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsappWebhookController.class);
 
-    @Value("${whatsapp.webhook.verify_token:10293890}")
-    private String verifyToken;
+    private final WhatsappMessageService whatsappMessageService;
+
+    @Autowired
+    public WhatsappWebhookController(WhatsappMessageService whatsappMessageService) {
+        this.whatsappMessageService = whatsappMessageService;
+    }
 
     @GetMapping
-    public ResponseEntity<String> verifyWebhook(
+    public Mono<ResponseEntity<String>> verifyWebhook(
             @RequestParam("hub.mode") String mode,
             @RequestParam("hub.verify_token") String token,
             @RequestParam("hub.challenge") String challenge) {
 
-        logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
-
-        if ("subscribe".equals(mode) && verifyToken.equals(token)) {
-            logger.info("Webhook verified successfully");
-            return ResponseEntity.ok(challenge);
-        } else {
-            logger.error("Webhook verification failed: Invalid mode or token");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        return whatsappMessageService
+                .verifyWebhook(mode, token, challenge)
+                .map(ResponseEntity::ok)
+                .onErrorReturn(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
     }
 
     @PostMapping

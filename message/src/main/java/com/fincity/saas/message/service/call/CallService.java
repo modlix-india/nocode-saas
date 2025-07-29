@@ -23,7 +23,7 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
     private final CallConnectionService connectionService;
     private final ExotelCallService exotelCallService;
 
-    private final EnumMap<ConnectionSubType, IAppCallService<?>> services = new EnumMap<>(ConnectionSubType.class);
+    private final EnumMap<ConnectionSubType, ICallService<?>> services = new EnumMap<>(ConnectionSubType.class);
 
     public CallService(CallConnectionService connectionService, ExotelCallService exotelCallService) {
         this.connectionService = connectionService;

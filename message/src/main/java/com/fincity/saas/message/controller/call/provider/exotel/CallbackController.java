@@ -1,4 +1,4 @@
-package com.fincity.saas.message.controller;
+package com.fincity.saas.message.controller.call.provider.exotel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;

@@ -9,6 +9,6 @@ public class MessageConnectionService extends BaseConnectionService {
 
     @Override
     public ConnectionType getConnectionType() {
-        return ConnectionType.MESSAGE;
+        return ConnectionType.TEXT_MESSAGE;
     }
 }

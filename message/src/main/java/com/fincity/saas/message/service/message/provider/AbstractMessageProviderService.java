@@ -52,4 +52,16 @@ public abstract class AbstractMessageProviderService<
 
         return Mono.just(Boolean.TRUE);
     }
+
+    protected Mono<D> findByUniqueField(String messageId) {
+        return this.dao.findByUniqueField(messageId);
+    }
+
+    protected <T> Mono<T> throwMissingParam(String paramName) {
+        return super.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                MessageResourceService.MISSING_CALL_PARAMETERS,
+                this.getProvider(),
+                paramName);
+    }
 }

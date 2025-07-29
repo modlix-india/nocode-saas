@@ -7,7 +7,7 @@ import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import reactor.core.publisher.Mono;
 
-public interface IAppCallService<D extends BaseUpdatableDto<D>> {
+public interface ICallService<D extends BaseUpdatableDto<D>> {
 
     String getProvider();
 

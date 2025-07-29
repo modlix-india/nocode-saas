@@ -33,7 +33,7 @@ import reactor.util.context.Context;
 @Service
 public class ExotelCallService extends AbstractCallProviderService<MessageExotelCallsRecord, ExotelCall, ExotelDAO> {
 
-    public static final String EXOTEL_PROVIDER_URI = "/" + ConnectionSubType.EXOTEL.getProvider();
+    public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
     @Override

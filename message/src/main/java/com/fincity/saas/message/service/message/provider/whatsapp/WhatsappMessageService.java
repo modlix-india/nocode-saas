@@ -1,7 +1,6 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappDAO;
 import com.fincity.saas.message.dto.message.Message;
@@ -14,11 +13,10 @@ import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType
 import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
-import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
 import com.fincity.saas.message.util.PhoneUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -27,11 +25,14 @@ import reactor.util.context.Context;
 public class WhatsappMessageService
         extends AbstractMessageProviderService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappDAO> {
 
-    public static final String WHATSAPP_PROVIDER_URI = "/" + ConnectionSubType.WHATSAPP.getProvider();
+    public static final String WHATSAPP_PROVIDER_URI = "/whatsapp";
 
     private static final String WHATSAPP_MESSAGE_CACHE = "whatsappMessage";
 
     private final WhatsappApiFactory whatsappApiFactory;
+
+    @Value("${facebook.whatsapp.webhook.verify-token}")
+    private String verifyToken;
 
     @Autowired
     public WhatsappMessageService(WhatsappApiFactory whatsappApiFactory) {
@@ -82,10 +83,11 @@ public class WhatsappMessageService
     @Override
     public Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
 
-        if (!messageRequest.isValid()) return throwMissingParam(MessageRequest.Fields.text);
+        if (!messageRequest.isValid()) return super.throwMissingParam(MessageRequest.Fields.text);
 
-        String phoneNumberId = (String) connection.getConnectionDetails().get(WhatsappMessage.Fields.phoneNumberId);
-        if (phoneNumberId == null) return throwMissingParam(WhatsappMessage.Fields.phoneNumberId);
+        String phoneNumberId =
+                (String) connection.getConnectionDetails().getOrDefault(WhatsappMessage.Fields.phoneNumberId, null);
+        if (phoneNumberId == null) return super.throwMissingParam(WhatsappMessage.Fields.phoneNumberId);
 
         MessageBuilder messageBuilder =
                 MessageBuilder.builder().setTo(messageRequest.getToNumber().getNumber());
@@ -116,6 +118,19 @@ public class WhatsappMessageService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendTextMessage"));
     }
 
+    public Mono<String> verifyWebhook(String mode, String token, String challenge) {
+
+        logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
+
+        if ("subscribe".equals(mode) && verifyToken.equals(token)) {
+            logger.info("Webhook verified successfully");
+            return Mono.just(challenge);
+        } else {
+            logger.error("Webhook verification failed: Invalid mode or token");
+            return Mono.error(new RuntimeException("Webhook verification failed"));
+        }
+    }
+
     private WhatsappMessage createWhatsappMessage(
             MessageAccess access, MessageRequest messageRequest, String phoneNumberId) {
 
@@ -130,18 +145,5 @@ public class WhatsappMessageService
                 PhoneUtil.parse(access.getUser().getPhoneNumber()).getNumber());
 
         return whatsappMessage;
-    }
-
-    protected Mono<WhatsappMessage> findByUniqueField(String messageId) {
-        return this.dao.findByUniqueField(messageId);
-    }
-
-    protected <T> Mono<T> throwMissingParam(String paramName) {
-        return super.getMsgService()
-                .throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        MessageResourceService.MISSING_MESSAGE_PARAMETERS,
-                        this.getProvider(),
-                        paramName);
     }
 }

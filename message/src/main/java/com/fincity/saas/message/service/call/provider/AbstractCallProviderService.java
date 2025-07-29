@@ -13,7 +13,7 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.call.CallConnectionService;
 import com.fincity.saas.message.service.call.CallService;
-import com.fincity.saas.message.service.call.IAppCallService;
+import com.fincity.saas.message.service.call.ICallService;
 import com.fincity.saas.message.service.call.event.CallEventService;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.util.Map;
@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractCallProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
-        extends BaseUpdatableService<R, D, O> implements IAppCallService<D> {
+        extends BaseUpdatableService<R, D, O> implements ICallService<D> {
 
     public static final String CALL_BACK_URI = "/api/call/callback";
     protected CallService callService;

@@ -9,7 +9,7 @@ public enum FieldType {
     ACCOUNT_UPDATE("account_update"),
     ACCOUNT_REVIEW_UPDATE("account_review_update"),
     MESSAGES("messages"),
-    security("security");
+    SECURITY("security");
 
     private final String value;
 

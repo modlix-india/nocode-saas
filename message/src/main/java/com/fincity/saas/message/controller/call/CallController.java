@@ -1,4 +1,4 @@
-package com.fincity.saas.message.controller;
+package com.fincity.saas.message.controller.call;
 
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.model.request.call.CallRequest;
