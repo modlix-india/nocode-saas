@@ -4,10 +4,9 @@ import java.util.List;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.*;
-import com.fincity.security.model.RegistrationResponse;
-import com.fincity.security.model.UserRegistrationRequest;
-import com.fincity.security.model.UserResponse;
+import com.fincity.security.model.*;
 import com.fincity.security.service.UserInviteService;
+import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -20,8 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
-import com.fincity.security.model.AuthenticationRequest;
-import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.service.UserSubOrganizationService;
 
 import reactor.core.publisher.Mono;
@@ -33,10 +30,15 @@ public class UserController
 
     private final UserInviteService inviteService;
     private final UserSubOrganizationService userSubOrgService;
+    private final UserRequestService requestService;
 
-    public UserController(UserInviteService inviteService, UserSubOrganizationService userSubOrgService) {
+    public UserController(
+            UserInviteService inviteService,
+            UserSubOrganizationService userSubOrgService,
+            UserRequestService requestService) {
         this.inviteService = inviteService;
         this.userSubOrgService = userSubOrgService;
+        this.requestService = requestService;
     }
 
     @GetMapping("{userId}/removeProfile/{profileId}")
@@ -200,4 +202,20 @@ public class UserController
         return this.service.updateDesignation(userId, designationId).map(ResponseEntity::ok);
     }
 
+    @PostMapping("/request")
+    public Mono<ResponseEntity<Boolean>> userRequest(@RequestBody UserAppAccessRequest request) {
+        return this.requestService.createRequest(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/acceptRequest")
+    public Mono<ResponseEntity<Boolean>> acceptRequest(
+            @RequestBody UserAppAccessRequest userRequest, ServerHttpRequest request, ServerHttpResponse response) {
+        return this.requestService.acceptRequest(userRequest, request, response).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/rejectRequest/{requestId}")
+    public Mono<ResponseEntity<Boolean>> rejectRequest(@PathVariable String requestId) {
+        return this.requestService.rejectRequest(requestId).map(ResponseEntity::ok);
+    }
 }
+
