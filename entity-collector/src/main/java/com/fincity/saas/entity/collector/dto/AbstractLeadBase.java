@@ -13,10 +13,7 @@ import java.util.Map;
 @Data
 @Accessors(chain = true)
 @ToString(callSuper = true)
-public abstract class AbstractLeadBase implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 3814596747030554670L;
+public abstract class AbstractLeadBase {
 
     private String email;
     private String fullName;

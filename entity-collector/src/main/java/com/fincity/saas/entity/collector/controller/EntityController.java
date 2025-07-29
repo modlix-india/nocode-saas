@@ -16,11 +16,16 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/entity/collector/entry")
-@AllArgsConstructor
+
 public class EntityController {
 
     public final MetaEntityUtil metaEntityUtil;
     public final EntityCollectorService entityCollectorService;
+
+    public EntityController(MetaEntityUtil metaEntityUtil, EntityCollectorService entityCollectorService) {
+        this.metaEntityUtil = metaEntityUtil;
+        this.entityCollectorService = entityCollectorService;
+    }
 
     @GetMapping("/social/facebook")
     public Mono<ResponseEntity<String>> verifyMetaWebhook(
