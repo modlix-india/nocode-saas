@@ -28,6 +28,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.List;
 import java.util.Map;
@@ -189,13 +191,14 @@ public class UserRequestService
 
                 user -> this.getAdminEmails(app.getId(), client.getId()),
 
-                (user, emails) -> {
+                (user, tup) -> {
 
                     Map<String, Object> eventData = Map.of(
                             "requestId", userRequest.getId().toString(),
                             "app", app,
                             "status", userRequest.getStatus().toString(),
-                            "adminEmails", emails);
+                            "adminEmails", tup.getT1(),
+                            "addApp", tup.getT2());
 
                     EventQueObject userRequestEvent = new EventQueObject()
                             .setAppCode(app.getAppCode())
@@ -266,7 +269,7 @@ public class UserRequestService
         });
     }
 
-    private Mono<List<String>> getAdminEmails(ULong appId, ULong clientId) {
+    private Mono<Tuple2<List<String>, Boolean>> getAdminEmails(ULong appId, ULong clientId) {
 
         List<String> authorities = List.of("Authorities.User_CREATE", "Authorities.ROLE_Owner");
 
@@ -277,16 +280,17 @@ public class UserRequestService
                                 .map(users -> users.stream()
                                         .map(User::getEmailId)
                                         .filter(Objects::nonNull)
-                                        .collect(Collectors.toList()));
+                                        .collect(Collectors.toList()))
+                                .map(emails -> Tuples.of(emails, Boolean.TRUE));
                     }
 
                     return this.userDao.getUsersForProfiles(adminProfiles)
                             .map(users -> users.stream()
                                     .map(User::getEmailId)
                                     .filter(Objects::nonNull)
-                                    .collect(Collectors.toList()));
-                })
-                .defaultIfEmpty(List.of());
+                                    .collect(Collectors.toList()))
+                            .map(emails -> Tuples.of(emails, Boolean.FALSE));
+                });
     }
 
     @Override
