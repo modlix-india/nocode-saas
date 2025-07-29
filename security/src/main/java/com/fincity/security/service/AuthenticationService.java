@@ -195,7 +195,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 authRequest.getUserId(),
                                 clientCode,
                                 appCode,
-                                authRequest.getIdentifierType()),
+                                authRequest.getComputedIdentifierType()),
                         tup -> this.userService
                                 .checkUserAndClient(tup, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -225,7 +225,7 @@ public class AuthenticationService implements IAuthenticationService {
                         authRequest.getUserId(),
                         clientCode,
                         null,
-                        authRequest.getIdentifierType())
+                        authRequest.getComputedIdentifierType())
                 .map(t -> t.getT3().getId());
 
         return userIdMono
@@ -263,7 +263,7 @@ public class AuthenticationService implements IAuthenticationService {
                 authRequest.getUserId(),
                 clientCode,
                 appCode,
-                authRequest.getIdentifierType());
+                authRequest.getComputedIdentifierType());
 
         return userClientMono
                 .flatMap(userTup -> FlatMapUtil.flatMapMono(
@@ -312,7 +312,7 @@ public class AuthenticationService implements IAuthenticationService {
         String appCode = request.getHeaders().getFirst(AppService.AC);
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
-        if (authRequest.getIdentifierType() == null)
+        if (authRequest.getComputedIdentifierType() == null)
             authRequest.setIdentifierType(AuthenticationIdentifierType.EMAIL_ID);
 
         Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNClient(
@@ -320,7 +320,7 @@ public class AuthenticationService implements IAuthenticationService {
                 authRequest.getUserId(),
                 clientCode,
                 appCode,
-                authRequest.getIdentifierType());
+                authRequest.getComputedIdentifierType());
 
         return userClientMono
                 .flatMap(userTup -> FlatMapUtil.flatMapMono(
@@ -972,6 +972,6 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setAppURL(this.fillValues(request.getCallbackUrl(), token.getToken()))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkUserAccess"))
                 .switchIfEmpty(Mono.error(new GenericException(
-                        HttpStatus.UNAUTHORIZED,"access denied for app code: " + request.getAppCode())));
+                        HttpStatus.UNAUTHORIZED, "access denied for app code: " + request.getAppCode())));
     }
 }

@@ -766,7 +766,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
                                     null,
-                                    authRequest.getIdentifierType());
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -802,8 +802,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserName(),
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
-                                    null ,
-                                    authRequest.getIdentifierType());
+                                    null,
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> this.checkUserAndClient(userTup, ca.getUrlClientCode())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
@@ -841,7 +841,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     authRequest.getUserId(),
                                     ca.getUrlClientCode(),
                                     null,
-                                    authRequest.getIdentifierType());
+                                    authRequest.getComputedIdentifierType());
                         },
                         (ca, userTup) -> Mono.zip(
                                         this.checkUserAndClient(userTup, ca.getUrlClientCode()),
@@ -998,7 +998,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         authRequest.getUserId(),
                         clientCode,
                         appCode,
-                        authRequest.getIdentifierType(),
+                        authRequest.getComputedIdentifierType(),
                         userStatusCodes)
                 .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
                 .flatMap(e -> this.clientService.getClientInfoById(e.getValue()).map(c -> Tuples.of(e.getKey(), c)))
@@ -1305,9 +1305,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
     }
 
-    public Mono<Boolean> checkIfUserIsOwner(ULong userId){
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
-        if( userId == null ) return Mono.empty();
+        if (userId == null) return Mono.empty();
 
         return this.dao.checkIfUserIsOwner(userId);
     }
