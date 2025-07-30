@@ -2,12 +2,11 @@ package com.fincity.saas.entity.collector.service;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 @Service
 public class EntityCollectorMessageResourceService extends AbstractMessageService {
@@ -18,10 +17,8 @@ public class EntityCollectorMessageResourceService extends AbstractMessageServic
     public static final String INTEGRATION_NOT_FOUND = "integration_not_found";
     public static final String MESSAGES = "messages";
     public static final String TOKEN_UNAVAILABLE = "token_unavailable";
-    public static final String METADATA_FETCH_FAILED= "meta_fetch_failed";
-    public static final String FAILED_NORMALIZE_ENTITY= "failed_normalize_entity";
-
-
+    public static final String METADATA_FETCH_FAILED = "meta_fetch_failed";
+    public static final String FAILED_NORMALIZE_ENTITY = "failed_normalize_entity";
 
     protected EntityCollectorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle(MESSAGES, Locale.ENGLISH)));
@@ -32,10 +29,9 @@ public class EntityCollectorMessageResourceService extends AbstractMessageServic
 
         return SecurityContextUtil.getUsersLocale()
                 .flatMap(locale -> Mono.justOrEmpty(this.findResourceBundle(locale)))
-                .defaultIfEmpty(
-                        this.bundleMap.get(Locale.ENGLISH))
-                .map(bundle -> bundle.containsKey(messageId) ? bundle.getString(messageId)
-                        : bundle.getString(UKNOWN_ERROR));
+                .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
+                .map(bundle ->
+                        bundle.containsKey(messageId) ? bundle.getString(messageId) : bundle.getString(UKNOWN_ERROR));
     }
 
     private ResourceBundle findResourceBundle(Locale locale) {

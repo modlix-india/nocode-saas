@@ -14,6 +14,5 @@ public interface IFeignCoreService {
             @RequestHeader(name = "X-Forwarded-Port", required = false) String forwardedPort,
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader("appCode") String headerAppCode,
-            @PathVariable("connectionName") String connectionName
-    );
+            @PathVariable("connectionName") String connectionName);
 }

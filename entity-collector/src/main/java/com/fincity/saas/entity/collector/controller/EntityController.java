@@ -1,29 +1,25 @@
 package com.fincity.saas.entity.collector.controller;
 
-
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.service.EntityCollectorService;
-
 import com.fincity.saas.entity.collector.util.MetaEntityUtil;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-
 @RestController
 @RequestMapping("/api/entity/collector/entry")
-
 public class EntityController {
 
-    public final MetaEntityUtil metaEntityUtil;
-    public final EntityCollectorService entityCollectorService;
+    private final EntityCollectorService entityCollectorService;
 
-    public EntityController(MetaEntityUtil metaEntityUtil, EntityCollectorService entityCollectorService) {
-        this.metaEntityUtil = metaEntityUtil;
+    @Value("${entity-collector.meta.webhook.verify-token}")
+    private String token;
+
+    public EntityController(EntityCollectorService entityCollectorService) {
         this.entityCollectorService = entityCollectorService;
     }
 
@@ -33,18 +29,16 @@ public class EntityController {
             @RequestParam(name = "hub.verify_token") String verifyToken,
             @RequestParam(name = "hub.challenge") String challenge) {
 
-        return metaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge);
+        return MetaEntityUtil.verifyMetaWebhook(mode, verifyToken, challenge, token);
     }
 
     @PostMapping("/social/facebook")
     public Mono<Void> handleMetaEntity(@RequestBody JsonNode webhookData) {
-        return entityCollectorService.processMetaFormEntity (webhookData);
+        return entityCollectorService.processMetaFormEntity(webhookData);
     }
-
 
     @PostMapping("/website")
     public Mono<Void> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
-
         return entityCollectorService.processWebsiteFormEntity(requestBodyMono, request);
     }
 }

@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.collector.dao;
 
+import static com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.ENTITY_COLLECTOR_LOG;
+
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.entity.collector.dto.EntityCollectorLog;
@@ -8,8 +10,6 @@ import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-
-import static com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.ENTITY_COLLECTOR_LOG;
 
 @Component
 public class EntityCollectorLogDAO extends AbstractUpdatableDAO<EntityCollectorLogRecord, ULong, EntityCollectorLog> {
@@ -25,9 +25,7 @@ public class EntityCollectorLogDAO extends AbstractUpdatableDAO<EntityCollectorL
         UpdatableRecord<EntityCollectorLogRecord> rec = this.dslContext.newRecord(this.table);
         rec.from(entity);
         rec.reset("CREATED_AT");
-        return Mono.from(this.dslContext.update(this.table)
-                        .set(rec)
-                        .where(this.idField.eq(entity.getId())))
+        return Mono.from(this.dslContext.update(this.table).set(rec).where(this.idField.eq(entity.getId())))
                 .thenReturn(rec.into(this.pojoClass));
     }
 }

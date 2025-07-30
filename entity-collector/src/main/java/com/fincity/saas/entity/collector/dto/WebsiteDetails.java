@@ -1,11 +1,10 @@
 package com.fincity.saas.entity.collector.dto;
 
-import lombok.Data;
-import lombok.ToString;
-import lombok.EqualsAndHashCode;
 import java.io.Serial;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import lombok.experimental.Accessors;
-
 
 @Data
 @EqualsAndHashCode(callSuper = true)

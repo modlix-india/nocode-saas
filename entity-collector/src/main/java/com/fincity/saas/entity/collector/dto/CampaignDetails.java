@@ -1,9 +1,8 @@
 package com.fincity.saas.entity.collector.dto;
 
-import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
+import lombok.Data;
 
 @Data
 public class CampaignDetails implements Serializable {

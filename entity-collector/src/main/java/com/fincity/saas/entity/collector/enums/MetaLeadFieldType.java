@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.collector.enums;
 
-
 import lombok.Getter;
 
 @Getter
@@ -43,5 +42,4 @@ public enum MetaLeadFieldType {
             return null;
         }
     }
-
 }

@@ -1,10 +1,9 @@
-package com.fincity.saas.entity.collector.dto ;
+package com.fincity.saas.entity.collector.dto;
 
 import com.fincity.saas.entity.collector.model.LeadDetails;
-import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
+import lombok.Data;
 
 @Data
 public class EntityResponse implements Serializable {

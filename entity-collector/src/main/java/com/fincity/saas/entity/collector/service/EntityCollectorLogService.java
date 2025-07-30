@@ -5,19 +5,18 @@ import com.fincity.saas.entity.collector.dao.EntityCollectorLogDAO;
 import com.fincity.saas.entity.collector.dto.EntityCollectorLog;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityCollectorLogRecord;
+import java.time.LocalDateTime;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
 @RequiredArgsConstructor
 @Service
-public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
-        EntityCollectorLogRecord, ULong, EntityCollectorLog, EntityCollectorLogDAO> {
+public class EntityCollectorLogService
+        extends AbstractJOOQUpdatableDataService<
+                EntityCollectorLogRecord, ULong, EntityCollectorLog, EntityCollectorLogDAO> {
 
     private final EntityCollectorMessageResourceService entityCollectorMessageResponseService;
 
@@ -32,8 +31,11 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
         });
     }
 
-
-    public Mono<EntityCollectorLog> update(ULong logId, Map<String, Object> outgoingEntityData, EntityCollectorLogStatus status, String statusMessage) {
+    public Mono<EntityCollectorLog> update(
+            ULong logId,
+            Map<String, Object> outgoingEntityData,
+            EntityCollectorLogStatus status,
+            String statusMessage) {
         EntityCollectorLog updatedLog = (EntityCollectorLog) new EntityCollectorLog()
                 .setOutgoingEntityData(outgoingEntityData)
                 .setStatus(status)
@@ -43,9 +45,9 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
         return super.update(updatedLog);
     }
 
-
     public Mono<ULong> create(ULong entityIntegrationId, Map<String, Object> incomingEntityData, String ipAddress) {
-        return entityCollectorMessageResponseService.getMessage(EntityCollectorMessageResourceService.INTEGRATION_FOUND_MESSAGE)
+        return entityCollectorMessageResponseService
+                .getMessage(EntityCollectorMessageResourceService.INTEGRATION_FOUND_MESSAGE)
                 .flatMap(message -> {
                     EntityCollectorLog log = new EntityCollectorLog()
                             .setEntityIntegrationId(entityIntegrationId)
@@ -65,5 +67,4 @@ public class EntityCollectorLogService extends AbstractJOOQUpdatableDataService<
                 .setId(logId);
         return super.update(errorLog);
     }
-
 }

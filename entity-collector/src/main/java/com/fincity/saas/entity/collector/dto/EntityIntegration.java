@@ -2,11 +2,10 @@ package com.fincity.saas.entity.collector.dto;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import java.io.Serial;
 import lombok.*;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
-
-import java.io.Serial;
 
 @Data
 @Accessors(chain = true)

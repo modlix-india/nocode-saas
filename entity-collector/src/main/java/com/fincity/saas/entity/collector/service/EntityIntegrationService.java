@@ -8,21 +8,19 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.collector.dao.EntityIntegrationDAO;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
-import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
+import java.net.URI;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Map;
-
 @Service
-public class EntityIntegrationService extends AbstractJOOQUpdatableDataService<EntityIntegrationsRecord,
-        ULong, EntityIntegration, EntityIntegrationDAO> {
+public class EntityIntegrationService
+        extends AbstractJOOQUpdatableDataService<
+                EntityIntegrationsRecord, ULong, EntityIntegration, EntityIntegrationDAO> {
 
     private static final String HUB_MODE = "hub.mode";
     private static final String HUB_VERIFY_TOKEN = "hub.verify_token";
@@ -36,33 +34,28 @@ public class EntityIntegrationService extends AbstractJOOQUpdatableDataService<E
     }
 
     public Mono<EntityIntegration> findByInSourceAndType(String inSource, EntityIntegrationsInSourceType inSourceType) {
-        return this.dao.findByInSourceAndInSourceType(inSource, inSourceType).
-                switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
+        return this.dao
+                .findByInSourceAndInSourceType(inSource, inSourceType)
+                .switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         EntityCollectorMessageResourceService.INTEGRATION_NOT_FOUND));
-
     }
 
     @Override
     public Mono<EntityIntegration> create(EntityIntegration entity) {
-        return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> verifyTargetUrl(entity).then(super.create(entity))
-        );
+        return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> verifyTargetUrl(entity)
+                .then(super.create(entity)));
     }
-
 
     @Override
     public Mono<EntityIntegration> update(EntityIntegration entity) {
-        return this.read(entity.getId()).flatMap(
-                        existingEntity ->
-                                SecurityContextUtil.getUsersContextAuthentication().flatMap(
-                                        ca -> verifyTargetUrl(entity).then(super.update(entity))))
+        return this.read(entity.getId())
+                .flatMap(existingEntity -> SecurityContextUtil.getUsersContextAuthentication()
+                        .flatMap(ca -> verifyTargetUrl(entity).then(super.update(entity))))
                 .switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         EntityCollectorMessageResourceService.OBJECT_NOT_FOUND));
     }
-
 
     @Override
     public Mono<EntityIntegration> updatableEntity(EntityIntegration entity) {
@@ -77,7 +70,6 @@ public class EntityIntegrationService extends AbstractJOOQUpdatableDataService<E
         });
     }
 
-
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
@@ -88,27 +80,32 @@ public class EntityIntegrationService extends AbstractJOOQUpdatableDataService<E
 
         WebClient webClient = WebClient.builder().build();
 
-        return webClient.get().uri(uriBuilder -> uriBuilder
+        return webClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
                         .scheme(targetUri.getScheme())
                         .host(targetUri.getHost())
                         .path(targetUri.getPath())
                         .queryParam(HUB_MODE, SUBSCRIBE)
                         .queryParam(HUB_VERIFY_TOKEN, verifyToken)
                         .queryParam(HUB_CHALLENGE, challenge)
-                        .build()).retrieve().bodyToMono(String.class).map(
-                        response -> Integer.parseInt(response) == challenge)
+                        .build())
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(response -> Integer.parseInt(response) == challenge)
                 .onErrorResume(e -> Mono.just(false))
                 .flatMap(success -> {
                     if (!success) {
-                        return entityCollectorMessageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                EntityCollectorMessageResourceService.VERIFICATION_FAILED, targetUrl
-                        ).thenReturn(false);
+                        return entityCollectorMessageResourceService
+                                .throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        EntityCollectorMessageResourceService.VERIFICATION_FAILED,
+                                        targetUrl)
+                                .thenReturn(false);
                     }
                     return Mono.just(true);
                 });
     }
-
 
     private Mono<Void> verifyTargetUrl(EntityIntegration entity) {
         int challenge = UniqueUtil.shortUUID().hashCode();
@@ -120,12 +117,8 @@ public class EntityIntegrationService extends AbstractJOOQUpdatableDataService<E
                         return Mono.empty();
                     }
                     return sendVerificationRequest(
-                            entity.getSecondaryTarget(),
-                            entity.getSecondaryVerifyToken(),
-                            challenge
-                    ).then();
-                }
-        );
+                                    entity.getSecondaryTarget(), entity.getSecondaryVerifyToken(), challenge)
+                            .then();
+                });
     }
-
 }

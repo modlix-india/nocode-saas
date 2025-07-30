@@ -15,7 +15,7 @@ public enum LeadSubSource implements EnumType {
     }
 
     public static LeadSubSource lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(LeadSubSource.class,literal);
+        return EnumType.lookupLiteral(LeadSubSource.class, literal);
     }
 
     @Override
