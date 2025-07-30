@@ -846,7 +846,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     }
 
     public Mono<List<ULong>> getAppProfileHavingAuthorities(
-            ULong appId, ClientHierarchy clientHierarchy, List<String> authorities, Boolean checkAllOfAuthorities) {
+            ULong appId, ClientHierarchy clientHierarchy, List<String> authorities) {
 
         Mono<List<ULong>> restrictedProfiles = this.getRestrictedProfiles(clientHierarchy.getClientId(), appId);
         Mono<List<ULong>> profiles = getAppProfiles(appId, clientHierarchy);
@@ -857,15 +857,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                 .flatMap(profileId -> this.getProfileAuthorities(profileId, clientHierarchy)
                                         .map(profileAuthorities -> {
                                             Set<String> profileAuthSet = new HashSet<>(profileAuthorities);
-                                            boolean hasAuthorities;
-
-                                            if (checkAllOfAuthorities.equals(Boolean.TRUE)) {
-                                                hasAuthorities = profileAuthSet.containsAll(authorities);
-                                            } else {
-                                                hasAuthorities =
-                                                        authorities.stream().anyMatch(profileAuthSet::contains);
-                                            }
-
+                                            boolean hasAuthorities = authorities.stream().anyMatch(profileAuthSet::contains);
                                             return Tuples.of(profileId, hasAuthorities);
                                         }))
                                 .filter(Tuple2::getT2)

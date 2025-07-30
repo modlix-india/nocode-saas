@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.*;
@@ -203,7 +204,7 @@ public class UserController
     }
 
     @PostMapping("/request")
-    public Mono<ResponseEntity<Boolean>> userRequest(@RequestBody UserAppAccessRequest request) {
+    public Mono<ResponseEntity<UserRequest>> userRequest(@RequestBody UserAppAccessRequest request) {
         return this.requestService.createRequest(request).map(ResponseEntity::ok);
     }
 
@@ -217,5 +218,11 @@ public class UserController
     public Mono<ResponseEntity<Boolean>> rejectRequest(@PathVariable String requestId) {
         return this.requestService.rejectRequest(requestId).map(ResponseEntity::ok);
     }
+
+    @GetMapping("/internal/adminEmails")
+    public Mono<ResponseEntity<Map<String, Object>>> getUserAdminEmails(ServerHttpRequest request){
+        return this.service.getUserAdminEmails(request).map(ResponseEntity::ok);
+    }
+
 }
 
