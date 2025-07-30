@@ -57,9 +57,14 @@ public abstract class AbstractCallProviderService<
         this.webClientConfig = webClientConfig;
     }
 
+    @Override
+    public ConnectionType getConnectionType() {
+        return ConnectionType.TEXT_MESSAGE;
+    }
+
     protected Mono<Boolean> isValidConnection(Connection connection) {
         if (connection.getConnectionType() != ConnectionType.CALL
-                || connection.getConnectionSubType().getProvider().equals(this.getProvider()))
+                || connection.getConnectionSubType().equals(this.getConnectionSubType()))
             return super.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     MessageResourceService.INVALID_CONNECTION_TYPE);
@@ -71,7 +76,7 @@ public abstract class AbstractCallProviderService<
         return super.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 MessageResourceService.MISSING_CALL_PARAMETERS,
-                this.getProvider(),
+                this.getConnectionSubType().getProvider(),
                 paramName);
     }
 
@@ -94,17 +99,6 @@ public abstract class AbstractCallProviderService<
         }
 
         return null;
-    }
-
-    protected Mono<String> getRequiredConnectionDetail(Map<String, Object> details, String key) {
-        String val = (String) details.get(key);
-        if (val == null)
-            return super.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    MessageResourceService.MISSING_CONNECTION_DETAILS,
-                    this.getProvider(),
-                    key);
-        return Mono.just(val);
     }
 
     protected Mono<D> findByUniqueField(String id) {

@@ -42,8 +42,8 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     @Override
-    public String getProvider() {
-        return ConnectionSubType.EXOTEL.getProvider();
+    public ConnectionSubType getConnectionSubType() {
+        return ConnectionSubType.EXOTEL;
     }
 
     @Override
@@ -60,7 +60,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         .setToDialCode(providerObject.getToDialCode())
                         .setTo(providerObject.getTo())
                         .setCallerId(providerObject.getCallerId())
-                        .setCallProvider(this.getProvider())
+                        .setCallProvider(this.getConnectionSubType().getProvider())
                         .setIsOutbound(ExotelDirection.getByName(providerObject.getDirection())
                                 .isOutbound())
                         .setStatus(providerObject.getExotelCallStatus().toCallStatus())

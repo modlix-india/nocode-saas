@@ -5,6 +5,7 @@ import com.fincity.saas.message.enums.message.MessageStatus;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
+import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -43,8 +44,9 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private boolean isOutbound;
 
-    private Message message;
+    private Message outMessage;
     private MessageResponse messageResponse;
+    private IMessage inMessage;
 
     public WhatsappMessage() {
         super();
