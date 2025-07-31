@@ -29,6 +29,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -58,39 +60,54 @@ public class UserInviteService extends AbstractJOOQDataService<SecurityUserInvit
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_CREATE')")
-    @Override
-    public Mono<UserInvite> create(UserInvite entity) {
+    public Mono<Map<String, Object>> createInvite(UserInvite entity) {
 
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
 
+                        SecurityContextUtil::getUsersContextAuthentication,
                         ca -> {
                             if (entity.getClientId() == null) {
                                 entity.setClientId(ULong.valueOf(ca.getUser().getClientId()));
                                 return Mono.just(entity);
                             }
 
-                            return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                            return this.clientService
+                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
                                     .filter(BooleanUtil::safeValueOf)
                                     .map(x -> entity);
                         },
 
-                        (ca, invite) ->
-                                invite.getProfileId() == null ? Mono.just(true) :
-                                        this.profileService.hasAccessToProfiles(ULong.valueOf(ca.getUser().getClientId()), Set.of(invite.getProfileId()))
-                                                .filter(BooleanUtil::safeValueOf),
+                        (ca, invite) -> invite.getProfileId() == null
+                                ? Mono.just(true)
+                                : this.profileService
+                                        .hasAccessToProfiles(
+                                                ULong.valueOf(ca.getUser().getClientId()),
+                                                Set.of(invite.getProfileId()))
+                                        .filter(BooleanUtil::safeValueOf),
 
-                        (ca, invite, hasAccess) -> this.userDao.checkUserExistsForInvite(entity.getClientId(), entity.getUserName(), entity.getEmailId(), entity.getPhoneNumber())
-                                .filter(userExists -> !userExists),
+                        (ca, invite, hasAccess) -> this.userDao
+                                .checkUserExistsForInvite(
+                                        entity.getClientId(),
+                                        entity.getUserName(),
+                                        entity.getEmailId(),
+                                        entity.getPhoneNumber())
+                                .flatMap(exists -> {
+                                    if (exists) return this.addUserProfile(entity);
 
-                        (ca, invite, hasAccess, dontExist) -> {
-                            invite.setInviteCode(UUID.randomUUID().toString().replace("-", ""));
-                            return super.create(invite);
-                        }
-                )
+                                    invite.setInviteCode(
+                                            UUID.randomUUID().toString().replace("-", ""));
+                                    return super.create(invite).flatMap(createdInvite -> {
+                                        Map<String, Object> result = new HashMap<>();
+                                        result.put("userRequest", createdInvite);
+                                        result.put("existingUser", Boolean.FALSE);
+                                        return Mono.just(result);
+                                    });
+                                }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.create"))
-                .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        SecurityMessageResourceService.FORBIDDEN_CREATE, "User Invite"));
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_CREATE,
+                        "User Invite"));
     }
 
     public Mono<UserInvite> getUserInvitation(String code) {
@@ -207,6 +224,24 @@ public class UserInviteService extends AbstractJOOQDataService<SecurityUserInvit
                         }
                 ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserInviteService.createWithInvitationInternal"))
                 .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), "User"));
+    }
+
+    private Mono<Map<String, Object>> addUserProfile(UserInvite invite) {
+
+        if (invite.getProfileId() == null) return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userDao.getUserForInvite(
+                        invite.getClientId(), invite.getUserName(), invite.getEmailId(), invite.getPhoneNumber()),
+                
+                user -> this.profileService
+                        .hasAccessToProfiles(user.getClientId(), Set.of(invite.getProfileId()))
+                        .filter(BooleanUtil::safeValueOf),
+
+                (user, hasAccessToProfiles) -> this.userDao
+                        .addProfileToUser(user.getId(), invite.getProfileId())
+                        .flatMap(e -> Mono.just(Map.of("userRequest", invite, "existingUser", Boolean.TRUE))));
     }
 
     public Mono<Page<UserInvite>> getAllInvitedUsers(Pageable pageable, AbstractCondition condition) {

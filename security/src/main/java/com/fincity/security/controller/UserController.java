@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.*;
@@ -128,8 +129,8 @@ public class UserController
     }
 
     @PostMapping("/invite")
-    public Mono<ResponseEntity<UserInvite>> inviteUser(@RequestBody UserInvite invite) {
-        return this.inviteService.create(invite).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Map<String,Object>>> inviteUser(@RequestBody UserInvite invite) {
+        return this.inviteService.createInvite(invite).map(ResponseEntity::ok);
     }
 
     @GetMapping("/inviteDetails/{code}")
