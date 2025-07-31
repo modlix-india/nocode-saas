@@ -18,12 +18,14 @@ public class TicketStatusRequest implements Serializable {
     private static final long serialVersionUID = 5481917829025092560L;
 
     private Identity statusId;
+
     private Identity stageId;
+
     private String comment;
     private TaskRequest taskRequest;
 
     @JsonIgnore
     public boolean hasTask() {
-        return this.taskRequest != null && this.taskRequest.hasContent();
+        return this.taskRequest != null;
     }
 }

@@ -87,6 +87,8 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/applications/applyAppCodeSuffix",
 
+                "/api/security/applications/applyAppCodePrefix",
+
                 "/api/security/ssl/token/**",
 
                 "/api/security/applications/dependencies",
@@ -111,7 +113,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/users/internal/**",
 
-                "/api/security/users/internal"
+                "/api/security/users/internal",
+
+                "/api/security/app/profiles/internal",
+
+                "/api/security/app/profiles/internal/**"
         );
     }
 

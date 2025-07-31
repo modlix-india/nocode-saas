@@ -464,10 +464,15 @@ public class ProfileService
                 .collectList();
     }
 
+    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                 app -> this.getUsersForProfiles(app.getId(), profileIds));
+    }
+
     public Mono<List<ULong>> getUsersForProfiles(ULong appId, List<ULong> profileIds) {
-        if (profileIds == null || profileIds.isEmpty()) {
+        if (profileIds == null || profileIds.isEmpty())
             return Mono.just(List.of());
-        }
 
         return this.dao.getUsersForProfiles(appId, profileIds)
                 .collectList()
@@ -478,7 +483,7 @@ public class ProfileService
 
         if (userId == null) return Mono.empty();
 
-        return  this.dao.getUserAppHavingProfile(userId);
+        return this.dao.getUserAppHavingProfile(userId);
 
     }
 

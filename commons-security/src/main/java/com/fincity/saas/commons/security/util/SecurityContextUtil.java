@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
@@ -20,6 +22,8 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 public class SecurityContextUtil {
+
+    public static final Logger logger = LoggerFactory.getLogger(SecurityContextUtil.class);
 
     public static Mono<BigInteger> getUsersClientId() {
 
@@ -80,6 +84,7 @@ public class SecurityContextUtil {
         AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
         JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
                 .getAsJsonPrimitive();
+        
         return jp.isBoolean() && jp.getAsBoolean();
     }
 

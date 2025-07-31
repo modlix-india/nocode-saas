@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.content;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -14,6 +15,7 @@ import com.fincity.saas.entity.processor.service.content.base.BaseContentService
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class NoteService extends BaseContentService<EntityProcessorNotesRecord, Note, NoteDAO> {
@@ -32,42 +34,46 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
     public Mono<Note> create(NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.updateIdentities(access, noteRequest),
-                (access, uRequest) -> this.createContent(uRequest),
-                (access, uRequest, content) -> content.isTicketContent()
-                        ? super.createTicketContent(access, content)
-                        : super.createOwnerContent(access, content));
+                        super::hasAccess,
+                        access -> this.updateIdentities(access, noteRequest),
+                        (access, uRequest) -> this.createContent(uRequest),
+                        (access, uRequest, content) -> content.isTicketContent()
+                                ? super.createTicketContent(access, content)
+                                : super.createOwnerContent(access, content))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create"));
     }
 
     public Mono<Note> createInternal(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> this.updateIdentities(access, noteRequest),
-                this::createContent,
-                (uRequest, content) -> content.isTicketContent()
-                        ? super.createTicketContent(access, content)
-                        : super.createOwnerContent(access, content));
+                        () -> this.updateIdentities(access, noteRequest),
+                        this::createContent,
+                        (uRequest, content) -> content.isTicketContent()
+                                ? super.createTicketContent(access, content)
+                                : super.createOwnerContent(access, content))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createInternal"));
     }
 
     private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                () -> noteRequest.getTicketId() != null
-                        ? this.checkTicket(access, noteRequest.getTicketId())
-                        : Mono.just(Identity.ofNull()),
-                ticketId -> noteRequest.getOwnerId() != null
-                        ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
-                        : Mono.just(Identity.ofNull()),
-                (ticketId, ownerId) ->
-                        Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)));
+                        () -> noteRequest.getTicketId() != null
+                                ? this.checkTicket(access, noteRequest.getTicketId())
+                                : Mono.just(Identity.ofNull()),
+                        ticketId -> noteRequest.getOwnerId() != null
+                                ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
+                                : Mono.just(Identity.ofNull()),
+                        (ticketId, ownerId) ->
+                                Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.updateIdentities"));
     }
 
     private Mono<Note> createContent(NoteRequest noteRequest) {
-        if (noteRequest.getContent() == null || noteRequest.getContent().trim().isEmpty())
+        if (!noteRequest.hasContent())
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.CONTENT_MISSING,
                     this.getEntityName());
 
-        return Mono.just(Note.of(noteRequest));
+        return Mono.just(Note.of(noteRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createContent"));
     }
 }

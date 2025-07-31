@@ -24,4 +24,12 @@ public class TicketRequest extends BaseRequest<TicketRequest> {
     private Email email;
     private String source;
     private String subSource;
+
+    public boolean hasIdentifyInfo() {
+        return this.getPhoneNumber() != null || this.getEmail() != null;
+    }
+
+    public boolean hasSourceInfo() {
+        return this.source != null && !this.source.isEmpty();
+    }
 }

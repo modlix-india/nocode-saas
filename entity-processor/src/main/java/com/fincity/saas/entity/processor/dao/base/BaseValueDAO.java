@@ -79,14 +79,13 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .collectList();
     }
 
-    public Mono<List<D>> getAllProductTemplateIdAndNames(
+    public Flux<D> getAllValuesFlux(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean isParent) {
         return Flux.from(this.dslContext
                         .selectFrom(this.table)
                         .where(DSL.and(this.getBaseValueConditions(
                                 appCode, clientCode, platform, productTemplateId, isParent))))
-                .map(e -> e.into(super.pojoClass))
-                .collectList();
+                .map(e -> e.into(super.pojoClass));
     }
 
     public Mono<List<D>> getAllProductTemplates(

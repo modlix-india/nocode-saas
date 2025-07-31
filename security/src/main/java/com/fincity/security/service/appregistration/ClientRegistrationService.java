@@ -172,14 +172,17 @@ public class ClientRegistrationService {
     public Mono<RegistrationResponse> register(ClientRegistrationRequest registrationRequest,
                                                ServerHttpRequest request, ServerHttpResponse response) {
 
-        String urlPrefix = this.getUrlPrefix(request);
-
         if (registrationRequest.getPassType() == null)
             return this.regError("Type of password for app is required");
 
         Mono<RegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                () -> SecurityContextUtil.getUsersContextAuthentication().flatMap(context -> {
+                    if(context.isAuthenticated())
+                        context.setLoggedInFromClientCode(context.getClientCode())
+                                .setLoggedInFromClientId(context.getUser().getClientId());
+                    return Mono.just(context);
+                }),
 
                 ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
                         ca.getUrlAppCode(), registrationRequest.getInputPassType()),
@@ -206,8 +209,7 @@ public class ClientRegistrationService {
 				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
 
                 (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
-                        .createRegistrationEvents(ca, client, subDomain, urlPrefix, userTuple.getT1(), token,
-                                userTuple.getT2())
+                        .createRegistrationEvents(ca, client, subDomain, userTuple.getT1(), token, userTuple.getT2(), request)
                         .flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
                                 userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
@@ -228,13 +230,26 @@ public class ClientRegistrationService {
         return monoResponse.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
     }
 
-    private String getUrlPrefix(ServerHttpRequest request) {
+    private Mono<String> getUrlPrefix(ServerHttpRequest request, ContextAuthentication ca) {
 
         String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
         String scheme = request.getHeaders().getFirst(X_FORWARDED_PROTO);
         String port = request.getHeaders().getFirst(X_FORWARDED_PORT);
 
-        return (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
+        String result = (scheme != null && scheme.contains("https")) ? HTTPS + host : HTTP + host + ":" + port;
+
+        if (ca.isAuthenticated()) {
+            return this.clientUrlService
+                    .getAppUrl(ca.getUrlAppCode(), ca.getClientCode())
+                    .flatMap(url -> {
+                        if (StringUtil.safeIsBlank(url)) {
+                            return Mono.just(result);
+                        }
+
+                        return Mono.just(url);
+                    });
+        }
+        return Mono.just(result);
     }
 
     private Mono<String> preRegisterCheck(ClientRegistrationRequest registrationRequest, ContextAuthentication ca,
@@ -426,6 +441,8 @@ public class ClientRegistrationService {
         client.setTypeCode(request.isBusinessClient() ? "BUS" : "INDV");
         client.setLocaleCode(request.getLocaleCode());
         client.setTokenValidityMinutes(VALIDITY_MINUTES);
+        client.setBusinessSize(request.getBusinessSize());
+        client.setIndustry(request.getIndustry());
 
         if (safeIsBlank(client.getName()))
             return this.regError("Client name cannot be blank");
@@ -570,33 +587,53 @@ public class ClientRegistrationService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.addFilesAccessPath"));
     }
 
-    private Mono<Boolean> createRegistrationEvents(ContextAuthentication ca, Client client, String subDomain,
-                                                   String urlPrefix, User user, String token, String passwordUsed) {
+    private Mono<Boolean> createRegistrationEvents(
+            ContextAuthentication ca,
+            Client client,
+            String subDomain,
+            User user,
+            String token,
+            String passwordUsed,
+            ServerHttpRequest request) {
 
-        Map<String, Object> clientEventData = Map.of(
-                "client", client, "subDomain", subDomain, "urlPrefix", urlPrefix);
+        return this.getUrlPrefix(request, ca).flatMap(urlPrefix -> {
+            Map<String, Object> clientEventData =
+                    Map.of("client", client, "subDomain", subDomain, "urlPrefix", urlPrefix);
 
-        Map<String, Object> userEventData = Map.of(
-                "client", client, "subDomain", subDomain, "urlPrefix", urlPrefix,
-                "user", user, "token", token, "passwordUsed", passwordUsed);
+            Map<String, Object> userEventData = Map.of(
+                    "client",
+                    client,
+                    "subDomain",
+                    subDomain,
+                    "urlPrefix",
+                    urlPrefix,
+                    "user",
+                    user,
+                    "token",
+                    token,
+                    "passwordUsed",
+                    passwordUsed);
 
-        EventQueObject clientRegisteredEvent = new EventQueObject()
-                .setAppCode(ca.getUrlAppCode())
-                .setClientCode(ca.getLoggedInFromClientCode())
-                .setEventName(EventNames.CLIENT_REGISTERED)
-                .setData(clientEventData);
+            EventQueObject clientRegisteredEvent = new EventQueObject()
+                    .setAppCode(ca.getUrlAppCode())
+                    .setClientCode(ca.getLoggedInFromClientCode())
+                    .setEventName(EventNames.CLIENT_REGISTERED)
+                    .setData(clientEventData);
 
-        EventQueObject userRegisteredEvent = new EventQueObject()
-                .setAppCode(ca.getUrlAppCode())
-                .setClientCode(ca.getLoggedInFromClientCode())
-                .setEventName(EventNames.USER_REGISTERED)
-                .setData(userEventData);
+            EventQueObject userRegisteredEvent = new EventQueObject()
+                    .setAppCode(ca.getUrlAppCode())
+                    .setClientCode(ca.getLoggedInFromClientCode())
+                    .setEventName(EventNames.USER_REGISTERED)
+                    .setData(userEventData);
 
-        return Mono.zip(
-                        this.ecService.createEvent(clientRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        this.ecService.createEvent(userRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty))
-                .thenReturn(Boolean.TRUE)
-                .onErrorReturn(Boolean.FALSE);
+            return Mono.zip(
+                            this.ecService
+                                    .createEvent(clientRegisteredEvent)
+                                    .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                            this.ecService.createEvent(userRegisteredEvent).flatMap(BooleanUtil::safeValueOfWithEmpty))
+                    .thenReturn(Boolean.TRUE)
+                    .onErrorReturn(Boolean.FALSE);
+        });
     }
 
     private Mono<RegistrationResponse> getClientRegistrationResponse(
@@ -806,8 +843,6 @@ public class ClientRegistrationService {
     public Mono<Boolean> evokeRegistrationEvents(ClientRegistrationRequest registrationRequest,
                                                  ServerHttpRequest request, ServerHttpResponse response) {
 
-        String urlPrefix = getUrlPrefix(request);
-
         AuthenticationPasswordType passType = registrationRequest.getInputPassType();
 
         return FlatMapUtil.flatMapMono(
@@ -823,8 +858,8 @@ public class ClientRegistrationService {
 
                 (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 
-				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain, urlPrefix,
-						user, auth.getAccessToken(), user.getInputPass(passType))
+				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain,
+                                user, auth.getAccessToken(), user.getInputPass(passType), request)
 						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
 	}
 
@@ -832,31 +867,40 @@ public class ClientRegistrationService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.appService.getAppByCode(appCode),
-                        (ca, app) -> {
-                            return this.clientService.read(clientId);
-                        },
-                        (ca, app, client) -> this.clientService.addClientRegistrationObjects(
+
+                        ca -> this.userService.checkIfUserIsOwner(userId).flatMap(BooleanUtil::safeValueOfWithEmpty),
+
+                        (ca, isOwner) -> this.appService.getAppByCode(appCode),
+
+                        (ca, isOwner, app) -> this.clientService.readInternal(clientId),
+
+                        (ca, isOwner, app, client) -> this.clientService.addClientRegistrationObjects(
                                 app.getId(), app.getClientId(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
-                        (ca, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
+
+                        (ca, isOwner, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
                                 app.getAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded) ->
                                 this.addFilesAccessPath(ca, client, appCode),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
                                 this.userService.addDefaultProfiles(
                                         app.getId(),
                                         app.getClientId(),
                                         ULong.valueOf(ca.getLoggedInFromClientId()),
                                         client,
                                         userId),
-                        (ca, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
+
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
                                 this.userService.addDefaultRoles(
                                         app.getId(),
                                         app.getClientId(),
                                         ULong.valueOf(ca.getLoggedInFromClientId()),
                                         client,
                                         userId),
+
                         (ca,
+                                isOwner,
                                 app,
                                 client,
                                 restrictedProfileAdded,

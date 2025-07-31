@@ -243,9 +243,9 @@
                                         </forcedType>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
-                                            <genericConverter>false</genericConverter>
+                                            <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.OBJECT_DATA</includeExpression>
                                         </forcedType>
                                         <forcedType>

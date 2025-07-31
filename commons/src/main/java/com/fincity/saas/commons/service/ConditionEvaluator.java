@@ -5,11 +5,8 @@ import static com.fincity.saas.commons.model.condition.ComplexConditionOperator.
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
-import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
 import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.ObjectValueSetterExtractor;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -28,10 +25,6 @@ public class ConditionEvaluator {
 
     private static final Gson GSON = new Gson();
     private final String prefix;
-
-    private final ConcurrentHashMap<String, ExpressionEvaluator> evaluatorCache = new ConcurrentHashMap<>();
-
-    private final ConcurrentHashMap<JsonObject, ObjectValueSetterExtractor> extractorCache = new ConcurrentHashMap<>();
 
     public ConditionEvaluator(String prefix) {
         this.prefix = prefix;
@@ -74,12 +67,9 @@ public class ConditionEvaluator {
 
         if (!field.startsWith(prefix)) return Mono.just(JsonNull.INSTANCE);
 
-        ObjectValueSetterExtractor extractor =
-                extractorCache.computeIfAbsent(obj, k -> new ObjectValueSetterExtractor(obj, prefix));
+        ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-        ExpressionEvaluator evaluator = evaluatorCache.computeIfAbsent(field, k -> new ExpressionEvaluator(field));
-
-        return Mono.just(evaluator.evaluate(Map.of(extractor.getPrefix(), extractor)));
+        return Mono.just(extractor.getValue(field));
     }
 
     private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
@@ -173,9 +163,7 @@ public class ConditionEvaluator {
         if (!jsonVal.isJsonPrimitive() || !filterVal.isJsonPrimitive()) return Mono.just(0);
 
         if (jsonVal.getAsJsonPrimitive().isString()
-                && filterVal.getAsJsonPrimitive().isString()) {
-            return this.compareDate(jsonVal, filterVal);
-        }
+                && filterVal.getAsJsonPrimitive().isString()) return this.compareDate(jsonVal, filterVal);
 
         return this.compareNumber(jsonVal, filterVal);
     }

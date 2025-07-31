@@ -10,12 +10,14 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -63,6 +65,14 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
     }
 
+    private static AbstractCondition idCondition(ULong id) {
+        return FilterCondition.make(AbstractDTO.Fields.id, id).setOperator(FilterConditionOperator.EQUALS);
+    }
+
+    private static AbstractCondition codeCondition(String code) {
+        return FilterCondition.make(BaseUpdatableDto.Fields.code, code).setOperator(FilterConditionOperator.EQUALS);
+    }
+
     @Autowired
     private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
         this.recordEnrichmentService = recordEnrichmentService;
@@ -108,7 +118,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             List<String> eagerFields) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.addAppCodeAndClientCode(
+                () -> this.processorAccessCondition(
                         FilterCondition.make(
                                         identityField == codeField
                                                 ? BaseUpdatableDto.Fields.code
@@ -119,8 +129,16 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, eager, eagerFields));
     }
 
-    public Mono<AbstractCondition> addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
+    public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         return Mono.just(this.addAppCodeAndClientCode(condition, access.getAppCode(), access.getClientCode()));
+    }
+
+    private Mono<AbstractCondition> processorAccessCondition(ProcessorAccess access, ULong id) {
+        return this.processorAccessCondition(idCondition(id), access);
+    }
+
+    private Mono<AbstractCondition> processorAccessCondition(ProcessorAccess access, String code) {
+        return this.processorAccessCondition(codeCondition(code), access);
     }
 
     private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
@@ -149,18 +167,32 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 .map(result -> result.into(this.pojoClass));
     }
 
-    public Mono<D> readInternal(String appCode, String clientCode, ULong id) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(this.idField.eq(id).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode))))
-                .map(e -> e.into(this.pojoClass));
+    public Mono<D> readInternal(ProcessorAccess access, ULong id) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(access, id), this::filter, (pCondition, jCondition) -> Mono.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<D> readInternal(String appCode, String clientCode, String code) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(codeField.eq(code).and(appCodeField.eq(appCode)).and(clientCodeField.eq(clientCode))))
-                .map(result -> result.into(this.pojoClass));
+    public Mono<D> readInternal(ProcessorAccess access, String code) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(access, code), this::filter, (pCondition, jCondition) -> Mono.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(e -> e.into(this.pojoClass)));
+    }
+
+    public Mono<Boolean> existsByName(String appCode, String clientCode, String name) {
+
+        if (StringUtil.safeIsBlank(name)) return Mono.just(Boolean.FALSE);
+
+        List<Condition> baseConditions = new ArrayList<>();
+        baseConditions.add(super.appCodeField.eq(appCode));
+        baseConditions.add(super.clientCodeField.eq(clientCode));
+        baseConditions.add(this.nameField.eq(name));
+
+        return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
+                .map(rec -> Boolean.TRUE)
+                .defaultIfEmpty(Boolean.FALSE);
     }
 
     public Mono<Integer> deleteByCode(String code) {

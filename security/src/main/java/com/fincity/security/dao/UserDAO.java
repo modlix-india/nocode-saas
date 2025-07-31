@@ -1,30 +1,49 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityApp.*;
-import static com.fincity.security.jooq.tables.SecurityAppAccess.*;
-import static com.fincity.security.jooq.tables.SecurityClient.*;
-import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
-import static com.fincity.security.jooq.tables.SecurityPastPasswords.*;
-import static com.fincity.security.jooq.tables.SecurityPastPins.*;
-import static com.fincity.security.jooq.tables.SecurityUser.*;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
+import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
+import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-import com.fincity.saas.commons.util.*;
-import org.jooq.*;
+import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectConditionStep;
+import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitPercentStep;
+import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ByteUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityProfile;
@@ -39,12 +58,17 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     @Autowired
     private PasswordEncoder encoder;
+
+    @Lazy
+    @Autowired
+    private ClientDAO clientDAO;
 
     protected UserDAO() {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
@@ -387,11 +411,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .where(DSL.and(conditions));
     }
 
-    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
+    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, ULong userId, String clientCode, String appCode,
                                                    AuthenticationIdentifierType identifierType, SecurityUserStatusCode... userStatusCodes) {
 
         return Flux
-                .from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType,
+                .from(this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode, identifierType,
                         userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
                 .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
     }
@@ -491,4 +515,61 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
+    public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds) {
+
+        return this.clientDAO.getClientTypeNCode(clientId)
+                .flatMapMany(typeAndCode -> {
+                    List<Condition> conditions = new ArrayList<>();
+                    conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
+                    conditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
+
+                    boolean isSystemClient = ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(typeAndCode.getT1());
+
+                    if (!isSystemClient) {
+                        conditions.add(ClientHierarchyDAO.getManageClientCondition(clientId));
+                    }
+
+                    if (userIds != null && !userIds.isEmpty())
+                        conditions.add(SECURITY_USER.ID.in(userIds));
+
+                    SelectJoinStep<Record1<ULong>> query = this.dslContext
+                            .select(SECURITY_USER.ID)
+                            .from(SECURITY_USER);
+
+                    if (!isSystemClient) {
+                        query = query.leftJoin(SECURITY_CLIENT_HIERARCHY)
+                                .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID.eq(SECURITY_USER.CLIENT_ID));
+                    }
+
+                    return Flux.from(query.where(DSL.and(conditions)))
+                            .map(Record1::value1);
+                })
+                .switchIfEmpty(Flux.empty());
+    }
+
+    public Flux<ULong> getLevel1SubOrg(ULong clientId, ULong userId) {
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.ID)
+                        .from(SECURITY_USER)
+                        .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
+                .map(Record1::value1);
+    }
+
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
+
+        return Mono.from(this.dslContext
+                        .select(SECURITY_V2_ROLE.NAME)
+                        .from(SECURITY_PROFILE)
+                        .leftJoin(SECURITY_PROFILE_USER)
+                        .on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                        .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
+                        .and(SECURITY_V2_ROLE.NAME.eq("Owner"))
+                        .limit(1))
+                .map(Objects::nonNull)
+                .defaultIfEmpty(false);
+    }
 }

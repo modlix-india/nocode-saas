@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -18,16 +21,27 @@ public class StageReorderRequest implements Serializable {
 
     private Identity productTemplateId;
 
-    private Map<Identity, Integer> stageOrders;
+    private List<IdAndValue<Identity, Integer>> stageOrders;
 
     public boolean isValidOrder() {
-        if (stageOrders == null || stageOrders.isEmpty()) return false;
+        boolean allId = true;
+        boolean allCode = true;
 
-        long uniqueCount = stageOrders.values().stream()
-                .distinct()
-                .filter(value -> value >= 0)
-                .count();
+        Set<Identity> identitySet = new HashSet<>();
+        Set<Integer> orderValueSet = new HashSet<>();
 
-        return uniqueCount == stageOrders.size();
+        for (IdAndValue<Identity, Integer> entry : stageOrders) {
+            Identity identity = entry.getId();
+            Integer value = entry.getValue();
+
+            if (identity == null || value == null || value < 0) return false;
+
+            allId &= identity.isId();
+            allCode &= identity.isCode();
+
+            if (!identitySet.add(identity) || !orderValueSet.add(value)) return false;
+        }
+
+        return allId || allCode;
     }
 }

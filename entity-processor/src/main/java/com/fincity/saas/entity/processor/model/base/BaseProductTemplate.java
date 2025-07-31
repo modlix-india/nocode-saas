@@ -20,4 +20,8 @@ public abstract class BaseProductTemplate<T extends BaseProductTemplate<T>> exte
         this.productTemplateId = productTemplateId;
         return (T) this;
     }
+
+    public boolean areChildrenValid() {
+        return Boolean.TRUE;
+    }
 }

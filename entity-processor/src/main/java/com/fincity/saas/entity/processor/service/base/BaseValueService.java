@@ -109,6 +109,8 @@ public abstract class BaseValueService<
                 existing.setParentLevel1(entity.getParentLevel1());
             }
 
+            existing.setOrder(entity.getOrder());
+
             return Mono.just(existing);
         });
     }
@@ -116,13 +118,15 @@ public abstract class BaseValueService<
     private Mono<D> validateEntity(D entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.existsByName(
-                                access.getAppCode(),
-                                access.getClientCode(),
-                                entity.getPlatform(),
-                                entity.getProductTemplateId(),
-                                entity.getId(),
-                                entity.getName()),
+                        Boolean.TRUE.equals(entity.getIsParent())
+                                ? this.existsByName(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        entity.getPlatform(),
+                                        entity.getProductTemplateId(),
+                                        entity.getId(),
+                                        entity.getName())
+                                : Mono.just(Boolean.FALSE),
                         entity.hasParentLevels()
                                 ? this.existsById(
                                         access.getAppCode(),
@@ -158,12 +162,9 @@ public abstract class BaseValueService<
                 access -> this.validateEntity(entity, access),
                 (access, vEntity) -> this.applyOrder(vEntity, access),
                 (access, vEntity, aEntity) -> {
-                    aEntity.setAppCode(access.getAppCode());
-                    aEntity.setClientCode(access.getClientCode());
-                    aEntity.setCreatedBy(access.getUserId());
                     aEntity.setIsParent(Boolean.TRUE);
 
-                    return super.create(aEntity);
+                    return super.createInternal(access, aEntity);
                 },
                 (access, vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
@@ -171,16 +172,12 @@ public abstract class BaseValueService<
     public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.validateEntity(entity, access), vEntity -> {
-            entity.setName(vEntity.getName());
-            entity.setAppCode(parentEntity.getAppCode());
-            entity.setClientCode(parentEntity.getClientCode());
-            entity.setCreatedBy(parentEntity.getCreatedBy());
             entity.setIsParent(Boolean.FALSE);
             entity.setParentLevel0(parentEntity.getId());
 
             if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
 
-            return super.create(entity);
+            return super.createInternal(access, entity);
         });
     }
 
@@ -287,24 +284,25 @@ public abstract class BaseValueService<
                 .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
     }
 
-    public Mono<Map.Entry<D, List<D>>> getParentChild(ProcessorAccess access, Identity parent, Identity child) {
+    public Mono<Map.Entry<D, List<D>>> getParentChild(
+            ProcessorAccess access, ULong productTemplateId, Identity parent, Identity child) {
 
         if (parent == null || parent.isNull()) return Mono.empty();
 
-        if (child == null || child.isNull())
-            return this.readIdentityWithAccess(access, parent).map(pEntity -> Map.entry(pEntity, List.of()));
+        return this.readIdentityWithAccess(access, parent).flatMap(pEntity -> {
+            if (pEntity == null || !productTemplateId.equals(pEntity.getProductTemplateId())) return Mono.empty();
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                () -> this.readIdentityWithAccess(access, parent),
-                pEntity -> this.readIdentityWithAccess(access, child),
-                (pEntity, cEntity) -> {
-                    if (pEntity == null) return Mono.empty();
+            if (child == null || child.isNull()) return Mono.just(Map.entry(pEntity, List.of()));
 
-                    if (cEntity == null || !cEntity.hasParent(pEntity.getId()))
-                        return Mono.just(Map.entry(pEntity, List.of()));
+            return this.readIdentityWithAccess(access, child).flatMap(cEntity -> {
+                if (cEntity == null || !productTemplateId.equals(cEntity.getProductTemplateId()))
+                    return Mono.just(Map.entry(pEntity, List.of()));
 
-                    return Mono.just(Map.entry(pEntity, List.of(cEntity)));
-                });
+                if (cEntity.hasParent(pEntity.getId())) return Mono.just(Map.entry(pEntity, List.of(cEntity)));
+
+                return Mono.just(Map.entry(pEntity, List.of()));
+            });
+        });
     }
 
     public Mono<Map.Entry<D, Set<D>>> getValue(

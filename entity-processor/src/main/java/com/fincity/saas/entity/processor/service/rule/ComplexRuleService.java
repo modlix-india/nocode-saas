@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.ComplexRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
@@ -47,94 +49,114 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
     }
 
     @Override
-    protected Mono<Boolean> evictCache(ComplexRule entity) {
-        return super.evictCache(entity);
-    }
-
-    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.COMPLEX_RULE;
     }
 
     public Mono<Integer> deleteRule(ULong entityId, EntitySeries entitySeries) {
-        return this.dao.readByEntityId(entityId, entitySeries).flatMap(this::deleteComplexRule);
+        return this.dao
+                .readByEntityId(entityId, entitySeries)
+                .flatMap(this::deleteComplexRule)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.deleteRule"));
     }
 
     private Mono<Integer> deleteComplexRule(ComplexRule complexRule) {
         if (complexRule.isHasComplexChild()) {
             return FlatMapUtil.flatMapMono(
-                    () -> this.dao.readByParentConditionId(complexRule.getId()).collectList(), childRules -> {
-                        if (childRules.isEmpty()) return this.deleteComplexRuleAndRelations(complexRule);
+                            () -> this.dao
+                                    .readByParentConditionId(complexRule.getId())
+                                    .collectList(),
+                            childRules -> {
+                                if (childRules.isEmpty()) return this.deleteComplexRuleAndRelations(complexRule);
 
-                        return Flux.fromIterable(childRules)
-                                .flatMap(this::deleteComplexRule)
-                                .reduce(0, Integer::sum)
-                                .flatMap(count -> deleteComplexRuleAndRelations(complexRule));
-                    });
+                                return Flux.fromIterable(childRules)
+                                        .flatMap(this::deleteComplexRule)
+                                        .reduce(0, Integer::sum)
+                                        .flatMap(count -> deleteComplexRuleAndRelations(complexRule));
+                            })
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.deleteComplexRule"));
         }
 
-        return this.deleteComplexRuleAndRelations(complexRule);
+        return this.deleteComplexRuleAndRelations(complexRule)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.deleteComplexRule"));
     }
 
     private Mono<Integer> deleteComplexRuleAndRelations(ComplexRule complexRule) {
 
-        if (!complexRule.isHasSimpleChild()) return this.delete(complexRule);
+        if (!complexRule.isHasSimpleChild())
+            return this.delete(complexRule)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.deleteComplexRuleAndRelations"));
 
         return this.simpleComplexRuleRelationService
                 .deleteByComplexRuleId(complexRule.getId())
                 .then(this.simpleRuleService.deleteByComplexRuleId(complexRule.getId()))
-                .then(this.delete(complexRule));
+                .then(this.delete(complexRule))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.deleteComplexRuleAndRelations"));
     }
 
     private Mono<Integer> delete(ComplexRule complexRule) {
         return FlatMapUtil.flatMapMono(() -> this.delete(complexRule.getId()), deleted -> this.evictCache(complexRule)
-                .map(evicted -> deleted));
+                        .map(evicted -> deleted))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.delete"));
     }
 
     @Override
     protected Mono<ComplexRule> updatableEntity(ComplexRule complexRule) {
-        return super.updatableEntity(complexRule).flatMap(existing -> {
-            existing.setParentConditionId(complexRule.getParentConditionId());
-            existing.setLogicalOperator(complexRule.getLogicalOperator());
-            existing.setHasComplexChild(complexRule.isHasComplexChild());
-            existing.setHasSimpleChild(complexRule.isHasSimpleChild());
-            return Mono.just(existing);
-        });
+        return super.updatableEntity(complexRule)
+                .flatMap(existing -> {
+                    existing.setParentConditionId(complexRule.getParentConditionId());
+                    existing.setLogicalOperator(complexRule.getLogicalOperator());
+                    existing.setHasComplexChild(complexRule.isHasComplexChild());
+                    existing.setHasSimpleChild(complexRule.isHasSimpleChild());
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.updatableEntity"));
     }
 
     @Override
     public Mono<ComplexRule> createForCondition(
             ULong entityId, EntitySeries entitySeries, ProcessorAccess access, ComplexCondition condition) {
-        return this.createComplexRuleInternal(entityId, entitySeries, access, condition, null);
+        return FlatMapUtil.flatMapMono(
+                        () -> this.createComplexRuleInternal(entityId, entitySeries, access, condition, null),
+                        complexRule -> this.cacheService
+                                .evict(this.getCacheName(), this.getCacheKey(entityId, entitySeries))
+                                .map(evicted -> complexRule))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.createForCondition"));
     }
 
     @Override
     public Mono<AbstractCondition> getCondition(ULong entityId, EntitySeries entitySeries) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.getConditionInternal(entityId, entitySeries),
-                this.getCacheKey(entityId, entitySeries));
+        return this.cacheService
+                .cacheValueOrGet(
+                        this.getCacheName(),
+                        () -> this.getConditionInternal(entityId, entitySeries),
+                        this.getCacheKey(entityId, entitySeries))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.getCondition"));
     }
 
     private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries) {
-        return this.dao.readByEntityId(entityId, entitySeries).flatMap(complexRule -> {
-            if (!complexRule.isHasComplexChild() && !complexRule.isHasSimpleChild())
-                return Mono.just(ComplexRule.toCondition(complexRule, List.of()));
+        return this.dao
+                .readByEntityId(entityId, entitySeries)
+                .flatMap(complexRule -> {
+                    if (!complexRule.isHasComplexChild() && !complexRule.isHasSimpleChild())
+                        return Mono.just(ComplexRule.toCondition(complexRule, List.of()));
 
-            Flux<AbstractCondition> complexChildrenConditions = complexRule.isHasComplexChild()
-                    ? this.dao
-                            .readByParentConditionId(complexRule.getId())
-                            .flatMap(childRule -> this.getCondition(childRule.getId(), childRule.getEntitySeries()))
-                    : Flux.empty();
+                    Flux<AbstractCondition> complexChildrenConditions = complexRule.isHasComplexChild()
+                            ? this.dao
+                                    .readByParentConditionId(complexRule.getId())
+                                    .flatMap(childRule ->
+                                            this.getCondition(childRule.getId(), childRule.getEntitySeries()))
+                            : Flux.empty();
 
-            Flux<AbstractCondition> simpleChildrenConditions = complexRule.isHasSimpleChild()
-                    ? this.simpleRuleService.getConditionByComplexRule(complexRule.getId())
-                    : Flux.empty();
+                    Flux<AbstractCondition> simpleChildrenConditions = complexRule.isHasSimpleChild()
+                            ? this.simpleRuleService.getConditionByComplexRule(complexRule.getId())
+                            : Flux.empty();
 
-            return Flux.merge(complexChildrenConditions, simpleChildrenConditions)
-                    .collectList()
-                    .map(conditions -> ComplexRule.toCondition(complexRule, conditions));
-        });
+                    return Flux.merge(complexChildrenConditions, simpleChildrenConditions)
+                            .collectList()
+                            .map(conditions -> ComplexRule.toCondition(complexRule, conditions));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.getConditionInternal"));
     }
 
     private Flux<Void> processConditions(
@@ -164,9 +186,11 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
             FilterCondition condition,
             ULong complexRuleId,
             int index) {
-        return this.simpleRuleService
+        Mono<Void> result = this.simpleRuleService
                 .createForConditionWithParent(ruleId, entitySeries, access, condition, complexRuleId, index)
                 .then(Mono.empty());
+        return Mono.deferContextual(ctx ->
+                result.contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.processSimpleCondition")));
     }
 
     private Mono<Void> processComplexCondition(
@@ -175,8 +199,10 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
             ProcessorAccess access,
             ComplexCondition condition,
             ULong complexRuleId) {
-        return this.createForConditionWithParent(ruleId, entitySeries, access, condition, complexRuleId)
+        Mono<Void> result = this.createForConditionWithParent(ruleId, entitySeries, access, condition, complexRuleId)
                 .then(Mono.empty());
+        return Mono.deferContextual(ctx ->
+                result.contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.processComplexCondition")));
     }
 
     private Mono<ComplexRule> createForConditionWithParent(
@@ -185,7 +211,8 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
             ProcessorAccess access,
             ComplexCondition condition,
             ULong parentId) {
-        return this.createComplexRuleInternal(ruleId, entitySeries, access, condition, parentId);
+        return this.createComplexRuleInternal(ruleId, entitySeries, access, condition, parentId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.createForConditionWithParent"));
     }
 
     private Mono<ComplexRule> createComplexRuleInternal(
@@ -203,12 +230,14 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
         List<AbstractCondition> conditions = condition.getConditions();
         this.addChildrenInfo(complexRule, conditions);
 
-        return this.createInternal(access, complexRule).flatMap(cComplexRule -> {
-            if (conditions == null || conditions.isEmpty()) return Mono.just(cComplexRule);
+        return this.createInternal(access, complexRule)
+                .flatMap(cComplexRule -> {
+                    if (conditions == null || conditions.isEmpty()) return Mono.just(cComplexRule);
 
-            return this.processConditions(ruleId, entitySeries, access, conditions, cComplexRule.getId())
-                    .then(Mono.just(cComplexRule));
-        });
+                    return this.processConditions(ruleId, entitySeries, access, conditions, cComplexRule.getId())
+                            .then(Mono.just(cComplexRule));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ComplexRuleService.createComplexRuleInternal"));
     }
 
     private void addChildrenInfo(ComplexRule complexRule, List<AbstractCondition> conditions) {
@@ -221,9 +250,7 @@ public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRu
                 hasComplexChild |= childCondition instanceof ComplexCondition;
                 hasSimpleChild |= childCondition instanceof FilterCondition;
 
-                if (hasComplexChild && hasSimpleChild) {
-                    break;
-                }
+                if (hasComplexChild && hasSimpleChild) break;
             }
         }
 

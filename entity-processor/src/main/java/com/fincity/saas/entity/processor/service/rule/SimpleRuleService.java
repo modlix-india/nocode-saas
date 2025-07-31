@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service.rule;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.SimpleRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRulesRecord, SimpleRule, SimpleRuleDAO>
@@ -46,20 +48,26 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
     @Override
     protected Mono<SimpleRule> updatableEntity(SimpleRule entity) {
         return FlatMapUtil.flatMapMono(() -> super.updatableEntity(entity), existing -> {
-            existing.setField(entity.getField());
-            existing.setComparisonOperator(entity.getComparisonOperator());
-            existing.setValue(entity.getValue());
-            existing.setValueField(entity.isValueField());
-            existing.setToValueField(entity.isToValueField());
-            existing.setMatchOperator(entity.getMatchOperator());
-            return Mono.just(existing);
-        });
+                    existing.setField(entity.getField());
+                    existing.setComparisonOperator(entity.getComparisonOperator());
+                    existing.setValue(entity.getValue());
+                    existing.setValueField(entity.isValueField());
+                    existing.setToValueField(entity.isToValueField());
+                    existing.setMatchOperator(entity.getMatchOperator());
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.updatableEntity"));
     }
 
     @Override
     public Mono<SimpleRule> createForCondition(
             ULong entityId, EntitySeries entitySeries, ProcessorAccess access, FilterCondition condition) {
-        return this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition);
+        return FlatMapUtil.flatMapMono(
+                        () -> this.createForCondition(entityId, entitySeries, access, Boolean.FALSE, condition),
+                        simpleRule -> this.cacheService
+                                .evict(this.getCacheName(), this.getCacheKey(entityId, entitySeries))
+                                .map(evicted -> simpleRule))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.createForCondition"));
     }
 
     public Mono<SimpleRule> createForCondition(
@@ -70,7 +78,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
             FilterCondition condition) {
         SimpleRule simpleRule =
                 SimpleRule.fromCondition(entityId, entitySeries, condition).setHasParent(hasParent);
-        return super.createInternal(access, simpleRule);
+        return super.createInternal(access, simpleRule)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.createForCondition"));
     }
 
     @Override
@@ -78,32 +87,44 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
 
         if (hasParent) return Mono.empty();
 
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.getConditionInternal(entityId, entitySeries, hasParent),
-                this.getCacheKey(entityId, entitySeries));
+        return this.cacheService
+                .cacheValueOrGet(
+                        this.getCacheName(),
+                        () -> this.getConditionInternal(entityId, entitySeries, hasParent),
+                        this.getCacheKey(entityId, entitySeries))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.getCondition"));
     }
 
     private Mono<AbstractCondition> getConditionInternal(ULong entityId, EntitySeries entitySeries, boolean hasParent) {
-        return this.dao.readByEntityId(entityId, entitySeries, hasParent).map(SimpleRule::toCondition);
+        return this.dao
+                .readByEntityId(entityId, entitySeries, hasParent)
+                .map(SimpleRule::toCondition)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.getConditionInternal"));
     }
 
     public Mono<Integer> deleteRule(ULong ruleId, EntitySeries entitySeries, boolean hasParent) {
         return this.dao
                 .readByEntityId(ruleId, entitySeries, hasParent)
-                .flatMap(simpleRule -> this.delete(simpleRule.getId()));
+                .flatMap(simpleRule -> this.delete(simpleRule.getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.deleteRule"));
     }
 
     public Flux<AbstractCondition> getConditionByComplexRule(ULong complexRuleId) {
-        return this.dao.readByComplexRuleId(complexRuleId).map(SimpleRule::toCondition);
+        return this.dao
+                .readByComplexRuleId(complexRuleId)
+                .map(SimpleRule::toCondition)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.getConditionByComplexRule"));
     }
 
     public Flux<SimpleRule> getSimpleRulesByComplexRuleId(ULong complexRuleId) {
-        return this.dao.readByComplexRuleId(complexRuleId);
+        return this.dao
+                .readByComplexRuleId(complexRuleId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.getSimpleRulesByComplexRuleId"));
     }
 
     public Mono<Integer> deleteByComplexRuleId(ULong complexRuleId) {
-        return super.deleteMultiple(this.getSimpleRulesByComplexRuleId(complexRuleId));
+        return super.deleteMultiple(this.getSimpleRulesByComplexRuleId(complexRuleId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.deleteByComplexRuleId"));
     }
 
     public Mono<SimpleRule> createForConditionWithParent(
@@ -119,7 +140,8 @@ public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRule
                     return simpleComplexRuleRelationService
                             .createInternal(access, relation)
                             .thenReturn(cSimpleRule);
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SimpleRuleService.createForConditionWithParent"));
     }
 
     private SimpleComplexRuleRelation createRelation(ULong complexConditionId, ULong simpleConditionId, int order) {

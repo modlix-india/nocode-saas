@@ -7,7 +7,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +24,16 @@ import org.springframework.data.domain.Pageable;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
-        extends AbstractFlowDataService<R, ULong, D, O> implements IEntitySeries {
+        extends AbstractFlowDataService<R, ULong, D, O> implements IEntitySeries, IProcessorAccessService {
 
+    @Getter
     protected IFeignSecurityService securityService;
+
+    @Getter
     protected ProcessorMessageResourceService msgService;
+
+    @Getter
+    protected CacheService cacheService;
 
     @Autowired
     public void setMessageResourceService(ProcessorMessageResourceService msgService) {
@@ -36,6 +43,23 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     @Autowired
     public void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
+    }
+
+    @Autowired
+    public void setCacheService(CacheService cacheService) {
+        this.cacheService = cacheService;
+    }
+
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+
+        if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
+
+        entity.setAppCode(access.getAppCode());
+        entity.setClientCode(access.getClientCode());
+
+        entity.setCreatedBy(access.getUserId());
+
+        return super.create(entity);
     }
 
     public Mono<Page<Map<String, Object>>> readPageFilterEager(
@@ -51,11 +75,6 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         tableFields,
                         eager,
                         eagerFields));
-    }
-
-    public Mono<ProcessorAccess> hasAccess() {
-        return SecurityContextUtil.resolveAppAndClientCode(null, null)
-                .map(tup -> ProcessorAccess.of(tup.getT1(), tup.getT2(), false));
     }
 
     public AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {

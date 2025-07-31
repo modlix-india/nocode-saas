@@ -34,7 +34,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
-import com.fincity.saas.commons.mongo.util.CloneUtil;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;

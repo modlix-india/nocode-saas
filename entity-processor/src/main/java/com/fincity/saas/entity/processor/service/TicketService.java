@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO> {
@@ -69,24 +71,29 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     protected Mono<Ticket> checkEntity(Ticket ticket, ProcessorAccess access) {
         return this.checkTicket(ticket, access)
                 .flatMap(uEntity -> this.setOwner(access, uEntity))
-                .flatMap(owner -> this.updateTicketFromOwner(ticket, owner));
+                .flatMap(owner -> this.updateTicketFromOwner(ticket, owner))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
     @Override
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
-        return super.updatableEntity(ticket).flatMap(existing -> {
-            existing.setStage(ticket.getStage());
-            existing.setStatus(ticket.getStatus());
+        return super.updatableEntity(ticket)
+                .flatMap(existing -> {
+                    existing.setStage(ticket.getStage());
+                    existing.setStatus(ticket.getStatus());
 
-            return Mono.just(existing);
-        });
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
     public Flux<Ticket> updateOwnerTickets(Owner owner) {
         Flux<Ticket> ticketsFlux =
                 this.dao.getAllOwnerTickets(owner.getId()).flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
 
-        return this.dao.updateAll(ticketsFlux);
+        return this.dao
+                .updateAll(ticketsFlux)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
     public Mono<ProcessorResponse> createOpenResponse(TicketRequest ticketRequest) {
@@ -96,69 +103,109 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (ticketRequest.getProductId() == null || ticketRequest.getProductId().isNull())
             return super.hasPublicAccess()
                     .flatMap(access -> setOwner(access, ticket))
-                    .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()));
+                    .map(owner -> ProcessorResponse.ofCreated(owner.getCode(), owner.getEntitySeries()))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
 
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
                         access -> this.productService.updateIdentity(ticketRequest.getProductId()),
                         (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
                         (access, productIdentity, pTicket) -> super.createInternal(access, pTicket))
-                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
+                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
 
+        if (!ticketRequest.hasIdentifyInfo() && !ticketRequest.hasSourceInfo()) return this.identityMissingError();
+
         Ticket ticket = Ticket.of(ticketRequest);
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.productService.checkAndUpdateIdentityWithAccess(access, ticketRequest.getProductId()),
-                (access, productIdentity) ->
-                        this.checkDuplicate(access.getAppCode(), access.getClientCode(), ticketRequest),
-                (access, productIdentity, isDuplicate) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
-                (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
-                (access, productIdentity, isDuplicate, pTicket, created) ->
-                        this.activityService.acCreate(created).thenReturn(created));
+                        super::hasAccess,
+                        access -> this.productService.checkAndUpdateIdentityWithAccess(
+                                access, ticketRequest.getProductId()),
+                        (access, productIdentity) ->
+                                this.checkDuplicate(access.getAppCode(), access.getClientCode(), ticketRequest),
+                        (access, productIdentity, isDuplicate) ->
+                                Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                        (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                        (access, productIdentity, isDuplicate, pTicket, created) ->
+                                this.activityService.acCreate(created).thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
 
+        if (ticketStatusRequest.getStageId() == null
+                || ticketStatusRequest.getStageId().isNull())
+            return this.identityMissingError(this.stageService.getEntityName());
+
         return FlatMapUtil.flatMapMono(
-                super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
-                    if (ticket.getStage()
-                                    .equals(ticketStatusRequest.getStageId().getULongId())
-                            && ticket.getStatus()
-                                    .equals(ticketStatusRequest.getStatusId().getULongId())) return Mono.just(ticket);
+                        super::hasAccess,
+                        access -> super.readIdentityWithOwnerAccess(access, ticketId),
+                        (access, ticket) -> {
+                            boolean statusPresent = ticketStatusRequest.getStatusId() != null
+                                    && !ticketStatusRequest.getStatusId().isNull();
 
-                    return FlatMapUtil.flatMapMono(
-                            () -> Mono.just(access),
-                            pAccess -> Mono.just(ticket),
-                            (pAccess, cTicket) -> this.stageService
-                                    .getParentChild(
-                                            pAccess,
-                                            ticketStatusRequest.getStageId(),
-                                            ticketStatusRequest.getStatusId())
-                                    .switchIfEmpty(this.msgService.throwMessage(
-                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                            ProcessorMessageResourceService.STAGE_MISSING)),
-                            (pAccess, cTicket, stageStatusEntity) -> Mono.just(cTicket.getStage()),
-                            (pAccess, cTicket, stageStatusEntity, oldStage) -> {
-                                cTicket.setStage(stageStatusEntity.getKey().getId());
+                            if (ticket.getStage()
+                                            .equals(ticketStatusRequest
+                                                    .getStageId()
+                                                    .getULongId())
+                                    && (statusPresent
+                                            && ticket.getStatus()
+                                                    .equals(ticketStatusRequest
+                                                            .getStatusId()
+                                                            .getULongId()))) return Mono.just(ticket);
 
-                                if (!stageStatusEntity.getValue().isEmpty())
-                                    cTicket.setStatus(stageStatusEntity
-                                            .getValue()
-                                            .getFirst()
-                                            .getId());
+                            if (ticket.getStage()
+                                            .equals(ticketStatusRequest
+                                                    .getStageId()
+                                                    .getULongId())
+                                    && !statusPresent) return Mono.just(ticket);
 
-                                return super.updateInternal(cTicket);
-                            },
-                            (pAccess, cTicket, stageStatusEntity, oldStage, uTicket) ->
-                                    this.createTask(pAccess, ticketStatusRequest, uTicket),
-                            (pAccess, cTicket, stageStatusEntity, oldStage, uTicket, cTask) -> this.activityService
-                                    .acStageStatus(uTicket, ticketStatusRequest.getComment(), oldStage)
-                                    .thenReturn(uTicket));
-                });
+                            return FlatMapUtil.flatMapMono(
+                                    () -> Mono.just(access),
+                                    pAccess -> Mono.just(ticket),
+                                    (pAccess, cTicket) -> this.productService.readById(pAccess, cTicket.getProductId()),
+                                    (pAccess, cTicket, product) -> {
+                                        if (product.getProductTemplateId() == null)
+                                            return this.msgService.throwMessage(
+                                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                    ProcessorMessageResourceService.PRODUCT_TEMPLATE_TYPE_MISSING,
+                                                    product.getId());
+
+                                        return this.stageService
+                                                .getParentChild(
+                                                        pAccess,
+                                                        product.getProductTemplateId(),
+                                                        ticketStatusRequest.getStageId(),
+                                                        ticketStatusRequest.getStatusId())
+                                                .switchIfEmpty(this.msgService.throwMessage(
+                                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                        ProcessorMessageResourceService.STAGE_MISSING));
+                                    },
+                                    (pAccess, cTicket, product, stageStatusEntity) -> Mono.just(cTicket.getStage()),
+                                    (pAccess, cTicket, product, stageStatusEntity, oldStage) -> {
+                                        cTicket.setStage(
+                                                stageStatusEntity.getKey().getId());
+
+                                        if (!stageStatusEntity.getValue().isEmpty())
+                                            cTicket.setStatus(stageStatusEntity
+                                                    .getValue()
+                                                    .getFirst()
+                                                    .getId());
+
+                                        return super.updateInternal(cTicket);
+                                    },
+                                    (pAccess, cTicket, product, stageStatusEntity, oldStage, uTicket) ->
+                                            this.createTask(pAccess, ticketStatusRequest, uTicket),
+                                    (pAccess, cTicket, product, stageStatusEntity, oldStage, uTicket, cTask) ->
+                                            this.activityService
+                                                    .acStageStatus(uTicket, ticketStatusRequest.getComment(), oldStage)
+                                                    .thenReturn(uTicket));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateStageStatus"));
     }
 
     private Mono<Boolean> createTask(ProcessorAccess access, TicketStatusRequest ticketStatusRequest, Ticket ticket) {
@@ -169,7 +216,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         taskRequest.setTicketId(ticket.getIdentity());
         taskRequest.setOwnerId(null);
 
-        return this.taskService.createInternal(access, taskRequest).map(cTask -> Boolean.TRUE);
+        return this.taskService
+                .createInternal(access, taskRequest)
+                .map(cTask -> Boolean.TRUE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createTask"));
     }
 
     public Mono<Ticket> reassignTicket(Identity ticketId, TicketReassignRequest ticketReassignRequest) {
@@ -181,33 +231,38 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     "reassign user");
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess, access -> super.readIdentityWithOwnerAccess(access, ticketId), (access, ticket) -> {
-                    if (ticket.getAssignedUserId() != null
-                            && ticket.getAssignedUserId().equals(ticketReassignRequest.getUserId()))
-                        return Mono.just(ticket);
+                        super::hasAccess,
+                        access -> super.readIdentityWithOwnerAccess(access, ticketId),
+                        (access, ticket) -> {
+                            if (!access.getSubOrg().contains(ticketReassignRequest.getUserId()))
+                                return this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_ACCESS);
 
-                    return FlatMapUtil.flatMapMono(
-                            () -> Mono.just(access),
-                            pAccess -> Mono.just(ticket),
-                            (pAccess, cTicket) -> this.setTicketAssignment(cTicket, ticketReassignRequest.getUserId()),
-                            (pAccess, cTicket, aTicket) -> super.updateInternal(aTicket),
-                            (pAccess, cTicket, aTicket, uTicket) ->
-                                    this.createNote(pAccess, ticketReassignRequest, uTicket),
-                            (pAccess, cTicket, aTicket, uTicket, cNote) -> this.activityService
-                                    .acReassign(
-                                            uTicket.getId(),
-                                            ticketReassignRequest.getComment(),
-                                            cTicket.getAssignedUserId(),
-                                            uTicket.getAssignedUserId())
-                                    .thenReturn(uTicket));
-                });
+                            ULong oldUserId = ticket.getAssignedUserId();
+
+                            if (oldUserId != null && oldUserId.equals(ticketReassignRequest.getUserId()))
+                                return Mono.just(ticket);
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.setTicketAssignment(ticket, ticketReassignRequest.getUserId()),
+                                    super::updateInternal,
+                                    (aTicket, uTicket) -> this.createNote(access, ticketReassignRequest, uTicket),
+                                    (aTicket, uTicket, cNote) -> this.activityService
+                                            .acReassign(
+                                                    uTicket.getId(),
+                                                    ticketReassignRequest.getComment(),
+                                                    oldUserId,
+                                                    uTicket.getAssignedUserId())
+                                            .thenReturn(uTicket));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
     private Mono<Boolean> createNote(
             ProcessorAccess access, TicketReassignRequest ticketReassignRequest, Ticket ticket) {
 
-        if (!ticketReassignRequest.hasNote() && ticketReassignRequest.getComment() == null)
-            return Mono.just(Boolean.FALSE);
+        if (!ticketReassignRequest.hasNote()) return Mono.just(Boolean.FALSE);
 
         NoteRequest noteRequest = ticketReassignRequest.getNoteRequest() != null
                 ? ticketReassignRequest.getNoteRequest()
@@ -218,7 +273,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         noteRequest.setTicketId(ticket.getIdentity());
         noteRequest.setOwnerId(null);
 
-        return this.noteService.createInternal(access, noteRequest).map(cNote -> Boolean.TRUE);
+        return this.noteService
+                .createInternal(access, noteRequest)
+                .map(cNote -> Boolean.TRUE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createNote"));
     }
 
     private Mono<Ticket> checkTicket(Ticket ticket, ProcessorAccess access) {
@@ -230,19 +288,20 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     this.productService.getEntityName());
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> this.productService.readById(ticket.getProductId()),
-                product -> this.setDefaultStage(
-                        ticket, access.getAppCode(), access.getClientCode(), product.getProductTemplateId()),
-                (product, sTicket) -> this.productStageRuleService.getUserAssignment(
-                        access.getAppCode(),
-                        access.getClientCode(),
-                        product.getId(),
-                        sTicket.getStage(),
-                        this.getEntityPrefix(access.getAppCode()),
-                        access.getUserId(),
-                        sTicket.toJson()),
-                (product, sTicket, userId) ->
-                        this.setTicketAssignment(sTicket, userId != null ? userId : access.getUserId()));
+                        () -> this.productService.readById(ticket.getProductId()),
+                        product -> this.setDefaultStage(
+                                ticket, access.getAppCode(), access.getClientCode(), product.getProductTemplateId()),
+                        (product, sTicket) -> this.productStageRuleService.getUserAssignment(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                product.getId(),
+                                sTicket.getStage(),
+                                this.getEntityPrefix(access.getAppCode()),
+                                access.getUserId(),
+                                sTicket.toJson()),
+                        (product, sTicket, userId) ->
+                                this.setTicketAssignment(sTicket, userId != null ? userId : access.getUserId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
     }
 
     private Mono<Ticket> setDefaultStage(Ticket ticket, String appCode, String clientCode, ULong productTemplateId) {
@@ -250,14 +309,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (productTemplateId == null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> this.stageService.getFirstStage(appCode, clientCode, productTemplateId),
-                stage -> this.stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
-                (stage, status) -> {
-                    if (stage != null) ticket.setStage(stage.getId());
-                    if (status != null) ticket.setStatus(status.getId());
+                        () -> this.stageService.getFirstStage(appCode, clientCode, productTemplateId),
+                        stage ->
+                                this.stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
+                        (stage, status) -> {
+                            if (stage != null) ticket.setStage(stage.getId());
+                            if (status != null) ticket.setStatus(status.getId());
 
-                    return Mono.just(ticket);
-                });
+                            return Mono.just(ticket);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setDefaultStage"));
     }
 
     private Mono<Boolean> checkDuplicate(String appCode, String clientCode, TicketRequest ticketRequest) {
@@ -266,9 +327,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         appCode,
                         clientCode,
                         ticketRequest.getProductId().getULongId(),
-                        ticketRequest.getPhoneNumber().getCountryCode(),
-                        ticketRequest.getPhoneNumber().getNumber(),
-                        ticketRequest.getEmail().getAddress())
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getCountryCode()
+                                : null,
+                        ticketRequest.getPhoneNumber() != null
+                                ? ticketRequest.getPhoneNumber().getNumber()
+                                : null,
+                        ticketRequest.getEmail() != null
+                                ? ticketRequest.getEmail().getAddress()
+                                : null)
                 .flatMap(existing -> {
                     if (existing.getId() != null)
                         return this.activityService
@@ -281,11 +348,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                         this.getEntityPrefix(appCode)));
                     return Mono.just(Boolean.FALSE);
                 })
-                .switchIfEmpty(Mono.just(Boolean.FALSE));
+                .switchIfEmpty(Mono.just(Boolean.FALSE))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
     }
 
     private Mono<Owner> setOwner(ProcessorAccess access, Ticket ticket) {
-        return this.ownerService.getOrCreateTicketOwner(access, ticket);
+        return this.ownerService
+                .getOrCreateTicketOwner(access, ticket)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setOwner"));
     }
 
     private Mono<Ticket> updateTicketFromOwner(Ticket ticket, Owner owner) {
@@ -298,7 +368,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         if (owner.getEmail() != null) ticket.setEmail(owner.getEmail());
 
-        return Mono.just(ticket);
+        return Mono.just(ticket).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketFromOwner"));
     }
 
     private Mono<Ticket> setTicketAssignment(Ticket ticket, ULong userId) {

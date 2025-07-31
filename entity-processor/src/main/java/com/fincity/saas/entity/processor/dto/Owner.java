@@ -33,11 +33,29 @@ public class Owner extends BaseProcessorDto<Owner> {
         super();
     }
 
+    public Owner(Owner owner) {
+        super(owner);
+        this.dialCode = owner.dialCode;
+        this.phoneNumber = owner.phoneNumber;
+        this.email = owner.email;
+        this.source = owner.source;
+        this.subSource = owner.subSource;
+    }
+
     public static Owner of(OwnerRequest ownerRequest) {
         return new Owner()
-                .setDialCode(ownerRequest.getPhoneNumber().getCountryCode())
-                .setPhoneNumber(ownerRequest.getPhoneNumber().getNumber())
-                .setEmail(ownerRequest.getEmail().getAddress())
+                .setDialCode(
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getCountryCode()
+                                : null)
+                .setPhoneNumber(
+                        ownerRequest.getPhoneNumber() != null
+                                ? ownerRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setEmail(
+                        ownerRequest.getEmail() != null
+                                ? ownerRequest.getEmail().getAddress()
+                                : null)
                 .setSource(ownerRequest.getSource())
                 .setSubSource(ownerRequest.getSubSource() != null ? ownerRequest.getSubSource() : null)
                 .setName(ownerRequest.getName())

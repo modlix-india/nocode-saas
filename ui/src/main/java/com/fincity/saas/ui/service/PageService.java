@@ -118,6 +118,9 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                 ca -> this.appServiceForProps.readProperties(appCode, appCode, clientCode),
 
                 (ca, props) -> {
+                    if (!StringUtil.safeIsBlank(page.getPermission())) {
+                        logger.info("Permission for page {} are {} and with auth : {}", name, page.getPermission(), ca);
+                    }
                     if (ca.isAuthenticated()
                             && !SecurityContextUtil.hasAuthority(page.getPermission(), ca.getAuthorities())) {
 
