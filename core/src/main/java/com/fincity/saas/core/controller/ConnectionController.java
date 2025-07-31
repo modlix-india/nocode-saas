@@ -42,7 +42,7 @@ public class ConnectionController
         return this.oAuth2RestService.revokeConnectionToken(connectionName).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/oauth2/token/{connectionName}")
+    @GetMapping("/internal/oauth2/token/{connectionName}")
     public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName) {
         return this.oAuth2RestService.getAccessToken(connectionName);
     }

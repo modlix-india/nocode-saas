@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono;
 @ReactiveFeignClient(name = "core")
 public interface IFeignCoreService {
 
-    @GetMapping("${core.connection.getOAuth2Token:/api/core/connections/oauth2/token/{connectionName}}")
+    @GetMapping("${core.connection.getOAuth2Token:/api/core/connections/internal/oauth2/token/{connectionName}}")
     Mono<String> getConnectionOAuth2Token(
             @RequestHeader(name = "Authorization", required = false) String authorization,
             @RequestHeader(name = "X-Forwarded-Host", required = false) String forwardedHost,

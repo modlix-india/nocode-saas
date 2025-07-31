@@ -82,15 +82,7 @@ public class OAuth2RestService extends AbstractRestTokenService {
         boolean isAuthorizationCode = OAuth2GrantTypes.AUTHORIZATION_CODE.name().equals(grantTypeString);
 
         return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
-                    if (!ca.isAuthenticated()) {
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                CoreMessageResourceService.FORBIDDEN_EXECUTION,
-                                connection.getName());
-                    }
-
-                    return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode())
+                .flatMap(ca -> this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode())
                             .flatMap(token -> {
                                 if (token.getExpiresAt() == null || token.getExpiresAt().isAfter(LocalDateTime.now())) {
                                     return Mono.just(token.getToken());
@@ -110,8 +102,8 @@ public class OAuth2RestService extends AbstractRestTokenService {
                                     return refreshAccessToken(connection, ca.getClientCode(), ca.getUrlAppCode());
                                 }
                                 return createClientCredentialsToken(connection);
-                            }));
-                })
+                            }))
+                )
                 .switchIfEmpty(Mono.error(new GenericException(
                         HttpStatus.BAD_REQUEST, "Access denied: Integration token unavailable or expired")));
     }
