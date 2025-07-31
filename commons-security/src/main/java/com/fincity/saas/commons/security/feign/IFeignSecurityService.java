@@ -171,4 +171,9 @@ public interface IFeignSecurityService {
     @GetMapping(value = "${security.feign.getUserSubOrgInternal:/api/security/users/internal/{userId}/sub-org}")
     Mono<List<BigInteger>> getUserSubOrgInternal(
             @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
+
+    @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
+    Mono<Map<String,Object>> getUserAdminEmailsInternal(
+            @RequestHeader(name = "clientCode") String clientCode,
+            @RequestHeader(name = "appCode") String headerAppCode);
 }

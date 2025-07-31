@@ -4,12 +4,7 @@ import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -1307,8 +1302,44 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
+
         if (userId == null) return Mono.empty();
 
         return this.dao.checkIfUserIsOwner(userId);
+    }
+
+    public Mono<Map<String, Object>> getUserAdminEmails(ServerHttpRequest request) {
+
+        String appCode = request.getHeaders().getFirst(AppService.AC);
+
+        String clientCode = request.getHeaders().getFirst(ClientService.CC);
+
+        List<String> authorities = List.of("Authorities.User_CREATE", "Authorities.ROLE_Owner");
+
+        return FlatMapUtil.flatMapMono(
+
+                        () -> this.appService.getAppByCode(appCode),
+
+                        app -> this.clientService.getClientBy(clientCode),
+
+                        (app, client) -> this.profileService.getAppProfilesHavingAuthorities(
+                                app.getId(), client.getId(), authorities),
+
+                        (app, client, appAdminProfiles) -> this.dao
+                                .getUsersForProfiles(appAdminProfiles)
+                                .map(users -> users.stream()
+                                        .map(User::getEmailId)
+                                        .filter(Objects::nonNull)
+                                        .collect(Collectors.toList()))
+                                .map(emails -> Map.of("emails", emails, "addApp", Boolean.FALSE))
+                                .switchIfEmpty(this.dao
+                                        .getOwners(client.getId())
+                                        .map(users -> users.stream()
+                                                .map(User::getEmailId)
+                                                .filter(Objects::nonNull)
+                                                .collect(Collectors.toList()))
+                                        .map(emails -> Map.of("emails", emails, "addApp", Boolean.TRUE))))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getAppUserAdminEmails"))
+                .defaultIfEmpty(Map.of("emails", List.of(), "addApp", Boolean.FALSE));
     }
 }
