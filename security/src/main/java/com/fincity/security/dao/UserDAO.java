@@ -585,4 +585,44 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .map(Objects::nonNull)
                 .defaultIfEmpty(false);
     }
+
+    public Mono<List<User>> getUsersForProfiles(List<ULong> profileIds) {
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.fields())
+                        .from(SECURITY_PROFILE_USER)
+                        .leftJoin(SECURITY_PROFILE)
+                        .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                        .leftJoin(SECURITY_USER)
+                        .on(SECURITY_USER.ID.eq(SECURITY_PROFILE_USER.USER_ID))
+                        .where(SECURITY_PROFILE_USER.PROFILE_ID.in(profileIds)))
+                .map(record -> record.into(User.class))
+                .distinct()
+                .collectList();
+    }
+
+    public Mono<List<User>> getOwners(ULong clientId) {
+
+        if (clientId == null) {
+            return Mono.just(List.of());
+        }
+
+        return Flux.from(this.dslContext.select(SECURITY_USER.fields())
+                        .from(SECURITY_USER)
+                        .join(SECURITY_PROFILE_USER)
+                        .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                        .join(SECURITY_PROFILE)
+                        .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                        .join(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .join(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                        .where(DSL.and(
+                                SECURITY_V2_ROLE.NAME.eq("Owner"),
+                                SECURITY_USER.CLIENT_ID.eq(clientId),
+                                SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE)
+                        )))
+                .map(record -> record.into(User.class))
+                .distinct()
+                .collectList();
+    }
 }

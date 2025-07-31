@@ -119,6 +119,11 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String NO_PROFILE_ASSIGNED_TO_USER = "no_profile_assigned_to_user";
     public static final String USER_DESIGNATION_MISMATCH = "user_designation_mismatch";
     public static final String USER_REPORTING_ERROR = "user_reporting_error";
+    public static final String USER_APP_REQUEST_ALREADY_EXISTS = "user_app_request_already_exists";
+    public static final String USER_ALREADY_HAVING_APP_ACCESS= "user_already_having_app_access";
+    public static final String USER_APP_REQUEST_ACCEPT_INCORRECT_DATA= "user_app_request_accept_incorrect_data";
+    public static final String USER_APP_REQUEST_INCORRECT_STATUS= "user_app_request_incorrect_status";
+    public static final String USER_APP_REQUEST_MANDATORY_REQUEST_ID= "user_app_request_mandatory_request_id";
 
     public SecurityMessageResourceService() {
 
