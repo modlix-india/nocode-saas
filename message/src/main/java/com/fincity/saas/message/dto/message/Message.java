@@ -1,7 +1,7 @@
 package com.fincity.saas.message.dto.message;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
-import com.fincity.saas.message.enums.message.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.util.NameUtil;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
@@ -35,6 +35,7 @@ public class Message extends BaseUpdatableDto<Message> {
     private String deliveredTime;
     private String readTime;
     private ULong whatsappMessageId;
+    private ULong whatsappTemplateId;
     private Map<String, Object> metadata;
 
     public Message setMessageProvider(String messageProvider) {

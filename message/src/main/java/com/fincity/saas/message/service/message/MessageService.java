@@ -6,6 +6,7 @@ import com.fincity.saas.message.dao.message.MessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 import com.fincity.saas.message.model.request.message.MessageRequest;
+import com.fincity.saas.message.model.request.message.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
@@ -49,5 +50,18 @@ public class MessageService extends BaseUpdatableService<MessageMessagesRecord, 
                                 .sendMessage(access, messageRequest, connection),
                         (access, connection, message) -> this.createInternal(access, message))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MessageService.sendMessage"));
+    }
+
+    public Mono<Message> sendWhatsappMessage(WhatsappMessageRequest whatsappMessageRequest) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.connectionService.getConnection(
+                                access.getAppCode(),
+                                access.getClientCode(),
+                                whatsappMessageRequest.getConnectionName()),
+                        (access, connection) -> this.whatsappMessageService.sendWhatsappMessage(
+                                access, whatsappMessageRequest, connection),
+                        (access, connection, message) -> this.createInternal(access, message))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "MessageService.sendWhatsappMessage"));
     }
 }

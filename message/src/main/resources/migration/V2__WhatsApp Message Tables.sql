@@ -70,6 +70,7 @@ CREATE TABLE `message`.`message_messages` (
     `READ_TIME` DATETIME NULL COMMENT 'Timestamp when the message was read.',
 
     `WHATSAPP_MESSAGE_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the associated WhatsApp message.',
+    `WHATSAPP_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the associated WhatsApp template.',
 
     `METADATA` JSON NULL COMMENT 'Additional metadata related to the message.',
 
@@ -87,8 +88,46 @@ CREATE TABLE `message`.`message_messages` (
     CONSTRAINT `FK1_MESSAGES_WHATSAPP_MESSAGES_ID` FOREIGN KEY (`WHATSAPP_MESSAGE_ID`)
         REFERENCES `message_whatsapp_messages` (`ID`)
         ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_MESSAGES_WHATSAPP_TEMPLATES_ID` FOREIGN KEY (`WHATSAPP_TEMPLATE_ID`)
+        REFERENCES `message_whatsapp_templates` (`ID`)
+        ON DELETE SET NULL
         ON UPDATE CASCADE
 
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
+
+DROP TABLE IF EXISTS `message`.`message_whatsapp_templates`;
+
+CREATE TABLE `message`.`message_whatsapp_templates` (
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code related to this WhatsApp template.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code related to this WhatsApp template.',
+    `USER_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the user associated with this WhatsApp template.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+
+    `TEMPLATE_ID` VARCHAR(255) NULL COMMENT 'WhatsApp template ID from Meta.',
+    `TEMPLATE_NAME` VARCHAR(255) NOT NULL COMMENT 'Name of the WhatsApp template.',
+    `LANGUAGE` VARCHAR(10) NOT NULL COMMENT 'Language code of the template.',
+    `CATEGORY` ENUM ('AUTHENTICATION', 'UTILITY', 'MARKETING') NOT NULL COMMENT 'Category of the template (MARKETING, UTILITY, AUTHENTICATION).',
+    `STATUS` VARCHAR(50) NULL COMMENT 'Status of the template (APPROVED, PENDING, REJECTED, etc.).',
+    `PREVIOUS_CATEGORY` ENUM ('AUTHENTICATION', 'UTILITY', 'MARKETING') NULL COMMENT 'Previous category of the template.',
+    `COMPONENTS` JSON NULL COMMENT 'Template components in JSON format.',
+    `WHATSAPP_BUSINESS_ACCOUNT_ID` VARCHAR(255) NOT NULL COMMENT 'WhatsApp Business Account ID.',
+
+    `CREATED_BY` BIGINT UNSIGNED NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created.',
+    `UPDATED_BY` BIGINT UNSIGNED NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated.',
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Indicates whether this row is active.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK_message_whatsapp_templates_code` (`CODE`),
+    UNIQUE KEY `UK_message_whatsapp_templates_name_lang_account` (`TEMPLATE_NAME`, `LANGUAGE`,
+                                                                  `WHATSAPP_BUSINESS_ACCOUNT_ID`, `APP_CODE`,
+                                                                  `CLIENT_CODE`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci` COMMENT ='WhatsApp message templates';
+

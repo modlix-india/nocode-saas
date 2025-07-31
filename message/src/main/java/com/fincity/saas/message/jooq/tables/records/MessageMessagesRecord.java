@@ -4,7 +4,7 @@
 package com.fincity.saas.message.jooq.tables.records;
 
 
-import com.fincity.saas.message.enums.message.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 
 import java.time.LocalDateTime;

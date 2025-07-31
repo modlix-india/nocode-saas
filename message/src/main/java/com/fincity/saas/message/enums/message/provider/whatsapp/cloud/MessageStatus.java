@@ -1,8 +1,10 @@
-package com.fincity.saas.message.enums.message;
+package com.fincity.saas.message.enums.message.provider.whatsapp.cloud;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import lombok.Getter;
 import org.jooq.EnumType;
 
+@Getter
 public enum MessageStatus implements EnumType {
     SENT("SENT", "sent"),
     DELIVERED("DELIVERED", "delivered"),

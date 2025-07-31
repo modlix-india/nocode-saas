@@ -1,7 +1,7 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
-import com.fincity.saas.message.enums.message.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;

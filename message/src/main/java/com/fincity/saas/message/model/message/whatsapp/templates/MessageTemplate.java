@@ -1,7 +1,7 @@
 package com.fincity.saas.message.model.message.whatsapp.templates;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fincity.saas.message.model.message.whatsapp.templates.type.Category;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.LanguageType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -29,7 +29,6 @@ public class MessageTemplate implements Serializable {
 
     public MessageTemplate addComponent(Component<?> component) {
         if (this.components == null) this.components = new ArrayList<>();
-
         this.components.add(component);
         return this;
     }

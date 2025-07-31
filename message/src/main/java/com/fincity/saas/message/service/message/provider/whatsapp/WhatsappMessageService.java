@@ -2,10 +2,10 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappDAO;
+import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
-import com.fincity.saas.message.enums.message.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message.MessageBuilder;
@@ -19,6 +19,7 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IStatus;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
+import com.fincity.saas.message.model.request.message.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
@@ -36,7 +37,7 @@ import reactor.util.context.Context;
 
 @Service
 public class WhatsappMessageService
-        extends AbstractMessageProviderService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappDAO> {
+        extends AbstractMessageProviderService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappMessageDAO> {
 
     public static final String WHATSAPP_PROVIDER_URI = "/whatsapp";
 
@@ -97,25 +98,49 @@ public class WhatsappMessageService
     @Override
     public Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
 
-        if (!messageRequest.isValid()) return super.throwMissingParam(MessageRequest.Fields.text);
+        if (!messageRequest.isValid()) return super.throwMissingParam("text");
+
+        var message = MessageBuilder.builder()
+                .setTo(messageRequest.getToNumber().getNumber())
+                .buildTextMessage(new TextMessage().setBody(messageRequest.getText()));
+
+        WhatsappMessage whatsappMessage = this.createWhatsappMessage(access, messageRequest, null);
+
+        return this.sendMessageInternal(
+                access, connection, message, whatsappMessage, "WhatsappMessageService.sendTextMessage");
+    }
+
+    public Mono<Message> sendWhatsappMessage(
+            MessageAccess access, WhatsappMessageRequest whatsappMessageRequest, Connection connection) {
+
+        if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
+
+        var message = whatsappMessageRequest.getMessage();
+
+        WhatsappMessage whatsappMessage = this.createWhatsappMessageFromRequest(access, whatsappMessageRequest, null);
+
+        return this.sendMessageInternal(
+                access, connection, message, whatsappMessage, "WhatsappMessageService.sendWhatsappMessage");
+    }
+
+    private Mono<Message> sendMessageInternal(
+            MessageAccess access,
+            Connection connection,
+            com.fincity.saas.message.model.message.whatsapp.messages.Message message,
+            WhatsappMessage whatsappMessage,
+            String methodName) {
 
         String phoneNumberId =
                 (String) connection.getConnectionDetails().getOrDefault(WhatsappMessage.Fields.phoneNumberId, null);
         if (phoneNumberId == null) return super.throwMissingParam(WhatsappMessage.Fields.phoneNumberId);
 
-        MessageBuilder messageBuilder =
-                MessageBuilder.builder().setTo(messageRequest.getToNumber().getNumber());
-
-        TextMessage textMessage = new TextMessage().setBody(messageRequest.getText());
-        var message = messageBuilder.buildTextMessage(textMessage);
+        whatsappMessage.setPhoneNumberId(phoneNumberId);
 
         return FlatMapUtil.flatMapMono(
                         () -> super.isValidConnection(connection),
                         vConn -> this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
                         (vConn, api) -> api.sendMessage(phoneNumberId, message),
                         (vConn, api, response) -> {
-                            WhatsappMessage whatsappMessage =
-                                    this.createWhatsappMessage(access, messageRequest, phoneNumberId);
                             whatsappMessage.setMessageId(
                                     response.getMessages().getFirst().getId());
                             whatsappMessage.setOutMessage(message);
@@ -128,7 +153,7 @@ public class WhatsappMessageService
                                 .sendMessageEvent(
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), created)
                                 .thenReturn(msg))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendTextMessage"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, methodName));
     }
 
     public Mono<String> verifyWebhook(String mode, String token, String challenge) {
@@ -149,6 +174,23 @@ public class WhatsappMessageService
 
         WhatsappMessage whatsappMessage =
                 new WhatsappMessage(messageRequest.getToNumber().getNumber(), MessageType.TEXT);
+
+        whatsappMessage.setPhoneNumberId(phoneNumberId);
+        whatsappMessage.setUserId(access.getUserId());
+        whatsappMessage.setAppCode(access.getAppCode());
+        whatsappMessage.setClientCode(access.getClientCode());
+        whatsappMessage.setFrom(
+                PhoneUtil.parse(access.getUser().getPhoneNumber()).getNumber());
+
+        return whatsappMessage;
+    }
+
+    private WhatsappMessage createWhatsappMessageFromRequest(
+            MessageAccess access, WhatsappMessageRequest whatsappMessageRequest, String phoneNumberId) {
+
+        WhatsappMessage whatsappMessage = new WhatsappMessage(
+                whatsappMessageRequest.getMessage().getTo(),
+                whatsappMessageRequest.getMessage().getType());
 
         whatsappMessage.setPhoneNumberId(phoneNumberId);
         whatsappMessage.setUserId(access.getUserId());
@@ -229,7 +271,6 @@ public class WhatsappMessageService
 
     private Mono<Void> processStatusUpdates(List<IStatus> statuses) {
         logger.info("Processing {} status updates", statuses.size());
-
         return Flux.fromIterable(statuses).flatMap(this::processStatusUpdate).then();
     }
 
@@ -276,6 +317,6 @@ public class WhatsappMessageService
             }
         }
 
-        return this.dao.update(whatsappMessage);
+        return super.update(whatsappMessage);
     }
 }

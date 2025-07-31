@@ -1,0 +1,25 @@
+package com.fincity.saas.message.model.request.message;
+
+import com.fincity.saas.message.model.message.whatsapp.messages.Message;
+import com.fincity.saas.message.model.request.BaseMessageRequest;
+import java.io.Serial;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
+
+@Data
+@Accessors(chain = true)
+@FieldNameConstants
+@EqualsAndHashCode(callSuper = true)
+public class WhatsappMessageRequest extends BaseMessageRequest {
+
+    @Serial
+    private static final long serialVersionUID = 1683814048899955812L;
+
+    private Message message;
+
+    public boolean isValid() {
+        return this.message != null && this.message.getTo() != null;
+    }
+}

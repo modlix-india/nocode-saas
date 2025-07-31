@@ -2,8 +2,8 @@ package com.fincity.saas.message.model.message.whatsapp.templates.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
 import com.fincity.saas.message.model.message.whatsapp.templates.Component;
-import com.fincity.saas.message.model.message.whatsapp.templates.type.Category;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;

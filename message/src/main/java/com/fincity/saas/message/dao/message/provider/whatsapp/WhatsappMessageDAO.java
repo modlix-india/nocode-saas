@@ -8,9 +8,9 @@ import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecor
 import org.springframework.stereotype.Component;
 
 @Component
-public class WhatsappDAO extends BaseProviderDAO<MessageWhatsappMessagesRecord, WhatsappMessage> {
+public class WhatsappMessageDAO extends BaseProviderDAO<MessageWhatsappMessagesRecord, WhatsappMessage> {
 
-    protected WhatsappDAO() {
+    protected WhatsappMessageDAO() {
         super(
                 WhatsappMessage.class,
                 MESSAGE_WHATSAPP_MESSAGES,
