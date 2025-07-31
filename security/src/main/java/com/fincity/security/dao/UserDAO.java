@@ -6,14 +6,14 @@ import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityPastPasswords.SECURITY_PAST_PASSWORDS;
 import static com.fincity.security.jooq.tables.SecurityPastPins.SECURITY_PAST_PINS;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -33,11 +33,6 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
@@ -57,7 +52,6 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
 
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
@@ -197,6 +191,26 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     public Mono<Boolean> checkUserExistsForInvite(ULong clientId, String userName, String emailId, String phoneNumber) {
 
+        List<Condition> conditions = getInviteUserCheckConditions(clientId, userName, emailId, phoneNumber);
+
+        return Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(conditions)))
+                .map(e -> e.value1() > 0);
+    }
+
+    public Mono<User> getUserForInvite(ULong clientId, String userName, String emailId, String phoneNumber) {
+
+        List<Condition> conditions = getInviteUserCheckConditions(clientId, userName, emailId, phoneNumber);
+
+        return Mono.from(this.dslContext
+                        .selectFrom(SECURITY_USER)
+                        .where(DSL.and(conditions))
+                        .limit(1))
+                .map(e -> e.into(User.class));
+    }
+
+    private List<Condition> getInviteUserCheckConditions(
+            ULong clientId, String userName, String emailId, String phoneNumber) {
+
         List<Condition> conditions = new ArrayList<>();
 
         if (!StringUtil.safeIsBlank(userName) && !User.PLACEHOLDER.equals(userName))
@@ -210,7 +224,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
         conditions.add(SECURITY_USER.CLIENT_ID.eq(clientId));
 
-        return Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(conditions))).map(e -> e.value1() > 0);
+        return conditions;
     }
 
     private Mono<Boolean> checkUserExists(ULong managingClientId, String userName, String emailId, String phoneNumber,
@@ -410,11 +424,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .where(DSL.and(conditions));
     }
 
-    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, String clientCode, String appCode,
+    public Mono<Map<ULong, ULong>> getAllClientsBy(String userName, ULong userId, String clientCode, String appCode,
                                                    AuthenticationIdentifierType identifierType, SecurityUserStatusCode... userStatusCodes) {
 
         return Flux
-                .from(this.getAllUsersPerAppQuery(userName, null, clientCode, appCode, identifierType,
+                .from(this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode, identifierType,
                         userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
                 .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
     }
@@ -552,5 +566,63 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .from(SECURITY_USER)
                         .where(DSL.and(SECURITY_USER.REPORTING_TO.eq(userId), SECURITY_USER.CLIENT_ID.eq(clientId))))
                 .map(Record1::value1);
+    }
+
+    public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
+
+        return Mono.from(this.dslContext
+                        .select(SECURITY_V2_ROLE.NAME)
+                        .from(SECURITY_PROFILE)
+                        .leftJoin(SECURITY_PROFILE_USER)
+                        .on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .leftJoin(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                        .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
+                        .and(SECURITY_V2_ROLE.NAME.eq("Owner"))
+                        .limit(1))
+                .map(Objects::nonNull)
+                .defaultIfEmpty(false);
+    }
+
+    public Mono<List<User>> getUsersForProfiles(List<ULong> profileIds) {
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.fields())
+                        .from(SECURITY_PROFILE_USER)
+                        .leftJoin(SECURITY_PROFILE)
+                        .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                        .leftJoin(SECURITY_USER)
+                        .on(SECURITY_USER.ID.eq(SECURITY_PROFILE_USER.USER_ID))
+                        .where(SECURITY_PROFILE_USER.PROFILE_ID.in(profileIds)))
+                .map(record -> record.into(User.class))
+                .distinct()
+                .collectList();
+    }
+
+    public Mono<List<User>> getOwners(ULong clientId) {
+
+        if (clientId == null) {
+            return Mono.just(List.of());
+        }
+
+        return Flux.from(this.dslContext.select(SECURITY_USER.fields())
+                        .from(SECURITY_USER)
+                        .join(SECURITY_PROFILE_USER)
+                        .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                        .join(SECURITY_PROFILE)
+                        .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                        .join(SECURITY_PROFILE_ROLE)
+                        .on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .join(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                        .where(DSL.and(
+                                SECURITY_V2_ROLE.NAME.eq("Owner"),
+                                SECURITY_USER.CLIENT_ID.eq(clientId),
+                                SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.ACTIVE)
+                        )))
+                .map(record -> record.into(User.class))
+                .distinct()
+                .collectList();
     }
 }
