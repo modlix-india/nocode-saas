@@ -29,6 +29,10 @@ spring:
           uri: lb://multi
           predicates:
             - Path=/api/multi/**, /*/api/multi/**, /*/*/api/multi/**, /*/*/*/api/multi/**, /*/*/*/*/api/multi/**, /*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**, /*/*/*/*/*/*/*/*/api/multi/**,
+        - id: entity-processor
+          uri: lb://entity-processor
+          predicates:
+            - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**,
         - id: worker
           uri: lb://worker
           predicates:

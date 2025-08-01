@@ -4389,6 +4389,146 @@ values (@v_profile_appbuilder_owner, @v_r_1),
        (@v_profile_appbuilder_owner, @v_r_163),
        (@v_profile_appbuilder_owner, @v_r_164);
 
+-- V41__Security OneTimeToken script.sql
+use security;
+
+DROP TABLE IF EXISTS `security_one_time_token`;
+
+CREATE TABLE `security_one_time_token`
+(
+    `ID`         bigint unsigned                                              NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `USER_ID`    bigint unsigned                                              NOT NULL COMMENT 'User id',
+    `TOKEN`      char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci    NOT NULL COMMENT 'One Time Token',
+    `IP_ADDRESS` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'User IP from where he logged in',
+    `CREATED_AT` timestamp                                                    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+    PRIMARY KEY (`ID`),
+    KEY `FK1_ONE_TIME_TOKEN_USER_ID` (`USER_ID`),
+    UNIQUE KEY `FK3_ONE_TIME_TOKEN` (`TOKEN`),
+    CONSTRAINT `FK2_ONE_TIME_TOKEN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+    ENGINE = InnoDB
+    DEFAULT CHARSET = utf8mb4
+    COLLATE = utf8mb4_unicode_ci;
+
+
+-- V42__Security Alter Department Designation Add UniqueKey.sql
+
+USE `security`;
+
+ALTER TABLE `security`.`security_department`
+    ADD CONSTRAINT `UK1_SECURITY_DEPARTMENT_CLIENT_ID_NAME` UNIQUE (`CLIENT_ID`, `NAME`);
+
+ALTER TABLE `security`.`security_designation`
+    ADD CONSTRAINT `UK1_SECURITY_DESIGNATION_CLIENT_ID_NAME` UNIQUE (`CLIENT_ID`, `NAME`);
+
+
+-- V43__Invite Users.sql (security)
+use security;
+
+DROP TABLE IF EXISTS `security`.`security_user_invite`;
+
+CREATE TABLE `security`.`security_user_invite` (
+                                                   `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+
+                                                   `CLIENT_ID` bigint UNSIGNED NOT NULL COMMENT 'Client id for the user to be created in',
+                                                   `USER_NAME` char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'User Name to login',
+                                                   `EMAIL_ID` varchar(320) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Email ID to login',
+                                                   `PHONE_NUMBER` char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Phone Number to login',
+                                                   `FIRST_NAME` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'First name',
+                                                   `LAST_NAME` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Last name',
+
+                                                   `INVITE_CODE` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Unique Invitation Code',
+                                                   `PROFILE_ID` bigint UNSIGNED DEFAULT NULL COMMENT 'Profile Id to assign by default',
+                                                   `DESIGNATION_ID` bigint UNSIGNED DEFAULT NULL COMMENT 'Designation Id to assign by default',
+
+                                                   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+                                                   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+
+                                                   PRIMARY KEY (`ID`),
+                                                   UNIQUE KEY (`INVITE_CODE`),
+                                                   UNIQUE KEY (`CLIENT_ID`, `EMAIL_ID`),
+                                                   UNIQUE KEY (`CLIENT_ID`, `PHONE_NUMBER`),
+
+                                                   CONSTRAINT `fk_security_user_invite_client` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security`.`security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+                                                   CONSTRAINT `fk_security_user_invite_profile` FOREIGN KEY (`PROFILE_ID`) REFERENCES `security`.`security_profile` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+                                                   CONSTRAINT `fk_security_user_invite_designation` FOREIGN KEY (`DESIGNATION_ID`) REFERENCES `security`.`security_designation` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- V44__Social Login SSO.sql (security)
+USE security;
+
+ALTER TABLE `security_app_reg_integration_tokens`
+    ADD COLUMN `REQUEST_PARAM` JSON DEFAULT NULL COMMENT 'app metadata from request url' AFTER `STATE`;
+
+
+-- V45__Alter App Reg Integration Add Signup URI.sql (security)
+USE `security`;
+
+ALTER TABLE `security`.`security_app_reg_integration`
+    ADD COLUMN `SIGNUP_URI` VARCHAR(2083) DEFAULT NULL COMMENT 'URI for signup' AFTER `LOGIN_URI`;
+
+UPDATE `security`.`security_app_reg_integration`
+SET `security_app_reg_integration`.`SIGNUP_URI` = `security_app_reg_integration`.`LOGIN_URI`
+WHERE security_app_reg_integration.`SIGNUP_URI` IS NULL;
+
+ALTER TABLE `security`.`security_app_reg_integration`
+    MODIFY COLUMN `SIGNUP_URI` VARCHAR(2083) NOT NULL COMMENT 'URI for signup' AFTER `LOGIN_URI`;
+
+
+-- V5__Alter Core Tokens Unique Constraint.sql (core)
+USE `core`;
+
+ALTER TABLE `core`.`core_tokens`
+    DROP CONSTRAINT `UK_CORE_TOKEN_STATE_TOKEN_TYPE`;
+
+
+-- V46__Alter Client Add Company Details.sql (security)
+USE `security`;
+
+ALTER TABLE `security`.`security_client`
+    ADD COLUMN `BUSINESS_SIZE` VARCHAR(128) DEFAULT NULL COMMENT 'client business size input',
+    ADD COLUMN `INDUSTRY`      VARCHAR(128) DEFAULT NULL COMMENT 'client business industry';
+
+
+-- V47__DefaultProfile.sql (security)
+USE `security`;
+
+ALTER TABLE `security`.`security_profile`
+    ADD COLUMN `DEFAULT_PROFILE` TINYINT NOT NULL DEFAULT 0 AFTER `CLIENT_ID`;
+
+
+-- V48__Create User Access Requests.sql (security)
+USE `security`;
+
+DROP TABLE IF EXISTS `security`.`security_user_request`;
+
+CREATE TABLE `security`.`security_user_request`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+
+    `REQUEST_ID` varchar(20)     NOT NULL COMMENT 'Request id for the user request',
+    `CLIENT_ID`  bigint UNSIGNED NOT NULL COMMENT 'Client id for the user request',
+    `USER_ID`    bigint UNSIGNED NOT NULL COMMENT 'User id for the user request',
+    `APP_ID`     bigint UNSIGNED NOT NULL COMMENT 'App id for the user request',
+    `STATUS`     ENUM ('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING' COMMENT 'Status of the user request',
+
+    `CREATED_BY` BIGINT UNSIGNED                          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` TIMESTAMP       NOT NULL                 DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` BIGINT UNSIGNED                          DEFAULT NULL COMMENT 'ID of the user who last updated this row',
+    `UPDATED_AT` TIMESTAMP       NOT NULL                 DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY (`REQUEST_ID`),
+
+    CONSTRAINT `fk_security_user_request_client` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security`.`security_client` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_security_user_request_user` FOREIGN KEY (`USER_ID`) REFERENCES `security`.`security_user` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_security_user_request_app` FOREIGN KEY (`APP_ID`) REFERENCES `security`.`security_app` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
 -- V1__initial_script.sql (Worker)
 

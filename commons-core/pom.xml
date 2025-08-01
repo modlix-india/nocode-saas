@@ -18,6 +18,26 @@
         functionality
     </description>
     <properties>
+        <!-- Package -->
+        <base.package>com.fincity.saas</base.package>
+        <server.package>commons.core</server.package>
+        <jooq.package>${base.package}.${server.package}.jooq</jooq.package>
+
+        <!-- Paths -->
+        <base.package.dir>com/fincity/saas</base.package.dir>
+        <server.package.dir>commons/core</server.package.dir>
+        <main.java.dir>src/main/java</main.java.dir>
+        <test.java.dir>src/test/java</test.java.dir>
+        <resources.dir>src/main/resources</resources.dir>
+        <jooq.dir>${main.java.dir}/${base.package.dir}/${server.package.dir}/jooq</jooq.dir>
+
+        <!-- Database -->
+        <database.schema.name>core</database.schema.name>
+        <mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</mysql.jdbc.url>
+        <mysql.jdbc.user>root</mysql.jdbc.user>
+        <mysql.jdbc.password>Vishwas123#</mysql.jdbc.password>
+
+        <!-- Maven Versions -->
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <saas-commons-version>2.0.0</saas-commons-version>
@@ -204,14 +224,25 @@
                         <configuration>
                             <jdbc>
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
-                                <url>jdbc:mysql://localhost:3306/core</url>
-                                <user>root</user>
-                                <password>Kiran@123</password>
+                                <url>${mysql.jdbc.url}</url>
+                                <user>${mysql.jdbc.user}</user>
+                                <password>${mysql.jdbc.password}</password>
                             </jdbc>
                             <generator>
                                 <database>
-                                    <includes>core_.*</includes>
-                                    <inputSchema>core</inputSchema>
+                                    <includes>${database.schema.name}_.*</includes>
+                                    <inputSchema>${database.schema.name}</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>TOKEN_METADATA</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>
@@ -221,8 +252,8 @@
                                     <fluentSetters>true</fluentSetters>
                                 </generate>
                                 <target>
-                                    <packageName>com.fincity.saas.commons.core.jooq</packageName>
-                                    <directory>src/main/java</directory>
+                                    <packageName>${jooq.package}</packageName>
+                                    <directory>${main.java.dir}</directory>
                                 </target>
                             </generator>
                         </configuration>
@@ -261,6 +292,13 @@
                         <configuration>
                             <!-- JAVA files -->
                             <java>
+                                <includes>
+                                    <include>${main.java.dir}/**/*.java</include>
+                                    <include>${test.java.dir}/**/*.java</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>${jooq.dir}/**/*.java</exclude>
+                                </excludes>
                                 <palantirJavaFormat>
                                     <version>${palantir-java.format.version}</version>
                                     <style>PALANTIR</style>
@@ -275,9 +313,22 @@
                             <!-- YAML files -->
                             <yaml>
                                 <includes>
-                                    <include>src/main/resources/*.yml</include>
-                                    <include>src/main/resources/*.yaml</include>
+                                    <include>${resources.dir}/*.yml</include>
+                                    <include>${resources.dir}/*.yaml</include>
                                 </includes>
+                                <jackson>
+                                    <features>
+                                        <INDENT_OUTPUT>true</INDENT_OUTPUT>
+                                        <ORDER_MAP_ENTRIES_BY_KEYS>true</ORDER_MAP_ENTRIES_BY_KEYS>
+                                    </features>
+                                    <yamlFeatures>
+                                        <WRITE_DOC_START_MARKER>true</WRITE_DOC_START_MARKER>
+                                        <MINIMIZE_QUOTES>true</MINIMIZE_QUOTES>
+                                        <SPLIT_LINES>true</SPLIT_LINES>
+                                    </yamlFeatures>
+                                </jackson>
+                                <trimTrailingWhitespace/>
+                                <endWithNewline/>
                             </yaml>
                         </configuration>
                     </plugin>

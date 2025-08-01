@@ -2,23 +2,19 @@ package com.fincity.saas.commons.security.util;
 
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 
 import com.fincity.nocode.kirun.engine.runtime.expression.ExpressionEvaluator;
-import com.fincity.nocode.kirun.engine.runtime.expression.tokenextractor.TokenValueExtractor;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.util.StringUtil;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 import reactor.core.publisher.Mono;
@@ -27,6 +23,8 @@ import reactor.util.function.Tuples;
 
 public class SecurityContextUtil {
 
+    public static final Logger logger = LoggerFactory.getLogger(SecurityContextUtil.class);
+
     public static Mono<BigInteger> getUsersClientId() {
 
         return getUsersContextUser().map(ContextUser::getClientId);
@@ -34,7 +32,8 @@ public class SecurityContextUtil {
 
     public static Mono<Locale> getUsersLocale() {
 
-        return getUsersContextUser().map(ContextUser::getLocaleCode)
+        return getUsersContextUser()
+                .flatMap(e -> Mono.justOrEmpty(e.getLocaleCode()))
                 .map(Locale::forLanguageTag)
                 .defaultIfEmpty(Locale.ENGLISH);
     }
@@ -52,7 +51,7 @@ public class SecurityContextUtil {
 
     public static Mono<Tuple2<String, String>> resolveAppAndClientCode(String appCode, String clientCode) {
 
-        if (!StringUtil.safeIsBlank(appCode) && StringUtil.safeIsBlank(clientCode)) {
+        if (!StringUtil.safeIsBlank(appCode) && !StringUtil.safeIsBlank(clientCode)) {
             return Mono.just(Tuples.of(appCode, clientCode));
         }
 
@@ -85,42 +84,11 @@ public class SecurityContextUtil {
         AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
         JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
                 .getAsJsonPrimitive();
+        
         return jp.isBoolean() && jp.getAsBoolean();
     }
 
     private SecurityContextUtil() {
     }
 
-    private static class AuthoritiesTokenExtractor extends TokenValueExtractor {
-
-        private Set<? extends GrantedAuthority> authorities;
-
-        public AuthoritiesTokenExtractor(Collection<? extends GrantedAuthority> authorities) {
-
-            if (authorities instanceof Set<? extends GrantedAuthority> setAuth)
-                this.authorities = setAuth;
-            else
-                this.authorities = new HashSet<>(authorities);
-        }
-
-        @Override
-        protected JsonElement getValueInternal(String token) {
-            return new JsonPrimitive(authorities.contains(new SimpleGrantedAuthority(token)));
-        }
-
-        @Override
-        public String getPrefix() {
-            return "Authorities.";
-        }
-
-        @Override
-        public JsonElement getStore() {
-
-            JsonArray arr = new JsonArray();
-            authorities.stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .forEach(arr::add);
-            return arr;
-        }
-    }
 }

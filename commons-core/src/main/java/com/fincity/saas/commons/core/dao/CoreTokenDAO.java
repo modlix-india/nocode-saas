@@ -7,7 +7,10 @@ import com.fincity.saas.commons.core.jooq.enums.CoreTokensTokenType;
 import com.fincity.saas.commons.core.jooq.tables.records.CoreTokensRecord;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import java.time.LocalDateTime;
-import org.jooq.Record1;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.Condition;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
@@ -34,20 +37,19 @@ public class CoreTokenDAO extends AbstractUpdatableDAO<CoreTokensRecord, ULong, 
                 .map(result -> Tuples.of(result.get(CORE_TOKENS.TOKEN), result.get(CORE_TOKENS.EXPIRES_AT)));
     }
 
-    public Mono<String> getActiveAccessToken(String clientCode, String appCode, String connectionName) {
+    public Mono<CoreToken> getActiveToken(String clientCode, String appCode, String connectionName, CoreTokensTokenType tokenType) {
         return Mono.from(this.dslContext
-                        .select(CORE_TOKENS.TOKEN)
-                        .from(CORE_TOKENS)
+                        .selectFrom(CORE_TOKENS)
                         .where(CORE_TOKENS.CLIENT_CODE.eq(clientCode))
                         .and(CORE_TOKENS.APP_CODE.eq(appCode))
                         .and(CORE_TOKENS.CONNECTION_NAME.eq(connectionName))
-                        .and(CORE_TOKENS.TOKEN_TYPE.eq(CoreTokensTokenType.ACCESS))
+                        .and(CORE_TOKENS.TOKEN_TYPE.eq(tokenType))
                         .and(CORE_TOKENS.TOKEN.isNotNull())
                         .and(CORE_TOKENS.IS_REVOKED.eq((byte) 0))
                         .and(DSL.when(CORE_TOKENS.EXPIRES_AT.isNull(), CORE_TOKENS.IS_LIFETIME_TOKEN.eq((byte) 1))
                                 .otherwise(CORE_TOKENS.EXPIRES_AT.greaterThan(LocalDateTime.now())))
                         .limit(1))
-                .map(Record1::value1);
+                .map(e -> e.into(CoreToken.class));
     }
 
     public Mono<CoreToken> getCoreTokenByState(String state) {
@@ -55,17 +57,22 @@ public class CoreTokenDAO extends AbstractUpdatableDAO<CoreTokensRecord, ULong, 
                 .map(e -> e.into(CoreToken.class));
     }
 
-    public Mono<Boolean> revokeToken(String clientCode, String appCode, String connectionName) {
+    public Mono<Boolean> revokeToken(
+            String clientCode, String appCode, String connectionName, CoreTokensTokenType tokenType) {
+
+        List<Condition> conditions = new ArrayList<>();
+
+        if (tokenType != null) conditions.add(CORE_TOKENS.TOKEN_TYPE.eq(tokenType));
+
+        conditions.add(CORE_TOKENS.CLIENT_CODE.eq(clientCode));
+        conditions.add(CORE_TOKENS.APP_CODE.eq(appCode));
+        conditions.add(CORE_TOKENS.CONNECTION_NAME.eq(connectionName));
+        conditions.add(CORE_TOKENS.IS_REVOKED.eq((byte) 0));
+
         return Mono.from(this.dslContext
                         .update(CORE_TOKENS)
                         .set(CORE_TOKENS.IS_REVOKED, (byte) 1)
-                        .where(CORE_TOKENS
-                                .CLIENT_CODE
-                                .eq(clientCode)
-                                .and(CORE_TOKENS
-                                        .APP_CODE
-                                        .eq(appCode)
-                                        .and(CORE_TOKENS.CONNECTION_NAME.eq(connectionName)))))
+                        .where(DSL.and(conditions)))
                 .map(e -> e > 0);
     }
 }

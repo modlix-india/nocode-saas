@@ -8,7 +8,6 @@ import static com.fincity.saas.commons.util.CommonsUtil.*;
 import com.fincity.saas.commons.util.StringUtil;
 import com.google.common.base.Functions;
 import org.apache.commons.lang3.NotImplementedException;
-import org.jetbrains.annotations.NotNull;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -300,11 +299,6 @@ public class ProfileService
     }
 
     @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, @NotNull Map<String, Object> fields) {
-        return Mono.error(NotImplementedException::new);
-    }
-
-    @Override
     protected Mono<Profile> updatableEntity(Profile entity) {
         return Mono.error(NotImplementedException::new);
     }
@@ -415,18 +409,25 @@ public class ProfileService
     @Override
     public Mono<Profile> readObject(ULong id,
                                     AppRegistrationObjectType type) {
-        return super.read(id);
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+
+                        (ca, hierarchy) -> this.dao.read(id, hierarchy))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.readObject"));
     }
 
     @Override
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return FlatMapUtil.flatMapMono(
 
-                        () -> super.read(id),
+                        () -> this.clientHierarchyService.getClientHierarchy(clientId).flatMap(x -> this.dao.read(id, x)),
 
-                        role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
+                        profile -> this.clientService.isBeingManagedBy(profile.getClientId(), clientId)
                                 .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
-                                        : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+                                        : this.clientService.isBeingManagedBy(clientId, profile.getClientId()))
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.hasAccessTo"));
@@ -462,4 +463,39 @@ public class ProfileService
                 .flatMap(this::read)
                 .collectList();
     }
+
+    public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.appService.getAppByCode(appCode),
+                 app -> this.getUsersForProfiles(app.getId(), profileIds));
+    }
+
+    public Mono<List<ULong>> getUsersForProfiles(ULong appId, List<ULong> profileIds) {
+        if (profileIds == null || profileIds.isEmpty())
+            return Mono.just(List.of());
+
+        return this.dao.getUsersForProfiles(appId, profileIds)
+                .collectList()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
+    }
+
+    public Mono<ULong> getUserAppHavingProfile(ULong userId) {
+
+        if (userId == null) return Mono.empty();
+
+        return this.dao.getUserAppHavingProfile(userId);
+
+    }
+
+    public Mono<List<ULong>> getAppProfilesHavingAuthorities(
+            ULong appId, ULong clientId, List<String> authorities) {
+
+        if (authorities == null || authorities.isEmpty()) return Mono.empty();
+
+        return this.clientHierarchyService
+                .getClientHierarchy(clientId)
+                .flatMap(clientHierarchy ->
+                        this.dao.getAppProfileHavingAuthorities(appId, clientHierarchy, authorities));
+    }
+
 }

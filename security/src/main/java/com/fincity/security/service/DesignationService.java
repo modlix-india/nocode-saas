@@ -1,6 +1,5 @@
 package com.fincity.security.service;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +16,6 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.DesignationDAO;
 import com.fincity.security.dto.Client;
@@ -47,7 +45,7 @@ public class DesignationService
     private final ClientService clientService;
 
     public DesignationService(SecurityMessageResourceService securityMessageResourceService,
-            ClientService clientService) {
+                              ClientService clientService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
     }
@@ -56,30 +54,30 @@ public class DesignationService
     @Override
     public Mono<Designation> create(Designation entity) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-                    if (entity.getClientId() == null)
-                        return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> {
+                            if (entity.getClientId() == null)
+                                return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
-                    if (ca.isSystemClient())
-                        return Mono.just(entity);
+                            if (ca.isSystemClient())
+                                return Mono.just(entity);
 
-                    return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                            .filter(BooleanUtil::safeValueOf)
-                            .map(x -> entity);
-                },
-                (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
-                        entity.getNextDesignationId(), entity.getDepartmentId()),
+                            return this.clientService
+                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                                    .filter(BooleanUtil::safeValueOf)
+                                    .map(x -> entity);
+                        },
+                        (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
+                                entity.getNextDesignationId(), entity.getDepartmentId()),
 
-                (ca, managed, sameClient) -> super.create(entity))
+                        (ca, managed, sameClient) -> super.create(entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DESIGNATION, entity)));
     }
 
     private Mono<Boolean> checkSameClient(ULong clientId, ULong parentDesignationId, ULong nextDesignationId,
-            ULong departmentId) {
+                                          ULong departmentId) {
         if (departmentId == null)
             return Mono.just(true);
 
@@ -104,14 +102,14 @@ public class DesignationService
     public Mono<Designation> update(Designation entity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
-                        entity.getNextDesignationId(), entity.getDepartmentId()),
+                        () -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
+                                entity.getNextDesignationId(), entity.getDepartmentId()),
 
-                managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
+                        managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                (managed, canBeUpdated) -> super.update(entity)
+                        (managed, canBeUpdated) -> super.update(entity)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, entity.getId())));
@@ -121,47 +119,14 @@ public class DesignationService
     @Override
     public Mono<Designation> update(ULong key, Map<String, Object> fields) {
         return FlatMapUtil.flatMapMono(
-                () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
+                        () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
 
-                canBeUpdated -> super.update(key, fields)
+                        canBeUpdated -> super.update(key, fields)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, key)));
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(NAME))
-            newFields.put(NAME, fields.get(NAME));
-        if (fields.containsKey(DESCRIPTION))
-            newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-
-        Object parentDesignationId = fields.get(PARENT_DESIGNATION_ID);
-        Object nextDesignationId = fields.get(NEXT_DESIGNATION_ID);
-        Object departmentId = fields.get(DEPARTMENT_ID);
-
-        if (CommonsUtil.nonNullValue(parentDesignationId, nextDesignationId, departmentId) == null)
-            return Mono.just(newFields);
-
-        return this.read(key)
-                .flatMap(e -> this.checkSameClient(e.getClientId(),
-                        parentDesignationId == null ? null : ULong.valueOf(parentDesignationId.toString()),
-                        nextDesignationId == null ? null : ULong.valueOf(nextDesignationId.toString()),
-                        departmentId == null ? null : ULong.valueOf(departmentId.toString())))
-                .map(x -> {
-                    if (parentDesignationId != null)
-                        newFields.put(PARENT_DESIGNATION_ID, parentDesignationId);
-                    if (nextDesignationId != null)
-                        newFields.put(NEXT_DESIGNATION_ID, nextDesignationId);
-                    if (departmentId != null)
-                        newFields.put(DEPARTMENT_ID, departmentId);
-                    return newFields;
-                });
-
     }
 
     @Override
@@ -189,5 +154,10 @@ public class DesignationService
             return Mono.just(Map.of());
 
         return this.dao.createForRegistration(client, designations, departmentIndex);
+    }
+
+    public Mono<Boolean> canAssignDesignation(ULong clientId, ULong designationId) {
+        if (designationId == null) return Mono.just(true);
+        return this.dao.canAssignDesignation(clientId, designationId);
     }
 }

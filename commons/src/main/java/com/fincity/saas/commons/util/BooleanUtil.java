@@ -10,6 +10,9 @@ public class BooleanUtil {
 
     private static final Byte BYTE_0 = (byte) 0;
 
+    private BooleanUtil() {
+    }
+
     public static boolean safeValueOf(Object object) {
 
         if (object == null)
@@ -70,6 +73,7 @@ public class BooleanUtil {
         return Mono.just(safeValueOf(b)).filter(Boolean::booleanValue);
     }
 
-    private BooleanUtil() {
+    public static Mono<Boolean> safeValueOfFalseWithEmpty(Object b) {
+        return Mono.justOrEmpty(safeValueOf(b)).filter(value -> !value);
     }
 }

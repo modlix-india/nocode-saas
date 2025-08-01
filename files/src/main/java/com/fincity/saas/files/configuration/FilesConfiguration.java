@@ -34,7 +34,7 @@ import java.util.List;
 
 @Configuration
 public class FilesConfiguration extends AbstractJooqBaseConfiguration
-    implements ISecurityConfiguration {
+        implements ISecurityConfiguration {
 
     @Value("${files.resources.endpoint}")
     private String endpoint;
@@ -57,7 +57,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, v);
+                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else
                 log.debug(v);
         }));
@@ -67,14 +67,14 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
     public SecurityWebFilterChain filterChain(ServerHttpSecurity http,
                                               FeignAuthenticationService authService) {
         ServerWebExchangeMatcher matcher = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/files/secured/file/**"),
-            new PathPatternParserServerWebExchangeMatcher(
-                "/api/files/secured/downloadFileByKey/*"));
+                new PathPatternParserServerWebExchangeMatcher("/api/files/static/file/**"),
+                new PathPatternParserServerWebExchangeMatcher("/api/files/secured/file/**"),
+                new PathPatternParserServerWebExchangeMatcher(
+                        "/api/files/secured/downloadFileByKey/*"));
 
         return this.springSecurityFilterChain(http, authService, this.objectMapper, matcher,
 
-            "/api/files/static/file/**", "/api/files/internal/**", "/api/files/secured/downloadFileByKey/*");
+                "/api/files/static/file/**", "/api/files/internal/**", "/api/files/secured/downloadFileByKey/*");
     }
 
     @Bean
@@ -95,19 +95,19 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
     public S3AsyncClient s3Client() {
 
         final SdkAsyncHttpClient httpClient = NettyNioAsyncHttpClient.builder()
-            .readTimeout(Duration.ofMinutes(20))
-            .writeTimeout(Duration.ofMinutes(20))
-            .connectionTimeout(Duration.ofMinutes(20))
-            .maxConcurrency(64)
-            .build();
+                .readTimeout(Duration.ofMinutes(20))
+                .writeTimeout(Duration.ofMinutes(20))
+                .connectionTimeout(Duration.ofMinutes(20))
+                .maxConcurrency(64)
+                .build();
 
         return S3AsyncClient.builder()
-            .region(Region.US_EAST_1)
-            .endpointOverride(URI.create(endpoint))
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
-            .httpClient(httpClient)
-            .overrideConfiguration(o -> o.apiCallTimeout(java.time.Duration.ofMinutes(20)))
-            .build();
+                .region(Region.US_EAST_1)
+                .endpointOverride(URI.create(endpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+                .httpClient(httpClient)
+                .overrideConfiguration(o -> o.apiCallTimeout(java.time.Duration.ofMinutes(20)))
+                .build();
     }
 
     @Bean

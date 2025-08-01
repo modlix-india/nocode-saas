@@ -17,6 +17,7 @@ import com.fincity.security.jooq.tables.SecurityProfileClientRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityProfileRole.SecurityProfileRolePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
+import com.fincity.security.jooq.tables.SecurityUserInvite.SecurityUserInvitePath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 
@@ -81,6 +82,11 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
      * for which this profile belongs to
      */
     public final TableField<SecurityProfileRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Client ID for which this profile belongs to");
+
+    /**
+     * The column <code>security.security_profile.DEFAULT_PROFILE</code>.
+     */
+    public final TableField<SecurityProfileRecord, Byte> DEFAULT_PROFILE = createField(DSL.name("DEFAULT_PROFILE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
 
     /**
      * The column <code>security.security_profile.NAME</code>. Name of the
@@ -337,6 +343,19 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
             _securityDesignation = new SecurityDesignationPath(this, null, Keys.FK5_DESIGNATION_PROFILE_ID.getInverseKey());
 
         return _securityDesignation;
+    }
+
+    private transient SecurityUserInvitePath _securityUserInvite;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_user_invite</code> table
+     */
+    public SecurityUserInvitePath securityUserInvite() {
+        if (_securityUserInvite == null)
+            _securityUserInvite = new SecurityUserInvitePath(this, null, Keys.FK_SECURITY_USER_INVITE_PROFILE.getInverseKey());
+
+        return _securityUserInvite;
     }
 
     /**

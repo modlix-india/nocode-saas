@@ -1,6 +1,5 @@
 package com.fincity.security.service;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +41,7 @@ public class DepartmentService
     private final ClientService clientService;
 
     public DepartmentService(SecurityMessageResourceService securityMessageResourceService,
-            ClientService clientService) {
+                             ClientService clientService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
     }
@@ -51,22 +50,22 @@ public class DepartmentService
     @Override
     public Mono<Department> create(Department entity) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> {
-                    if (entity.getClientId() == null)
-                        return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> {
+                            if (entity.getClientId() == null)
+                                return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
-                    if (ca.isSystemClient())
-                        return Mono.just(entity);
+                            if (ca.isSystemClient())
+                                return Mono.just(entity);
 
-                    return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                            .filter(BooleanUtil::safeValueOf)
-                            .map(x -> entity);
-                },
-                (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+                            return this.clientService
+                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                                    .filter(BooleanUtil::safeValueOf)
+                                    .map(x -> entity);
+                        },
+                        (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
 
-                (ca, managed, sameClient) -> super.create(entity))
+                        (ca, managed, sameClient) -> super.create(entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -96,13 +95,13 @@ public class DepartmentService
     public Mono<Department> update(Department entity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
+                        () -> this.checkSameClient(entity.getClientId(), entity.getParentDepartmentId()),
 
-                managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
+                        managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                (managed, canBeUpdated) -> super.update(entity)
+                        (managed, canBeUpdated) -> super.update(entity)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, entity)));
@@ -116,30 +115,6 @@ public class DepartmentService
                 .flatMap(x -> super.update(key, fields))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(NAME))
-            newFields.put(NAME, fields.get(NAME));
-        if (fields.containsKey(DESCRIPTION))
-            newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-
-        if (fields.containsKey(PARENT_DEPARTMENT_ID)) {
-
-            Object value = fields.get(PARENT_DEPARTMENT_ID);
-            return this.read(key)
-                    .flatMap(e -> this.checkSameClient(e.getClientId(),
-                            value == null ? null : ULong.valueOf(value.toString())))
-                    .map(x -> {
-                        newFields.put(PARENT_DEPARTMENT_ID, fields.get(PARENT_DEPARTMENT_ID));
-                        return newFields;
-                    });
-        }
-
-        return Mono.just(newFields);
     }
 
     @Override

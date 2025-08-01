@@ -10,6 +10,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
+import com.fincity.security.jooq.tables.SecurityOneTimeToken.SecurityOneTimeTokenPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPastPasswords.SecurityPastPasswordsPath;
 import com.fincity.security.jooq.tables.SecurityPastPins.SecurityPastPinsPath;
@@ -17,6 +18,7 @@ import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityUserAddress.SecurityUserAddressPath;
+import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityUserToken.SecurityUserTokenPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.SecurityV2UserRole.SecurityV2UserRolePath;
@@ -443,6 +445,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
         return _securityUserToken;
     }
 
+    private transient SecurityOneTimeTokenPath _securityOneTimeToken;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_one_time_token</code> table
+     */
+    public SecurityOneTimeTokenPath securityOneTimeToken() {
+        if (_securityOneTimeToken == null)
+            _securityOneTimeToken = new SecurityOneTimeTokenPath(this, null, Keys.FK2_ONE_TIME_TOKEN_USER_ID.getInverseKey());
+
+        return _securityOneTimeToken;
+    }
+
     private transient SecurityOtpPath _securityOtp;
 
     /**
@@ -467,6 +482,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityProfileUser = new SecurityProfileUserPath(this, null, Keys.FK2_PROFILE_USER_USER_ID.getInverseKey());
 
         return _securityProfileUser;
+    }
+
+    private transient SecurityUserRequestPath _securityUserRequest;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_user_request</code> table
+     */
+    public SecurityUserRequestPath securityUserRequest() {
+        if (_securityUserRequest == null)
+            _securityUserRequest = new SecurityUserRequestPath(this, null, Keys.FK_SECURITY_USER_REQUEST_USER.getInverseKey());
+
+        return _securityUserRequest;
     }
 
     /**

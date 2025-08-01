@@ -29,6 +29,7 @@ import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
+import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
@@ -43,6 +44,8 @@ import com.fincity.security.jooq.tables.SecuritySslChallenge;
 import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
+import com.fincity.security.jooq.tables.SecurityUserInvite;
+import com.fincity.security.jooq.tables.SecurityUserRequest;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
@@ -182,6 +185,11 @@ public class Tables {
     public static final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
 
     /**
+     * The table <code>security.security_one_time_token</code>.
+     */
+    public static final SecurityOneTimeToken SECURITY_ONE_TIME_TOKEN = SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN;
+
+    /**
      * The table <code>security.security_otp</code>.
      */
     public static final SecurityOtp SECURITY_OTP = SecurityOtp.SECURITY_OTP;
@@ -250,6 +258,16 @@ public class Tables {
      * The table <code>security.security_user_address</code>.
      */
     public static final SecurityUserAddress SECURITY_USER_ADDRESS = SecurityUserAddress.SECURITY_USER_ADDRESS;
+
+    /**
+     * The table <code>security.security_user_invite</code>.
+     */
+    public static final SecurityUserInvite SECURITY_USER_INVITE = SecurityUserInvite.SECURITY_USER_INVITE;
+
+    /**
+     * The table <code>security.security_user_request</code>.
+     */
+    public static final SecurityUserRequest SECURITY_USER_REQUEST = SecurityUserRequest.SECURITY_USER_REQUEST;
 
     /**
      * The table <code>security.security_user_token</code>.

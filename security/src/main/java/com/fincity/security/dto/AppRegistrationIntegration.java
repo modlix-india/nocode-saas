@@ -25,4 +25,5 @@ public class AppRegistrationIntegration extends AbstractUpdatableDTO<ULong, ULon
   private String intgId;
   private String intgSecret;
   private String loginUri;
+  private String signupUri;
 }
