@@ -1326,7 +1326,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 app.getId(), client.getId(), authorities),
 
                         (app, client, appAdminProfiles) -> this.dao
-                                .getUsersForProfiles(appAdminProfiles)
+                                .getUsersForProfiles(appAdminProfiles, client.getId())
                                 .map(users -> users.stream()
                                         .map(User::getEmailId)
                                         .filter(Objects::nonNull)
