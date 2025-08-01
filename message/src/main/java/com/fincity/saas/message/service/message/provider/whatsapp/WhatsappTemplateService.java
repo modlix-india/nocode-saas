@@ -102,16 +102,8 @@ public class WhatsappTemplateService
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
                         (messageAccess, validationResult, connection) -> this.getBusinessManagementApi(connection),
-                        (messageAccess, validationResult, connection, api) -> {
-                            String businessAccountId = (String) connection
-                                    .getConnectionDetails()
-                                    .getOrDefault(WhatsappTemplate.Fields.whatsappBusinessAccountId, null);
-
-                            if (businessAccountId == null)
-                                return super.throwMissingParam(WhatsappTemplate.Fields.whatsappBusinessAccountId);
-
-                            return Mono.just(businessAccountId);
-                        },
+                        (messageAccess, validationResult, connection, api) ->
+                                this.getWhatsappBusinessAccountId(connection),
                         (messageAccess, validationResult, connection, api, businessAccountId) ->
                                 api.createMessageTemplate(
                                         businessAccountId, whatsappTemplateRequest.getMessageTemplate()),
@@ -141,26 +133,36 @@ public class WhatsappTemplateService
                                 this.validateTemplateEditRules(existingTemplate),
                         (messageAccess, nameValidationResult, connection, existingTemplate, validationResult) ->
                                 this.getBusinessManagementApi(connection),
-                        (messageAccess, nameValidationResult, connection, existingTemplate, validationResult, api) -> {
-                            String businessAccountId = (String) connection
-                                    .getConnectionDetails()
-                                    .getOrDefault(WhatsappTemplate.Fields.whatsappBusinessAccountId, null);
-
-                            if (businessAccountId == null)
-                                return super.throwMissingParam(WhatsappTemplate.Fields.whatsappBusinessAccountId);
-
-                            return api.updateMessageTemplate(
-                                    businessAccountId, templateId, whatsappTemplateRequest.getMessageTemplate());
-                        },
+                        (messageAccess, nameValidationResult, connection, existingTemplate, validationResult, api) ->
+                                this.getWhatsappBusinessAccountId(connection),
                         (messageAccess,
                                 nameValidationResult,
                                 connection,
                                 existingTemplate,
                                 validationResult,
                                 api,
+                                businessAccountId) -> api.updateMessageTemplate(
+                                businessAccountId, templateId, whatsappTemplateRequest.getMessageTemplate()),
+                        (messageAccess,
+                                nameValidationResult,
+                                connection,
+                                existingTemplate,
+                                validationResult,
+                                api,
+                                businessAccountId,
                                 apiTemplate) -> super.update(
                                 existingTemplate.update(whatsappTemplateRequest.getMessageTemplate(), apiTemplate)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.updateTemplate"));
+    }
+
+    private Mono<String> getWhatsappBusinessAccountId(Connection connection) {
+        String businessAccountId = (String)
+                connection.getConnectionDetails().getOrDefault(WhatsappTemplate.Fields.whatsappBusinessAccountId, null);
+
+        if (businessAccountId == null)
+            return super.throwMissingParam(WhatsappTemplate.Fields.whatsappBusinessAccountId);
+
+        return Mono.just(businessAccountId);
     }
 
     private Mono<Boolean> validateTemplateEditRules(WhatsappTemplate existingTemplate) {
