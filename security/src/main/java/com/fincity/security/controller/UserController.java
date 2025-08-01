@@ -224,5 +224,10 @@ public class UserController
         return this.service.getUserAdminEmails(request).map(ResponseEntity::ok);
     }
 
+    @GetMapping("/requestUser/{requestId}")
+    public Mono<ResponseEntity<User>> getUserFromRequestId(@PathVariable String requestId) {
+        return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);
+    }
+
 }
 
