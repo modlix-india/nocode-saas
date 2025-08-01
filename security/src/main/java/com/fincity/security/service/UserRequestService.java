@@ -5,9 +5,11 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserRequestDAO;
+import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserRequest;
 import com.fincity.security.jooq.enums.SecurityUserRequestStatus;
 import com.fincity.security.jooq.tables.records.SecurityUserRequestRecord;
@@ -154,6 +156,29 @@ public class UserRequestService
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_UPDATE,
                         "User Request"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
+    public Mono<User> getRequestUser(String requestId) {
+
+        if (requestId == null) {
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    SecurityMessageResourceService.USER_APP_REQUEST_MANDATORY_REQUEST_ID);
+        }
+
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.dao.readByRequestId(requestId),
+
+                        (ca, req) -> this.clientService
+                                .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), req.getClientId())
+                                .filter(BooleanUtil::safeValueOf),
+
+                        (ca, req, hasAccess) -> this.userDao.readById(req.getUserId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserRequestService.getRequestUser"));
     }
 
     @Override
