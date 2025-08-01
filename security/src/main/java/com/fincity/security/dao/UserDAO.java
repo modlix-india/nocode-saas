@@ -586,7 +586,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .defaultIfEmpty(false);
     }
 
-    public Mono<List<User>> getUsersForProfiles(List<ULong> profileIds) {
+    public Mono<List<User>> getUsersForProfiles(List<ULong> profileIds, ULong clientId) {
         return Flux.from(this.dslContext
                         .select(SECURITY_USER.fields())
                         .from(SECURITY_PROFILE_USER)
@@ -594,7 +594,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                         .leftJoin(SECURITY_USER)
                         .on(SECURITY_USER.ID.eq(SECURITY_PROFILE_USER.USER_ID))
-                        .where(SECURITY_PROFILE_USER.PROFILE_ID.in(profileIds)))
+                        .where(SECURITY_PROFILE_USER.PROFILE_ID.in(profileIds))
+                        .and(SECURITY_USER.CLIENT_ID.eq(clientId)))
                 .map(record -> record.into(User.class))
                 .distinct()
                 .collectList();
