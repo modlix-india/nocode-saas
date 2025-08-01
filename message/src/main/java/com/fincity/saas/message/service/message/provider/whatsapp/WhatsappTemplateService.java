@@ -33,11 +33,9 @@ public class WhatsappTemplateService
     public static final String WHATSAPP_TEMPLATE_PROVIDER_URI = "/whatsapp/template";
 
     private static final String WHATSAPP_TEMPLATE_CACHE = "whatsappTemplate";
-
-    private final WhatsappApiFactory whatsappApiFactory;
-
-    private final Set<TemplateStatus> EDITABLE_STATUSES =
+    private static final Set<TemplateStatus> EDITABLE_STATUSES =
             Set.of(TemplateStatus.APPROVED, TemplateStatus.REJECTED, TemplateStatus.PAUSED);
+    private final WhatsappApiFactory whatsappApiFactory;
 
     @Autowired
     public WhatsappTemplateService(WhatsappApiFactory whatsappApiFactory) {
@@ -160,17 +158,8 @@ public class WhatsappTemplateService
                                 existingTemplate,
                                 validationResult,
                                 api,
-                                apiTemplate) -> {
-                            // Increment monthly edit count
-                            Integer currentCount = existingTemplate.getMonthlyEditCount();
-                            int newCount = (currentCount != null) ? currentCount + 1 : 1;
-
-                            WhatsappTemplate updatedTemplate =
-                                    existingTemplate.update(whatsappTemplateRequest.getMessageTemplate(), apiTemplate);
-                            updatedTemplate.setMonthlyEditCount(newCount);
-
-                            return super.update(updatedTemplate);
-                        })
+                                apiTemplate) -> super.update(
+                                existingTemplate.update(whatsappTemplateRequest.getMessageTemplate(), apiTemplate)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.updateTemplate"));
     }
 
