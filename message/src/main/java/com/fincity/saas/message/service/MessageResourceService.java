@@ -41,11 +41,12 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String UNABLE_TO_FETCH_INTERNAL_RESOURCE = "unable_to_fetch_internal_resource";
 
     public static final String UNABLE_TO_FETCH_EXTERNAL_RESOURCE = "unable_to_fetch_external_resource";
-    
+
     // WhatsApp Template validation messages
     public static final String TEMPLATE_NOT_EDITABLE_STATUS = "template_not_editable_status";
     public static final String TEMPLATE_DAILY_EDIT_LIMIT_EXCEEDED = "template_daily_edit_limit_exceeded";
     public static final String TEMPLATE_MONTHLY_EDIT_LIMIT_EXCEEDED = "template_monthly_edit_limit_exceeded";
+    public static final String TEMPLATE_NAME_LENGTH_EXCEEDED = "template_name_length_exceeded";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

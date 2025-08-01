@@ -1,13 +1,5 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Set;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -25,7 +17,12 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
-
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -100,12 +97,14 @@ public class WhatsappTemplateService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        messageAccess -> super.messageConnectionService.getConnection(
+                        messageAccess -> this.validateTemplateName(
+                                whatsappTemplateRequest.getMessageTemplate().getName()),
+                        (messageAccess, validationResult) -> super.messageConnectionService.getConnection(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
-                        (messageAccess, connection) -> this.getBusinessManagementApi(connection),
-                        (messageAccess, connection, api) -> {
+                        (messageAccess, validationResult, connection) -> this.getBusinessManagementApi(connection),
+                        (messageAccess, validationResult, connection, api) -> {
                             String businessAccountId = (String) connection
                                     .getConnectionDetails()
                                     .getOrDefault(WhatsappTemplate.Fields.whatsappBusinessAccountId, null);
@@ -115,12 +114,16 @@ public class WhatsappTemplateService
 
                             return Mono.just(businessAccountId);
                         },
-                        (messageAccess, connection, api, businessAccountId) -> api.createMessageTemplate(
-                                businessAccountId, whatsappTemplateRequest.getMessageTemplate()),
-                        (messageAccess, connection, api, businessAccountId, apiTemplate) -> super.createInternal(
-                                messageAccess,
-                                WhatsappTemplate.of(
-                                        businessAccountId, whatsappTemplateRequest.getMessageTemplate(), apiTemplate)))
+                        (messageAccess, validationResult, connection, api, businessAccountId) ->
+                                api.createMessageTemplate(
+                                        businessAccountId, whatsappTemplateRequest.getMessageTemplate()),
+                        (messageAccess, validationResult, connection, api, businessAccountId, apiTemplate) ->
+                                super.createInternal(
+                                        messageAccess,
+                                        WhatsappTemplate.of(
+                                                businessAccountId,
+                                                whatsappTemplateRequest.getMessageTemplate(),
+                                                apiTemplate)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.createTemplate"));
     }
 
@@ -128,16 +131,19 @@ public class WhatsappTemplateService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        messageAccess -> super.messageConnectionService.getConnection(
+                        messageAccess -> this.validateTemplateName(
+                                whatsappTemplateRequest.getMessageTemplate().getName()),
+                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getConnection(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
-                        (messageAccess, connection) -> super.readByIdInternal(ULongUtil.valueOf(templateId)),
-                        (messageAccess, connection, existingTemplate) ->
+                        (messageAccess, nameValidationResult, connection) ->
+                                super.readByIdInternal(ULongUtil.valueOf(templateId)),
+                        (messageAccess, nameValidationResult, connection, existingTemplate) ->
                                 this.validateTemplateEditRules(existingTemplate),
-                        (messageAccess, connection, existingTemplate, validationResult) ->
+                        (messageAccess, nameValidationResult, connection, existingTemplate, validationResult) ->
                                 this.getBusinessManagementApi(connection),
-                        (messageAccess, connection, existingTemplate, validationResult, api) -> {
+                        (messageAccess, nameValidationResult, connection, existingTemplate, validationResult, api) -> {
                             String businessAccountId = (String) connection
                                     .getConnectionDetails()
                                     .getOrDefault(WhatsappTemplate.Fields.whatsappBusinessAccountId, null);
@@ -148,7 +154,13 @@ public class WhatsappTemplateService
                             return api.updateMessageTemplate(
                                     businessAccountId, templateId, whatsappTemplateRequest.getMessageTemplate());
                         },
-                        (messageAccess, connection, existingTemplate, validationResult, api, apiTemplate) -> {
+                        (messageAccess,
+                                nameValidationResult,
+                                connection,
+                                existingTemplate,
+                                validationResult,
+                                api,
+                                apiTemplate) -> {
                             // Increment monthly edit count
                             Integer currentCount = existingTemplate.getMonthlyEditCount();
                             int newCount = (currentCount != null) ? currentCount + 1 : 1;
@@ -183,6 +195,14 @@ public class WhatsappTemplateService
 
         // TODO: Add Scheduler to reset monthly edit counts and implement monthly edit count logic
 
+        return Mono.just(Boolean.TRUE);
+    }
+
+    private Mono<Boolean> validateTemplateName(String templateName) {
+        if (templateName == null || templateName.isEmpty() || templateName.length() > 512)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.TEMPLATE_NAME_LENGTH_EXCEEDED);
         return Mono.just(Boolean.TRUE);
     }
 

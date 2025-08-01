@@ -1,10 +1,8 @@
 package com.fincity.saas.message.enums.message.provider.whatsapp.business;
 
-import org.jooq.EnumType;
-
 import com.fasterxml.jackson.annotation.JsonValue;
-
 import lombok.Getter;
+import org.jooq.EnumType;
 
 @Getter
 public enum TemplateRejectedReason implements EnumType {

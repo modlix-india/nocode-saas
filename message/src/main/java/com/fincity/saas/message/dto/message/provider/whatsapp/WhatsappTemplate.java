@@ -1,25 +1,22 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
-import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
