@@ -10,6 +10,7 @@ import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages.MessageWhatsappMessagesPath;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates.MessageWhatsappTemplatesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 
 import java.time.LocalDateTime;
@@ -168,6 +169,12 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     public final TableField<MessageMessagesRecord, ULong> WHATSAPP_MESSAGE_ID = createField(DSL.name("WHATSAPP_MESSAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the associated WhatsApp message.");
 
     /**
+     * The column <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
+     * of the associated WhatsApp template.
+     */
+    public final TableField<MessageMessagesRecord, ULong> WHATSAPP_TEMPLATE_ID = createField(DSL.name("WHATSAPP_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the associated WhatsApp template.");
+
+    /**
      * The column <code>message.message_messages.METADATA</code>. Additional
      * metadata related to the message.
      */
@@ -272,7 +279,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX_MESSAGES_FROM_PHONE, Indexes.MESSAGE_MESSAGES_IDX_MESSAGES_TO_PHONE, Indexes.MESSAGE_MESSAGES_IDX_WHATSAPP_MESSAGES_MESSAGE_STATUS);
+        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX1_MESSAGES_FROM_PHONE, Indexes.MESSAGE_MESSAGES_IDX2_MESSAGES_TO_PHONE, Indexes.MESSAGE_MESSAGES_IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS);
     }
 
     @Override
@@ -292,7 +299,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
 
     @Override
     public List<ForeignKey<MessageMessagesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID);
+        return Arrays.asList(Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID, Keys.FK2_MESSAGES_WHATSAPP_TEMPLATES_ID);
     }
 
     private transient MessageWhatsappMessagesPath _messageWhatsappMessages;
@@ -306,6 +313,19 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
             _messageWhatsappMessages = new MessageWhatsappMessagesPath(this, Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID, null);
 
         return _messageWhatsappMessages;
+    }
+
+    private transient MessageWhatsappTemplatesPath _messageWhatsappTemplates;
+
+    /**
+     * Get the implicit join path to the
+     * <code>message.message_whatsapp_templates</code> table.
+     */
+    public MessageWhatsappTemplatesPath messageWhatsappTemplates() {
+        if (_messageWhatsappTemplates == null)
+            _messageWhatsappTemplates = new MessageWhatsappTemplatesPath(this, Keys.FK2_MESSAGES_WHATSAPP_TEMPLATES_ID, null);
+
+        return _messageWhatsappTemplates;
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.fincity.saas.message.model.request.message;
+package com.fincity.saas.message.model.request.message.provider.whatsapp;
 
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.request.BaseMessageRequest;

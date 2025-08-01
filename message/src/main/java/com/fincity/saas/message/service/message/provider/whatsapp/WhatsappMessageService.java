@@ -19,7 +19,7 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IStatus;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
-import com.fincity.saas.message.model.request.message.WhatsappMessageRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
@@ -104,7 +104,8 @@ public class WhatsappMessageService
                 .setTo(messageRequest.getToNumber().getNumber())
                 .buildTextMessage(new TextMessage().setBody(messageRequest.getText()));
 
-        WhatsappMessage whatsappMessage = this.createWhatsappMessage(access, messageRequest, null);
+        WhatsappMessage whatsappMessage =
+                this.createWhatsappMessage(access, messageRequest.getToNumber().getNumber(), MessageType.TEXT);
 
         return this.sendMessageInternal(
                 access, connection, message, whatsappMessage, "WhatsappMessageService.sendTextMessage");
@@ -117,7 +118,7 @@ public class WhatsappMessageService
 
         var message = whatsappMessageRequest.getMessage();
 
-        WhatsappMessage whatsappMessage = this.createWhatsappMessageFromRequest(access, whatsappMessageRequest, null);
+        WhatsappMessage whatsappMessage = this.createWhatsappMessage(access, message.getTo(), message.getType());
 
         return this.sendMessageInternal(
                 access, connection, message, whatsappMessage, "WhatsappMessageService.sendWhatsappMessage");
@@ -169,33 +170,11 @@ public class WhatsappMessageService
         }
     }
 
-    private WhatsappMessage createWhatsappMessage(
-            MessageAccess access, MessageRequest messageRequest, String phoneNumberId) {
+    private WhatsappMessage createWhatsappMessage(MessageAccess access, String to, MessageType messageType) {
 
         WhatsappMessage whatsappMessage =
-                new WhatsappMessage(messageRequest.getToNumber().getNumber(), MessageType.TEXT);
+                new WhatsappMessage(PhoneUtil.parse(to).getNumber(), messageType);
 
-        whatsappMessage.setPhoneNumberId(phoneNumberId);
-        whatsappMessage.setUserId(access.getUserId());
-        whatsappMessage.setAppCode(access.getAppCode());
-        whatsappMessage.setClientCode(access.getClientCode());
-        whatsappMessage.setFrom(
-                PhoneUtil.parse(access.getUser().getPhoneNumber()).getNumber());
-
-        return whatsappMessage;
-    }
-
-    private WhatsappMessage createWhatsappMessageFromRequest(
-            MessageAccess access, WhatsappMessageRequest whatsappMessageRequest, String phoneNumberId) {
-
-        WhatsappMessage whatsappMessage = new WhatsappMessage(
-                whatsappMessageRequest.getMessage().getTo(),
-                whatsappMessageRequest.getMessage().getType());
-
-        whatsappMessage.setPhoneNumberId(phoneNumberId);
-        whatsappMessage.setUserId(access.getUserId());
-        whatsappMessage.setAppCode(access.getAppCode());
-        whatsappMessage.setClientCode(access.getClientCode());
         whatsappMessage.setFrom(
                 PhoneUtil.parse(access.getUser().getPhoneNumber()).getNumber());
 

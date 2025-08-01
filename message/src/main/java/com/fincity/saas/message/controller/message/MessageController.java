@@ -2,7 +2,7 @@ package com.fincity.saas.message.controller.message;
 
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.model.request.message.MessageRequest;
-import com.fincity.saas.message.model.request.message.WhatsappMessageRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.service.message.MessageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

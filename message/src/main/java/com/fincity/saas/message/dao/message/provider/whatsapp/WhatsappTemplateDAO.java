@@ -19,18 +19,15 @@ public class WhatsappTemplateDAO extends BaseProviderDAO<MessageWhatsappTemplate
                 MESSAGE_WHATSAPP_TEMPLATES.TEMPLATE_ID);
     }
 
-    /**
-     * Finds a WhatsappTemplate by template name and WhatsApp business account ID.
-     * 
-     * @param templateName the template name
-     * @param whatsappBusinessAccountId the WhatsApp business account ID
-     * @return Mono containing the WhatsappTemplate if found
-     */
     public Mono<WhatsappTemplate> findByTemplateNameAndAccount(String templateName, String whatsappBusinessAccountId) {
-        return Mono.from(dslContext.selectFrom(MESSAGE_WHATSAPP_TEMPLATES)
-                .where(MESSAGE_WHATSAPP_TEMPLATES.TEMPLATE_NAME.eq(templateName)
-                        .and(MESSAGE_WHATSAPP_TEMPLATES.WHATSAPP_BUSINESS_ACCOUNT_ID.eq(whatsappBusinessAccountId))
-                        .and(MESSAGE_WHATSAPP_TEMPLATES.IS_ACTIVE.eq(true))))
+        return Mono.from(dslContext
+                        .selectFrom(MESSAGE_WHATSAPP_TEMPLATES)
+                        .where(MESSAGE_WHATSAPP_TEMPLATES
+                                .TEMPLATE_NAME
+                                .eq(templateName)
+                                .and(MESSAGE_WHATSAPP_TEMPLATES.WHATSAPP_BUSINESS_ACCOUNT_ID.eq(
+                                        whatsappBusinessAccountId))
+                                .and(MESSAGE_WHATSAPP_TEMPLATES.IS_ACTIVE.eq(true))))
                 .map(record -> record.into(pojoClass));
     }
 }

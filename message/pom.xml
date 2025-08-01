@@ -343,6 +343,30 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory</userType>
+                                            <includeExpression>.*\.SUB_CATEGORY</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat</userType>
+                                            <includeExpression>.*\.PARAMETER_FORMAT</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason</userType>
+                                            <includeExpression>.*\.REJECTED_REASON</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus</userType>
+                                            <includeExpression>.*\.STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.oserver.core.enums.ConnectionType</userType>
                                             <includeExpression>.*\.CONNECTION_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

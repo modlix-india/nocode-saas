@@ -311,11 +311,28 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     }
 
     /**
+     * Setter for <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
+     * of the associated WhatsApp template.
+     */
+    public MessageMessagesRecord setWhatsappTemplateId(ULong value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
+     * of the associated WhatsApp template.
+     */
+    public ULong getWhatsappTemplateId() {
+        return (ULong) get(17);
+    }
+
+    /**
      * Setter for <code>message.message_messages.METADATA</code>. Additional
      * metadata related to the message.
      */
     public MessageMessagesRecord setMetadata(Map value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -324,7 +341,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * metadata related to the message.
      */
     public Map getMetadata() {
-        return (Map) get(17);
+        return (Map) get(18);
     }
 
     /**
@@ -332,7 +349,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * if this message is active or not.
      */
     public MessageMessagesRecord setIsActive(Byte value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -341,7 +358,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * if this message is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(18);
+        return (Byte) get(19);
     }
 
     /**
@@ -349,7 +366,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who created this row.
      */
     public MessageMessagesRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -358,7 +375,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -366,7 +383,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was created.
      */
     public MessageMessagesRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -375,7 +392,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(21);
     }
 
     /**
@@ -383,7 +400,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who updated this row.
      */
     public MessageMessagesRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -392,7 +409,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(22);
     }
 
     /**
@@ -400,7 +417,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was last updated.
      */
     public MessageMessagesRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -409,7 +426,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -435,7 +452,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     /**
      * Create a detached, initialised MessageMessagesRecord
      */
-    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String connectionName, String messageProvider, Byte isOutbound, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, ULong whatsappMessageId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String connectionName, String messageProvider, Byte isOutbound, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, ULong whatsappMessageId, ULong whatsappTemplateId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageMessages.MESSAGE_MESSAGES);
 
         setId(id);
@@ -455,6 +472,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
         setDeliveredTime(deliveredTime);
         setReadTime(readTime);
         setWhatsappMessageId(whatsappMessageId);
+        setWhatsappTemplateId(whatsappTemplateId);
         setMetadata(metadata);
         setIsActive(isActive);
         setCreatedBy(createdBy);

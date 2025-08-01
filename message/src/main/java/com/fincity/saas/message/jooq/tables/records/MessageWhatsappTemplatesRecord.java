@@ -5,6 +5,10 @@ package com.fincity.saas.message.jooq.tables.records;
 
 
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 
@@ -109,133 +113,12 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     }
 
     /**
-     * Setter for <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
-     * WhatsApp template ID from Meta.
-     */
-    public MessageWhatsappTemplatesRecord setTemplateId(String value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
-     * WhatsApp template ID from Meta.
-     */
-    public String getTemplateId() {
-        return (String) get(5);
-    }
-
-    /**
-     * Setter for <code>message.message_whatsapp_templates.TEMPLATE_NAME</code>.
-     * Name of the WhatsApp template.
-     */
-    public MessageWhatsappTemplatesRecord setTemplateName(String value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.TEMPLATE_NAME</code>.
-     * Name of the WhatsApp template.
-     */
-    public String getTemplateName() {
-        return (String) get(6);
-    }
-
-    /**
-     * Setter for <code>message.message_whatsapp_templates.LANGUAGE</code>.
-     * Language code of the template.
-     */
-    public MessageWhatsappTemplatesRecord setLanguage(String value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.LANGUAGE</code>.
-     * Language code of the template.
-     */
-    public String getLanguage() {
-        return (String) get(7);
-    }
-
-    /**
-     * Setter for <code>message.message_whatsapp_templates.CATEGORY</code>.
-     * Category of the template (MARKETING, UTILITY, AUTHENTICATION).
-     */
-    public MessageWhatsappTemplatesRecord setCategory(Category value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.CATEGORY</code>.
-     * Category of the template (MARKETING, UTILITY, AUTHENTICATION).
-     */
-    public Category getCategory() {
-        return (Category) get(8);
-    }
-
-    /**
-     * Setter for <code>message.message_whatsapp_templates.STATUS</code>. Status
-     * of the template (APPROVED, PENDING, REJECTED, etc.).
-     */
-    public MessageWhatsappTemplatesRecord setStatus(String value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.STATUS</code>. Status
-     * of the template (APPROVED, PENDING, REJECTED, etc.).
-     */
-    public String getStatus() {
-        return (String) get(9);
-    }
-
-    /**
-     * Setter for
-     * <code>message.message_whatsapp_templates.PREVIOUS_CATEGORY</code>.
-     * Previous category of the template.
-     */
-    public MessageWhatsappTemplatesRecord setPreviousCategory(Category value) {
-        set(10, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>message.message_whatsapp_templates.PREVIOUS_CATEGORY</code>.
-     * Previous category of the template.
-     */
-    public Category getPreviousCategory() {
-        return (Category) get(10);
-    }
-
-    /**
-     * Setter for <code>message.message_whatsapp_templates.COMPONENTS</code>.
-     * Template components in JSON format.
-     */
-    public MessageWhatsappTemplatesRecord setComponents(ComponentList value) {
-        set(11, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_whatsapp_templates.COMPONENTS</code>.
-     * Template components in JSON format.
-     */
-    public ComponentList getComponents() {
-        return (ComponentList) get(11);
-    }
-
-    /**
      * Setter for
      * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
      * WhatsApp Business Account ID.
      */
     public MessageWhatsappTemplatesRecord setWhatsappBusinessAccountId(String value) {
-        set(12, value);
+        set(5, value);
         return this;
     }
 
@@ -245,7 +128,240 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * WhatsApp Business Account ID.
      */
     public String getWhatsappBusinessAccountId() {
-        return (String) get(12);
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
+     * WhatsApp template ID from Meta.
+     */
+    public MessageWhatsappTemplatesRecord setTemplateId(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
+     * WhatsApp template ID from Meta.
+     */
+    public String getTemplateId() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.TEMPLATE_NAME</code>.
+     * Name of the WhatsApp template.
+     */
+    public MessageWhatsappTemplatesRecord setTemplateName(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.TEMPLATE_NAME</code>.
+     * Name of the WhatsApp template.
+     */
+    public String getTemplateName() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
+     * Indicates whether category change is allowed for this template.
+     */
+    public MessageWhatsappTemplatesRecord setAllowCategoryChange(Byte value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
+     * Indicates whether category change is allowed for this template.
+     */
+    public Byte getAllowCategoryChange() {
+        return (Byte) get(8);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.CATEGORY</code>.
+     * Category of the template (MARKETING, UTILITY, AUTHENTICATION).
+     */
+    public MessageWhatsappTemplatesRecord setCategory(Category value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.CATEGORY</code>.
+     * Category of the template (MARKETING, UTILITY, AUTHENTICATION).
+     */
+    public Category getCategory() {
+        return (Category) get(9);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.SUB_CATEGORY</code>.
+     * Sub-category of the template.
+     */
+    public MessageWhatsappTemplatesRecord setSubCategory(SubCategory value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.SUB_CATEGORY</code>.
+     * Sub-category of the template.
+     */
+    public SubCategory getSubCategory() {
+        return (SubCategory) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.MESSAGE_SEND_TTL_SECONDS</code>.
+     * Time-to-live for message sending in seconds.
+     */
+    public MessageWhatsappTemplatesRecord setMessageSendTtlSeconds(ULong value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.MESSAGE_SEND_TTL_SECONDS</code>.
+     * Time-to-live for message sending in seconds.
+     */
+    public ULong getMessageSendTtlSeconds() {
+        return (ULong) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.PARAMETER_FORMAT</code>. Format
+     * for template parameters.
+     */
+    public MessageWhatsappTemplatesRecord setParameterFormat(ParameterFormat value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.PARAMETER_FORMAT</code>. Format
+     * for template parameters.
+     */
+    public ParameterFormat getParameterFormat() {
+        return (ParameterFormat) get(12);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.LANGUAGE</code>.
+     * Language code of the template.
+     */
+    public MessageWhatsappTemplatesRecord setLanguage(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.LANGUAGE</code>.
+     * Language code of the template.
+     */
+    public String getLanguage() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.STATUS</code>. Status
+     * of the template.
+     */
+    public MessageWhatsappTemplatesRecord setStatus(TemplateStatus value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.STATUS</code>. Status
+     * of the template.
+     */
+    public TemplateStatus getStatus() {
+        return (TemplateStatus) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.REJECTED_REASON</code>. Reason
+     * for template rejection.
+     */
+    public MessageWhatsappTemplatesRecord setRejectedReason(TemplateRejectedReason value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.REJECTED_REASON</code>. Reason
+     * for template rejection.
+     */
+    public TemplateRejectedReason getRejectedReason() {
+        return (TemplateRejectedReason) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.PREVIOUS_CATEGORY</code>.
+     * Previous category of the template.
+     */
+    public MessageWhatsappTemplatesRecord setPreviousCategory(Category value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.PREVIOUS_CATEGORY</code>.
+     * Previous category of the template.
+     */
+    public Category getPreviousCategory() {
+        return (Category) get(16);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.MONTHLY_EDIT_COUNT</code>. Count
+     * of edit done in this month.
+     */
+    public MessageWhatsappTemplatesRecord setMonthlyEditCount(Integer value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.MONTHLY_EDIT_COUNT</code>. Count
+     * of edit done in this month.
+     */
+    public Integer getMonthlyEditCount() {
+        return (Integer) get(17);
+    }
+
+    /**
+     * Setter for <code>message.message_whatsapp_templates.COMPONENTS</code>.
+     * Template components in JSON format.
+     */
+    public MessageWhatsappTemplatesRecord setComponents(ComponentList value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_whatsapp_templates.COMPONENTS</code>.
+     * Template components in JSON format.
+     */
+    public ComponentList getComponents() {
+        return (ComponentList) get(18);
     }
 
     /**
@@ -253,7 +369,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who created this row.
      */
     public MessageWhatsappTemplatesRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(19, value);
         return this;
     }
 
@@ -262,7 +378,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(19);
     }
 
     /**
@@ -270,7 +386,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is created.
      */
     public MessageWhatsappTemplatesRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(20, value);
         return this;
     }
 
@@ -279,7 +395,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -287,7 +403,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who updated this row.
      */
     public MessageWhatsappTemplatesRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(21, value);
         return this;
     }
 
@@ -296,7 +412,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(21);
     }
 
     /**
@@ -304,7 +420,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is updated.
      */
     public MessageWhatsappTemplatesRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(22, value);
         return this;
     }
 
@@ -313,7 +429,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(22);
     }
 
     /**
@@ -321,7 +437,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Indicates whether this row is active.
      */
     public MessageWhatsappTemplatesRecord setIsActive(Byte value) {
-        set(17, value);
+        set(23, value);
         return this;
     }
 
@@ -330,7 +446,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Indicates whether this row is active.
      */
     public Byte getIsActive() {
-        return (Byte) get(17);
+        return (Byte) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -356,7 +472,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     /**
      * Create a detached, initialised MessageWhatsappTemplatesRecord
      */
-    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String templateId, String templateName, String language, Category category, String status, Category previousCategory, ComponentList components, String whatsappBusinessAccountId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Byte isActive) {
+    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Byte allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Byte isActive) {
         super(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES);
 
         setId(id);
@@ -364,14 +480,20 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
         setClientCode(clientCode);
         setUserId(userId);
         setCode(code);
+        setWhatsappBusinessAccountId(whatsappBusinessAccountId);
         setTemplateId(templateId);
         setTemplateName(templateName);
-        setLanguage(language);
+        setAllowCategoryChange(allowCategoryChange);
         setCategory(category);
+        setSubCategory(subCategory);
+        setMessageSendTtlSeconds(messageSendTtlSeconds);
+        setParameterFormat(parameterFormat);
+        setLanguage(language);
         setStatus(status);
+        setRejectedReason(rejectedReason);
         setPreviousCategory(previousCategory);
+        setMonthlyEditCount(monthlyEditCount);
         setComponents(components);
-        setWhatsappBusinessAccountId(whatsappBusinessAccountId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

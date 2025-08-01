@@ -17,9 +17,9 @@ import lombok.experimental.Accessors;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = As.EXISTING_PROPERTY, property = "type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = PhoneNumberButton.class, name = "PHONE_NUMBER"), //
-    @JsonSubTypes.Type(value = UrlButton.class, name = "URL"), //
-    @JsonSubTypes.Type(value = QuickReplyButton.class, name = "QUICK_REPLY"), //
+    @JsonSubTypes.Type(value = PhoneNumberButton.class, name = "PHONE_NUMBER"),
+    @JsonSubTypes.Type(value = UrlButton.class, name = "URL"),
+    @JsonSubTypes.Type(value = QuickReplyButton.class, name = "QUICK_REPLY"),
     @JsonSubTypes.Type(value = VoiceCallButton.class, name = "VOICE_CALL")
 })
 public class Button implements Serializable {

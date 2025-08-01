@@ -14,8 +14,6 @@ import com.fincity.saas.message.service.message.MessageConnectionService;
 import com.fincity.saas.message.service.message.MessageService;
 import com.fincity.saas.message.service.message.event.MessageEventService;
 import org.jooq.UpdatableRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -24,8 +22,6 @@ import reactor.core.publisher.Mono;
 public abstract class AbstractMessageProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IMessageService<D> {
-
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractMessageProviderService.class);
 
     protected MessageService messageService;
     protected MessageConnectionService messageConnectionService;
@@ -82,16 +78,6 @@ public abstract class AbstractMessageProviderService<
                 paramName);
     }
 
-    /**
-     * Validates that a provider identifier exists for the given parameters.
-     * This method can be used by child services to ensure proper provider configuration
-     * before processing messages.
-     *
-     * @param appCode the application code
-     * @param clientCode the client code
-     * @param identifier the provider identifier (e.g., phone number ID for WhatsApp)
-     * @return Mono containing the ProviderIdentifier if found, empty Mono if not found
-     */
     protected Mono<ProviderIdentifier> validateProviderIdentifier(
             String appCode, String clientCode, String identifier) {
         return this.providerIdentifierService

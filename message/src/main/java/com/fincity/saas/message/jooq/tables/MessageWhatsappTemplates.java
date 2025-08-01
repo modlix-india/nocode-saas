@@ -6,8 +6,13 @@ package com.fincity.saas.message.jooq.tables;
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
+import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 
@@ -18,11 +23,15 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -90,22 +99,30 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     public final TableField<MessageWhatsappTemplatesRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
+     * WhatsApp Business Account ID.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
+
+    /**
      * The column <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
      * WhatsApp template ID from Meta.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, String> TEMPLATE_ID = createField(DSL.name("TEMPLATE_ID"), SQLDataType.VARCHAR(255), this, "WhatsApp template ID from Meta.");
+    public final TableField<MessageWhatsappTemplatesRecord, String> TEMPLATE_ID = createField(DSL.name("TEMPLATE_ID"), SQLDataType.CHAR(255), this, "WhatsApp template ID from Meta.");
 
     /**
      * The column <code>message.message_whatsapp_templates.TEMPLATE_NAME</code>.
      * Name of the WhatsApp template.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, String> TEMPLATE_NAME = createField(DSL.name("TEMPLATE_NAME"), SQLDataType.VARCHAR(255).nullable(false), this, "Name of the WhatsApp template.");
+    public final TableField<MessageWhatsappTemplatesRecord, String> TEMPLATE_NAME = createField(DSL.name("TEMPLATE_NAME"), SQLDataType.VARCHAR(512).nullable(false), this, "Name of the WhatsApp template.");
 
     /**
-     * The column <code>message.message_whatsapp_templates.LANGUAGE</code>.
-     * Language code of the template.
+     * The column
+     * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
+     * Indicates whether category change is allowed for this template.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, String> LANGUAGE = createField(DSL.name("LANGUAGE"), SQLDataType.VARCHAR(10).nullable(false), this, "Language code of the template.");
+    public final TableField<MessageWhatsappTemplatesRecord, Byte> ALLOW_CATEGORY_CHANGE = createField(DSL.name("ALLOW_CATEGORY_CHANGE"), SQLDataType.TINYINT, this, "Indicates whether category change is allowed for this template.");
 
     /**
      * The column <code>message.message_whatsapp_templates.CATEGORY</code>.
@@ -114,10 +131,43 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     public final TableField<MessageWhatsappTemplatesRecord, Category> CATEGORY = createField(DSL.name("CATEGORY"), SQLDataType.VARCHAR(14).nullable(false), this, "Category of the template (MARKETING, UTILITY, AUTHENTICATION).", new EnumConverter<String, Category>(String.class, Category.class));
 
     /**
-     * The column <code>message.message_whatsapp_templates.STATUS</code>. Status
-     * of the template (APPROVED, PENDING, REJECTED, etc.).
+     * The column <code>message.message_whatsapp_templates.SUB_CATEGORY</code>.
+     * Sub-category of the template.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, String> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(50), this, "Status of the template (APPROVED, PENDING, REJECTED, etc.).");
+    public final TableField<MessageWhatsappTemplatesRecord, SubCategory> SUB_CATEGORY = createField(DSL.name("SUB_CATEGORY"), SQLDataType.VARCHAR(13), this, "Sub-category of the template.", new EnumConverter<String, SubCategory>(String.class, SubCategory.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_templates.MESSAGE_SEND_TTL_SECONDS</code>.
+     * Time-to-live for message sending in seconds.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, ULong> MESSAGE_SEND_TTL_SECONDS = createField(DSL.name("MESSAGE_SEND_TTL_SECONDS"), SQLDataType.BIGINTUNSIGNED, this, "Time-to-live for message sending in seconds.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_templates.PARAMETER_FORMAT</code>. Format
+     * for template parameters.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, ParameterFormat> PARAMETER_FORMAT = createField(DSL.name("PARAMETER_FORMAT"), SQLDataType.VARCHAR(10).nullable(false).defaultValue(DSL.inline("POSITIONAL", SQLDataType.VARCHAR)), this, "Format for template parameters.", new EnumConverter<String, ParameterFormat>(String.class, ParameterFormat.class));
+
+    /**
+     * The column <code>message.message_whatsapp_templates.LANGUAGE</code>.
+     * Language code of the template.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, String> LANGUAGE = createField(DSL.name("LANGUAGE"), SQLDataType.CHAR(10).nullable(false), this, "Language code of the template.");
+
+    /**
+     * The column <code>message.message_whatsapp_templates.STATUS</code>. Status
+     * of the template.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, TemplateStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(16), this, "Status of the template.", new EnumConverter<String, TemplateStatus>(String.class, TemplateStatus.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_templates.REJECTED_REASON</code>. Reason
+     * for template rejection.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, TemplateRejectedReason> REJECTED_REASON = createField(DSL.name("REJECTED_REASON"), SQLDataType.VARCHAR(20), this, "Reason for template rejection.", new EnumConverter<String, TemplateRejectedReason>(String.class, TemplateRejectedReason.class));
 
     /**
      * The column
@@ -127,17 +177,17 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     public final TableField<MessageWhatsappTemplatesRecord, Category> PREVIOUS_CATEGORY = createField(DSL.name("PREVIOUS_CATEGORY"), SQLDataType.VARCHAR(14), this, "Previous category of the template.", new EnumConverter<String, Category>(String.class, Category.class));
 
     /**
+     * The column
+     * <code>message.message_whatsapp_templates.MONTHLY_EDIT_COUNT</code>. Count
+     * of edit done in this month.
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, Integer> MONTHLY_EDIT_COUNT = createField(DSL.name("MONTHLY_EDIT_COUNT"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Count of edit done in this month.");
+
+    /**
      * The column <code>message.message_whatsapp_templates.COMPONENTS</code>.
      * Template components in JSON format.
      */
     public final TableField<MessageWhatsappTemplatesRecord, ComponentList> COMPONENTS = createField(DSL.name("COMPONENTS"), SQLDataType.JSON, this, "Template components in JSON format.", new JSONtoClassConverter<JSON, ComponentList>(JSON.class, ComponentList.class));
-
-    /**
-     * The column
-     * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
-     * WhatsApp Business Account ID.
-     */
-    public final TableField<MessageWhatsappTemplatesRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
 
     /**
      * The column <code>message.message_whatsapp_templates.CREATED_BY</code>. ID
@@ -200,6 +250,39 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
         this(DSL.name("message_whatsapp_templates"), null);
     }
 
+    public <O extends Record> MessageWhatsappTemplates(Table<O> path, ForeignKey<O, MessageWhatsappTemplatesRecord> childPath, InverseForeignKey<O, MessageWhatsappTemplatesRecord> parentPath) {
+        super(path, childPath, parentPath, MESSAGE_WHATSAPP_TEMPLATES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class MessageWhatsappTemplatesPath extends MessageWhatsappTemplates implements Path<MessageWhatsappTemplatesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> MessageWhatsappTemplatesPath(Table<O> path, ForeignKey<O, MessageWhatsappTemplatesRecord> childPath, InverseForeignKey<O, MessageWhatsappTemplatesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private MessageWhatsappTemplatesPath(Name alias, Table<MessageWhatsappTemplatesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(String alias) {
+            return new MessageWhatsappTemplatesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(Name alias) {
+            return new MessageWhatsappTemplatesPath(alias, this);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(Table<?> alias) {
+            return new MessageWhatsappTemplatesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
@@ -217,7 +300,20 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
 
     @Override
     public List<UniqueKey<MessageWhatsappTemplatesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK_MESSAGE_WHATSAPP_TEMPLATES_NAME_LANG_ACCOUNT);
+        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
+    }
+
+    private transient MessageMessagesPath _messageMessages;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>message.message_messages</code> table
+     */
+    public MessageMessagesPath messageMessages() {
+        if (_messageMessages == null)
+            _messageMessages = new MessageMessagesPath(this, null, Keys.FK2_MESSAGES_WHATSAPP_TEMPLATES_ID.getInverseKey());
+
+        return _messageMessages;
     }
 
     @Override

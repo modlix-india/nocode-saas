@@ -1,12 +1,16 @@
 package com.fincity.saas.message.model.message.whatsapp.templates.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
-import com.fincity.saas.message.model.message.whatsapp.templates.Component;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
+import com.fincity.saas.message.model.message.whatsapp.templates.Component;
+
 import lombok.Data;
 import lombok.experimental.Accessors;
 
@@ -36,6 +40,10 @@ public final class Template implements Serializable {
     @JsonProperty("previous_category")
     private Category previousCategory;
 
+    @JsonProperty("rejected_reason")
+    private TemplateRejectedReason rejectedReason;
+
     @JsonProperty("status")
-    private String status;
+    private TemplateStatus status;
+
 }
