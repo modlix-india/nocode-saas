@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
-public abstract class AbstractMessageProviderService<
+public abstract class AbstractMessageService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IMessageService<D> {
 

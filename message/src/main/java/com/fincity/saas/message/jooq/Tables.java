@@ -9,6 +9,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderIdentifiers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
 
@@ -42,6 +43,11 @@ public class Tables {
      * The table <code>message.message_whatsapp_messages</code>.
      */
     public static final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
+
+    /**
+     * WhatsApp Business phone numbers
+     */
+    public static final MessageWhatsappPhoneNumber MESSAGE_WHATSAPP_PHONE_NUMBER = MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER;
 
     /**
      * WhatsApp message templates

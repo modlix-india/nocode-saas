@@ -9,6 +9,7 @@ import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageProviderIdentifiers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
 import java.util.Arrays;
@@ -58,6 +59,11 @@ public class Message extends SchemaImpl {
     public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
 
     /**
+     * WhatsApp Business phone numbers
+     */
+    public final MessageWhatsappPhoneNumber MESSAGE_WHATSAPP_PHONE_NUMBER = MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER;
+
+    /**
      * WhatsApp message templates
      */
     public final MessageWhatsappTemplates MESSAGE_WHATSAPP_TEMPLATES = MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES;
@@ -83,6 +89,7 @@ public class Message extends SchemaImpl {
             MessageMessages.MESSAGE_MESSAGES,
             MessageProviderIdentifiers.MESSAGE_PROVIDER_IDENTIFIERS,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
+            MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER,
             MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES
         );
     }

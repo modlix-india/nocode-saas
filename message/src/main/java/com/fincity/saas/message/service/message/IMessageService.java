@@ -17,7 +17,11 @@ public interface IMessageService<D extends BaseUpdatableDto<D>> {
 
     String getProviderUri();
 
-    Mono<Message> toMessage(D providerObject);
+    default Mono<Message> toMessage(D providerObject) {
+        return Mono.empty();
+    }
 
-    Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection);
+    default Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
+        return Mono.empty();
+    }
 }

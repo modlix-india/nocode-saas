@@ -2,7 +2,7 @@ package com.fincity.saas.message.model.message.whatsapp.phone;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.model.message.whatsapp.phone.type.CodeMethodType;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeMethodType;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.LanguageType;
 import java.io.Serial;
 import java.io.Serializable;

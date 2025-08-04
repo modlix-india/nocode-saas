@@ -135,3 +135,87 @@ CREATE TABLE `message`.`message_messages` (
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
+CREATE TABLE `message`.`message_whatsapp_phone_number` (
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code related to this WhatsApp phone number.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code related to this WhatsApp phone number.',
+    `USER_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the user associated with this WhatsApp phone number.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+
+    `DISPLAY_PHONE_NUMBER` CHAR(20) NULL COMMENT 'Display phone number for WhatsApp Business.',
+    `QUALITY_RATING` ENUM ('GREEN', 'YELLOW', 'RED', 'NA', 'UNKNOWN') NULL COMMENT 'Quality rating of the phone number.',
+    `VERIFIED_NAME` VARCHAR(255) NULL COMMENT 'Verified name associated with the phone number.',
+    `PHONE_NUMBER_ID` VARCHAR(255) NULL COMMENT 'WhatsApp phone number ID from Meta.',
+    `CODE_VERIFICATION_STATUS` VARCHAR(125) NULL COMMENT 'Status of code verification.',
+    `NAME_STATUS` ENUM ('APPROVED', 'AVAILABLE_WITHOUT_REVIEW', 'DECLINED', 'EXPIRED', 'PENDING_REVIEW', 'NONE') NULL COMMENT 'Status of the verified name.',
+    `PLATFORM_TYPE` ENUM ('CLOUD_API', 'ON_PREMISE', 'NOT_APPLICABLE') NULL COMMENT 'Platform type for WhatsApp Business.',
+    `THROUGHPUT_LEVEL_TYPE` ENUM ('STANDARD', 'HIGH', 'NOT_APPLICABLE') NULL COMMENT 'Throughput level for message sending.',
+    `IS_DEFAULT` TINYINT NOT NULL DEFAULT 0 COMMENT 'Flag to indicate if this is the default phone number.',
+
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this phone number is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this record was created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this record was last updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_WHATSAPP_PHONE_NUMBER_CODE` (`CODE`),
+    UNIQUE KEY `UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID` (`PHONE_NUMBER_ID`),
+    INDEX `IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT` (`IS_DEFAULT`)
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci` COMMENT = 'WhatsApp Business phone numbers';
+
+DROP TABLE IF EXISTS `message`.`message_messages`;
+
+CREATE TABLE `message`.`message_messages` (
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key.',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code related to this message.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code related to this message.',
+    `USER_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the user associated with this message.',
+    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
+
+    `FROM_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the sender\'s phone number.',
+    `FROM_PHONE` CHAR(15) NULL COMMENT 'Phone number of the sender.',
+    `TO_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the recipient\'s phone number.',
+    `TO_PHONE` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
+
+    `CONNECTION_NAME` VARCHAR(255) NULL COMMENT 'Name of the connection used for the message.',
+    `MESSAGE_PROVIDER` CHAR(50) NULL COMMENT 'Name of the message provider (e.g., WhatsApp or similar).',
+    `IS_OUTBOUND` TINYINT NOT NULL DEFAULT 1 COMMENT 'Indicates whether the message is outbound.',
+
+    `MESSAGE_STATUS` ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED', 'DELETED') NOT NULL DEFAULT 'SENT' COMMENT 'Status of the message.',
+    `SENT_TIME` DATETIME NULL COMMENT 'Timestamp when the message was sent.',
+    `DELIVERED_TIME` DATETIME NULL COMMENT 'Timestamp when the message was delivered.',
+    `READ_TIME` DATETIME NULL COMMENT 'Timestamp when the message was read.',
+
+    `WHATSAPP_MESSAGE_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the associated WhatsApp message.',
+    `WHATSAPP_TEMPLATE_ID` BIGINT UNSIGNED NULL COMMENT 'ID of the associated WhatsApp template.',
+
+    `METADATA` JSON NULL COMMENT 'Additional metadata related to the message.',
+
+    `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this message is active or not.',
+    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this record was created.',
+    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row.',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this record was last updated.',
+
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_MESSAGES_CODE` (`CODE`),
+    INDEX `IDX1_MESSAGES_FROM_PHONE` (`FROM_DIAL_CODE`, `FROM_PHONE`),
+    INDEX `IDX2_MESSAGES_TO_PHONE` (`TO_DIAL_CODE`, `TO_PHONE`),
+    INDEX `IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS` (`MESSAGE_STATUS`),
+    CONSTRAINT `FK1_MESSAGES_WHATSAPP_MESSAGES_ID` FOREIGN KEY (`WHATSAPP_MESSAGE_ID`)
+        REFERENCES `message_whatsapp_messages` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT `FK2_MESSAGES_WHATSAPP_TEMPLATES_ID` FOREIGN KEY (`WHATSAPP_TEMPLATE_ID`)
+        REFERENCES `message_whatsapp_templates` (`ID`)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+
+) ENGINE = InnoDB
+  DEFAULT CHARSET = `utf8mb4`
+  COLLATE = `utf8mb4_unicode_ci`;
+

@@ -6,6 +6,7 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 
 import org.jooq.Index;
 import org.jooq.OrderField;
@@ -29,5 +30,6 @@ public class Indexes {
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM_PHONE = Internal.createIndex(DSL.name("IDX2_WHATSAPP_MESSAGES_FROM_PHONE"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.FROM_DIAL_CODE, MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.FROM_PHONE }, false);
     public static final Index MESSAGE_MESSAGES_IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS = Internal.createIndex(DSL.name("IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS"), MessageMessages.MESSAGE_MESSAGES, new OrderField[] { MessageMessages.MESSAGE_MESSAGES.MESSAGE_STATUS }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO_PHONE = Internal.createIndex(DSL.name("IDX3_WHATSAPP_MESSAGES_TO_PHONE"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.TO_DIAL_CODE, MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.TO_PHONE }, false);
+    public static final Index MESSAGE_WHATSAPP_PHONE_NUMBER_IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT = Internal.createIndex(DSL.name("IDX3_WHATSAPP_PHONE_NUMBER_IS_DEFAULT"), MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER, new OrderField[] { MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER.IS_DEFAULT }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS = Internal.createIndex(DSL.name("IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.MESSAGE_STATUS }, false);
 }

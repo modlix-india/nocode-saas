@@ -6,7 +6,6 @@ import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
 @Component
 public class WhatsappTemplateDAO extends BaseProviderDAO<MessageWhatsappTemplatesRecord, WhatsappTemplate> {
@@ -17,17 +16,5 @@ public class WhatsappTemplateDAO extends BaseProviderDAO<MessageWhatsappTemplate
                 MESSAGE_WHATSAPP_TEMPLATES,
                 MESSAGE_WHATSAPP_TEMPLATES.ID,
                 MESSAGE_WHATSAPP_TEMPLATES.TEMPLATE_ID);
-    }
-
-    public Mono<WhatsappTemplate> findByTemplateNameAndAccount(String templateName, String whatsappBusinessAccountId) {
-        return Mono.from(dslContext
-                        .selectFrom(MESSAGE_WHATSAPP_TEMPLATES)
-                        .where(MESSAGE_WHATSAPP_TEMPLATES
-                                .TEMPLATE_NAME
-                                .eq(templateName)
-                                .and(MESSAGE_WHATSAPP_TEMPLATES.WHATSAPP_BUSINESS_ACCOUNT_ID.eq(
-                                        whatsappBusinessAccountId))
-                                .and(MESSAGE_WHATSAPP_TEMPLATES.IS_ACTIVE.eq(true))))
-                .map(record -> record.into(pojoClass));
     }
 }

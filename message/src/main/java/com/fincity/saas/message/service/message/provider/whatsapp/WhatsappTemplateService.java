@@ -4,18 +4,15 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappTemplateDAO;
-import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
-import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
-import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
-import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
+import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,7 +25,7 @@ import reactor.util.context.Context;
 
 @Service
 public class WhatsappTemplateService
-        extends AbstractMessageProviderService<MessageWhatsappTemplatesRecord, WhatsappTemplate, WhatsappTemplateDAO> {
+        extends AbstractMessageService<MessageWhatsappTemplatesRecord, WhatsappTemplate, WhatsappTemplateDAO> {
 
     public static final String WHATSAPP_TEMPLATE_PROVIDER_URI = "/whatsapp/template";
 
@@ -67,28 +64,6 @@ public class WhatsappTemplateService
     @Override
     public String getProviderUri() {
         return WHATSAPP_TEMPLATE_PROVIDER_URI;
-    }
-
-    @Override
-    public Mono<Message> toMessage(WhatsappTemplate providerObject) {
-        return Mono.just(new Message()
-                        .setUserId(providerObject.getUserId())
-                        .setMessageProvider(this.getConnectionSubType().getProvider())
-                        .setIsOutbound(true)
-                        .setWhatsappTemplateId(providerObject.getId() != null ? providerObject.getId() : null)
-                        .setMetadata(providerObject.toMap()))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.toMessage"));
-    }
-
-    @Override
-    public Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
-        return this.msgService
-                .<Message>throwMessage(
-                        msg -> new GenericException(
-                                HttpStatus.BAD_REQUEST,
-                                "Template message sending requires WhatsappTemplateRequest. Use sendTemplateMessage method instead."),
-                        "unsupported_operation")
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.sendMessage"));
     }
 
     public Mono<WhatsappTemplate> createTemplate(WhatsappTemplateRequest whatsappTemplateRequest) {

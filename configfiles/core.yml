@@ -42,4 +42,4 @@ redis:
 facebook:
   whatsapp:
     webhook:
-      verify-token:
+      verify-token: ~

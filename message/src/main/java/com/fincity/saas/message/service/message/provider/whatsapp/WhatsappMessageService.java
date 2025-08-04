@@ -22,7 +22,7 @@ import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
-import com.fincity.saas.message.service.message.provider.AbstractMessageProviderService;
+import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -37,7 +37,7 @@ import reactor.util.context.Context;
 
 @Service
 public class WhatsappMessageService
-        extends AbstractMessageProviderService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappMessageDAO> {
+        extends AbstractMessageService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappMessageDAO> {
 
     public static final String WHATSAPP_PROVIDER_URI = "/whatsapp";
 
@@ -45,7 +45,7 @@ public class WhatsappMessageService
 
     private final WhatsappApiFactory whatsappApiFactory;
 
-    @Value("${facebook.whatsapp.webhook.verify-token}")
+    @Value("${facebook.whatsapp.webhook.verify-token:null}")
     private String verifyToken;
 
     @Autowired
