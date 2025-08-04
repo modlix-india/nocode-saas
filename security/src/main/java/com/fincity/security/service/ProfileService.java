@@ -487,4 +487,15 @@ public class ProfileService
 
     }
 
+    public Mono<List<ULong>> getAppProfilesHavingAuthorities(
+            ULong appId, ULong clientId, List<String> authorities) {
+
+        if (authorities == null || authorities.isEmpty()) return Mono.empty();
+
+        return this.clientHierarchyService
+                .getClientHierarchy(clientId)
+                .flatMap(clientHierarchy ->
+                        this.dao.getAppProfileHavingAuthorities(appId, clientHierarchy, authorities));
+    }
+
 }

@@ -18,6 +18,7 @@ import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityProfileUser.SecurityProfileUserPath;
 import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.SecurityUserAddress.SecurityUserAddressPath;
+import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityUserToken.SecurityUserTokenPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
 import com.fincity.security.jooq.tables.SecurityV2UserRole.SecurityV2UserRolePath;
@@ -481,6 +482,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityProfileUser = new SecurityProfileUserPath(this, null, Keys.FK2_PROFILE_USER_USER_ID.getInverseKey());
 
         return _securityProfileUser;
+    }
+
+    private transient SecurityUserRequestPath _securityUserRequest;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_user_request</code> table
+     */
+    public SecurityUserRequestPath securityUserRequest() {
+        if (_securityUserRequest == null)
+            _securityUserRequest = new SecurityUserRequestPath(this, null, Keys.FK_SECURITY_USER_REQUEST_USER.getInverseKey());
+
+        return _securityUserRequest;
     }
 
     /**
