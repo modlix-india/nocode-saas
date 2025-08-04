@@ -12,11 +12,7 @@ import com.fincity.saas.commons.core.functions.file.FileToBase64;
 import com.fincity.saas.commons.core.functions.file.TemplateToPdf;
 import com.fincity.saas.commons.core.functions.hash.HashData;
 import com.fincity.saas.commons.core.functions.rest.CallRequest;
-import com.fincity.saas.commons.core.functions.security.GetAppUrl;
-import com.fincity.saas.commons.core.functions.security.GetClient;
-import com.fincity.saas.commons.core.functions.security.IsBeingManagedByCode;
-import com.fincity.saas.commons.core.functions.security.IsBeingManagedById;
-import com.fincity.saas.commons.core.functions.security.IsUserBeingManaged;
+import com.fincity.saas.commons.core.functions.security.*;
 import com.fincity.saas.commons.core.functions.securitycontext.GetAuthentication;
 import com.fincity.saas.commons.core.functions.securitycontext.GetUser;
 import com.fincity.saas.commons.core.functions.securitycontext.HasAuthority;
@@ -72,8 +68,9 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         ReactiveFunction isBeingManagedById = new IsBeingManagedById(securityService);
         ReactiveFunction isUserBeingManaged = new IsUserBeingManaged(securityService);
         ReactiveFunction getClient = new GetClient(securityService, gson);
+        ReactiveFunction getUserAdminEmails = new GetUserAdminEmails(securityService, gson);
 
-        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, isUserBeingManaged, getClient);
+        this.addToRepoMap(isBeingManagedByCode, isBeingManagedById, isUserBeingManaged, getClient, getUserAdminEmails);
     }
 
     private void makeSecurityContextFunctions(

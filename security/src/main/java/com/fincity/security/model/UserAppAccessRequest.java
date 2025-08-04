@@ -12,9 +12,11 @@ import java.io.Serializable;
 public class UserAppAccessRequest implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = -6972847374116739149L;
+    private static final long serialVersionUID = -3594048465034362759L;
 
     private String appCode;
     private String callbackUrl;
 
+    private String requestId;
+    private ULong profileId;
 }
