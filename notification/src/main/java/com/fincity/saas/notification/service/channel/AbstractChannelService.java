@@ -33,7 +33,7 @@ public abstract class AbstractChannelService implements ChannelType {
         if (connection == null) return this.throwSendError("Connection details are missing");
 
         NotificationChannelType connectionChannelType =
-                NotificationChannelType.getFromConnectionSubType(connection.getConnectionSubType());
+                NotificationChannelType.getByConnectionType(connection.getConnectionType());
 
         if (connectionChannelType == null || !connectionChannelType.equals(this.getChannelType()))
             return this.throwSendError("Connection details are missing");

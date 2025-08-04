@@ -17,9 +17,7 @@ public enum ConnectionType {
 
     WEB_PUSH,
 
-    SMS,
-
-    TEXT_MESSAGE;
+    SMS;
 
     private final Set<ConnectionSubType> allowedSubtypes;
 

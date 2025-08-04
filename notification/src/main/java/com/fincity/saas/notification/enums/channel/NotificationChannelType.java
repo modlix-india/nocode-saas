@@ -6,8 +6,7 @@ import com.fincity.saas.notification.model.message.channel.InAppMessage;
 import com.fincity.saas.notification.model.message.channel.MobilePushMessage;
 import com.fincity.saas.notification.model.message.channel.SmsMessage;
 import com.fincity.saas.notification.model.message.channel.WebPushMessage;
-import com.fincity.saas.notification.oserver.core.enums.ConnectionSubType;
-import com.fincity.saas.notification.service.NotificationMessageResourceService;
+import com.fincity.saas.notification.oserver.core.enums.ConnectionType;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,29 +18,41 @@ import org.jooq.EnumType;
 
 @Getter
 public enum NotificationChannelType implements EnumType {
-    DISABLED("DISABLED", null),
+    DISABLED("DISABLED", null, null),
     EMAIL(
             "EMAIL",
+            ConnectionType.MAIL,
             EmailMessage::new,
             NotificationRecipientType.FROM,
             NotificationRecipientType.TO,
             NotificationRecipientType.BCC,
             NotificationRecipientType.CC,
             NotificationRecipientType.REPLY_TO),
-    IN_APP("IN_APP", InAppMessage::new),
-    MOBILE_PUSH("MOBILE_PUSH", MobilePushMessage::new),
-    WEB_PUSH("WEB_PUSH", WebPushMessage::new),
-    SMS("SMS", SmsMessage::new, NotificationRecipientType.TO);
+    IN_APP("IN_APP", ConnectionType.IN_APP, InAppMessage::new),
+    MOBILE_PUSH("MOBILE_PUSH", ConnectionType.MOBILE_PUSH, MobilePushMessage::new),
+    WEB_PUSH("WEB_PUSH", ConnectionType.WEB_PUSH, WebPushMessage::new),
+    SMS("SMS", ConnectionType.SMS, SmsMessage::new, NotificationRecipientType.TO);
+
+    private static final Map<ConnectionType, NotificationChannelType> BY_CONNECTION_TYPE = new HashMap<>();
+
+    static {
+        for (NotificationChannelType notificationChannelType : values()) {
+            BY_CONNECTION_TYPE.put(notificationChannelType.connectionType, notificationChannelType);
+        }
+    }
 
     private final String literal;
+    private final ConnectionType connectionType;
     private final Supplier<? extends NotificationMessage<?>> messageCreator;
     private final Set<NotificationRecipientType> allowedRecipientTypes;
 
     NotificationChannelType(
             String literal,
+            ConnectionType connectionType,
             Supplier<? extends NotificationMessage<?>> messageCreator,
             NotificationRecipientType... notificationRecipientTypes) {
         this.literal = literal;
+        this.connectionType = connectionType;
         this.messageCreator = messageCreator;
         this.allowedRecipientTypes = notificationRecipientTypes == null ? Set.of() : Set.of(notificationRecipientTypes);
     }
@@ -50,15 +61,8 @@ public enum NotificationChannelType implements EnumType {
         return EnumType.lookupLiteral(NotificationChannelType.class, literal);
     }
 
-    public static NotificationChannelType getFromConnectionSubType(ConnectionSubType connectionSubType) {
-
-        String name = connectionSubType.name();
-
-        if (!name.startsWith(NotificationMessageResourceService.NOTIFICATION_PREFIX)) return null;
-
-        name = name.substring(NotificationMessageResourceService.NOTIFICATION_PREFIX.length());
-
-        return NotificationChannelType.valueOf(name.split("_")[0].toUpperCase());
+    public static NotificationChannelType getByConnectionType(ConnectionType connectionType) {
+        return BY_CONNECTION_TYPE.get(connectionType);
     }
 
     public static <T> Map<NotificationChannelType, T> getChannelTypeMap(Map<String, T> channelMap) {

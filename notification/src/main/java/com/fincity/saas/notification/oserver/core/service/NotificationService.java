@@ -7,6 +7,8 @@ import io.lettuce.core.pubsub.RedisPubSubAdapter;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
 import jakarta.annotation.PostConstruct;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,9 +16,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class NotificationService extends AbstractCoreService<Notification> {
@@ -27,8 +26,7 @@ public class NotificationService extends AbstractCoreService<Notification> {
     private final NotificationTemplateProcessor notificationTemplateProcessor;
 
     @Autowired(required = false) // NOSONAR
-    @Qualifier("subRedisAsyncCommand")
-    private RedisPubSubAsyncCommands<String, String> subAsyncCommand;
+    @Qualifier("subRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> subAsyncCommand;
 
     @Autowired(required = false) // NOSONAR
     private StatefulRedisPubSubConnection<String, String> subConnect;
@@ -61,28 +59,29 @@ public class NotificationService extends AbstractCoreService<Notification> {
                         notificationTemplateProcessor.evictTemplateCache(notification.getChannelTemplateCodeMap()));
     }
 
-    private void processTemplateEviction(String pubMessage) {
-        this.processNotificationPubMessage(pubMessage)
-                .flatMap(notificationInfo -> this.evictChannelEntities(
-                        notificationInfo.getT1(), notificationInfo.getT2(), notificationInfo.getT3()))
-                .subscribe();
-    }
-
-    private Mono<Tuple3<String, String, String>> processNotificationPubMessage(String message) {
-        Matcher matcher = NOTI_PUB_MESSAGE_PATTERN.matcher(message);
-        if (!matcher.matches()) return Mono.empty();
-        return Mono.just(Tuples.of(
-                matcher.group(2).trim(),
-                matcher.group(3).trim(),
-                matcher.group(1).trim()));
-    }
-
     private class TemplateCacheEvictionListener extends RedisPubSubAdapter<String, String> {
 
         @Override
         public void message(String channel, String message) {
-            if (channel.equalsIgnoreCase(NotificationService.this.channel))
-                NotificationService.this.processTemplateEviction(message);
+            if (NotificationService.this.channel.equals(channel)) {
+                processTemplateEviction(message);
+            }
+        }
+
+        private void processTemplateEviction(String pubMessage) {
+            this.processNotificationPubMessage(pubMessage)
+                    .flatMap(notificationInfo -> NotificationService.this.evictChannelEntities(
+                            notificationInfo.getT1(), notificationInfo.getT2(), notificationInfo.getT3()))
+                    .subscribe();
+        }
+
+        private Mono<Tuple3<String, String, String>> processNotificationPubMessage(String message) {
+            Matcher matcher = NOTI_PUB_MESSAGE_PATTERN.matcher(message);
+            if (!matcher.matches()) return Mono.empty();
+            return Mono.just(Tuples.of(
+                    matcher.group(2).trim(),
+                    matcher.group(3).trim(),
+                    matcher.group(1).trim()));
         }
     }
 }
