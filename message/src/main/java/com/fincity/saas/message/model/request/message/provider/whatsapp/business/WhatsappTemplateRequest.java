@@ -1,7 +1,8 @@
 package com.fincity.saas.message.model.request.message.provider.whatsapp.business;
 
+import com.fincity.saas.message.model.base.BaseMessageRequest;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
-import com.fincity.saas.message.model.request.BaseMessageRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,5 +18,6 @@ public class WhatsappTemplateRequest extends BaseMessageRequest {
     @Serial
     private static final long serialVersionUID = 2058302969096289863L;
 
+    private Identity whatsappTemplateId;
     private MessageTemplate messageTemplate;
 }

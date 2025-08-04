@@ -11,6 +11,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.message.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.IMessageSeries;
+import com.fincity.saas.message.model.base.BaseResponse;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.service.MessageResourceService;
@@ -329,9 +330,17 @@ public abstract class BaseUpdatableService<
     @SuppressWarnings("unchecked")
     public Mono<D> updateByCode(String code, D entity) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readByCode(code).map(cMessage -> (D) entity.setId(cMessage.getId())),
+                () -> this.readByCode(code).map(cEntity -> (D) entity.setId(cEntity.getId())),
                 this::update,
                 (e, updated) -> this.evictCache(updated).map(evicted -> updated));
+    }
+
+    public Mono<Integer> deleteByCode(String code) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.readByCode(access, code),
+                (access, entity) -> this.dao.deleteByCode(code),
+                (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
     @Override
@@ -339,5 +348,13 @@ public abstract class BaseUpdatableService<
         return FlatMapUtil.flatMapMono(
                 () -> this.read(id), entity -> super.delete(id), (entity, deleted) -> this.evictCache(entity)
                         .map(evicted -> deleted));
+    }
+
+    public Mono<BaseResponse> getBaseResponse(ULong id) {
+        return this.hasAccess().flatMap(access -> this.readById(access, id)).map(BaseUpdatableDto::getBaseResponse);
+    }
+
+    public Mono<BaseResponse> getBaseResponse(String code) {
+        return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
     }
 }

@@ -1,6 +1,9 @@
 package com.fincity.saas.message.controller.message;
 
+import com.fincity.saas.message.controller.base.BaseUpdatableController;
+import com.fincity.saas.message.dao.message.MessageDAO;
 import com.fincity.saas.message.dto.message.Message;
+import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.service.message.MessageService;
@@ -13,17 +16,12 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/message")
-public class MessageController {
-
-    private final MessageService messageService;
-
-    public MessageController(MessageService messageService) {
-        this.messageService = messageService;
-    }
+public class MessageController
+        extends BaseUpdatableController<MessageMessagesRecord, Message, MessageDAO, MessageService> {
 
     @PostMapping("/send")
     public Mono<ResponseEntity<Message>> sendMessage(@RequestBody MessageRequest messageRequest) {
-        return this.messageService
+        return this.service
                 .sendMessage(messageRequest)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
@@ -32,7 +30,7 @@ public class MessageController {
     @PostMapping("/send/whatsapp")
     public Mono<ResponseEntity<Message>> sendWhatsappMessage(
             @RequestBody WhatsappMessageRequest whatsappMessageRequest) {
-        return this.messageService
+        return this.service
                 .sendWhatsappMessage(whatsappMessageRequest)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());

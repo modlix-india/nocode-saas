@@ -1,4 +1,4 @@
-package com.fincity.saas.message.model.request;
+package com.fincity.saas.message.model.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.io.Serializable;

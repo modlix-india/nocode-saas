@@ -14,6 +14,7 @@ import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.model.common.MessageAccess;
 import lombok.Getter;
 import org.jooq.Condition;
+import org.jooq.DeleteQuery;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
@@ -108,6 +109,14 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 () -> this.messageAccessCondition(access, code), this::filter, (pCondition, jCondition) -> Mono.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(e -> e.into(this.pojoClass)));
+    }
+
+    public Mono<Integer> deleteByCode(String code) {
+
+        DeleteQuery<R> query = dslContext.deleteQuery(table);
+        query.addConditions(codeField.eq(code));
+
+        return Mono.from(query);
     }
 
     protected Condition isActiveTrue() {

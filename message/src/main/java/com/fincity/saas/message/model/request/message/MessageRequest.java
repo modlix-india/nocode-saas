@@ -1,7 +1,7 @@
 package com.fincity.saas.message.model.request.message;
 
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.common.PhoneNumber;
-import com.fincity.saas.message.model.request.BaseMessageRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

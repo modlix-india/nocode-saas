@@ -1,7 +1,7 @@
 package com.fincity.saas.message.model.request.message.provider.whatsapp;
 
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
-import com.fincity.saas.message.model.request.BaseMessageRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

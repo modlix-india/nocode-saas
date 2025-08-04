@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+// TODO: Move to new WebClient Config in new spring boot 4.0
 @Configuration
 public class WebClientConfig {
 

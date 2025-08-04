@@ -1,7 +1,10 @@
 package com.fincity.saas.message.dto.base;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.message.model.base.BaseResponse;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.util.IClassConvertor;
 import java.io.Serial;
 import java.util.Collection;
@@ -82,5 +85,15 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         if (this.code != null) return (T) this;
         this.code = UniqueUtil.shortUUID();
         return (T) this;
+    }
+
+    @JsonIgnore
+    public BaseResponse getBaseResponse() {
+        return BaseResponse.of(this.getId(), this.code);
+    }
+
+    @JsonIgnore
+    public Identity getIdentity() {
+        return Identity.of(this.getId().toBigInteger(), this.getCode());
     }
 }
