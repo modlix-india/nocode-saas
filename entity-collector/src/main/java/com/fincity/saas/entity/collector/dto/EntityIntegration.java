@@ -1,0 +1,27 @@
+package com.fincity.saas.entity.collector.dto;
+
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import java.io.Serial;
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
+
+@Data
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
+
+    @Serial
+    private static final long serialVersionUID = -1238829417326110024L;
+
+    private String clientCode;
+    private String appCode;
+    private String primaryTarget;
+    private String secondaryTarget;
+    private String inSource;
+    private EntityIntegrationsInSourceType inSourceType;
+    private String primaryVerifyToken;
+    private String secondaryVerifyToken;
+}
