@@ -2,12 +2,10 @@ package com.fincity.saas.message.service.message.provider;
 
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
-import com.fincity.saas.message.dto.ProviderIdentifier;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
-import com.fincity.saas.message.service.ProviderIdentifierService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.message.IMessageService;
 import com.fincity.saas.message.service.message.MessageConnectionService;
@@ -26,7 +24,6 @@ public abstract class AbstractMessageService<
     protected MessageService messageService;
     protected MessageConnectionService messageConnectionService;
     protected MessageEventService messageEventService;
-    protected ProviderIdentifierService providerIdentifierService;
 
     @Lazy
     @Autowired
@@ -44,11 +41,6 @@ public abstract class AbstractMessageService<
     @Autowired
     private void setMessageEventService(MessageEventService messageEventService) {
         this.messageEventService = messageEventService;
-    }
-
-    @Autowired
-    private void setProviderIdentifierService(ProviderIdentifierService providerIdentifierService) {
-        this.providerIdentifierService = providerIdentifierService;
     }
 
     @Override
@@ -76,22 +68,5 @@ public abstract class AbstractMessageService<
                 MessageResourceService.MISSING_CALL_PARAMETERS,
                 this.getConnectionSubType().getProvider(),
                 paramName);
-    }
-
-    protected Mono<ProviderIdentifier> validateProviderIdentifier(
-            String appCode, String clientCode, String identifier) {
-        return this.providerIdentifierService
-                .getProviderIdentifier(
-                        appCode, clientCode, this.getConnectionType(), this.getConnectionSubType(), identifier)
-                .switchIfEmpty(Mono.defer(() -> {
-                    logger.error(
-                            "No provider identifier found for identifier: {}, appCode: {}, clientCode: {}, connectionType: {}, connectionSubType: {}",
-                            identifier,
-                            appCode,
-                            clientCode,
-                            this.getConnectionType(),
-                            this.getConnectionSubType());
-                    return Mono.empty();
-                }));
     }
 }

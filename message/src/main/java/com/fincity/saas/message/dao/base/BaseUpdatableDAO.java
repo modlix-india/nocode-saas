@@ -71,7 +71,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return this.messageAccessCondition(codeCondition(code), access);
     }
 
-    private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
+    protected AbstractCondition addAppCodeAndClientCode(
+            AbstractCondition condition, String appCode, String clientCode) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)

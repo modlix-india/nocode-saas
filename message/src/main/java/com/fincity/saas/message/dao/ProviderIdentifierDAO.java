@@ -76,17 +76,4 @@ public class ProviderIdentifierDAO extends BaseUpdatableDAO<MessageProviderIdent
 
         return conditions;
     }
-
-    public Mono<ProviderIdentifier> findByIdentifierOnly(
-            ConnectionType connectionType, ConnectionSubType connectionSubType, String identifier) {
-        List<Condition> conditions = new ArrayList<>();
-        conditions.add(MESSAGE_PROVIDER_IDENTIFIERS.CONNECTION_TYPE.eq(connectionType));
-        conditions.add(MESSAGE_PROVIDER_IDENTIFIERS.CONNECTION_SUB_TYPE.eq(connectionSubType));
-        conditions.add(MESSAGE_PROVIDER_IDENTIFIERS.IDENTIFIER.eq(identifier));
-        conditions.add(this.isActiveTrue());
-
-        return Mono.from(
-                        this.dslContext.selectFrom(MESSAGE_PROVIDER_IDENTIFIERS).where(DSL.and(conditions)))
-                .map(e -> e.into(this.pojoClass));
-    }
 }

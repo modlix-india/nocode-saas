@@ -39,6 +39,29 @@ public class WhatsappPhoneNumberService
     }
 
     @Override
+    protected Mono<Boolean> evictCache(WhatsappPhoneNumber entity) {
+        return super.evictCache(entity).flatMap(evicted -> Mono.zip(
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getCacheKey(
+                                        entity.getAppCode(), entity.getClientCode(), entity.getPhoneNumberId())),
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getCacheKey(
+                                        entity.getAppCode(),
+                                        entity.getClientCode(),
+                                        entity.getWhatsappBusinessAccountId())),
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                this.getCacheKey(
+                                        entity.getAppCode(),
+                                        entity.getClientCode(),
+                                        entity.getWhatsappBusinessAccountId(),
+                                        entity.getPhoneNumberId())))
+                .map(sEvicted -> sEvicted.getT1() && sEvicted.getT2() && sEvicted.getT3()));
+    }
+
+    @Override
     protected Mono<WhatsappPhoneNumber> updatableEntity(WhatsappPhoneNumber entity) {
         return super.updatableEntity(entity).flatMap(uEntity -> {
             uEntity.setQualityRating(entity.getQualityRating());
@@ -72,6 +95,36 @@ public class WhatsappPhoneNumberService
                         this.savePhoneNumbers(phoneNumbers.getT1(), phoneNumbers.getT2(), messageAccess));
     }
 
+    public Mono<WhatsappPhoneNumber> getByPhoneNumberId(MessageAccess messageAccess, String phoneNumberId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getByPhoneNumberId(messageAccess, phoneNumberId),
+                super.getCacheKey(messageAccess.getAppCode(), messageAccess.getClientCode(), phoneNumberId));
+    }
+
+    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess messageAccess, String whatsappBusinessAccountId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getByAccountId(messageAccess, whatsappBusinessAccountId),
+                super.getCacheKey(
+                        messageAccess.getAppCode(), messageAccess.getClientCode(), whatsappBusinessAccountId));
+    }
+
+    public Mono<WhatsappPhoneNumber> getByAccountAndPhoneNumberId(
+            MessageAccess messageAccess, String whatsappBusinessAccountId, String phoneNumberId) {
+        return this.cacheService
+                .cacheValueOrGet(
+                        this.getCacheName(),
+                        () -> this.dao.getByAccountAndPhoneNumberId(
+                                messageAccess, whatsappBusinessAccountId, phoneNumberId),
+                        super.getCacheKey(
+                                messageAccess.getAppCode(),
+                                messageAccess.getClientCode(),
+                                whatsappBusinessAccountId,
+                                phoneNumberId))
+                .switchIfEmpty(this.getByAccountId(messageAccess, whatsappBusinessAccountId));
+    }
+
     private Mono<Tuple2<String, PhoneNumbers>> getPhoneNumbers(String connectionName, MessageAccess messageAccess) {
         return FlatMapUtil.flatMapMono(
                 () -> super.messageConnectionService.getConnection(
@@ -91,9 +144,12 @@ public class WhatsappPhoneNumberService
 
     private Mono<WhatsappPhoneNumber> syncPhoneNumber(
             String whatsappBusinessAccountId, PhoneNumber phoneNumber, MessageAccess messageAccess) {
-        return this.dao
-                .findByUniqueField(phoneNumber.getId())
-                .flatMap(existing -> super.update(existing.update(phoneNumber)))
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.findByUniqueField(phoneNumber.getId()),
+                        whatsappPhoneNumber -> super.update(whatsappPhoneNumber.update(phoneNumber)),
+                        (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
+                                this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
                 .switchIfEmpty(Mono.defer(() -> super.createInternal(
                         messageAccess, WhatsappPhoneNumber.of(whatsappBusinessAccountId, phoneNumber))));
     }

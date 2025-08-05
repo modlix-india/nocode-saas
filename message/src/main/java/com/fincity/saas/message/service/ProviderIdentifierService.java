@@ -1,5 +1,6 @@
 package com.fincity.saas.message.service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.message.dao.ProviderIdentifierDAO;
 import com.fincity.saas.message.dto.ProviderIdentifier;
 import com.fincity.saas.message.jooq.tables.records.MessageProviderIdentifiersRecord;
@@ -99,9 +100,11 @@ public class ProviderIdentifierService
                             entity.getConnectionType(),
                             entity.getConnectionSubType(),
                             entity.getId())
-                    .then(super.update(entity));
+                    .then(FlatMapUtil.flatMapMono(() -> super.update(entity), uEntity -> this.evictCache(uEntity)
+                            .map(evicted -> uEntity)));
 
-        return super.update(entity);
+        return FlatMapUtil.flatMapMono(
+                () -> super.update(entity), uEntity -> this.evictCache(uEntity).map(evicted -> uEntity));
     }
 
     private Mono<Integer> clearExistingDefault(
@@ -137,15 +140,6 @@ public class ProviderIdentifierService
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.findDefaultIdentifier(appCode, clientCode, connectionType, connectionSubType),
-                cacheKey);
-    }
-
-    public Mono<ProviderIdentifier> findByIdentifierOnly(
-            ConnectionType connectionType, ConnectionSubType connectionSubType, String identifier) {
-        String cacheKey = super.getCacheKey("identifier-only", connectionType, connectionSubType, identifier);
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.findByIdentifierOnly(connectionType, connectionSubType, identifier),
                 cacheKey);
     }
 }
