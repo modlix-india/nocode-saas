@@ -19,6 +19,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
 
+    private String whatsappBusinessAccountId;
     private String displayPhoneNumber;
     private QualityRatingType qualityRating;
     private String verifiedName;
@@ -29,8 +30,9 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private Throughput throughput;
     private Boolean isDefault = Boolean.FALSE;
 
-    public static WhatsappPhoneNumber of(PhoneNumber phoneNumber) {
+    public static WhatsappPhoneNumber of(String whatsappBusinessAccountId, PhoneNumber phoneNumber) {
         return new WhatsappPhoneNumber()
+                .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
                 .setDisplayPhoneNumber(phoneNumber.getDisplayPhoneNumber())
                 .setQualityRating(phoneNumber.getQualityRating())
                 .setVerifiedName(phoneNumber.getVerifiedName())

@@ -14,6 +14,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -25,9 +26,10 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     @Serial
     private static final long serialVersionUID = 85222336061195313L;
 
+    private String whatsappBusinessAccountId;
     private String messageId;
 
-    private String phoneNumberId;
+    private ULong whatsappPhoneNumberId;
     private Integer fromDialCode = PhoneUtil.getDefaultCallingCode();
     private String from;
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();

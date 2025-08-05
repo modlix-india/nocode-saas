@@ -1,21 +1,22 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
+import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class WhatsappPhoneNumberService
@@ -62,36 +63,48 @@ public class WhatsappPhoneNumberService
         return WHATSAPP_PHONE_NUMBER_PROVIDER_URI;
     }
 
-    public Mono<Void> syncPhoneNumbers(String connectionName) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                messageAccess -> super.messageConnectionService.getConnection(
-                        messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
-                (messageAccess, connection) -> this.getWhatsappBusinessAccountId(connection),
-                (messageAccess, connection, businessAccountId) -> this.getBusinessManagementApi(connection),
-                (messageAccess, connection, businessAccountId, api) -> api.retrievePhoneNumbers(businessAccountId),
-                (messageAccess, connection, businessAccountId, api, phoneNumbers) -> 
-                        this.savePhoneNumbers(phoneNumbers.getData(), messageAccess).then()
-        );
+    public Flux<WhatsappPhoneNumber> syncPhoneNumbers(String connectionName) {
+        return FlatMapUtil.flatMapFlux(
+                () -> super.hasAccess().flux(),
+                messageAccess ->
+                        this.getPhoneNumbers(connectionName, messageAccess).flux(),
+                (messageAccess, phoneNumbers) ->
+                        this.savePhoneNumbers(phoneNumbers.getT1(), phoneNumbers.getT2(), messageAccess));
     }
 
-     private Flux<WhatsappPhoneNumber> savePhoneNumbers(java.util.List<PhoneNumber> phoneNumbers, MessageAccess messageAccess) {
-         return Flux.fromIterable(phoneNumbers).flatMap(phoneNumber -> this.syncPhoneNumber(phoneNumber, messageAccess));
-     }
+    private Mono<Tuple2<String, PhoneNumbers>> getPhoneNumbers(String connectionName, MessageAccess messageAccess) {
+        return FlatMapUtil.flatMapMono(
+                () -> super.messageConnectionService.getConnection(
+                        messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
+                this::getWhatsappBusinessAccountId,
+                (connection, businessAccountId) -> this.getBusinessManagementApi(connection),
+                (connection, businessAccountId, api) -> api.retrievePhoneNumbers(businessAccountId),
+                (connection, businessAccountId, api, phoneNumbers) ->
+                        Mono.just(Tuples.of(businessAccountId, phoneNumbers)));
+    }
 
-     private Mono<WhatsappPhoneNumber> syncPhoneNumber(PhoneNumber phoneNumber, MessageAccess messageAccess) {
-         return this.dao
+    private Flux<WhatsappPhoneNumber> savePhoneNumbers(
+            String whatsappBusinessAccountId, PhoneNumbers phoneNumbers, MessageAccess messageAccess) {
+        return Flux.fromIterable(phoneNumbers.getData())
+                .flatMap(phoneNumber -> this.syncPhoneNumber(whatsappBusinessAccountId, phoneNumber, messageAccess));
+    }
+
+    private Mono<WhatsappPhoneNumber> syncPhoneNumber(
+            String whatsappBusinessAccountId, PhoneNumber phoneNumber, MessageAccess messageAccess) {
+        return this.dao
                 .findByUniqueField(phoneNumber.getId())
                 .flatMap(existing -> super.update(existing.update(phoneNumber)))
-                .switchIfEmpty(
-                        Mono.defer(() -> super.createInternal(messageAccess, WhatsappPhoneNumber.of(phoneNumber))));
+                .switchIfEmpty(Mono.defer(() -> super.createInternal(
+                        messageAccess, WhatsappPhoneNumber.of(whatsappBusinessAccountId, phoneNumber))));
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {
-        String businessAccountId =
-                (String) connection.getConnectionDetails().getOrDefault("whatsappBusinessAccountId", null);
+        String businessAccountId = (String) connection
+                .getConnectionDetails()
+                .getOrDefault(WhatsappPhoneNumber.Fields.whatsappBusinessAccountId, null);
 
-        if (businessAccountId == null) return super.throwMissingParam("whatsappBusinessAccountId");
+        if (businessAccountId == null)
+            return super.throwMissingParam(WhatsappPhoneNumber.Fields.whatsappBusinessAccountId);
 
         return Mono.just(businessAccountId);
     }
