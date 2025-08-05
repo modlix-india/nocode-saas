@@ -1327,6 +1327,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                         (app, client, appAdminProfiles) -> this.dao
                                 .getUsersForProfiles(appAdminProfiles, client.getId())
+                                .flatMap(users -> {
+                                    if (users.isEmpty()) {
+                                        return Mono.empty(); // Convert empty list to empty Mono to trigger switchIfEmpty
+                                    }
+                                    return Mono.just(users);
+                                })
                                 .map(users -> users.stream()
                                         .map(User::getEmailId)
                                         .filter(Objects::nonNull)
