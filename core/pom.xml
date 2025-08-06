@@ -79,11 +79,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq-codegen-maven</artifactId>
-            <version>3.17.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
+            <version>3.20.3</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
