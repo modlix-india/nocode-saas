@@ -391,6 +391,6 @@ public class SecurityClientOtpPolicyRecord extends UpdatableRecordImpl<SecurityC
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

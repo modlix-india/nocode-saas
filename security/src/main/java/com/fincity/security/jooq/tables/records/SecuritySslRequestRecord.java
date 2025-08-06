@@ -226,6 +226,6 @@ public class SecuritySslRequestRecord extends UpdatableRecordImpl<SecuritySslReq
         setFailedReason(failedReason);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

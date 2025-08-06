@@ -258,6 +258,6 @@ public class FilesAccessPathRecord extends UpdatableRecordImpl<FilesAccessPathRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

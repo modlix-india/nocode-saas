@@ -185,6 +185,6 @@ public class SecurityUserTokenRecord extends UpdatableRecordImpl<SecurityUserTok
         setIpAddress(ipAddress);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

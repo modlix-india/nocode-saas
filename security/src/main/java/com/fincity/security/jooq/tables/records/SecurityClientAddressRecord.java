@@ -97,6 +97,6 @@ public class SecurityClientAddressRecord extends UpdatableRecordImpl<SecurityCli
         setId(id);
         setClientId(clientId);
         setAddressId(addressId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
