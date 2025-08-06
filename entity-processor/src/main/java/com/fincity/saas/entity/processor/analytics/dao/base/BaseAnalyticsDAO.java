@@ -1,12 +1,11 @@
 package com.fincity.saas.entity.processor.analytics.dao.base;
 
+import com.fincity.saas.commons.jooq.dao.AbstractDAO;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends AbstractDTO<ULong, ULong>>
         extends AbstractDAO<R, ULong, D> {
