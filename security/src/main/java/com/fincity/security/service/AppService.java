@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
@@ -40,7 +41,6 @@ import com.fincity.security.model.AppDependency;
 import com.fincity.security.model.PropertiesResponse;
 import com.fincity.security.model.TransportPOJO.AppTransportProperty;
 import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
-import com.google.common.base.Functions;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -589,7 +589,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                             Mono<List<Client>> clients = this.clientService.getClientsBy(new ArrayList<>(props.keySet()));
 
                             return clients
-                                    .map(lst -> lst.stream().collect(Collectors.toMap(Client::getId, Functions.identity())));
+                                    .map(lst -> lst.stream().collect(Collectors.toMap(Client::getId, Function.identity())));
                         },
 
                         (props, clients) -> Mono.just(new PropertiesResponse().setProperties(props).setClients(clients))
