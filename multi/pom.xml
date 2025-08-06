@@ -101,10 +101,6 @@
             <version>3.17.2</version>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.fincity.nocode</groupId>
             <artifactId>kirun-java</artifactId>
             <version>${nocode-kirun-version}</version>
