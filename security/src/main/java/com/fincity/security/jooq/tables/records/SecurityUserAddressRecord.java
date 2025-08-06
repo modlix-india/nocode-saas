@@ -95,6 +95,6 @@ public class SecurityUserAddressRecord extends UpdatableRecordImpl<SecurityUserA
         setId(id);
         setUserId(userId);
         setAddressId(addressId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

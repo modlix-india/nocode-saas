@@ -295,6 +295,6 @@ public class SecurityAppRegFileAccessRecord extends UpdatableRecordImpl<Security
         setAllowSubPathAccess(allowSubPathAccess);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

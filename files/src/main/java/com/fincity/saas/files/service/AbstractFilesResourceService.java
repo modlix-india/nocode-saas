@@ -31,11 +31,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.annotation.PreDestroy;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
+import jakarta.annotation.PreDestroy;
 import org.apache.commons.lang3.ObjectUtils;
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
@@ -91,7 +91,6 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-import javax.annotation.PreDestroy;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;

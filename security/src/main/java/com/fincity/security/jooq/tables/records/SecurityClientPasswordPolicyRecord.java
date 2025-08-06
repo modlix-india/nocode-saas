@@ -464,6 +464,6 @@ public class SecurityClientPasswordPolicyRecord extends UpdatableRecordImpl<Secu
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

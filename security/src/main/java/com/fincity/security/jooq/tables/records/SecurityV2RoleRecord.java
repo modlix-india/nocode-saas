@@ -223,6 +223,6 @@ public class SecurityV2RoleRecord extends UpdatableRecordImpl<SecurityV2RoleReco
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -266,6 +266,6 @@ public class SecurityAppRegIntegrationRecord extends UpdatableRecordImpl<Securit
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -316,6 +316,6 @@ public class SecurityClientPinPolicyRecord extends UpdatableRecordImpl<SecurityC
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

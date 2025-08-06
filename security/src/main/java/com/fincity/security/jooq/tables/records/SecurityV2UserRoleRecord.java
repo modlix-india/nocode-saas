@@ -97,6 +97,6 @@ public class SecurityV2UserRoleRecord extends UpdatableRecordImpl<SecurityV2User
         setId(id);
         setUserId(userId);
         setRoleId(roleId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
