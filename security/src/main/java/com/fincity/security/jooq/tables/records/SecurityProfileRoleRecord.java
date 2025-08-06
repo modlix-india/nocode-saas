@@ -115,6 +115,6 @@ public class SecurityProfileRoleRecord extends UpdatableRecordImpl<SecurityProfi
         setProfileId(profileId);
         setRoleId(roleId);
         setExclude(exclude);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

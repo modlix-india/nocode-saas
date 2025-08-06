@@ -97,6 +97,6 @@ public class SecurityProfileUserRecord extends UpdatableRecordImpl<SecurityProfi
         setId(id);
         setProfileId(profileId);
         setUserId(userId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

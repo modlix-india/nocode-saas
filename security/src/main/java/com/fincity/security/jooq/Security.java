@@ -57,6 +57,7 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -312,7 +313,7 @@ public class Security extends SchemaImpl {
      * No further instances allowed
      */
     private Security() {
-        super("security", null);
+        super(DSL.name("security"), null, DSL.comment(""));
     }
 
 

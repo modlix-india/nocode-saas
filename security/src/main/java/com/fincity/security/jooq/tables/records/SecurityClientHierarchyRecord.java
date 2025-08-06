@@ -235,6 +235,6 @@ public class SecurityClientHierarchyRecord extends UpdatableRecordImpl<SecurityC
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

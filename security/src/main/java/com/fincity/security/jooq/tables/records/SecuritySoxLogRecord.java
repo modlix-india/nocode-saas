@@ -173,6 +173,6 @@ public class SecuritySoxLogRecord extends UpdatableRecordImpl<SecuritySoxLogReco
         setDescription(description);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

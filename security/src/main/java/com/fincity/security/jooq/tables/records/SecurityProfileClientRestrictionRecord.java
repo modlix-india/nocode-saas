@@ -103,6 +103,6 @@ public class SecurityProfileClientRestrictionRecord extends UpdatableRecordImpl<
         setId(id);
         setProfileId(profileId);
         setClientId(clientId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

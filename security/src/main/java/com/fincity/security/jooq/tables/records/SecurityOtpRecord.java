@@ -316,6 +316,6 @@ public class SecurityOtpRecord extends UpdatableRecordImpl<SecurityOtpRecord> {
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

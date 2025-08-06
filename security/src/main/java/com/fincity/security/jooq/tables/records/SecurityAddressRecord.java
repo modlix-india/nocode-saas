@@ -372,6 +372,6 @@ public class SecurityAddressRecord extends UpdatableRecordImpl<SecurityAddressRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
