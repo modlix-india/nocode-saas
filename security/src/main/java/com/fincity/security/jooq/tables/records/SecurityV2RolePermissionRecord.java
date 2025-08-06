@@ -101,6 +101,6 @@ public class SecurityV2RolePermissionRecord extends UpdatableRecordImpl<Security
         setId(id);
         setRoleId(roleId);
         setPermissionId(permissionId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

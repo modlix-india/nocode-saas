@@ -224,6 +224,6 @@ public class SecurityAppRegProfileRestrictionRecord extends UpdatableRecordImpl<
         setProfileId(profileId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

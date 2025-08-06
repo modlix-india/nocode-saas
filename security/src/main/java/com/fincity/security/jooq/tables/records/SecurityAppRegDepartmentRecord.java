@@ -250,6 +250,6 @@ public class SecurityAppRegDepartmentRecord extends UpdatableRecordImpl<Security
         setParentDepartmentId(parentDepartmentId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
