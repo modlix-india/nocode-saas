@@ -98,11 +98,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq-codegen-maven</artifactId>
-            <version>3.18.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
+            <version>3.20.3</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -192,7 +188,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq-jackson-extensions</artifactId>
-            <version>3.20.2</version>
+            <version>3.20.3</version>
         </dependency>
     </dependencies>
     <dependencyManagement>

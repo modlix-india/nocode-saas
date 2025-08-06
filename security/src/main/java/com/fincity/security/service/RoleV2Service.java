@@ -3,10 +3,10 @@ package com.fincity.security.service;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.google.common.base.Functions;
 import org.jooq.types.ULong;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -182,7 +182,7 @@ public class RoleV2Service
 
     public Mono<Map<ULong, RoleV2>> getRolesForProfileService(Collection<ULong> roleIds) {
         return this.dao.getRoles(roleIds).map(lst ->
-                lst.stream().collect(Collectors.toMap(RoleV2::getId, Functions.identity())));
+                lst.stream().collect(Collectors.toMap(RoleV2::getId, Function.identity())));
     }
 
     public Mono<Map<String, List<String>>> getRoleAuthoritiesPerApp(ULong userId) {
