@@ -9,6 +9,7 @@ import com.fincity.sass.worker.jooq.Keys;
 import com.fincity.sass.worker.jooq.Worker;
 import com.fincity.sass.worker.jooq.enums.WorkerTaskJobType;
 import com.fincity.sass.worker.jooq.enums.WorkerTaskLastFireStatus;
+import com.fincity.sass.worker.jooq.enums.WorkerTaskState;
 import com.fincity.sass.worker.jooq.tables.WorkerScheduler.WorkerSchedulerPath;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
 
@@ -104,6 +105,11 @@ public class WorkerTask extends TableImpl<WorkerTaskRecord> {
      * the job
      */
     public final TableField<WorkerTaskRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.VARCHAR(255), this, "description about the job");
+
+    /**
+     * The column <code>worker.worker_task.STATE</code>. task triggering state
+     */
+    public final TableField<WorkerTaskRecord, WorkerTaskState> STATE = createField(DSL.name("STATE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("NORMAL", SQLDataType.VARCHAR)).asEnumDataType(WorkerTaskState.class), this, "task triggering state");
 
     /**
      * The column <code>worker.worker_task.JOB_TYPE</code>. job type

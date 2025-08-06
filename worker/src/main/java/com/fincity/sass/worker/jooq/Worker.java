@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -42,7 +43,7 @@ public class Worker extends SchemaImpl {
      * No further instances allowed
      */
     private Worker() {
-        super("worker", null);
+        super(DSL.name("worker"), null, DSL.comment(""));
     }
 
 

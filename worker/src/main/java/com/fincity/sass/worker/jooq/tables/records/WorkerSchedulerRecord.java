@@ -192,6 +192,6 @@ public class WorkerSchedulerRecord extends UpdatableRecordImpl<WorkerSchedulerRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

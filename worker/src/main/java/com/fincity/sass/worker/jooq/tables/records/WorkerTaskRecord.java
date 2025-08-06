@@ -6,6 +6,7 @@ package com.fincity.sass.worker.jooq.tables.records;
 
 import com.fincity.sass.worker.jooq.enums.WorkerTaskJobType;
 import com.fincity.sass.worker.jooq.enums.WorkerTaskLastFireStatus;
+import com.fincity.sass.worker.jooq.enums.WorkerTaskState;
 import com.fincity.sass.worker.jooq.tables.WorkerTask;
 
 import java.time.LocalDateTime;
@@ -142,10 +143,25 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
     }
 
     /**
+     * Setter for <code>worker.worker_task.STATE</code>. task triggering state
+     */
+    public WorkerTaskRecord setState(WorkerTaskState value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>worker.worker_task.STATE</code>. task triggering state
+     */
+    public WorkerTaskState getState() {
+        return (WorkerTaskState) get(7);
+    }
+
+    /**
      * Setter for <code>worker.worker_task.JOB_TYPE</code>. job type
      */
     public WorkerTaskRecord setJobType(WorkerTaskJobType value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -153,14 +169,14 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * Getter for <code>worker.worker_task.JOB_TYPE</code>. job type
      */
     public WorkerTaskJobType getJobType() {
-        return (WorkerTaskJobType) get(7);
+        return (WorkerTaskJobType) get(8);
     }
 
     /**
      * Setter for <code>worker.worker_task.JOB_DATA</code>. job data
      */
     public WorkerTaskRecord setJobData(JSON value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -168,7 +184,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * Getter for <code>worker.worker_task.JOB_DATA</code>. job data
      */
     public JSON getJobData() {
-        return (JSON) get(8);
+        return (JSON) get(9);
     }
 
     /**
@@ -176,7 +192,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * job even if it does not have any trigger
      */
     public WorkerTaskRecord setDurable(Byte value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -185,7 +201,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * job even if it does not have any trigger
      */
     public Byte getDurable() {
-        return (Byte) get(9);
+        return (Byte) get(10);
     }
 
     /**
@@ -193,7 +209,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * datetime
      */
     public WorkerTaskRecord setStartTime(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -202,14 +218,14 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * datetime
      */
     public LocalDateTime getStartTime() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
      * Setter for <code>worker.worker_task.END_TIME</code>. task end datetime
      */
     public WorkerTaskRecord setEndTime(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -217,7 +233,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * Getter for <code>worker.worker_task.END_TIME</code>. task end datetime
      */
     public LocalDateTime getEndTime() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     /**
@@ -225,7 +241,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * expression for simple/cron job
      */
     public WorkerTaskRecord setSchedule(String value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -234,7 +250,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * expression for simple/cron job
      */
     public String getSchedule() {
-        return (String) get(12);
+        return (String) get(13);
     }
 
     /**
@@ -242,7 +258,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * this job will repeat, only applicable for simple jobs
      */
     public WorkerTaskRecord setRepeatInterval(Integer value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -251,7 +267,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * this job will repeat, only applicable for simple jobs
      */
     public Integer getRepeatInterval() {
-        return (Integer) get(13);
+        return (Integer) get(14);
     }
 
     /**
@@ -259,7 +275,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * the scheduler crashed before finishing
      */
     public WorkerTaskRecord setRecoverable(Byte value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -268,7 +284,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * the scheduler crashed before finishing
      */
     public Byte getRecoverable() {
-        return (Byte) get(14);
+        return (Byte) get(15);
     }
 
     /**
@@ -276,7 +292,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution at
      */
     public WorkerTaskRecord setNextFireTime(LocalDateTime value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -285,7 +301,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution at
      */
     public LocalDateTime getNextFireTime() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -293,7 +309,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * at
      */
     public WorkerTaskRecord setLastFireTime(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -302,7 +318,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * at
      */
     public LocalDateTime getLastFireTime() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -310,7 +326,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution status
      */
     public WorkerTaskRecord setLastFireStatus(WorkerTaskLastFireStatus value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -319,7 +335,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution status
      */
     public WorkerTaskLastFireStatus getLastFireStatus() {
-        return (WorkerTaskLastFireStatus) get(17);
+        return (WorkerTaskLastFireStatus) get(18);
     }
 
     /**
@@ -327,7 +343,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution log
      */
     public WorkerTaskRecord setLastFireResult(String value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -336,7 +352,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * execution log
      */
     public String getLastFireResult() {
-        return (String) get(18);
+        return (String) get(19);
     }
 
     /**
@@ -344,7 +360,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * created this row
      */
     public WorkerTaskRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -353,7 +369,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -361,7 +377,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * is created
      */
     public WorkerTaskRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -370,7 +386,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(21);
     }
 
     /**
@@ -378,7 +394,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * last updated this row
      */
     public WorkerTaskRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -387,7 +403,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * last updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(22);
     }
 
     /**
@@ -395,7 +411,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * is last updated
      */
     public WorkerTaskRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -404,7 +420,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
      * is last updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -430,7 +446,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
     /**
      * Create a detached, initialised WorkerTaskRecord
      */
-    public WorkerTaskRecord(ULong id, String name, ULong clientId, ULong appId, ULong schedulerId, String groupName, String description, WorkerTaskJobType jobType, JSON jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, WorkerTaskLastFireStatus lastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public WorkerTaskRecord(ULong id, String name, ULong clientId, ULong appId, ULong schedulerId, String groupName, String description, WorkerTaskState state, WorkerTaskJobType jobType, JSON jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, WorkerTaskLastFireStatus lastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(WorkerTask.WORKER_TASK);
 
         setId(id);
@@ -440,6 +456,7 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
         setSchedulerId(schedulerId);
         setGroupName(groupName);
         setDescription(description);
+        setState(state);
         setJobType(jobType);
         setJobData(jobData);
         setDurable(durable);
@@ -456,6 +473,6 @@ public class WorkerTaskRecord extends UpdatableRecordImpl<WorkerTaskRecord> {
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -1,5 +1,7 @@
 USE `worker`;
 
+DROP TABLE IF EXISTS `worker_scheduler`;
+
 -- Create Scheduler Table
 CREATE TABLE IF NOT EXISTS `worker_scheduler`
 (

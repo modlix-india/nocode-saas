@@ -27,6 +27,7 @@
         <spotless.version>2.40.0</spotless.version>
         <palantir-java.format.version>2.61.0</palantir-java.format.version>
         <mockito.version>5.10.0</mockito.version>
+        <jooq.version>3.20.3</jooq.version>
     </properties>
     <dependencies>
         <dependency>
@@ -101,11 +102,12 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq-codegen-maven</artifactId>
-            <version>3.18.3</version>
+            <version>${jooq.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq</artifactId>
+            <version>${jooq.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -345,6 +347,17 @@
                                 <database>
                                     <includes>worker_.*</includes>
                                     <inputSchema>worker</inputSchema>
+                                    <forcedTypes>
+                                        <forcedType>
+                                            <userType>java.util.Map</userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>FUNCTION_PARAMS</includeExpression>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>false</genericConverter>
+                                        </forcedType>
+                                    </forcedTypes>
                                 </database>
                                 <generate>
                                     <deprecated>false</deprecated>

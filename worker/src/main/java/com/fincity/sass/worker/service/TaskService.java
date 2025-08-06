@@ -211,21 +211,6 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTaskReco
         });
     }
 
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(JOB_NAME)) newFields.put(JOB_NAME, fields.get(JOB_NAME));
-        if (fields.containsKey(CRON_EXPRESSION)) newFields.put(CRON_EXPRESSION, fields.get(CRON_EXPRESSION));
-        if (fields.containsKey(NEXT_EXECUTION_TIME))
-            newFields.put(NEXT_EXECUTION_TIME, fields.get(NEXT_EXECUTION_TIME));
-
-        if (!newFields.isEmpty()) newFields.put("updatedAt", LocalDateTime.now());
-
-        return Mono.just(newFields);
-    }
-
     // testing trigger status enum values
     public Mono<String> test1(ULong id) {
 

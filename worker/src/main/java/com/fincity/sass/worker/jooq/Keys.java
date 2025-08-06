@@ -14,6 +14,7 @@ import org.jooq.TableField;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
+import org.jooq.impl.QOM.ForeignKeyRule;
 
 
 /**
@@ -36,5 +37,5 @@ public class Keys {
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<WorkerTaskRecord, WorkerSchedulerRecord> FK_WORKER_TASK_SCHEDULER = Internal.createForeignKey(WorkerTask.WORKER_TASK, DSL.name("FK_WORKER_TASK_SCHEDULER"), new TableField[] { WorkerTask.WORKER_TASK.SCHEDULER_ID }, Keys.KEY_WORKER_SCHEDULER_PRIMARY, new TableField[] { WorkerScheduler.WORKER_SCHEDULER.ID }, true);
+    public static final ForeignKey<WorkerTaskRecord, WorkerSchedulerRecord> FK_WORKER_TASK_SCHEDULER = Internal.createForeignKey(WorkerTask.WORKER_TASK, DSL.name("FK_WORKER_TASK_SCHEDULER"), new TableField[] { WorkerTask.WORKER_TASK.SCHEDULER_ID }, Keys.KEY_WORKER_SCHEDULER_PRIMARY, new TableField[] { WorkerScheduler.WORKER_SCHEDULER.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.CASCADE);
 }

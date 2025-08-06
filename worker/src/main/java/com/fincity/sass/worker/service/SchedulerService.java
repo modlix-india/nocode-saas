@@ -7,6 +7,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.sass.worker.dao.SchedulerDAO;
 import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulerRecord;
 import com.fincity.sass.worker.model.WorkerScheduler;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.types.ULong;
 import org.quartz.Scheduler;
@@ -17,7 +18,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -165,18 +165,5 @@ public class SchedulerService
                     existing.setStatus(entity.getStatus());
                     return existing;
                 }));
-    }
-
-    @Override
-    protected Mono<Map<String, Object>> updatableFields(ULong key, Map<String, Object> fields) {
-        Map<String, Object> newFields = new HashMap<>();
-
-        if (fields.containsKey(NAME)) newFields.put(NAME, fields.get(NAME));
-        if (fields.containsKey(DESCRIPTION)) newFields.put(DESCRIPTION, fields.get(DESCRIPTION));
-        if (fields.containsKey(STATUS)) newFields.put(STATUS, fields.get(STATUS));
-        if (fields.containsKey(UPDATED_BY)) newFields.put(UPDATED_BY, fields.get(UPDATED_BY));
-        if (fields.containsKey(UPDATED_AT)) newFields.put(UPDATED_AT, LocalDateTime.now());
-
-        return Mono.just(newFields);
     }
 }
