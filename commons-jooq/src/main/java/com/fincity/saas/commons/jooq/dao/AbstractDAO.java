@@ -46,6 +46,7 @@ import io.r2dbc.spi.RowMetadata;
 import lombok.Getter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -142,15 +143,14 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         return Mono.from(this.dslContext.transactionPublisher(ctx -> {
             var dsl = ctx.dsl();
-
             R rec = dsl.newRecord(this.table);
             rec.from(pojo);
 
             return Mono.from(dsl.insertInto(this.table).set(rec).returning(this.idField))
-                    .map(r -> this.idField.getDataType().convert(r.getValue(0)))
+                    .map(r -> r.get(0, this.idField.getType()))
                     .flatMap(id -> Mono.from(dsl.selectFrom(this.table).where(this.idField.eq(id)).limit(1)))
                     .map(r -> r.into(this.pojoClass));
-        }));
+        })).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Integer> delete(I id) {
