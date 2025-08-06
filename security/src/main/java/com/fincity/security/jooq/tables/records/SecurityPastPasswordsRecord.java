@@ -151,6 +151,6 @@ public class SecurityPastPasswordsRecord extends UpdatableRecordImpl<SecurityPas
         setPasswordHashed(passwordHashed);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

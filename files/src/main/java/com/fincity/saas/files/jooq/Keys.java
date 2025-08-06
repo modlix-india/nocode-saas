@@ -18,6 +18,7 @@ import org.jooq.TableField;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
+import org.jooq.impl.QOM.ForeignKeyRule;
 
 
 /**
@@ -41,5 +42,5 @@ public class Keys {
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<FilesFileSystemRecord, FilesFileSystemRecord> FILES_FILE_SYSTEM_IBFK_1 = Internal.createForeignKey(FilesFileSystem.FILES_FILE_SYSTEM, DSL.name("files_file_system_ibfk_1"), new TableField[] { FilesFileSystem.FILES_FILE_SYSTEM.PARENT_ID }, Keys.KEY_FILES_FILE_SYSTEM_PRIMARY, new TableField[] { FilesFileSystem.FILES_FILE_SYSTEM.ID }, true);
+    public static final ForeignKey<FilesFileSystemRecord, FilesFileSystemRecord> FILES_FILE_SYSTEM_IBFK_1 = Internal.createForeignKey(FilesFileSystem.FILES_FILE_SYSTEM, DSL.name("files_file_system_ibfk_1"), new TableField[] { FilesFileSystem.FILES_FILE_SYSTEM.PARENT_ID }, Keys.KEY_FILES_FILE_SYSTEM_PRIMARY, new TableField[] { FilesFileSystem.FILES_FILE_SYSTEM.ID }, true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION);
 }

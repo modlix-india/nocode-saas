@@ -220,6 +220,6 @@ public class SecurityAppRegUserProfileRecord extends UpdatableRecordImpl<Securit
         setProfileId(profileId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

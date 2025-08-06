@@ -153,6 +153,6 @@ public class SecurityPastPinsRecord extends UpdatableRecordImpl<SecurityPastPins
         setPinHashed(pinHashed);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

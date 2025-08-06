@@ -185,6 +185,6 @@ public class SecurityClientTypeRecord extends UpdatableRecordImpl<SecurityClient
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

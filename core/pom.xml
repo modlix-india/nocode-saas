@@ -220,68 +220,6 @@
             </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>jooq</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.jooq</groupId>
-                        <artifactId>jooq-codegen-maven</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>generate</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <dependencies>
-                            <dependency>
-                                <groupId>mysql</groupId>
-                                <artifactId>mysql-connector-java</artifactId>
-                                <version>8.0.29</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>javax.xml.bind</groupId>
-                                <artifactId>jaxb-api</artifactId>
-                                <version>2.3.1</version>
-                            </dependency>
-                            <dependency>
-                                <groupId>org.glassfish.jaxb</groupId>
-                                <artifactId>jaxb-runtime</artifactId>
-                                <version>4.0.0</version>
-                            </dependency>
-                        </dependencies>
-                        <configuration>
-                            <jdbc>
-                                <driver>com.mysql.cj.jdbc.Driver</driver>
-                                <url>jdbc:mysql://localhost:3306/core</url>
-                                <user>root</user>
-                                <password>Kiran@123</password>
-                            </jdbc>
-                            <generator>
-                                <database>
-                                    <includes>core_.*</includes>
-                                    <inputSchema>core</inputSchema>
-                                </database>
-                                <generate>
-                                    <deprecated>false</deprecated>
-                                    <relations>true</relations>
-                                    <records>true</records>
-                                    <immutablePojos>false</immutablePojos>
-                                    <fluentSetters>true</fluentSetters>
-                                </generate>
-                                <target>
-                                    <packageName>com.fincity.saas.core.jooq</packageName>
-                                    <directory>src/main/java</directory>
-                                </target>
-                            </generator>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
     <repositories>
         <repository>
             <id>spring-milestones</id>
