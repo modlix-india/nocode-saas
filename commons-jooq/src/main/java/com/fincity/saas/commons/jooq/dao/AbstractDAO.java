@@ -150,7 +150,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                     .map(r -> r.get(0, this.idField.getType()))
                     .flatMap(id -> Mono.from(dsl.selectFrom(this.table).where(this.idField.eq(id)).limit(1)))
                     .map(r -> r.into(this.pojoClass));
-        })).subscribeOn(Schedulers.boundedElastic());
+        }));
     }
 
     public Mono<Integer> delete(I id) {
