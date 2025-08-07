@@ -83,23 +83,22 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
     private void buildDateConditions(
             List<AbstractCondition> conditions, BucketFilter filter, Map<String, String> fieldMappings) {
 
-        String createdAtField = fieldMappings.get(AbstractDTO.Fields.createdAt);
-        if (createdAtField == null || (filter.getStartDate() == null && filter.getEndDate() == null)) return;
+        if ((filter.getStartDate() == null && filter.getEndDate() == null)) return;
 
         if (filter.getStartDate() != null && filter.getEndDate() != null) {
             conditions.add(new FilterCondition()
-                    .setField(createdAtField)
+                    .setField(fieldMappings.get(BucketFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.BETWEEN)
                     .setValue(filter.getStartDate())
                     .setToValue(filter.getEndDate()));
         } else if (filter.getStartDate() != null) {
             conditions.add(new FilterCondition()
-                    .setField(createdAtField)
+                    .setField(fieldMappings.get(BucketFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.GREATER_THAN_EQUAL)
                     .setValue(filter.getStartDate()));
         } else {
             conditions.add(new FilterCondition()
-                    .setField(createdAtField)
+                    .setField(fieldMappings.get(BucketFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.LESS_THAN_EQUAL)
                     .setValue(filter.getEndDate()));
         }
