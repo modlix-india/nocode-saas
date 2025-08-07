@@ -5,10 +5,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.experimental.FieldNameConstants;
 import org.jooq.types.ULong;
 
 @Data
 @AllArgsConstructor
+@FieldNameConstants
 public class BucketFilter implements Serializable {
 
     private List<ULong> userIds;

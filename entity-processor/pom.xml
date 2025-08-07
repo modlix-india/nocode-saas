@@ -17,7 +17,6 @@
     <name>Entity Processor</name>
     <description>A generic server to manage RDBMS Entities</description>
     <properties>
-
         <!-- database -->
         <database.mysql.jdbc.password>Vishwas123#</database.mysql.jdbc.password>
         <database.mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</database.mysql.jdbc.url>
