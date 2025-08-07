@@ -7,7 +7,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.enums.rule.LogicalOperator;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorComplexRulesLogicalOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules.EntityProcessorComplexRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
@@ -148,7 +147,7 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
      * <code>entity_processor.entity_processor_complex_rules.LOGICAL_OPERATOR</code>.
      * Logical operator for this Complex Rule.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, LogicalOperator> LOGICAL_OPERATOR = createField(DSL.name("LOGICAL_OPERATOR"), SQLDataType.VARCHAR(3).nullable(false).asEnumDataType(EntityProcessorComplexRulesLogicalOperator.class), this, "Logical operator for this Complex Rule.", new EnumConverter<EntityProcessorComplexRulesLogicalOperator, LogicalOperator>(EntityProcessorComplexRulesLogicalOperator.class, LogicalOperator.class));
+    public final TableField<EntityProcessorComplexRulesRecord, LogicalOperator> LOGICAL_OPERATOR = createField(DSL.name("LOGICAL_OPERATOR"), SQLDataType.VARCHAR(3).nullable(false), this, "Logical operator for this Complex Rule.", new EnumConverter<String, LogicalOperator>(String.class, LogicalOperator.class));
 
     /**
      * The column

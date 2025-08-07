@@ -23,8 +23,6 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     public Flux<PerValueCount> getTicketPerAssignedUserStageCount(
             ProcessorAccess processorAccess, BucketFilter bucketFilter) {
 
-
-
         return Flux.from(this.dslContext
                         .select(
                                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID,

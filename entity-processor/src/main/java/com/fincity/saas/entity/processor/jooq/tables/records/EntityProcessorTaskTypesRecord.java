@@ -285,6 +285,6 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

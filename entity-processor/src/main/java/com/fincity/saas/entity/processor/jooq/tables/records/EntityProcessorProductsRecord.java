@@ -325,6 +325,6 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }
