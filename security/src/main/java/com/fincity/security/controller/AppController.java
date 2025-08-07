@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.saas.commons.util.StringUtil;
 import com.mysql.cj.util.StringUtils;
@@ -235,5 +236,11 @@ public class AppController
     public Mono<ResponseEntity<Boolean>> removeDependency(@RequestParam String appCode,
                                                           @RequestParam String dependencyCode) {
         return this.service.removeAppDependency(appCode, dependencyCode).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/clientHasReadAccess")
+    public Mono<ResponseEntity<Map<String, Boolean>>> hasAccess(@RequestParam String[] appCodes) {
+        return this.service.hasReadAccess(appCodes)
+                .map(ResponseEntity::ok);
     }
 }
