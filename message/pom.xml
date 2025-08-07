@@ -390,18 +390,6 @@
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
-                                        <forcedType>
-                                            <userType>com.fincity.saas.message.oserver.core.enums.ConnectionType</userType>
-                                            <includeExpression>.*\.CONNECTION_TYPE</includeExpression>
-                                            <includeTypes>ENUM</includeTypes>
-                                            <enumConverter>true</enumConverter>
-                                        </forcedType>
-                                        <forcedType>
-                                            <userType>com.fincity.saas.message.oserver.core.enums.ConnectionSubType</userType>
-                                            <includeExpression>.*\.CONNECTION_SUB_TYPE</includeExpression>
-                                            <includeTypes>ENUM</includeTypes>
-                                            <enumConverter>true</enumConverter>
-                                        </forcedType>
                                     </forcedTypes>
                                 </database>
                                 <generate>

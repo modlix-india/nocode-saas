@@ -66,6 +66,12 @@ jobs:
       - name: Building entity-processor
         working-directory: ./entity-processor
         run: mvn clean install
+      - name: Building notification
+        working-directory: ./notification
+        run: mvn clean install
+      - name: Building message
+        working-directory: ./message
+        run: mvn clean install
       - name: Login to OCIR
         uses: docker/login-action@v3
         with:
@@ -151,3 +157,19 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag dev-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:latest
+      - name: Pushing Notification Docker Image to OCI
+        working-directory: ./notification
+        run: |
+          docker build -t dev-notification-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag dev-notification-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-notification-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server:latest
+      - name: Pushing Message Docker Image to OCI
+        working-directory: ./message
+        run: |
+          docker build -t dev-message-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag dev-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:latest

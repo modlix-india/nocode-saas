@@ -77,8 +77,6 @@ notification:
       url: jdbc:mysql://localhost:3306/notification
 
 message:
-  mongo:
-    uri: mongodb://localhost:27017/message?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/message?serverTimezone=UTC
     username: root
