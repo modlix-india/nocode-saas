@@ -1,18 +1,21 @@
 package com.fincity.saas.message.enums.call.provider.exotel;
 
+import org.jooq.EnumType;
+
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fincity.saas.message.enums.call.CallStatus;
 import com.fincity.saas.message.enums.call.ICallStatus;
+
 import lombok.Getter;
-import org.jooq.EnumType;
 
 @Getter
 public enum ExotelCallStatus implements EnumType, ICallStatus {
-    NULL("NULL", "null"),
+    QUEUED("QUEUED", "queued"),
+    IN_PROGRESS("IN_PROGRESS", "in-progress"),
     COMPLETED("COMPLETED", "completed"),
-    BUSY("BUSY", "busy"),
     FAILED("FAILED", "failed"),
-    NO_ANSWER("NO_ANSWER", "no-answer"),
-    CANCELED("CANCELED", "canceled");
+    BUSY("BUSY", "busy"),
+    NO_ANSWER("NO_ANSWER", "no-answer");
 
     private final String literal;
     private final String displayName;
@@ -31,6 +34,11 @@ public enum ExotelCallStatus implements EnumType, ICallStatus {
         return literal;
     }
 
+    @JsonValue
+    public String getDisplayName() {
+        return displayName;
+    }
+
     @Override
     public String getName() {
         return this.displayName;
@@ -39,12 +47,12 @@ public enum ExotelCallStatus implements EnumType, ICallStatus {
     @Override
     public CallStatus toCallStatus() {
         return switch (this) {
-            case NULL -> CallStatus.ORIGINATE;
+            case QUEUED -> CallStatus.QUEUED;
+            case IN_PROGRESS -> CallStatus.ORIGINATE;
             case COMPLETED -> CallStatus.COMPLETE;
-            case BUSY -> CallStatus.BUSY;
             case FAILED -> CallStatus.FAILED;
+            case BUSY -> CallStatus.BUSY;
             case NO_ANSWER -> CallStatus.NO_ANSWER;
-            case CANCELED -> CallStatus.CANCELED;
         };
     }
 }

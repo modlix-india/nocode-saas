@@ -175,19 +175,19 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Setter for <code>message.message_exotel_calls.FROM_PHONE</code>. Phone
-     * number of the caller.
+     * Setter for <code>message.message_exotel_calls.FROM</code>. Phone number
+     * of the caller.
      */
-    public MessageExotelCallsRecord setFromPhone(String value) {
+    public MessageExotelCallsRecord setFrom(String value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_exotel_calls.FROM_PHONE</code>. Phone
-     * number of the caller.
+     * Getter for <code>message.message_exotel_calls.FROM</code>. Phone number
+     * of the caller.
      */
-    public String getFromPhone() {
+    public String getFrom() {
         return (String) get(9);
     }
 
@@ -209,19 +209,19 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
-     * Setter for <code>message.message_exotel_calls.TO_PHONE</code>. Phone
-     * number of the receiver.
+     * Setter for <code>message.message_exotel_calls.TO</code>. Phone number of
+     * the receiver.
      */
-    public MessageExotelCallsRecord setToPhone(String value) {
+    public MessageExotelCallsRecord setTo(String value) {
         set(11, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_exotel_calls.TO_PHONE</code>. Phone
-     * number of the receiver.
+     * Getter for <code>message.message_exotel_calls.TO</code>. Phone number of
+     * the receiver.
      */
-    public String getToPhone() {
+    public String getTo() {
         return (String) get(11);
     }
 
@@ -539,7 +539,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     /**
      * Create a detached, initialised MessageExotelCallsRecord
      */
-    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String callerId, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String from, Short toDialCode, String to, String callerId, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageExotelCalls.MESSAGE_EXOTEL_CALLS);
 
         setId(id);
@@ -551,9 +551,9 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
         setParentCallSid(parentCallSid);
         setAccountSid(accountSid);
         setFromDialCode(fromDialCode);
-        setFromPhone(fromPhone);
+        setFrom(from);
         setToDialCode(toDialCode);
-        setToPhone(toPhone);
+        setTo(to);
         setCallerId(callerId);
         setExotelCallStatus(exotelCallStatus);
         setStartTime(startTime);

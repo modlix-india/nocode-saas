@@ -6,6 +6,7 @@ import org.jooq.EnumType;
 @Getter
 public enum CallStatus implements EnumType {
     UNKNOWN("UNKNOWN", "Unknown"),
+    QUEUED("QUEUED", "queued"),
     ORIGINATE("ORIGINATE", "Originate"),
     FAILED("FAILED", "Failed"),
     BUSY("BUSY", "Busy"),

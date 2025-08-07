@@ -116,10 +116,10 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the caller's phone number.");
 
     /**
-     * The column <code>message.message_exotel_calls.FROM_PHONE</code>. Phone
-     * number of the caller.
+     * The column <code>message.message_exotel_calls.FROM</code>. Phone number
+     * of the caller.
      */
-    public final TableField<MessageExotelCallsRecord, String> FROM_PHONE = createField(DSL.name("FROM_PHONE"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the caller.");
+    public final TableField<MessageExotelCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the caller.");
 
     /**
      * The column <code>message.message_exotel_calls.TO_DIAL_CODE</code>. Dial
@@ -128,10 +128,10 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
     public final TableField<MessageExotelCallsRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the receiver's phone number.");
 
     /**
-     * The column <code>message.message_exotel_calls.TO_PHONE</code>. Phone
-     * number of the receiver.
+     * The column <code>message.message_exotel_calls.TO</code>. Phone number of
+     * the receiver.
      */
-    public final TableField<MessageExotelCallsRecord, String> TO_PHONE = createField(DSL.name("TO_PHONE"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the receiver.");
+    public final TableField<MessageExotelCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the receiver.");
 
     /**
      * The column <code>message.message_exotel_calls.CALLER_ID</code>. Caller ID
@@ -143,7 +143,7 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
      * The column <code>message.message_exotel_calls.EXOTEL_CALL_STATUS</code>.
      * Status of the call.
      */
-    public final TableField<MessageExotelCallsRecord, ExotelCallStatus> EXOTEL_CALL_STATUS = createField(DSL.name("EXOTEL_CALL_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NULL", SQLDataType.VARCHAR)), this, "Status of the call.", new EnumConverter<String, ExotelCallStatus>(String.class, ExotelCallStatus.class));
+    public final TableField<MessageExotelCallsRecord, ExotelCallStatus> EXOTEL_CALL_STATUS = createField(DSL.name("EXOTEL_CALL_STATUS"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("IN_PROGRESS", SQLDataType.VARCHAR)), this, "Status of the call.", new EnumConverter<String, ExotelCallStatus>(String.class, ExotelCallStatus.class));
 
     /**
      * The column <code>message.message_exotel_calls.START_TIME</code>.

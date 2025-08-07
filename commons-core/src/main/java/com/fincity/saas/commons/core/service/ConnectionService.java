@@ -93,21 +93,40 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
     public Mono<Connection> read(String name, String appCode, String clientCode, ConnectionType type) {
         return FlatMapUtil.flatMapMono(
-                () -> this.read(name, appCode, clientCode).<Connection>map(ObjectWithUniqueID::getObject),
-                conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
-                (conn, typedConn) -> Mono.<Connection>justOrEmpty(
-                        typedConn.getClientCode().equals(clientCode)
-                                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
+                        () -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+                        conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
+                        (conn, typedConn) -> Mono.justOrEmpty(
+                                typedConn.getClientCode().equals(clientCode)
+                                        || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
                                         ? typedConn
                                         : null),
-                (conn, typedConn, clientCheckedConn) -> {
-                    if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
-                        return Mono.just(clientCheckedConn);
+                        (conn, typedConn, clientCheckedConn) -> {
+                            if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
+                                return Mono.just(clientCheckedConn);
 
-                    return Mono.deferContextual(cv -> "true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))
-                            ? Mono.just(clientCheckedConn)
-                            : Mono.empty());
-                })
+                            return Mono.deferContextual(cv -> "true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))
+                                    ? Mono.just(clientCheckedConn)
+                                    : Mono.empty());
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
+    }
+
+    public Mono<Boolean> hasConnection(String name, String appCode, String clientCode, ConnectionType type) {
+        return this.readInternalConnection(name, appCode, clientCode, type)
+                .hasElement()
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
+    }
+
+    public Mono<Connection> readInternalConnection(
+            String name, String appCode, String clientCode, ConnectionType type) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+                conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
+                (conn, typedConn) -> Mono.justOrEmpty(
+                        typedConn.getClientCode().equals(clientCode)
+                                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
+                                ? typedConn
+                                : null));
     }
 }

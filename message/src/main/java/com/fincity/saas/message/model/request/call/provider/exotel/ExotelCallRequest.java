@@ -67,13 +67,10 @@ public class ExotelCallRequest implements Serializable, IClassConvertor {
     private String statusCallback;
 
     @JsonProperty("StatusCallbackEvents")
-    private String[] statusCallbackEvents = {
-        ExotelStatusCallbackEvents.getDefault().getExotelName()
-    };
+    private String[] statusCallbackEvents;
 
     @JsonProperty("StatusCallbackContentType")
-    private String statusCallbackContentType =
-            ExotelStatusCallbackContentType.getDefault().getExotelName();
+    private String statusCallbackContentType;
 
     public static ExotelCallRequest of(String to, String callerId, boolean doRecord) {
         return new ExotelCallRequest().setTo(to).setCallerId(callerId).setDoRecord(doRecord);

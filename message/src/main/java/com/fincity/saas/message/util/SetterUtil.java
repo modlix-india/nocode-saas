@@ -56,6 +56,12 @@ public final class SetterUtil {
         if (value != null) setter.accept(value.toString());
     }
 
+    public static <T> void setIfPresent(T value, Consumer<T> consumer) {
+        if (value != null && (value.getClass() != String.class || !((String) value).isEmpty())) {
+            consumer.accept(value);
+        }
+    }
+
     public static Long parseLong(Object obj) {
         if (obj instanceof Number number) return number.longValue();
         try {

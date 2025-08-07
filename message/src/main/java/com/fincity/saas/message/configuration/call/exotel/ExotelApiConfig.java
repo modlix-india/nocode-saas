@@ -2,11 +2,11 @@ package com.fincity.saas.message.configuration.call.exotel;
 
 public class ExotelApiConfig {
 
-    public static final String SUB_DOMAIN = "api.exotel.com";
+    public static final String BASE_DOMAIN = "https://api.exotel.com/v1/Accounts";
 
     private ExotelApiConfig() {}
 
-    public static String getCallUrl(String accountSid) {
-        return "/v1/Accounts/" + accountSid + "/Calls/connect";
+    public static String getCallUrl() {
+        return "/Calls/connect.json";
     }
 }

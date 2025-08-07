@@ -32,14 +32,20 @@ public interface IClassConvertor {
 
             if (value.getClass().isArray()) {
                 IntStream.range(0, Array.getLength(value))
-                        .mapToObj(i -> Array.get(value, i))
-                        .filter(Objects::nonNull)
-                        .forEach(item -> formData.add(key, item.toString()));
+                        .forEach(i -> {
+                            Object item = Array.get(value, i);
+                            if (item != null) {
+                                formData.add(key + "[" + i + "]", item.toString());
+                            }
+                        });
             } else if (value instanceof Collection<?> collection) {
-                collection.stream()
-                        .filter(Objects::nonNull)
-                        .map(Object::toString)
-                        .forEach(item -> formData.add(key, item));
+                int index = 0;
+                for (Object item : collection) {
+                    if (item != null) {
+                        formData.add(key + "[" + index + "]", item.toString());
+                        index++;
+                    }
+                }
             } else {
                 formData.add(key, value.toString());
             }

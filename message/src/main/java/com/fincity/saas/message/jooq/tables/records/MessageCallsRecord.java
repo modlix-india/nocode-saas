@@ -124,19 +124,19 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     }
 
     /**
-     * Setter for <code>message.message_calls.FROM_PHONE</code>. Phone number of
-     * the caller.
+     * Setter for <code>message.message_calls.FROM</code>. Phone number of the
+     * caller.
      */
-    public MessageCallsRecord setFromPhone(String value) {
+    public MessageCallsRecord setFrom(String value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_calls.FROM_PHONE</code>. Phone number of
-     * the caller.
+     * Getter for <code>message.message_calls.FROM</code>. Phone number of the
+     * caller.
      */
-    public String getFromPhone() {
+    public String getFrom() {
         return (String) get(6);
     }
 
@@ -158,19 +158,19 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     }
 
     /**
-     * Setter for <code>message.message_calls.TO_PHONE</code>. Phone number of
-     * the receiver.
+     * Setter for <code>message.message_calls.TO</code>. Phone number of the
+     * receiver.
      */
-    public MessageCallsRecord setToPhone(String value) {
+    public MessageCallsRecord setTo(String value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_calls.TO_PHONE</code>. Phone number of
-     * the receiver.
+     * Getter for <code>message.message_calls.TO</code>. Phone number of the
+     * receiver.
      */
-    public String getToPhone() {
+    public String getTo() {
         return (String) get(8);
     }
 
@@ -469,7 +469,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     /**
      * Create a detached, initialised MessageCallsRecord
      */
-    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String callerId, String connectionName, String callProvider, Byte isOutbound, CallStatus callStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, String recordingUrl, ULong exotelCallId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String from, Short toDialCode, String to, String callerId, String connectionName, String callProvider, Byte isOutbound, CallStatus callStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, String recordingUrl, ULong exotelCallId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageCalls.MESSAGE_CALLS);
 
         setId(id);
@@ -478,9 +478,9 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
         setUserId(userId);
         setCode(code);
         setFromDialCode(fromDialCode);
-        setFromPhone(fromPhone);
+        setFrom(from);
         setToDialCode(toDialCode);
-        setToPhone(toPhone);
+        setTo(to);
         setCallerId(callerId);
         setConnectionName(connectionName);
         setCallProvider(callProvider);

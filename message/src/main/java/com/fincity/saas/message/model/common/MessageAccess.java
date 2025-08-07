@@ -22,20 +22,26 @@ public final class MessageAccess implements Serializable {
     private boolean hasAccessFlag;
     private ContextUser user;
 
-    public static MessageAccess of(String appCode, String clientCode, ULong userId, boolean hasAccessFlag) {
+    public static MessageAccess of(
+            String appCode, String clientCode, ULong userId, boolean hasAccessFlag, ContextUser user) {
         return new MessageAccess()
                 .setAppCode(appCode)
                 .setClientCode(clientCode)
                 .setUserId(userId)
-                .setHasAccessFlag(hasAccessFlag);
+                .setHasAccessFlag(hasAccessFlag)
+                .setUser(user);
+    }
+
+    public static MessageAccess of(String appCode, String clientCode, ULong userId, boolean hasAccessFlag) {
+        return of(appCode, clientCode, userId, hasAccessFlag, null);
     }
 
     public static MessageAccess of(String appCode, String clientCode, boolean hasAccessFlag) {
-        return of(appCode, clientCode, null, hasAccessFlag);
+        return of(appCode, clientCode, null, hasAccessFlag, null);
     }
 
     public static MessageAccess ofNull() {
-        return of(null, null, null, false);
+        return of(null, null, null, false, null);
     }
 
     public static MessageAccess of(ContextAuthentication ca) {
@@ -43,6 +49,7 @@ public final class MessageAccess implements Serializable {
                 ca.getUrlAppCode(),
                 ca.getClientCode(),
                 ULongUtil.valueOf(ca.getUser().getId()),
-                true);
+                true,
+                ca.getUser());
     }
 }

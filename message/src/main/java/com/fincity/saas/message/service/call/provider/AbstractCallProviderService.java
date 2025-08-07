@@ -64,7 +64,7 @@ public abstract class AbstractCallProviderService<
 
     protected Mono<Boolean> isValidConnection(Connection connection) {
         if (connection.getConnectionType() != ConnectionType.CALL
-                || connection.getConnectionSubType().equals(this.getConnectionSubType()))
+                || !connection.getConnectionSubType().equals(this.getConnectionSubType()))
             return super.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     MessageResourceService.INVALID_CONNECTION_TYPE);
@@ -108,7 +108,8 @@ public abstract class AbstractCallProviderService<
     protected Mono<String> getCallBackUrl(String appCode, String clientCode) {
         return this.securityService
                 .getAppUrl(appCode, clientCode)
-                .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri());
+                .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri())
+                .switchIfEmpty(Mono.just(""));
     }
 
     protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {

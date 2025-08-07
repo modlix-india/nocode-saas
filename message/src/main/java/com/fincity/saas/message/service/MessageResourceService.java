@@ -1,10 +1,13 @@
 package com.fincity.saas.message.service;
 
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.function.Function;
+
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -60,6 +63,14 @@ public class MessageResourceService extends AbstractMessageService {
                 .defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
                 .map(bundle ->
                         bundle.containsKey(messageId) ? bundle.getString(messageId) : bundle.getString(UKNOWN_ERROR));
+    }
+
+    public <T> Mono<T> throwStrMessage(Function<String, GenericException> genericExceptionFunction, String message) {
+        return Mono.defer(
+                () -> Mono.just(message)
+                        .map(genericExceptionFunction)
+                        .flatMap(Mono::error)
+        );
     }
 
     private ResourceBundle findResourceBundle(Locale locale) {

@@ -47,4 +47,14 @@ public class ConnectionController
     public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName) {
         return this.oAuth2RestService.getAccessToken(connectionName);
     }
+
+    @GetMapping("/internal")
+    public Mono<Connection> getConnection(
+            @RequestParam String connectionName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam String connectionType) {
+        return this.service.readInternalConnection(
+                connectionName, appCode, clientCode, ConnectionType.valueOf(connectionType));
+    }
 }

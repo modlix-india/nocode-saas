@@ -1,6 +1,8 @@
 package com.fincity.saas.message.service.call.provider.exotel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
@@ -17,13 +19,19 @@ import com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnect
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnectAppletResponse;
+import com.fincity.saas.message.model.response.call.provider.exotel.ExotelErrorResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
+import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.util.PhoneUtil;
+import com.fincity.saas.message.util.SetterUtil;
+
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -35,6 +43,9 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     protected String getCacheName() {
@@ -99,27 +110,42 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     private void applyConnectionDetailsToRequest(ExotelCallRequest request, Map<String, Object> details) {
-        request.setCallType(super.getConnectionDetail(details, ExotelCallRequest.Fields.callType, String.class));
-        request.setTimeLimit(super.getConnectionDetail(details, ExotelCallRequest.Fields.timeLimit, Integer.class));
-        request.setTimeOut(super.getConnectionDetail(details, ExotelCallRequest.Fields.timeOut, Integer.class));
-        request.setWaitUrl(super.getConnectionDetail(details, ExotelCallRequest.Fields.waitUrl, String.class));
-        request.setDoRecord(super.getConnectionDetail(details, ExotelCallRequest.Fields.doRecord, Boolean.class));
-        request.setRecordingChannels(
-                super.getConnectionDetail(details, ExotelCallRequest.Fields.recordingChannels, String.class));
-        request.setRecordingFormat(
-                super.getConnectionDetail(details, ExotelCallRequest.Fields.recordingFormat, String.class));
-        request.setStatusCallback(
-                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallback, String.class));
-        request.setStatusCallbackEvents(
-                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallbackEvents, String[].class));
-        request.setStatusCallbackContentType(
-                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallbackContentType, String.class));
-        request.setCustomField(super.getConnectionDetail(details, ExotelCallRequest.Fields.customField, String.class));
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.callType, String.class),
+                request::setCallType);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.timeLimit, Integer.class),
+                request::setTimeLimit);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.timeOut, Integer.class),
+                request::setTimeOut);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.waitUrl, String.class),
+                request::setWaitUrl);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.doRecord, Boolean.class),
+                request::setDoRecord);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.recordingChannels, String.class),
+                request::setRecordingChannels);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.recordingFormat, String.class),
+                request::setRecordingFormat);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallback, String.class),
+                request::setStatusCallback);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallbackEvents, String[].class),
+                request::setStatusCallbackEvents);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.statusCallbackContentType, String.class),
+                request::setStatusCallbackContentType);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelCallRequest.Fields.customField, String.class),
+                request::setCustomField);
     }
 
     private Mono<ExotelCall> makeExotelCall(MessageAccess messageAccess, ExotelCallRequest request, Connection conn) {
-        Map<String, Object> details = conn.getConnectionDetails();
-        String accountSid = (String) details.get("accountSid");
 
         request.setFrom(
                 PhoneUtil.parse(messageAccess.getUser().getPhoneNumber()).getNumber());
@@ -128,16 +154,38 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         () -> super.getCallBackUrl(conn.getAppCode(), conn.getClientCode()),
                         callBackUri -> request.setStatusCallback(callBackUri).toFormDataAsync(),
                         (callBackUri, formData) -> webClientConfig.createExotelWebClient(conn),
-                        (callBackUri, formData, webClient) -> webClient
-                                .post()
-                                .uri(ExotelApiConfig.getCallUrl(accountSid))
-                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                                .body(BodyInserters.fromFormData(formData))
-                                .retrieve()
-                                .bodyToMono(ExotelCallResponse.class)
-                                .map(response -> new ExotelCall(request)
-                                        .setUserId(messageAccess.getUserId())
-                                        .update(response)))
+                        (callBackUri, formData, webClient) -> {
+                            logger.debug("Exotel API Request FormData: {}", formData);
+
+                            return webClient
+                                    .post()
+                                    .uri(ExotelApiConfig.getCallUrl())
+                                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                                    .bodyValue(formData)
+                                    .retrieve()
+                                    .onStatus(
+                                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                                            clientResponse -> clientResponse
+                                                    .bodyToMono(ExotelErrorResponse.class)
+                                                    .flatMap(errorBody -> {
+                                                        logger.error(
+                                                                "Error response received from Exotel: {}", errorBody);
+                                                        return this.msgService.throwStrMessage(
+                                                                msg -> new GenericException(
+                                                                        HttpStatus.resolve(
+                                                                                errorBody
+                                                                                        .getRestException()
+                                                                                        .getStatus()),
+                                                                        msg),
+                                                                errorBody
+                                                                        .getRestException()
+                                                                        .getMessage());
+                                                    }))
+                                    .bodyToMono(ExotelCallResponse.class)
+                                    .map(response -> new ExotelCall(request)
+                                            .setUserId(messageAccess.getUserId())
+                                            .update(response));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeExotelCall"));
     }
 
@@ -193,6 +241,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                                     tuple.getT1())
                                             .thenReturn(tuple.getT3()));
                         })
+                .cast(ExotelConnectAppletResponse.class)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
     }
 

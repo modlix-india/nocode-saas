@@ -59,10 +59,10 @@ public interface IMessageAccessService {
                                         ca.getUser().getId(),
                                         acTup.getT2())),
                 (acTup, hasAppAccess, isUserManaged) -> Mono.just(MessageAccess.of(
-                                acTup.getT1(),
-                                acTup.getT2(),
-                                ULongUtil.valueOf(ca.getUser().getId()),
-                                hasAppAccess && isUserManaged)
-                        .setUser(ca.getUser())));
+                        acTup.getT1(),
+                        acTup.getT2(),
+                        ULongUtil.valueOf(ca.getUser().getId()),
+                        hasAppAccess && isUserManaged,
+                        ca.getUser())));
     }
 }

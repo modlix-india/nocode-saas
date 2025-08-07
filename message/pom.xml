@@ -51,7 +51,7 @@
         <package.o.freemarker.version>2.3.34</package.o.freemarker.version>
         <package.o.jakarta.mail.version>2.0.1</package.o.jakarta.mail.version>
         <package.o.jakarta.websocket-api.version>2.2.0</package.o.jakarta.websocket-api.version>
-        <package.o.jooq.version>3.20.3</package.o.jooq.version>
+        <package.o.jooq.version>3.20.5</package.o.jooq.version>
         <package.o.palantir-java.format.version>2.70.0</package.o.palantir-java.format.version>
         <package.o.sendgrid-java.version>4.10.3</package.o.sendgrid-java.version>
         <package.o.spotless.version>2.45.0</package.o.spotless.version>
