@@ -21,6 +21,7 @@ files:
     accessKeyId: 2229a18802734bc30a8419a2e622187c
     secretAccessKey: e3176a3ebe9532faedf2853988b48722861a8ff859a2167c3df82311e205b8a9
     bucketPrefix: local
+
 multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
@@ -66,6 +67,14 @@ entity-processor:
     password: Vishwas123#
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
+
+notification:
+  db:
+    url: r2dbc:mysql://localhost:3306/notification?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/notification
 
 message:
   mongo:

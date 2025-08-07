@@ -49,6 +49,7 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 "/api/core/functions/repositoryFind",
                 "/api/core/connections/oauth/evoke",
                 "/api/core/connections/oauth/callback",
-                "/api/core/connections/internal");
+                "/api/core/connections/internal",
+                "/api/core/notifications/internal");
     }
 }

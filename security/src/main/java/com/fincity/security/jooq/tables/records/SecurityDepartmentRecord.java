@@ -209,6 +209,6 @@ public class SecurityDepartmentRecord extends UpdatableRecordImpl<SecurityDepart
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

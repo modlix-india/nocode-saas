@@ -33,6 +33,10 @@ spring:
           uri: lb://entity-processor
           predicates:
             - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**,
+        - id: notification
+          uri: lb://notification
+          predicates:
+            - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**,
         - id: message
           uri: lb://message
           predicates:

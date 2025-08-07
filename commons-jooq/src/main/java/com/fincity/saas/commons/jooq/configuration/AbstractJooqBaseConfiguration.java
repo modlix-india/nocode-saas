@@ -7,10 +7,8 @@ import org.jooq.impl.DSL;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;

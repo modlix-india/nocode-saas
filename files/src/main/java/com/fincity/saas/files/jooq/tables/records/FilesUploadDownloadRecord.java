@@ -262,6 +262,6 @@ public class FilesUploadDownloadRecord extends UpdatableRecordImpl<FilesUploadDo
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

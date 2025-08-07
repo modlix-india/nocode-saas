@@ -5,17 +5,21 @@ import java.util.Set;
 public enum ConnectionType {
     APP_DATA(ConnectionSubType.MONGO),
 
-    WHATSAPP,
-
-    WHATSAPP_TEMPLATE,
-
     MAIL(ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
 
-    TEXT_MESSAGE,
+    REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
-    CALL(ConnectionSubType.EXOTEL),
+    NOTIFICATION,
 
-    REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2);
+    IN_APP,
+
+    MOBILE_PUSH,
+
+    WEB_PUSH,
+
+    SMS,
+    CALL(ConnectionSubType.EXOTEL);
+
 
     private final Set<ConnectionSubType> allowedSubtypes;
 
