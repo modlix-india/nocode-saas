@@ -327,7 +327,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     }
 
     public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
-        return this.dao.hasReadAccess(appCode, clientCode);
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
+                () -> this.dao.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
     }
 
     public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
@@ -895,5 +896,17 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     @Override
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return this.hasWriteAccess(id, clientId);
+    }
+
+    public Mono<Map<String, Boolean>> hasReadAccess(String[] appCodes) {
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> Flux.fromArray(appCodes).flatMap(code -> this.hasReadAccess(code, ca.getClientCode())
+                                .map(e -> Tuples.of(code, e)))
+                        .collectMap(Tuple2::getT1, Tuple2::getT2)
+
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"));
     }
 }
