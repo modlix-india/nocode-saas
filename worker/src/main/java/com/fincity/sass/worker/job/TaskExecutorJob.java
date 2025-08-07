@@ -34,11 +34,7 @@ public class TaskExecutorJob implements Job {
         String jobName = context.getJobDetail().getKey().getName();
         String jobGroup = context.getJobDetail().getKey().getGroup();
 
-        logger.debug("Executing job: {} in group: {}", jobName, jobGroup);
-
-//        Resource banner = new Resource("banner.txt");
-//        String content = new String(banner.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-//        System.out.println(content);
+        logger.info("Executing job: {} in group: {}", jobName, jobGroup);
 
         logger.debug(
                 " __          __        _             \n" +
@@ -49,13 +45,22 @@ public class TaskExecutorJob implements Job {
                 "     \\/  \\/ \\___/|_|  |_|\\_\\___|_|   ");
 
 
-        /// after execution update the task entity
 
-//        Task task = (Task) taskService.findByNameNGroup(jobName, jobGroup).subscribe();
+        String taskId = context.getJobDetail().getJobDataMap().getString(TASK_ID);
+        String taskData = context.getJobDetail().getJobDataMap().getString(TASK_DATA);
 
-//        Task.status
+        if (taskId == null) {
+            logger.error("Task ID not found in job data map");
+            throw new JobExecutionException("Task ID not found in job data map");
+        }
 
-//        taskService.update(task);
-//
+        taskExecutionService.executeTask(taskId)
+                .subscribe(
+                        result -> logger.info("{} task in {} completed successfully: {}",jobName, jobGroup, result),
+                        error -> {
+                            logger.error("Error executing task: {}", error.getMessage());
+                            throw new RuntimeException(error);
+                        }
+                );
     }
 }

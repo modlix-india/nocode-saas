@@ -62,6 +62,7 @@ public class QuartzService {
         SchedulerFactoryBean factory =
                 quartzConfiguration.createSchedulerFactory(applicationContext, workerScheduler.getName());
 
+        //fully initialize the factory with properties set on the factory bean
         factory.afterPropertiesSet();
 
         // Step 2: Get the scheduler instance

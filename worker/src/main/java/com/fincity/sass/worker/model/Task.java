@@ -26,9 +26,11 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong>{
     private ULong clientId;
     private ULong appId;
     private String status;
-//    private Trigger.TriggerState status;
     private ULong schedulerId;
     private String description;
+    private String functionName;
+    private String functionNamespace;
+    private String functionParams;
     private Boolean durable;
     private WorkerTaskJobType jobType;
     private LocalDateTime startTime = LocalDateTime.now();
