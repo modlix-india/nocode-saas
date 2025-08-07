@@ -258,6 +258,6 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

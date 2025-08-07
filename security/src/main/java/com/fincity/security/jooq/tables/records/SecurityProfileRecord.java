@@ -258,6 +258,6 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

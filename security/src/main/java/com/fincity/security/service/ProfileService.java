@@ -1,12 +1,12 @@
 package com.fincity.security.service;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import com.fincity.saas.commons.util.StringUtil;
-import com.google.common.base.Functions;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
@@ -256,7 +256,7 @@ public class ProfileService
         }
 
         Map<ULong, Map<String, Object>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
-                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Functions.identity()));
+                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Function.identity()));
 
         if (roleIndex.isEmpty()) return Mono.just(p);
 

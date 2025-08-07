@@ -185,6 +185,6 @@ public class SecurityClientUrlRecord extends UpdatableRecordImpl<SecurityClientU
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

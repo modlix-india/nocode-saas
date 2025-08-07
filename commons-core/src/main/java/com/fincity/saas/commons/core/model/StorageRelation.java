@@ -39,13 +39,12 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
     @Override
     public Mono<StorageRelation> extractDifference(StorageRelation inc) {
-        if (inc == null)
-            return Mono.just(this);
+        if (inc == null) return Mono.just(this);
 
         StorageRelation diff = new StorageRelation();
 
-        diff.uniqueRelationId = !CommonsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId) ? null
-                : this.uniqueRelationId;
+        diff.uniqueRelationId =
+                !CommonsUtil.safeEquals(this.uniqueRelationId, inc.uniqueRelationId) ? null : this.uniqueRelationId;
 
         diff.storageName = !CommonsUtil.safeEquals(this.storageName, inc.storageName) ? null : this.storageName;
 
@@ -53,37 +52,30 @@ public class StorageRelation implements Serializable, IDifferentiable<StorageRel
 
         diff.fieldName = !CommonsUtil.safeEquals(this.fieldName, inc.fieldName) ? null : this.fieldName;
 
-        diff.deleteConstraint = !CommonsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint) ? null
-                : this.deleteConstraint;
+        diff.deleteConstraint =
+                !CommonsUtil.safeEquals(this.deleteConstraint, inc.deleteConstraint) ? null : this.deleteConstraint;
 
-        diff.updateConstraint = !CommonsUtil.safeEquals(this.updateConstraint, inc.updateConstraint) ? null
-                : this.updateConstraint;
+        diff.updateConstraint =
+                !CommonsUtil.safeEquals(this.updateConstraint, inc.updateConstraint) ? null : this.updateConstraint;
 
         return Mono.just(diff).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageRelation.extractDifference"));
     }
 
     @Override
     public Mono<StorageRelation> applyOverride(StorageRelation override) {
-        if (override == null)
-            return Mono.just(this);
+        if (override == null) return Mono.just(this);
 
-        if (this.uniqueRelationId == null)
-            this.uniqueRelationId = override.uniqueRelationId;
+        if (this.uniqueRelationId == null) this.uniqueRelationId = override.uniqueRelationId;
 
-        if (this.storageName == null)
-            this.storageName = override.storageName;
+        if (this.storageName == null) this.storageName = override.storageName;
 
-        if (this.relationType == null)
-            this.relationType = override.relationType;
+        if (this.relationType == null) this.relationType = override.relationType;
 
-        if (this.fieldName == null)
-            this.fieldName = override.fieldName;
+        if (this.fieldName == null) this.fieldName = override.fieldName;
 
-        if (this.deleteConstraint == null)
-            this.deleteConstraint = override.deleteConstraint;
+        if (this.deleteConstraint == null) this.deleteConstraint = override.deleteConstraint;
 
-        if (this.updateConstraint == null)
-            this.updateConstraint = override.updateConstraint;
+        if (this.updateConstraint == null) this.updateConstraint = override.updateConstraint;
 
         return Mono.just(this).contextWrite(Context.of(LogUtil.METHOD_NAME, "StorageRelation.applyOverride"));
     }

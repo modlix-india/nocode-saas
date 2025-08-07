@@ -576,6 +576,6 @@ public class SecurityUserRecord extends UpdatableRecordImpl<SecurityUserRecord> 
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -239,6 +239,6 @@ public class FilesFileSystemRecord extends UpdatableRecordImpl<FilesFileSystemRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

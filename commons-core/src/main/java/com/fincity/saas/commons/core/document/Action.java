@@ -4,7 +4,6 @@ import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
-
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -42,17 +41,14 @@ public class Action extends AbstractOverridableDTO<Action> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Action> applyOverride(Action base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return DifferenceApplicator.apply(this.properties, base.properties)
                 .defaultIfEmpty(Map.of())
                 .map(a -> {
                     this.properties = (Map<String, String>) a;
-                    if (this.functionNamespace == null)
-                        this.functionNamespace = base.functionNamespace;
-                    if (this.functionName == null)
-                        this.functionName = base.functionName;
+                    if (this.functionNamespace == null) this.functionNamespace = base.functionNamespace;
+                    if (this.functionName == null) this.functionName = base.functionName;
                     return this;
                 });
     }
@@ -60,8 +56,7 @@ public class Action extends AbstractOverridableDTO<Action> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Action> makeOverride(Action base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return Mono.just(this).flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)
                 .map(k -> {
