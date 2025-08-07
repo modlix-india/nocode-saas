@@ -7,7 +7,6 @@ package com.fincity.saas.message.jooq;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
-import com.fincity.saas.message.jooq.tables.MessageProviderIdentifiers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
@@ -49,11 +48,6 @@ public class Message extends SchemaImpl {
     public final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
 
     /**
-     * The table <code>message.message_provider_identifiers</code>.
-     */
-    public final MessageProviderIdentifiers MESSAGE_PROVIDER_IDENTIFIERS = MessageProviderIdentifiers.MESSAGE_PROVIDER_IDENTIFIERS;
-
-    /**
      * The table <code>message.message_whatsapp_messages</code>.
      */
     public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
@@ -87,7 +81,6 @@ public class Message extends SchemaImpl {
             MessageCalls.MESSAGE_CALLS,
             MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
             MessageMessages.MESSAGE_MESSAGES,
-            MessageProviderIdentifiers.MESSAGE_PROVIDER_IDENTIFIERS,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
             MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER,
             MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES

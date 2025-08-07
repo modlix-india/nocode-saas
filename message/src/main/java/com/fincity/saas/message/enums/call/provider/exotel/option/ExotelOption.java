@@ -1,6 +1,5 @@
 package com.fincity.saas.message.enums.call.provider.exotel.option;
 
-import jakarta.validation.constraints.NotNull;
 import org.jooq.EnumType;
 
 public interface ExotelOption<E extends ExotelOption<E>> extends EnumType {
@@ -18,9 +17,9 @@ public interface ExotelOption<E extends ExotelOption<E>> extends EnumType {
         return getDefault(enumType);
     }
 
-    @NotNull String getExotelName();
+    String getExotelName();
 
-    @NotNull String getName();
+    String getName();
 
     boolean isDefault();
 }

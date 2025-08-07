@@ -59,7 +59,7 @@ public abstract class AbstractCallProviderService<
 
     @Override
     public ConnectionType getConnectionType() {
-        return ConnectionType.TEXT_MESSAGE;
+        return ConnectionType.CALL;
     }
 
     protected Mono<Boolean> isValidConnection(Connection connection) {

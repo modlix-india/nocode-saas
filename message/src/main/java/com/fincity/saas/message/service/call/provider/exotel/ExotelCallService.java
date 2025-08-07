@@ -44,9 +44,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Override
     protected String getCacheName() {
         return EXOTEL_CALL_CACHE;

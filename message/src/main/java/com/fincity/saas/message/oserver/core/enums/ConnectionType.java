@@ -1,44 +1,33 @@
 package com.fincity.saas.message.oserver.core.enums;
 
 import java.util.Set;
-import lombok.Getter;
-import org.jooq.EnumType;
 
-@Getter
-public enum ConnectionType implements EnumType {
-    APP_DATA("APP_DATA", ConnectionSubType.MONGO),
+public enum ConnectionType {
+    APP_DATA(ConnectionSubType.MONGO),
 
-    MAIL("MAIL", ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
+    MAIL(ConnectionSubType.SENDGRID, ConnectionSubType.SMTP),
 
-    REST_API(
-            "REST_API",
-            ConnectionSubType.REST_API_BASIC,
-            ConnectionSubType.REST_API_AUTH,
-            ConnectionSubType.REST_API_OAUTH2),
+    REST_API(ConnectionSubType.REST_API_BASIC, ConnectionSubType.REST_API_AUTH, ConnectionSubType.REST_API_OAUTH2),
 
-    CALL("CALL", ConnectionSubType.EXOTEL),
+    NOTIFICATION,
 
-    TEXT_MESSAGE("TEXT_MESSAGE", ConnectionSubType.WHATSAPP);
+    IN_APP,
 
-    private final String literal;
+    MOBILE_PUSH,
+
+    WEB_PUSH,
+
+    SMS(ConnectionSubType.WHATSAPP),
+
+    CALL(ConnectionSubType.EXOTEL);
+
     private final Set<ConnectionSubType> allowedSubtypes;
 
-    ConnectionType(String literal, ConnectionSubType... allowedSubtypes) {
-        this.literal = literal;
+    ConnectionType(ConnectionSubType... allowedSubtypes) {
         this.allowedSubtypes = allowedSubtypes == null ? Set.of() : Set.of(allowedSubtypes);
     }
 
     public boolean hasConnectionSubType(ConnectionSubType subType) {
         return this.allowedSubtypes.contains(subType);
-    }
-
-    @Override
-    public String getLiteral() {
-        return literal;
-    }
-
-    @Override
-    public String getName() {
-        return "";
     }
 }

@@ -17,9 +17,9 @@ public enum ConnectionType {
 
     WEB_PUSH,
 
-    SMS,
-    CALL(ConnectionSubType.EXOTEL);
+    SMS(ConnectionSubType.WHATSAPP),
 
+    CALL(ConnectionSubType.EXOTEL);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 
