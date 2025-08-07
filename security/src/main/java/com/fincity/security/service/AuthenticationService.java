@@ -950,7 +950,7 @@ public class AuthenticationService implements IAuthenticationService {
 
     public Mono<UserAccess> getUserAppAccess(UserAppAccessRequest request, ServerHttpRequest httpRequest) {
 
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMonoWithNull(
 
                         SecurityContextUtil::getUsersContextAuthentication,
 
@@ -959,17 +959,30 @@ public class AuthenticationService implements IAuthenticationService {
                         (ca, app) ->
                                 this.profileService.checkIfUserHasAnyProfile(ULong.valueOf(ca.getUser().getId()), request.getAppCode()),
 
-                        (ca, app, appAccess) -> this.userService.checkIfUserIsOwner(ULong.valueOf(ca.getUser().getId())),
+                        (ca, app, appAccess) -> appAccess ? Mono.empty() :
+                                this.userService.checkIfUserIsOwner(ULong.valueOf(ca.getUser().getId())),
 
-                        (ca, app, appAccess, ownerAccess) -> this.oneTimeTokenService.create(new OneTimeToken()
-                                .setIpAddress(getRemoteAddressFrom(httpRequest))
-                                .setUserId(ULong.valueOf(ca.getUser().getId()))),
+                        (ca, app, appAccess, ownerAccess) -> appAccess ? Mono.empty() :
+                                this.oneTimeTokenService.create(new OneTimeToken()
+                                        .setIpAddress(getRemoteAddressFrom(httpRequest))
+                                        .setUserId(ULong.valueOf(ca.getUser().getId()))),
 
-                        (ca, app, appAccess, ownerAccess, token) -> Mono.just(new UserAccess()
-                                .setApp(appAccess)
-                                .setOwner(ownerAccess)
-                                .setAppOneTimeToken(token.getToken())
-                                .setAppURL(this.fillValues(request.getCallbackUrl(), token.getToken()))))
+                        (ca, app, appAccess, ownerAccess, token) -> !appAccess && ownerAccess ?
+                                this.appService.hasReadAccess(request.getAppCode(), ca.getClientCode()) : Mono.empty(),
+
+                        (ca, app, appAccess, ownerAccess, token, clientAccess) -> {
+
+                            UserAccess userAccess = new UserAccess()
+                                    .setApp(BooleanUtil.safeValueOf(appAccess))
+                                    .setClientAccess(BooleanUtil.safeValueOf(clientAccess))
+                                    .setOwner(BooleanUtil.safeValueOf(ownerAccess));
+
+                            if (token != null)
+                                userAccess.setAppOneTimeToken(token.getToken())
+                                        .setAppURL(this.fillValues(request.getCallbackUrl(), token.getToken()));
+
+                            return Mono.just(userAccess);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.checkUserAccess"))
                 .switchIfEmpty(Mono.error(new GenericException(
                         HttpStatus.UNAUTHORIZED, "access denied for app code: " + request.getAppCode())));
