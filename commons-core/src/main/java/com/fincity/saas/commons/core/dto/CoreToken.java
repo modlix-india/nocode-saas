@@ -5,7 +5,6 @@ import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

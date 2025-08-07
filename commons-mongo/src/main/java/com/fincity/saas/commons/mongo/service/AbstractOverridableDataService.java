@@ -98,6 +98,10 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         super(pojoClass);
     }
 
+    protected String getOutsideServerCacheName(String... entityNames) {
+        return String.join("_", entityNames);
+    }
+
     @Override
     public Mono<D> create(D entity) {
 
@@ -723,62 +727,67 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readToTrasnport"));
     }
 
-    public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) { // NOSONAR
+    public Mono<ObjectWithUniqueID<D>> read(String name, String appCode, String clientCode) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> ca == null || ca.getUrlClientCode() == null ? Mono.just(clientCode)
+                                : Mono.just(ca.getUrlClientCode()),
+
+                        (ca, uClientCode) -> this.readInternal(name, appCode, uClientCode, clientCode))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"));
+    }
+
+    protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String clientCode) {
+        return this.readInternal(name, appCode, clientCode, clientCode)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+    }
+
+    private Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode, String clientCode) {
         // Just one complexity point is not a reason to break this function
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                        () -> Mono.just(clientCode),
+                () -> Mono.just(clientCode),
 
-                        key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
+                key -> cacheService.<ObjectWithUniqueID<D>>get(this.getCacheName(appCode, name), key),
 
-                        (key, cApp) -> {
+                (key, cEntity) -> cEntity != null ? Mono.just(cEntity.getObject())
+                        : this.readIfExistsInBase(name, appCode, urlClientCode, clientCode),
 
-                            if (cApp != null)
-                                return Mono.just(cApp.getObject());
+                (key, cEntity, bEntity) -> bEntity == null ? Mono.empty() : this.readInternal(bEntity.getId()),
 
-                            return SecurityContextUtil.getUsersContextAuthentication()
-                                    .map(ContextAuthentication::getUrlClientCode)
-                                    .defaultIfEmpty(clientCode)
-                                    .flatMap(cc -> readIfExistsInBase(name, appCode, cc, clientCode));
-                        },
+                (key, cEntity, bEntity, mEntity) -> {
+                    if (cEntity == null && mEntity == null)
+                        return Mono.empty();
 
-                        (key, cApp, dbApp) -> Mono.justOrEmpty(dbApp)
-                                .flatMap(da -> this.readInternal(da.getId())).map(this.pojoClass::cast),
+                    try {
+                        return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
+                                .newInstance(cEntity != null ? cEntity.getObject() : mEntity));
+                    } catch (IllegalAccessException | IllegalArgumentException | InstantiationException
+                             | NoSuchMethodException | SecurityException | InvocationTargetException e) {
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
+                                AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
+                    }
+                },
 
-                        (key, cApp, dbApp, mergedApp) -> {
+                (key, cEntity, bEntity, mEntity, clonedEntity) -> {
+                    if (clonedEntity == null)
+                        return Mono.empty();
 
-                            if (cApp == null && mergedApp == null)
-                                return Mono.empty();
+                    String checksumCode = cEntity == null ? UniqueUtil.shortUUID() : cEntity.getUniqueId();
 
-                            try {
-                                return Mono.just(this.pojoClass.getConstructor(this.pojoClass)
-                                        .newInstance(cApp != null ? cApp.getObject() : mergedApp));
-                            } catch (IllegalAccessException | IllegalArgumentException | InstantiationException
-                                     | NoSuchMethodException | SecurityException | InvocationTargetException e) {
+                    if (cEntity == null && mEntity != null)
+                        cacheService.put(this.getCacheName(appCode, name),
+                                new ObjectWithUniqueID<>(mEntity, checksumCode), key);
 
-                                return this.messageResourceService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, e),
-                                        AbstractMongoMessageResourceService.UNABLE_TO_CREATE_OBJECT, this.getObjectName());
-                            }
-                        },
-
-                        (key, cApp, dbApp, mergedApp, clonedApp) -> {
-
-                            if (clonedApp == null)
-                                return Mono.<ObjectWithUniqueID<D>>empty();
-
-                            String checksumCode = cApp == null ? UniqueUtil.shortUUID() : cApp.getUniqueId();
-
-                            if (cApp == null && mergedApp != null) {
-                                cacheService.put(this.getCacheName(appCode, name),
-                                        new ObjectWithUniqueID<>(mergedApp, checksumCode), key);
-                            }
-
-                            return this.applyChange(name, appCode, clientCode, clonedApp, checksumCode);
-                        })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"));
+                    return this.applyChange(name, appCode, clientCode, clonedEntity, checksumCode);
+                });
     }
 
     protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
