@@ -14,6 +14,7 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -54,7 +55,7 @@ public class Files extends SchemaImpl {
      * No further instances allowed
      */
     private Files() {
-        super("files", null);
+        super(DSL.name("files"), null, DSL.comment(""));
     }
 
 

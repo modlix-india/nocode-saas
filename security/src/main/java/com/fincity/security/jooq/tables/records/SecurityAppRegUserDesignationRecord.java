@@ -222,6 +222,6 @@ public class SecurityAppRegUserDesignationRecord extends UpdatableRecordImpl<Sec
         setDesignationId(designationId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

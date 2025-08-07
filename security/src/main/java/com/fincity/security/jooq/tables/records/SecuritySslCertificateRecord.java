@@ -335,6 +335,6 @@ public class SecuritySslCertificateRecord extends UpdatableRecordImpl<SecuritySs
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

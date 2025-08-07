@@ -297,6 +297,6 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         setUpdatedAt(updatedAt);
         setBusinessSize(businessSize);
         setIndustry(industry);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

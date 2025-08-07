@@ -265,6 +265,6 @@ public class SecurityDesignationRecord extends UpdatableRecordImpl<SecurityDesig
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

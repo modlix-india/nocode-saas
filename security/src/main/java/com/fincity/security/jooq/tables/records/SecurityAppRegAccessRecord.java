@@ -222,6 +222,6 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
         setBusinessType(businessType);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

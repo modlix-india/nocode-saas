@@ -133,6 +133,6 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
         setToken(token);
         setIpAddress(ipAddress);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

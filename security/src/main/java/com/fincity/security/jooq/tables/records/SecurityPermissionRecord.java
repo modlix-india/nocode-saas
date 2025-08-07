@@ -205,6 +205,6 @@ public class SecurityPermissionRecord extends UpdatableRecordImpl<SecurityPermis
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
