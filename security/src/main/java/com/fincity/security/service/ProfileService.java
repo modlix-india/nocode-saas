@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import com.fincity.saas.commons.util.StringUtil;
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang.NotImplementedException;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;

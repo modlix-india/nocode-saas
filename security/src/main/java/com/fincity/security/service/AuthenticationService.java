@@ -962,10 +962,9 @@ public class AuthenticationService implements IAuthenticationService {
                         (ca, app, appAccess) -> appAccess ? Mono.empty() :
                                 this.userService.checkIfUserIsOwner(ULong.valueOf(ca.getUser().getId())),
 
-                        (ca, app, appAccess, ownerAccess) -> appAccess ? Mono.empty() :
-                                this.oneTimeTokenService.create(new OneTimeToken()
-                                        .setIpAddress(getRemoteAddressFrom(httpRequest))
-                                        .setUserId(ULong.valueOf(ca.getUser().getId()))),
+                        (ca, app, appAccess, ownerAccess) -> appAccess ? this.oneTimeTokenService.create(new OneTimeToken()
+                                .setIpAddress(getRemoteAddressFrom(httpRequest))
+                                .setUserId(ULong.valueOf(ca.getUser().getId()))) : Mono.empty(),
 
                         (ca, app, appAccess, ownerAccess, token) -> !appAccess && ownerAccess ?
                                 this.appService.hasReadAccess(request.getAppCode(), ca.getClientCode()) : Mono.empty(),
