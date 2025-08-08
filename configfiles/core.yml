@@ -38,3 +38,8 @@ spring:
 redis:
   cache:
     prefix: cor
+
+facebook:
+  whatsapp:
+    webhook:
+      verify-token: ~

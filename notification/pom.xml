@@ -9,10 +9,11 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
         <relativePath/>
+        <!-- lookup parent from a repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>notification</artifactId>
-    <version>1.1.0</version>
+    <version>1.0.0</version>
     <name>Notification</name>
     <description>Fincity SAAS Notification Server</description>
     <properties>

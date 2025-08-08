@@ -1,13 +1,12 @@
 package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
-import java.io.Serializable;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.util.SpringContextAccessor;
 import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fincity.saas.commons.util.SpringContextAccessor;
-import com.google.gson.Gson;
+import java.io.Serializable;
 
 public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> implements Serializable {
 
@@ -17,8 +16,8 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
         super(fromType, toType);
     }
 
-    private Gson gson() {
-        return SpringContextAccessor.getBean(Gson.class);
+    private ObjectMapper objectMapper() {
+        return SpringContextAccessor.getBean(ObjectMapper.class);
     }
 
     protected abstract String toData(T databaseObject);
@@ -37,7 +36,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
 
         try {
             String data = this.toData(databaseObject);
-            return gson().fromJson(data, toType());
+            return objectMapper().readValue(data, toType());
         } catch (Exception e) {
             logger.error("Error when converting JSON to {}", toType(), e);
             return defaultIfError();
@@ -49,7 +48,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
         if (userObject == null) return this.valueIfNull();
 
         try {
-            String jsonString = gson().toJson(userObject, toType());
+            String jsonString = objectMapper().writeValueAsString(userObject);
             return this.toJson(jsonString);
         } catch (Exception e) {
             logger.error("Error when converting object of type {} to JSON", toType(), e);
