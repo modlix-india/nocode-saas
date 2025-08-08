@@ -8,7 +8,6 @@ import com.fincity.saas.message.oserver.core.document.Connection;
 import java.util.Base64;
 import java.util.Map;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 

@@ -1,12 +1,10 @@
 package com.fincity.saas.message.enums.call.provider.exotel;
 
-import org.jooq.EnumType;
-
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fincity.saas.message.enums.call.CallStatus;
 import com.fincity.saas.message.enums.call.ICallStatus;
-
 import lombok.Getter;
+import org.jooq.EnumType;
 
 @Getter
 public enum ExotelCallStatus implements EnumType, ICallStatus {

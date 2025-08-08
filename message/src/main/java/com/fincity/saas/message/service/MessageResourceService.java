@@ -7,7 +7,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.function.Function;
-
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -66,11 +65,7 @@ public class MessageResourceService extends AbstractMessageService {
     }
 
     public <T> Mono<T> throwStrMessage(Function<String, GenericException> genericExceptionFunction, String message) {
-        return Mono.defer(
-                () -> Mono.just(message)
-                        .map(genericExceptionFunction)
-                        .flatMap(Mono::error)
-        );
+        return Mono.defer(() -> Mono.just(message).map(genericExceptionFunction).flatMap(Mono::error));
     }
 
     private ResourceBundle findResourceBundle(Locale locale) {

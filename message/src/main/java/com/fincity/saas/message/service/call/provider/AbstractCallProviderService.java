@@ -20,6 +20,7 @@ import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
@@ -33,6 +34,9 @@ public abstract class AbstractCallProviderService<
     protected CallConnectionService callConnectionService;
     protected CallEventService callEventService;
     protected WebClientConfig webClientConfig;
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String appBaseUrl;
 
     @Lazy
     @Autowired
@@ -109,7 +113,7 @@ public abstract class AbstractCallProviderService<
         return this.securityService
                 .getAppUrl(appCode, clientCode)
                 .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri())
-                .switchIfEmpty(Mono.just(""));
+                .switchIfEmpty(Mono.just(this.appBaseUrl + CALL_BACK_URI + this.getProviderUri()));
     }
 
     protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
