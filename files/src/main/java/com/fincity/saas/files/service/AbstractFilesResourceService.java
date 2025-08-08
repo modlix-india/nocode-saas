@@ -20,7 +20,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,11 +31,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 
+import com.fincity.saas.commons.util.*;
 import jakarta.annotation.PreDestroy;
-import org.apache.commons.lang3.ObjectUtils;
 import org.imgscalr.Scalr;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -65,11 +62,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.FileType;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.files.dto.FilesUploadDownloadDTO;
 import com.fincity.saas.files.jooq.enums.FilesAccessPathResourceType;
 import com.fincity.saas.files.jooq.enums.FilesUploadDownloadResourceType;
@@ -90,30 +82,6 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
-
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.time.Duration;
-import java.util.List;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
-import static com.fincity.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 
 public abstract class AbstractFilesResourceService {
 
@@ -144,19 +112,19 @@ public abstract class AbstractFilesResourceService {
     private final ExecutorService virtualThreadExecutor;
 
     protected AbstractFilesResourceService(
-        FilesAccessPathService fileAccessService, FilesMessageResourceService msgService,
-        FilesUploadDownloadService filesUploadDownloadService) {
+            FilesAccessPathService fileAccessService, FilesMessageResourceService msgService,
+            FilesUploadDownloadService filesUploadDownloadService) {
         this.msgService = msgService;
         this.fileAccessService = fileAccessService;
         this.filesUploadDownloadService = filesUploadDownloadService;
 
         this.virtualThreadExecutor = new ThreadPoolExecutor(
-            30,
-            300,
-            10L,
-            TimeUnit.MINUTES,
-            new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().factory());
+                30,
+                300,
+                10L,
+                TimeUnit.MINUTES,
+                new LinkedBlockingQueue<>(),
+                Thread.ofVirtual().factory());
     }
 
     private String uriPart;
@@ -169,7 +137,7 @@ public abstract class AbstractFilesResourceService {
     protected void initialize() {
 
         String type = this.getResourceType()
-            .toLowerCase();
+                .toLowerCase();
 
         this.uriPart = GENERIC_URI_PART + type;
 
@@ -186,40 +154,40 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.fileAccessService.hasReadAccess(resourcePath, clientCode,
-                    FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                        () -> this.fileAccessService.hasReadAccess(resourcePath, clientCode,
+                                FilesAccessPathResourceType.valueOf(this.getResourceType())),
 
-                hasPermission -> {
+                        hasPermission -> {
 
-                    if (!BooleanUtil.safeValueOf(hasPermission))
-                        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                            FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
+                            if (!BooleanUtil.safeValueOf(hasPermission))
+                                return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
-                    return this.getFSService().list(clientCode, resourcePath, fileType, filter, page);
-                },
+                            return this.getFSService().list(clientCode, resourcePath, fileType, filter, page);
+                        },
 
-                (hasPermission, dataPage) -> {
+                        (hasPermission, dataPage) -> {
 
-                    String folderPath = (resourcePath.startsWith(R2_FILE_SEPARATOR_STRING)
-                        || StringUtil.safeIsBlank(resourcePath)) ? resourcePath
-                        : (R2_FILE_SEPARATOR_STRING + resourcePath);
+                            String folderPath = (resourcePath.startsWith(R2_FILE_SEPARATOR_STRING)
+                                    || StringUtil.safeIsBlank(resourcePath)) ? resourcePath
+                                    : (R2_FILE_SEPARATOR_STRING + resourcePath);
 
-                    for (FileDetail fd : dataPage.getContent()) {
-                        fd.setFilePath(folderPath + R2_FILE_SEPARATOR_STRING + fd.getName())
-                            .setUrl(this.getResourceFileType() + (fd.isDirectory() ? "" : "/file/" + clientCode)
-                                + folderPath
-                                + R2_FILE_SEPARATOR_STRING
-                                + URLEncoder.encode(fd.getName(), StandardCharsets.UTF_8));
-                    }
-                    return Mono.just(dataPage);
-                })
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.list"));
+                            for (FileDetail fd : dataPage.getContent()) {
+                                fd.setFilePath(folderPath + R2_FILE_SEPARATOR_STRING + fd.getName())
+                                        .setUrl(this.getResourceFileType() + (fd.isDirectory() ? "" : "/file/" + clientCode)
+                                                + folderPath
+                                                + R2_FILE_SEPARATOR_STRING
+                                                + URLEncoder.encode(fd.getName(), StandardCharsets.UTF_8));
+                            }
+                            return Mono.just(dataPage);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.list"));
     }
 
     private String getResourceFileType() {
 
         return this.getResourceType()
-            .equals(FilesAccessPathResourceType.STATIC.name()) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
+                .equals(FilesAccessPathResourceType.STATIC.name()) ? GENERIC_URI_PART_STATIC : GENERIC_URI_PART_SECURED;
 
     }
 
@@ -232,13 +200,13 @@ public abstract class AbstractFilesResourceService {
 
         if (fileDetail.isDirectory()) {
             fileDetail.setFilePath(resourcePath)
-                .setUrl(resourceType + resourcePath)
-                .setDirectory(true);
+                    .setUrl(resourceType + resourcePath)
+                    .setDirectory(true);
 
         } else {
             fileDetail.setFilePath(resourcePath + R2_FILE_SEPARATOR_STRING + fileDetail.getName())
-                .setUrl(resourceType + ("/file/" + clientCode) + resourcePath + R2_FILE_SEPARATOR_STRING
-                    + URLEncoder.encode(fileDetail.getName(), StandardCharsets.UTF_8));
+                    .setUrl(resourceType + ("/file/" + clientCode) + resourcePath + R2_FILE_SEPARATOR_STRING
+                            + URLEncoder.encode(fileDetail.getName(), StandardCharsets.UTF_8));
         }
         return fileDetail;
 
@@ -251,22 +219,22 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.checkReadAccessWithClientCode(rp),
+                        () -> this.checkReadAccessWithClientCode(rp),
 
-                hasAccess -> {
-                    if (!BooleanUtil.safeValueOf(hasAccess))
-                        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                            FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
+                        hasAccess -> {
+                            if (!BooleanUtil.safeValueOf(hasAccess))
+                                return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), rp);
 
-                    return this.getFSService().getFileDetail(rp);
-                },
-                (hasAccess, fd) -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
+                            return this.getFSService().getFileDetail(rp);
+                        },
+                        (hasAccess, fd) -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.downloadFile"));
 
     }
 
     /**
-     * @param resourcePath the path of the resource to which the access need to be
+     * @param resourcePath the path of the resource to which the access to be
      *                     checked.
      * @return a Mono if the readAccess is granted by the requester
      */
@@ -326,12 +294,12 @@ public abstract class AbstractFilesResourceService {
         respHeaders.setLastModified(fileMillis);
         respHeaders.setETag(eTag);
         if (!BooleanUtil.safeValueOf(downloadOptions.getNoCache())
-            && this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))
+                && this.getResourceType().equals(FilesAccessPathResourceType.STATIC.name()))
             respHeaders.setCacheControl("public, max-age=3600");
 
         respHeaders.setContentDisposition(
-            (BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
-                : ContentDisposition.inline()).filename(downloadOptions.getName()).build());
+                (BooleanUtil.safeValueOf(downloadOptions.getDownload()) ? ContentDisposition.attachment()
+                        : ContentDisposition.inline()).filename(downloadOptions.getName()).build());
         String mimeType = URLConnection.guessContentTypeFromName(fileName);
         if (mimeType == null) {
             logger.debug("Unable to find mimetype of file {}", path);
@@ -343,21 +311,21 @@ public abstract class AbstractFilesResourceService {
         String finalFileName = fileName;
 
         return FlatMapUtil.flatMapMono(
-                () -> actualFile,
+                        () -> actualFile,
 
-                af -> {
+                        af -> {
 
-                    long length = af.length();
+                            long length = af.length();
 
-                    List<HttpRange> ranges = request.getHeaders().getRange();
+                            List<HttpRange> ranges = request.getHeaders().getRange();
 
-                    if (ranges.isEmpty()) {
-                        return sendFileWhenNoRanges(downloadOptions, response, respHeaders, af, length, finalFileName);
-                    } else {
-                        return sendFileWhenRanges(downloadOptions, request, response, af, finalFileName);
-                    }
-                })
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.sendFile"));
+                            if (ranges.isEmpty()) {
+                                return sendFileWhenNoRanges(downloadOptions, response, respHeaders, af, length, finalFileName);
+                            } else {
+                                return sendFileWhenRanges(downloadOptions, request, response, af, finalFileName);
+                            }
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.sendFile"));
 
     }
 
@@ -367,16 +335,16 @@ public abstract class AbstractFilesResourceService {
         ResourceHttpMessageWriter writer = new ResourceHttpMessageWriter();
         if (downloadOptions.hasNoModification()) {
             return writer.write(Mono.just(new FileSystemResource(actualFile)), null,
-                ResolvableType.forClass(File.class), null, request, response, Map.of());
+                    ResolvableType.forClass(File.class), null, request, response, Map.of());
         } else {
             byte[] bytes = this.applyOptionsMakeResource(downloadOptions, fileName, actualFile);
 
             if (bytes.length == 0)
                 return writer.write(Mono.just(new FileSystemResource(actualFile)), null,
-                    ResolvableType.forClass(File.class), null, request, response, Map.of());
+                        ResolvableType.forClass(File.class), null, request, response, Map.of());
 
             return writer.write(Mono.just(new ByteArrayResource(bytes)), null, ResolvableType.forClass(File.class),
-                null, request, response, Map.of());
+                    null, request, response, Map.of());
         }
     }
 
@@ -404,7 +372,7 @@ public abstract class AbstractFilesResourceService {
             respHeaders.setContentLength(bytes.length);
 
             return zeroCopyResponse.writeWith(Mono.just(response.bufferFactory()
-                .wrap(bytes)));
+                    .wrap(bytes)));
         }
     }
 
@@ -449,12 +417,12 @@ public abstract class AbstractFilesResourceService {
         if (original == null)
             throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to read the image.");
 
-        // If width / height are unset, just use the original size
+        // If width / height are unset, use the original size
         int targetWidth = (options.getWidth() != null) ? options.getWidth() : original.getWidth();
         int targetHeight = (options.getHeight() != null) ? options.getHeight() : original.getHeight();
 
-        // We'll combine Scalr resize + optional crop + optional pad
-        // apply pad only if background is non-null
+        // We'll combine the Scalr resize and optional crop and optional pad
+        // apply pad only if the background is non-null
         BufferedImage processed;
 
         switch (options.getFit()) {
@@ -464,21 +432,21 @@ public abstract class AbstractFilesResourceService {
             case contain -> // Resize to fit entirely in the target, preserving aspect ratio
                 // If the background is set, pad to fill the rest; otherwise it's just centered
                 // with transparency
-                processed = containWithOptionalPad(original, targetWidth, targetHeight,
-                    options.getGravity(), options.getBackground(), targetFormat);
+                    processed = containWithOptionalPad(original, targetWidth, targetHeight,
+                            options.getGravity(), options.getBackground(), targetFormat);
 
-            case cover -> // Scale to cover entire space, then crop. Gravity determines from which side we
+            case cover -> // Scale to cover the entire space, then crop. Gravity determines from which side we
                 // crop
-                processed = coverWithGravity(original, targetWidth, targetHeight, options.getGravity());
+                    processed = coverWithGravity(original, targetWidth, targetHeight, options.getGravity());
 
-            case crop -> // Crop directly, ignoring aspect ratio
-                processed = cropWithGravity(original, targetWidth, targetHeight, options.getGravity());
+            case crop -> // Crop directly, ignoring the aspect ratio
+                    processed = cropWithGravity(original, targetWidth, targetHeight, options.getGravity());
 
             case pad -> processed = containWithOptionalPad(original, targetWidth, targetHeight,
-                options.getGravity(), options.getBackground() == null ? "#FFFFFF" : options.getBackground(), targetFormat);
+                    options.getGravity(), options.getBackground() == null ? "#FFFFFF" : options.getBackground(), targetFormat);
 
-            default -> // If no recognized fit, leave image as-is
-                processed = original;
+            default -> // If no recognized fit, leave the image as-is
+                    processed = original;
         }
 
         if (targetFormat == DownloadOptions.Format.jpeg && processed.getType() != BufferedImage.TYPE_INT_RGB) {
@@ -539,7 +507,7 @@ public abstract class AbstractFilesResourceService {
 
     private BufferedImage coverWithGravity(BufferedImage source, int targetWidth, int targetHeight,
                                            DownloadOptions.Gravity gravity) {
-        // Scale so that image covers the entire target, then crop
+        // Scale so that the image covers the entire target, then crop
         double ratioOriginal = (double) source.getWidth() / (double) source.getHeight();
         double ratioTarget = (double) targetWidth / (double) targetHeight;
         int scaledW, scaledH;
@@ -588,7 +556,7 @@ public abstract class AbstractFilesResourceService {
 
     private BufferedImage padWithGravity(BufferedImage source, int targetWidth, int targetHeight,
                                          DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
-        // Use "Scalr.pad" mostly adds a uniform border, so we do manual approach in
+        // Use "Scalr.pad" mostly adds a uniform border, so we do the manual approach in
         // case we want
         // the entire background area exactly targetWidth x targetHeight with image
         // placed by gravity
@@ -649,22 +617,22 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
-                    FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                        () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
+                                FilesAccessPathResourceType.valueOf(this.getResourceType())),
 
-                hasPermission -> {
+                        hasPermission -> {
 
-                    if (!BooleanUtil.safeValueOf(hasPermission)) {
-                        return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                            FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
-                    }
+                            if (!BooleanUtil.safeValueOf(hasPermission)) {
+                                return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
+                            }
 
-                    return this.getFSService()
-                        .deleteFile(clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING + resourcePath);
-                }
+                            return this.getFSService()
+                                    .deleteFile(clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING + resourcePath);
+                        }
 
-            )
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
+                )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.delete"));
     }
 
     public Mono<Object> create(String clientCode, String uri, Flux<FilePart> fileParts, String fileName,
@@ -677,29 +645,29 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
-                    FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                        () -> this.fileAccessService.hasWriteAccess(resourcePath, clientCode,
+                                FilesAccessPathResourceType.valueOf(this.getResourceType())),
 
-                hasPermission -> {
+                        hasPermission -> {
 
-                    if (!BooleanUtil.safeValueOf(hasPermission))
-                        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                            FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
+                            if (!BooleanUtil.safeValueOf(hasPermission))
+                                return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
 
-                    return fileParts.flatMap(fp -> {
-                        String fn = fileName == null ? fp.filename()
-                            : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
+                            return fileParts.flatMap(fp -> {
+                                String fn = fileName == null ? fp.filename()
+                                        : FileExtensionUtil.getFileNameWithExtension(fp.filename(), fileName);
 
-                        return this.getFSService().createFilesFromFilePart(clientCode, resourcePath, fn, fp, ovr)
-                            .map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
-                    }).collectList().flatMap(e -> {
-                        if (e.isEmpty())
-                            return this.getFSService().createFolder(clientCode, resourcePath)
-                                .map(Object.class::cast);
-                        return Mono.just(e.size() > 1 ? e : e.getFirst());
-                    });
-                })
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
+                                return this.getFSService().createFilesFromFilePart(clientCode, resourcePath, fn, fp, ovr)
+                                        .map(d -> this.convertToFileDetailWhileCreation(urlResourcePath, clientCode, d));
+                            }).collectList().flatMap(e -> {
+                                if (e.isEmpty())
+                                    return this.getFSService().createFolder(clientCode, resourcePath)
+                                            .map(Object.class::cast);
+                                return Mono.just(e.size() > 1 ? e : e.getFirst());
+                            });
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.create"));
     }
 
     private PathParts extractPathClientCodeFileName(String uri, FilePart fp, String filePath,
@@ -753,53 +721,53 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-            () -> this.fileAccessService.hasWriteAccess(pathParts.resourcePath, pathParts.clientCode,
-                FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                () -> this.fileAccessService.hasWriteAccess(pathParts.resourcePath, pathParts.clientCode,
+                        FilesAccessPathResourceType.valueOf(this.getResourceType())),
 
-            hasPermission -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
-                .subscribeOn(Schedulers.boundedElastic()),
+                hasPermission -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
+                        .subscribeOn(Schedulers.boundedElastic()),
 
-            (hasPermission, tempDirectory) -> {
-                if (!BooleanUtil.safeValueOf(hasPermission))
-                    return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        FilesMessageResourceService.FORBIDDEN_PATH, getResourceType(), pathParts.fileName);
+                (hasPermission, tempDirectory) -> {
+                    if (!BooleanUtil.safeValueOf(hasPermission))
+                        return msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                FilesMessageResourceService.FORBIDDEN_PATH, getResourceType(), pathParts.fileName);
 
-                if (fp != null) {
-                    Path file = tempDirectory.resolve(pathParts.fileName);
-                    return fp.transferTo(file).thenReturn(file.toFile());
-                }
+                    if (fp != null) {
+                        Path file = tempDirectory.resolve(pathParts.fileName);
+                        return fp.transferTo(file).thenReturn(file.toFile());
+                    }
 
-                return this.getFSService()
-                    .getAsFile(pathParts.clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING
-                        + pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING
-                        + pathParts.fileName, true);
-            },
+                    return this.getFSService()
+                            .getAsFile(pathParts.clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING
+                                    + pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING
+                                    + pathParts.fileName, true);
+                },
 
 
-            (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
+                (hasPermission, tempDirectory, file) -> Mono.fromCallable(() -> ImageTransformUtil.makeSourceImage(file, pathParts.fileName)).subscribeOn(Schedulers.boundedElastic()),
 
-            (hasPermission, tempDirectory, file, sourceTuple) -> {
+                (hasPermission, tempDirectory, file, sourceTuple) -> {
 
-                int type = sourceTuple.getT2();
+                    int type = sourceTuple.getT2();
 
-                if (fp != null && !StringUtil.safeIsBlank(fileName)) {
-                    type = fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
-                        : BufferedImage.TYPE_INT_RGB;
-                }
+                    if (fp != null && !StringUtil.safeIsBlank(fileName)) {
+                        type = fileName.toLowerCase().endsWith("png") ? BufferedImage.TYPE_INT_ARGB
+                                : BufferedImage.TYPE_INT_RGB;
+                    }
 
-                final int finalImageType = type;
-                return Mono
-                    .defer(() -> Mono.just(Tuples.of(
-                        ImageTransformUtil.transformImage(sourceTuple.getT1(), finalImageType,
-                            imageDetails),
-                        finalImageType)))
-                    .subscribeOn(Schedulers.boundedElastic());
-            },
+                    final int finalImageType = type;
+                    return Mono
+                            .defer(() -> Mono.just(Tuples.of(
+                                    ImageTransformUtil.transformImage(sourceTuple.getT1(), finalImageType,
+                                            imageDetails),
+                                    finalImageType)))
+                            .subscribeOn(Schedulers.boundedElastic());
+                },
 
-            (hasPermission, tempDirectory, file, sourceTuple, transformedTuple) -> this.finalFileWrite(pathParts,
-                transformedTuple,
-                fileName,
-                ovr)
+                (hasPermission, tempDirectory, file, sourceTuple, transformedTuple) -> this.finalFileWrite(pathParts,
+                        transformedTuple,
+                        fileName,
+                        ovr)
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.imageUpload (File)"));
 
@@ -810,26 +778,26 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-            () -> Mono.fromCallable(() -> {
-                Path tempDirectory = Files.createTempDirectory("imageUpload");
-                Path path = tempDirectory.resolve(pathParts.fileName);
-                File file = path.toFile();
-                ImageIO.write(transformedTuple.getT1(), path.getFileName()
-                    .toString()
-                    .toLowerCase()
-                    .endsWith("png") ? "png" : "jpeg", file);
+                () -> Mono.fromCallable(() -> {
+                    Path tempDirectory = Files.createTempDirectory("imageUpload");
+                    Path path = tempDirectory.resolve(pathParts.fileName);
+                    File file = path.toFile();
+                    ImageIO.write(transformedTuple.getT1(), path.getFileName()
+                            .toString()
+                            .toLowerCase()
+                            .endsWith("png") ? "png" : "jpeg", file);
 
-                String filePath = (pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING + fileName)
-                    .replace("//", "/");
-                return Tuples.of(path, filePath);
-            }).subscribeOn(Schedulers.boundedElastic()),
+                    String filePath = (pathParts.resourcePath + FileSystemService.R2_FILE_SEPARATOR_STRING + fileName)
+                            .replace("//", "/");
+                    return Tuples.of(path, filePath);
+                }).subscribeOn(Schedulers.boundedElastic()),
 
-            fileTup -> this.getFSService().createFileFromFile(pathParts.clientCode,
-                fileTup.getT2(),
-                null, fileTup.getT1(), override),
+                fileTup -> this.getFSService().createFileFromFile(pathParts.clientCode,
+                        fileTup.getT2(),
+                        null, fileTup.getT1(), override),
 
-            (fileTup, fileDetail) -> Mono.just(this.convertToFileDetailWhileCreation(pathParts.resourcePath,
-                pathParts.clientCode, fileDetail))
+                (fileTup, fileDetail) -> Mono.just(this.convertToFileDetailWhileCreation(pathParts.resourcePath,
+                        pathParts.clientCode, fileDetail))
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.finalFileWrite"));
 
@@ -843,96 +811,96 @@ public abstract class AbstractFilesResourceService {
         String resourcePath = tup.getT1();
 
         if (fp == null || (!fp.filename()
-            .toLowerCase()
-            .endsWith(".zip"))) {
+                .toLowerCase()
+                .endsWith(".zip"))) {
             return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
+                    FilesMessageResourceService.UNABLE_TO_READ_UP_FILE);
         }
 
         return FlatMapUtil.flatMapMono(
 
-                () -> Mono.fromCallable(() -> {
+                        () -> Mono.fromCallable(() -> {
 
-                        Path tmpFile = Files.createTempFile("tmp", "zip");
-                        Path tmpFolder = Files.createTempDirectory("tmp");
+                                    Path tmpFile = Files.createTempFile("tmp", "zip");
+                                    Path tmpFolder = Files.createTempDirectory("tmp");
 
-                        return Tuples.of(tmpFile, tmpFolder);
-                    }).flatMap(tmpTup -> fp.transferTo(tmpTup.getT1()).then(Mono.just(tmpTup)))
-                    .subscribeOn(Schedulers.boundedElastic()),
+                                    return Tuples.of(tmpFile, tmpFolder);
+                                }).flatMap(tmpTup -> fp.transferTo(tmpTup.getT1()).then(Mono.just(tmpTup)))
+                                .subscribeOn(Schedulers.boundedElastic()),
 
-                tmpTup -> SecurityContextUtil.getUsersContextAuthentication(),
+                        tmpTup -> SecurityContextUtil.getUsersContextAuthentication(),
 
-                (tmpTup, ca) -> {
+                        (tmpTup, ca) -> {
 
-                    FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
-                    dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+                            FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
+                            dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
 
-                    return this.filesUploadDownloadService.create(dto
-                        .setClientCode(clientCode)
-                        .setPath(resourcePath)
-                        .setType(FilesUploadDownloadType.UPLOAD)
-                        .setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
-                },
+                            return this.filesUploadDownloadService.create(dto
+                                    .setClientCode(clientCode)
+                                    .setPath(resourcePath)
+                                    .setType(FilesUploadDownloadType.UPLOAD)
+                                    .setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
+                        },
 
-                (tmpTup, ca, fud) -> {
+                        (tmpTup, ca, fud) -> {
 
-                    Mono<?> deflateMono = this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr);
-                    Mono<?> cacheEviction = Mono
-                        .defer(() -> this.getFSService().evictCache(clientCode).apply(Boolean.TRUE));
+                            Mono<?> deflateMono = this.deflateAndProcess(tmpTup, resourcePath, clientCode, ovr);
+                            Mono<?> cacheEviction = Mono
+                                    .defer(() -> this.getFSService().evictCache(clientCode).apply(Boolean.TRUE));
 
-                    this.virtualThreadExecutor.submit(new FilesUploadDownloadRunnable(deflateMono, fud,
-                        this.filesUploadDownloadService, cacheEviction));
+                            this.virtualThreadExecutor.submit(new FilesUploadDownloadRunnable(deflateMono, fud,
+                                    this.filesUploadDownloadService, cacheEviction));
 
-                    return Mono.just(fud.getId());
-                }
+                            return Mono.just(fud.getId());
+                        }
 
-            ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
-            .subscribeOn(Schedulers.boundedElastic());
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.createFromZipFile"))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     private Mono<Boolean> deflateAndProcess(Tuple2<Path, Path> tmpTup, String resourcePath, String clientCode,
                                             boolean override) {
         boolean isRoot = StringUtil.safeIsBlank(resourcePath);
         return FlatMapUtil.flatMapMono(
-            () -> Mono.just(this.deflateFilesFolders(tmpTup.getT1(), tmpTup.getT2())),
+                () -> Mono.just(this.deflateFilesFolders(tmpTup.getT1(), tmpTup.getT2())),
 
-            filesFoldersTuple -> {
-                List<String> folderList = new ArrayList<>();
+                filesFoldersTuple -> {
+                    List<String> folderList = new ArrayList<>();
 
-                if (!isRoot)
-                    folderList.add(resourcePath);
-
-                for (String folder : filesFoldersTuple.getT2())
-                    folderList.add(isRoot ? folder : (resourcePath + R2_FILE_SEPARATOR_STRING + folder));
-
-                return this.getFSService().createFolders(clientCode, folderList);
-            },
-
-            (filesFoldersTuple, folderMap) -> Flux.fromIterable(filesFoldersTuple.getT1())
-                .buffer(10)
-                .delayElements(Duration.ofSeconds(2))
-                .flatMapSequential(tupList -> Flux.fromIterable(tupList).flatMap(tup -> {
-                    String parentPath = tup.getT1();
-                    int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
-                    String folderPath = index == -1 ? "" : parentPath.substring(0, index);
                     if (!isRoot)
-                        folderPath = StringUtil.safeIsBlank(folderPath) ? resourcePath
-                            : (resourcePath + R2_FILE_SEPARATOR_STRING + folderPath);
+                        folderList.add(resourcePath);
 
-                    ULong folderId = folderMap.get(folderPath);
-                    if (!folderPath.isEmpty() && folderId == null)
-                        return Mono.defer(() -> this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            FilesMessageResourceService.UNABLE_TO_UPLOAD_ZIP_FILE));
+                    for (String folder : filesFoldersTuple.getT2())
+                        folderList.add(isRoot ? folder : (resourcePath + R2_FILE_SEPARATOR_STRING + folder));
 
-                    return this.getFSService().createFileForZipUpload(clientCode, folderId,
-                        folderPath.isEmpty() ? tup.getT1()
-                            : (resourcePath + R2_FILE_SEPARATOR_STRING
-                            + tup.getT1()),
-                        tup.getT2(), override);
-                }), 3)
-                .collectList()
-                .map(e -> true));
+                    return this.getFSService().createFolders(clientCode, folderList);
+                },
+
+                (filesFoldersTuple, folderMap) -> Flux.fromIterable(filesFoldersTuple.getT1())
+                        .buffer(10)
+                        .delayElements(Duration.ofSeconds(2))
+                        .flatMapSequential(tupList -> Flux.fromIterable(tupList).flatMap(tup -> {
+                            String parentPath = tup.getT1();
+                            int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
+                            String folderPath = index == -1 ? "" : parentPath.substring(0, index);
+                            if (!isRoot)
+                                folderPath = StringUtil.safeIsBlank(folderPath) ? resourcePath
+                                        : (resourcePath + R2_FILE_SEPARATOR_STRING + folderPath);
+
+                            ULong folderId = folderMap.get(folderPath);
+                            if (!folderPath.isEmpty() && folderId == null)
+                                return Mono.defer(() -> this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        FilesMessageResourceService.UNABLE_TO_UPLOAD_ZIP_FILE));
+
+                            return this.getFSService().createFileForZipUpload(clientCode, folderId,
+                                    folderPath.isEmpty() ? tup.getT1()
+                                            : (resourcePath + R2_FILE_SEPARATOR_STRING
+                                            + tup.getT1()),
+                                    tup.getT2(), override);
+                        }), 3)
+                        .collectList()
+                        .map(e -> true));
     }
 
     private Tuple2<List<Tuple2<String, Path>>, List<String>> deflateFilesFolders(Path tmpFile, Path tmpFolder) {
@@ -949,7 +917,7 @@ public abstract class AbstractFilesResourceService {
                 if (ze.isDirectory()) {
                     Files.createDirectories(tmpFolder.resolve(ze.getName()));
                     folders.add(ze.getName().endsWith(R2_FILE_SEPARATOR_STRING) ? ze.getName().substring(0,
-                        ze.getName().length() - 1) : ze.getName());
+                            ze.getName().length() - 1) : ze.getName());
                 } else {
                     var file = tmpFolder.resolve(ze.getName());
                     String path = ze.getName();
@@ -988,7 +956,7 @@ public abstract class AbstractFilesResourceService {
     protected Tuple2<String, String> resolvePathWithoutClientCode(String part, String uri) {
 
         String path = uri.substring(uri.indexOf(part) + part.length(),
-            uri.length() - (uri.endsWith(R2_FILE_SEPARATOR_STRING) ? 1 : 0));
+                uri.length() - (uri.endsWith(R2_FILE_SEPARATOR_STRING) ? 1 : 0));
         return makeTuple(path);
     }
 
@@ -1013,13 +981,13 @@ public abstract class AbstractFilesResourceService {
                                            String fileName, ServerHttpRequest request) {
 
         return Mono.fromCallable(() -> Files.createTempDirectory("tmp").resolve(fileName))
-            .flatMap(tmpFile -> DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
-                .then(Mono.just(tmpFile))
-                .flatMap(file -> this.getFSService().createFileFromFile(
-                    clientCode, filePath, fileName, tmpFile, override))
-                .map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file)))
-            .subscribeOn(Schedulers.boundedElastic());
+                .flatMap(tmpFile -> DataBufferUtils.write(request.getBody(), tmpFile, StandardOpenOption.CREATE,
+                                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+                        .then(Mono.just(tmpFile))
+                        .flatMap(file -> this.getFSService().createFileFromFile(
+                                clientCode, filePath, fileName, tmpFile, override))
+                        .map(file -> this.convertToFileDetailWhileCreation(filePath, clientCode, file)))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<String> readFileAsBase64(String clientCode, String uri, boolean metadataRequired) {
@@ -1032,69 +1000,69 @@ public abstract class AbstractFilesResourceService {
         int secondInd = resourcePath.indexOf('/', ind);
 
         String clientCodeFromUrl = secondInd == -1 ? resourcePath.substring(ind)
-            : resourcePath.substring(ind, secondInd);
+                : resourcePath.substring(ind, secondInd);
 
         if (StringUtil.safeIsBlank(clientCodeFromUrl))
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
 
-            () -> this.fileAccessService.isClientBeingManaged(clientCode, clientCodeFromUrl),
+                () -> this.fileAccessService.isClientBeingManaged(clientCode, clientCodeFromUrl),
 
-            isManaged -> {
-                if (!BooleanUtil.safeValueOf(isManaged))
-                    return Mono.empty();
+                isManaged -> {
+                    if (!BooleanUtil.safeValueOf(isManaged))
+                        return Mono.empty();
 
-                return this.getFSService().getFileDetail(uriPath.getT1());
-            },
+                    return this.getFSService().getFileDetail(uriPath.getT1());
+                },
 
-            (isManaged, fileDetail) -> {
+                (isManaged, fileDetail) -> {
 
-                if (fileDetail.isDirectory())
-                    return Mono.empty();
+                    if (fileDetail.isDirectory())
+                        return Mono.empty();
 
-                return this.getFSService().getAsFile(uriPath.getT1(), true)
-                    .flatMap(e -> {
+                    return this.getFSService().getAsFile(uriPath.getT1(), true)
+                            .flatMap(e -> {
 
-                        Path filePath = e.toPath();
+                                Path filePath = e.toPath();
 
-                        StringBuilder sb = new StringBuilder();
+                                StringBuilder sb = new StringBuilder();
 
-                        if (metadataRequired) {
+                                if (metadataRequired) {
 
-                            String[] pathParts = filePath.toString()
-                                .split(FileSystemService.R2_FILE_SEPARATOR_STRING);
-                            String fileName = pathParts[pathParts.length - 1];
-                            if (StringUtil.safeIsBlank(fileName) && pathParts.length > 1)
-                                fileName = pathParts[pathParts.length - 2];
-                            if (StringUtil.safeIsBlank(fileName))
-                                fileName = "file";
+                                    String[] pathParts = filePath.toString()
+                                            .split(FileSystemService.R2_FILE_SEPARATOR_STRING);
+                                    String fileName = pathParts[pathParts.length - 1];
+                                    if (StringUtil.safeIsBlank(fileName) && pathParts.length > 1)
+                                        fileName = pathParts[pathParts.length - 2];
+                                    if (StringUtil.safeIsBlank(fileName))
+                                        fileName = "file";
 
-                            String mimeType = URLConnection.guessContentTypeFromName(fileName);
-                            if (mimeType == null) {
-                                mimeType = "application/octet-stream";
-                            }
+                                    String mimeType = URLConnection.guessContentTypeFromName(fileName);
+                                    if (mimeType == null) {
+                                        mimeType = "application/octet-stream";
+                                    }
 
-                            sb.append("data:");
-                            sb.append(mimeType);
-                            sb.append(";name:");
-                            sb.append(fileName);
-                            sb.append(";base64,");
-                        }
-                        return Mono.fromCallable(() -> {
-                            try {
-                                byte[] bytes = Files.readAllBytes(filePath);
-                                sb.append(Base64.getEncoder().encodeToString(bytes));
-                                return sb.toString();
-                            } catch (IOException ex) {
-                                return null;
-                            }
-                        }).subscribeOn(Schedulers.boundedElastic());
-                    })
-                    .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-                        FilesMessageResourceService.FILE_CANNOT_BE_CONVERTED));
-            }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.convertToBase64"));
+                                    sb.append("data:");
+                                    sb.append(mimeType);
+                                    sb.append(";name:");
+                                    sb.append(fileName);
+                                    sb.append(";base64,");
+                                }
+                                return Mono.fromCallable(() -> {
+                                    try {
+                                        byte[] bytes = Files.readAllBytes(filePath);
+                                        sb.append(Base64.getEncoder().encodeToString(bytes));
+                                        return sb.toString();
+                                    } catch (IOException ex) {
+                                        return null;
+                                    }
+                                }).subscribeOn(Schedulers.boundedElastic());
+                            })
+                            .switchIfEmpty(this.msgService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                                    FilesMessageResourceService.FILE_CANNOT_BE_CONVERTED));
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.convertToBase64"));
     }
 
     public Mono<Void> readInternal(DownloadOptions downloadOptions, String filePath, ServerHttpRequest request,
@@ -1110,10 +1078,10 @@ public abstract class AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.getFSService().getFileDetail(rp),
+                        () -> this.getFSService().getFileDetail(rp),
 
-                fd -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.readInternal"));
+                        fd -> downloadFileByFileDetails(fd, downloadOptions, rp, request, response))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.readInternal"));
     }
 
     private Mono<Void> downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
@@ -1124,15 +1092,15 @@ public abstract class AbstractFilesResourceService {
 
         long fileMillis = fileDetail.getLastModifiedTime();
         String fileETag = "\"" +
-            fileDetail.getName().hashCode() +
-            '-' +
-            fileMillis +
-            '-' +
-            downloadOptions.eTagCode() +
-            '"';
+                fileDetail.getName().hashCode() +
+                '-' +
+                fileMillis +
+                '-' +
+                downloadOptions.eTagCode() +
+                '"';
 
         return makeMatchesStartDownload(downloadOptions, request, response, resourcePath, fileMillis,
-            fileETag);
+                fileETag);
     }
 
     public Mono<ULong> asyncExportFolder(String clientCode, ServerHttpRequest request) {
@@ -1141,62 +1109,62 @@ public abstract class AbstractFilesResourceService {
         String resourcePath = this.resolvePathWithoutClientCode("export", uri).getT1();
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> ca.isAuthenticated() ? Mono.just(ObjectUtils.firstNonNull(clientCode, ca.getClientCode()))
-                    : Mono.empty(),
+                        ca -> ca.isAuthenticated() ? Mono.justOrEmpty(CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))
+                                : Mono.empty(),
 
-                (ca, cc) -> this.fileAccessService.hasReadAccess(resourcePath, cc,
-                    FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                        (ca, cc) -> this.fileAccessService.hasReadAccess(resourcePath, cc,
+                                FilesAccessPathResourceType.valueOf(this.getResourceType())),
 
-                (ca, cc, hasAccess) -> {
-                    if (!BooleanUtil.safeValueOf(hasAccess))
-                        return Mono.<FilesUploadDownloadDTO>empty();
+                        (ca, cc, hasAccess) -> {
+                            if (!BooleanUtil.safeValueOf(hasAccess))
+                                return Mono.<FilesUploadDownloadDTO>empty();
 
-                    FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
-                    dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
+                            FilesUploadDownloadDTO dto = new FilesUploadDownloadDTO();
+                            dto.setCreatedBy(ULong.valueOf(ca.getUser().getId()));
 
-                    return this.filesUploadDownloadService.create(dto
-                        .setClientCode(cc)
-                        .setCdnUrl("_downloads/" + UniqueUtil.shortUUID() + ".zip")
-                        .setPath(resourcePath)
-                        .setType(FilesUploadDownloadType.DOWNLOAD)
-                        .setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
-                },
+                            return this.filesUploadDownloadService.create(dto
+                                    .setClientCode(cc)
+                                    .setCdnUrl("_downloads/" + UniqueUtil.shortUUID() + ".zip")
+                                    .setPath(resourcePath)
+                                    .setType(FilesUploadDownloadType.DOWNLOAD)
+                                    .setResourceType(FilesUploadDownloadResourceType.valueOf(this.getResourceType())));
+                        },
 
-                (ca, cc, hasAccess, fud) -> {
+                        (ca, cc, hasAccess, fud) -> {
 
-                    Mono<FileDetail> taskMono = this.getFSService()
-                        .getDirectoryAsArchive(
-                            fud.getClientCode() + FileSystemService.R2_FILE_SEPARATOR_STRING + fud.getPath())
-                        .flatMap(archive -> {
+                            Mono<FileDetail> taskMono = this.getFSService()
+                                    .getDirectoryAsArchive(
+                                            fud.getClientCode() + FileSystemService.R2_FILE_SEPARATOR_STRING + fud.getPath())
+                                    .flatMap(archive -> {
 
-                            Path path = Paths.get(archive.getAbsolutePath());
+                                        Path path = Paths.get(archive.getAbsolutePath());
 
-                            int lastIndex = fud.getPath().lastIndexOf('/');
-                            String name = fud.getPath().substring(lastIndex + 1);
+                                        int lastIndex = fud.getPath().lastIndexOf('/');
+                                        String name = fud.getPath().substring(lastIndex + 1);
 
-                            lastIndex = fud.getCdnUrl().lastIndexOf('/');
-                            String cdnFileName = fud.getCdnUrl().substring(lastIndex + 1);
+                                        lastIndex = fud.getCdnUrl().lastIndexOf('/');
+                                        String cdnFileName = fud.getCdnUrl().substring(lastIndex + 1);
 
-                            String cdnPath = fud.getCdnUrl().substring(0, lastIndex);
+                                        String cdnPath = fud.getCdnUrl().substring(0, lastIndex);
 
-                            return this.getFSService().createFileFromFile(fud.getClientCode(),
-                                cdnPath, cdnFileName, path, true,
-                                "attachment; filename=\"" + name + ".zip\"");
-                        });
+                                        return this.getFSService().createFileFromFile(fud.getClientCode(),
+                                                cdnPath, cdnFileName, path, true,
+                                                "attachment; filename=\"" + name + ".zip\"");
+                                    });
 
-                    this.virtualThreadExecutor.submit(
-                        new FilesUploadDownloadRunnable(taskMono, fud, this.filesUploadDownloadService));
+                            this.virtualThreadExecutor.submit(
+                                    new FilesUploadDownloadRunnable(taskMono, fud, this.filesUploadDownloadService));
 
-                    return Mono.just(fud.getId());
-                }
+                            return Mono.just(fud.getId());
+                        }
 
-            )
-            .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath))
+                )
+                .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath))
 
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.asyncExportFolder"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.asyncExportFolder"));
     }
 
     @PreDestroy
@@ -1219,19 +1187,19 @@ public abstract class AbstractFilesResourceService {
                                                                  Pageable page) {
 
         return FlatMapUtil.flatMapMono(
-            SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-            ca -> ca.isAuthenticated() ? Mono.just(ObjectUtils.firstNonNull(clientCode, ca.getClientCode()))
-                : Mono.empty(),
+                ca -> ca.isAuthenticated() ? Mono.justOrEmpty(CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))
+                        : Mono.empty(),
 
-            (ca, cc) -> this.filesUploadDownloadService.readPageFilter(page,
-                new ComplexCondition().setOperator(ComplexConditionOperator.AND).setConditions(List.of(
+                (ca, cc) -> this.filesUploadDownloadService.readPageFilter(page,
+                        new ComplexCondition().setOperator(ComplexConditionOperator.AND).setConditions(List.of(
 
-                    new FilterCondition().setField("clientCode").setValue(cc),
-                    new FilterCondition().setField("type")
-                        .setValue(type),
-                    new FilterCondition().setField("resourceType").setValue(this.getResourceType()),
-                    new FilterCondition().setField("createdBy").setValue(ca.getUser().getId()))))
+                                new FilterCondition().setField("clientCode").setValue(cc),
+                                new FilterCondition().setField("type")
+                                        .setValue(type),
+                                new FilterCondition().setField("resourceType").setValue(this.getResourceType()),
+                                new FilterCondition().setField("createdBy").setValue(ca.getUser().getId()))))
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFilesResourceService.listExports"));
     }

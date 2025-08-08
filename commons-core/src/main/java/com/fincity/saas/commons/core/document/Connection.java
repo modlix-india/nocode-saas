@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'connectionType': 1}", name = "connectionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
