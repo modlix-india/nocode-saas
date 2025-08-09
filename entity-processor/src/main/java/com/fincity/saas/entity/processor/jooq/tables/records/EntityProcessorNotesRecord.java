@@ -373,6 +373,6 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

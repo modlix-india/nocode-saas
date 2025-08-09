@@ -7,7 +7,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTasksTaskPriority;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes.EntityProcessorTaskTypesPath;
@@ -154,7 +153,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.TASK_PRIORITY</code>.
      * Priority level of the task.
      */
-    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorTasksTaskPriority.class), this, "Priority level of the task.", new EnumConverter<EntityProcessorTasksTaskPriority, TaskPriority>(EntityProcessorTasksTaskPriority.class, TaskPriority.class));
+    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)), this, "Priority level of the task.", new EnumConverter<String, TaskPriority>(String.class, TaskPriority.class));
 
     /**
      * The column

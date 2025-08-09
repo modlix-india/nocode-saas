@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -119,7 +118,7 @@ public class EntityProcessor extends SchemaImpl {
      * No further instances allowed
      */
     private EntityProcessor() {
-        super(DSL.name("entity_processor"), null, DSL.comment(""));
+        super("entity_processor", null);
     }
 
 
