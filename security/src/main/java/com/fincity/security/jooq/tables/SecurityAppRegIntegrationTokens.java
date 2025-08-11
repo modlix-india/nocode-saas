@@ -94,9 +94,9 @@ public class SecurityAppRegIntegrationTokens extends TableImpl<SecurityAppRegInt
     /**
      * The column
      * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
-     * app metadata from request url
+     * url from request made
      */
-    public final TableField<SecurityAppRegIntegrationTokensRecord, Map> REQUEST_PARAM = createField(DSL.name("REQUEST_PARAM"), SQLDataType.JSON, this, "app metadata from request url", new JSONMysqlMapConvertor());
+    public final TableField<SecurityAppRegIntegrationTokensRecord, Map> REQUEST_PARAM = createField(DSL.name("REQUEST_PARAM"), SQLDataType.JSON, this, "url from request made", new JSONMysqlMapConvertor());
 
     /**
      * The column

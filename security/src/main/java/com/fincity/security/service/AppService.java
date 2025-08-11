@@ -523,23 +523,30 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.getAppByCode(urlAppCode),
+                        () -> this.getAppByCode(urlAppCode),
 
-                app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+                        app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
 
-                (app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
-                        app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
+                        (app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(
+                                app.getId(),
+                                app.getClientId(),
+                                urlClientId,
+                                client.getTypeCode(),
+                                levelType,
+                                client.getBusinessType()),
 
-                (app, levelType, appAccessTuples) -> {
+                        (app, levelType, appAccessTuples) -> {
 
-                    Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
-                            .flatMap(tup -> this.dao.addClientAccess(tup.getT1(), client.getId(), tup.getT2()))
-                            .collectList();
+                            Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
+                                    .flatMap(tup -> this.dao
+                                            .addClientAccess(tup.getT1(), client.getId(), tup.getT2())
+                                            .flatMap(result -> this.evict(app.getId(), client.getId())
+                                                    .map(evictResult -> result)))
+                                    .collectList();
 
-                    return mons.map(e -> true);
-                }
-
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
+                            return mons.map(e -> true);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
     }
 
     public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
