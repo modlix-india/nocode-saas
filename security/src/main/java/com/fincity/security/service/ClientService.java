@@ -214,7 +214,7 @@ public class ClientService
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> super.create(entity.setClientLevel(Client.getChildClientLevelType(ca.getClientLevelType()))),
+                ca -> super.create(entity.setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))),
 
                 (ca, client) -> {
                     if (!ca.isSystemClient())
@@ -408,7 +408,7 @@ public class ClientService
 
     public Mono<Client> createForRegistration(Client client, ULong loggedInFromClientId) {
         return this.readInternal(loggedInFromClientId)
-                .flatMap(parent -> super.create(client.setClientLevel(Client.getChildClientLevelType(parent.getClientLevel()))));
+                .flatMap(parent -> super.create(client.setLevelType(Client.getChildClientLevelType(parent.getLevelType()))));
     }
 
     public Mono<Client> getActiveClient(ULong clientId) {

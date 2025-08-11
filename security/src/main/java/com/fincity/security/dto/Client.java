@@ -31,7 +31,7 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String businessType;
     private String businessSize;
     private String industry;
-    private SecurityClientLevelType clientLevel;
+    private SecurityClientLevelType levelType;
 
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {
