@@ -178,7 +178,7 @@ public class ClientRegistrationService {
         Mono<RegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
 
                 () -> SecurityContextUtil.getUsersContextAuthentication().flatMap(context -> {
-                    if(context.isAuthenticated())
+                    if (context.isAuthenticated())
                         context.setLoggedInFromClientCode(context.getClientCode())
                                 .setLoggedInFromClientId(context.getUser().getClientId());
                     return Mono.just(context);
@@ -204,9 +204,9 @@ public class ClientRegistrationService {
                         return this.userService.makeOneTimeToken(request, ca, userTuple.getT1(),
                                 ULong.valueOf(ca.getLoggedInFromClientId())).map(TokenObject::getToken);
 
-					return Mono.just("");
-				},
-				(ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
+                    return Mono.just("");
+                },
+                (ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
 
                 (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
                         .createRegistrationEvents(ca, client, subDomain, userTuple.getT1(), token, userTuple.getT2(), request)
@@ -459,7 +459,7 @@ public class ClientRegistrationService {
 
                         (isVerified, app) -> this.dao.getValidClientCode(client.getName()).map(client::setCode),
 
-                        (isVerified, app, c) -> this.clientService.createForRegistration(c),
+                        (isVerified, app, c) -> this.clientService.createForRegistration(c, loggedInFromClientId),
 
                         (isVerified, app, c, createdClient) -> this.clientHierarchyService
                                 .create(loggedInFromClientId, createdClient.getId()),
@@ -562,11 +562,11 @@ public class ClientRegistrationService {
         };
     }
 
-	private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client, String appCode) {
+    private Mono<Boolean> addFilesAccessPath(ContextAuthentication ca, Client client, String appCode) {
 
         return FlatMapUtil.flatMapMono(
 
-				() -> this.appService.getAppByCode(appCode),
+                        () -> this.appService.getAppByCode(appCode),
 
                         app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
 
@@ -858,10 +858,10 @@ public class ClientRegistrationService {
 
                 (ca, user, client, auth) -> this.clientUrlService.getAppUrl(client.getCode(), ca.getUrlAppCode()),
 
-				(ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain,
+                (ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain,
                                 user, auth.getAccessToken(), user.getInputPass(passType), request)
-						.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
-	}
+                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
+    }
 
     public Mono<Boolean> registerApp(String appCode, ULong clientId, ULong userId) {
 
@@ -900,14 +900,14 @@ public class ClientRegistrationService {
                                         userId),
 
                         (ca,
-                                isOwner,
-                                app,
-                                client,
-                                restrictedProfileAdded,
-                                appAccAdded,
-                                filePathAdded,
-                                userProfileAdded,
-                                userRoleAdded) -> this.userService.addDesignation(
+                         isOwner,
+                         app,
+                         client,
+                         restrictedProfileAdded,
+                         appAccAdded,
+                         filePathAdded,
+                         userProfileAdded,
+                         userRoleAdded) -> this.userService.addDesignation(
                                 app.getId(),
                                 app.getClientId(),
                                 ULong.valueOf(ca.getLoggedInFromClientId()),
@@ -916,5 +916,5 @@ public class ClientRegistrationService {
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.CONFLICT, msg),
                         SecurityMessageResourceService.NO_REGISTRATION_AVAILABLE));
-	}
+    }
 }

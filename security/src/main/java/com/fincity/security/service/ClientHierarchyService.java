@@ -86,17 +86,9 @@ public class ClientHierarchyService
                 () -> this.dao.getUserClientHierarchy(userId), userId);
     }
 
-    public Mono<ClientHierarchy> getClientHierarchy(String clientCode) {
-        return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
-    }
 
     public Flux<ULong> getClientHierarchyIds(ULong clientId) {
         return this.getClientHierarchy(clientId)
-                .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
-    }
-
-    public Flux<ULong> getUserClientHierarchyIds(ULong userId) {
-        return this.getUserClientHierarchy(userId)
                 .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
     }
 

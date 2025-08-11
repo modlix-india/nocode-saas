@@ -32,6 +32,7 @@ public class ContextAuthentication implements Authentication {
     private BigInteger loggedInFromClientId;
     private String loggedInFromClientCode;
     private String clientTypeCode;
+    private String clientLevelType;
     private String clientCode;
     private String accessToken;
     private LocalDateTime accessTokenExpiryAt;
@@ -83,6 +84,6 @@ public class ContextAuthentication implements Authentication {
 
     @JsonIgnore
     public String getUrlClientCodeOrElse(boolean getUrl) {
-	    return getUrl ? this.urlClientCode : this.clientCode;
+        return getUrl ? this.urlClientCode : this.clientCode;
     }
 }
