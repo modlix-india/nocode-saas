@@ -71,7 +71,10 @@ public abstract class AbstractCallProviderService<
                 || !connection.getConnectionSubType().equals(this.getConnectionSubType()))
             return super.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    MessageResourceService.INVALID_CONNECTION_TYPE);
+                    MessageResourceService.INVALID_CONNECTION_TYPE,
+                    connection.getConnectionType(),
+                    connection.getConnectionSubType(),
+                    this.getMessageSeries().getDisplayName());
 
         return Mono.just(Boolean.TRUE);
     }

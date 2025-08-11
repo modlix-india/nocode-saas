@@ -3,6 +3,7 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
+import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
@@ -36,6 +37,11 @@ public class WhatsappPhoneNumberService
     @Override
     protected String getCacheName() {
         return WHATSAPP_PHONE_NUMBER_CACHE;
+    }
+
+    @Override
+    public MessageSeries getMessageSeries() {
+        return MessageSeries.WHATSAPP_PHONE_NUMBER;
     }
 
     @Override

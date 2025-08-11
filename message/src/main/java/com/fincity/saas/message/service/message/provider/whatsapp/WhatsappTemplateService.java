@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappTemplateDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
+import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
@@ -42,6 +43,11 @@ public class WhatsappTemplateService
     @Override
     protected String getCacheName() {
         return WHATSAPP_TEMPLATE_CACHE;
+    }
+
+    @Override
+    public MessageSeries getMessageSeries() {
+        return MessageSeries.WHATSAPP_TEMPLATE;
     }
 
     @Override

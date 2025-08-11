@@ -7,6 +7,7 @@ import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
+import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirection;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
@@ -38,6 +39,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
 
     public static final String EXOTEL_PROVIDER_URI = "/exotel";
     private static final String EXOTEL_CALL_CACHE = "exotelCall";
+
+    @Override
+    public MessageSeries getMessageSeries() {
+        return MessageSeries.EXOTEL_CALL;
+    }
 
     @Override
     protected String getCacheName() {

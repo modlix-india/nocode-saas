@@ -1,22 +1,24 @@
 package com.fincity.saas.message.service.base;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.message.feign.IFeignCoreService;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseConnectionService {
 
+    private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
     private CacheService cacheService;
-
     private IFeignCoreService coreService;
-
     private IFeignSecurityService securityService;
 
     @Autowired
@@ -38,6 +40,10 @@ public abstract class BaseConnectionService {
         return String.join("_", entityNames);
     }
 
+    private String getCacheKey(String... entityNames) {
+        return String.join(":", entityNames);
+    }
+
     public abstract ConnectionType getConnectionType();
 
     public Mono<Connection> getConnection(String appCode, String clientCode, String connectionName) {
@@ -45,6 +51,10 @@ public abstract class BaseConnectionService {
                 () -> this.securityService.appInheritance(appCode, clientCode, clientCode),
                 inheritance ->
                         this.getMessageConn(appCode, connectionName, getConnectionType(), clientCode, inheritance));
+    }
+
+    public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {
+        return this.getCoreToken(appCode, clientCode, connectionName);
     }
 
     private Mono<Connection> getMessageConn(
@@ -75,5 +85,12 @@ public abstract class BaseConnectionService {
                 () -> coreService.getConnection(clientCode, connectionName, appCode, clientCode, connectionType),
                 connection -> this.cacheService.put(
                         this.getCacheNames(appCode, connectionName), connection, connection.getClientCode()));
+    }
+
+    private Mono<String> getCoreToken(String appCode, String clientCode, String connectionName) {
+        return this.cacheService.cacheValueOrGet(
+                CACHE_NAME_REST_OAUTH2,
+                () -> this.coreService.getConnectionOAuth2Token("", "", clientCode, appCode, connectionName),
+                this.getCacheKey(connectionName, clientCode, appCode));
     }
 }

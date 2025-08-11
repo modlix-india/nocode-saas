@@ -4,14 +4,20 @@ import static com.fincity.saas.message.jooq.Tables.MESSAGE_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_EXOTEL_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_MESSAGES;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_MESSAGES;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBER;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_TEMPLATES;
+
+import org.jooq.EnumType;
+import org.jooq.Table;
 
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
+import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
+import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
+
 import lombok.Getter;
-import org.jooq.EnumType;
-import org.jooq.Table;
 
 @Getter
 public enum MessageSeries implements EnumType {
@@ -19,7 +25,14 @@ public enum MessageSeries implements EnumType {
     CALL("CALL", "Call", 1, "call", MESSAGE_CALLS),
     EXOTEL_CALL("EXOTEL_CALL", "Exotel Call", 2, "exotel_call", MESSAGE_EXOTEL_CALLS),
     MESSAGE("MESSAGE", "Message", 3, "message", MESSAGE_MESSAGES),
-    WHATSAPP("WHATSAPP", "Whatsapp", 4, "whatsapp", MESSAGE_WHATSAPP_MESSAGES);
+    WHATSAPP_MESSAGE("WHATSAPP_MESSAGE", "Whatsapp Message", 4, "whatsapp", MESSAGE_WHATSAPP_MESSAGES),
+    WHATSAPP_PHONE_NUMBER(
+            "WHATSAPP_PHONE_NUMBER",
+            "Whatsapp Phone Number",
+            4,
+            "whatsapp_phone_number",
+            MESSAGE_WHATSAPP_PHONE_NUMBER),
+    WHATSAPP_TEMPLATE("WHATSAPP_TEMPLATE", "Whatsapp Template", 4, "whatsapp_template", MESSAGE_WHATSAPP_TEMPLATES);
 
     private final String literal;
     private final String displayName;
@@ -55,7 +68,9 @@ public enum MessageSeries implements EnumType {
             case CALL -> Call.class;
             case EXOTEL_CALL -> ExotelCall.class;
             case MESSAGE -> Message.class;
-            case WHATSAPP -> WhatsappMessage.class;
+            case WHATSAPP_MESSAGE -> WhatsappMessage.class;
+            case WHATSAPP_PHONE_NUMBER -> WhatsappPhoneNumber.class;
+            case WHATSAPP_TEMPLATE -> WhatsappTemplate.class;
         };
     }
 }

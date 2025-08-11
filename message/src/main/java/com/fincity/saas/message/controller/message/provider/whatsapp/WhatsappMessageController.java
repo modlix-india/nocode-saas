@@ -24,9 +24,7 @@ public class WhatsappMessageController
 
     @PostMapping("/send")
     public Mono<ResponseEntity<Message>> sendWhatsappMessage(
-            @RequestBody WhatsappMessageRequest whatsappMessageRequest, MessageAccess access, Connection connection) {
-        return this.service
-                .sendWhatsappMessage(access, whatsappMessageRequest, connection)
-                .map(ResponseEntity::ok);
+            @RequestBody WhatsappMessageRequest whatsappMessageRequest) {
+        return this.service.sendMessage(whatsappMessageRequest).map(ResponseEntity::ok);
     }
 }

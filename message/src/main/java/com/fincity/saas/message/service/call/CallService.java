@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.call.CallDAO;
 import com.fincity.saas.message.dto.call.Call;
+import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
@@ -38,6 +39,11 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
     @Override
     protected String getCacheName() {
         return CALL_CACHE;
+    }
+
+    @Override
+    public MessageSeries getMessageSeries() {
+        return MessageSeries.CALL;
     }
 
     public Mono<Call> makeCall(CallRequest callRequest) {

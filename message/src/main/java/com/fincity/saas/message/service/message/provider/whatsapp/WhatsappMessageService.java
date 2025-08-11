@@ -6,6 +6,7 @@ import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
+import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.Identity;
@@ -65,6 +66,11 @@ public class WhatsappMessageService
     }
 
     @Override
+    public MessageSeries getMessageSeries() {
+        return MessageSeries.WHATSAPP_MESSAGE;
+    }
+
+    @Override
     public ConnectionSubType getConnectionSubType() {
         return ConnectionSubType.WHATSAPP;
     }
@@ -116,17 +122,27 @@ public class WhatsappMessageService
         return this.sendMessageInternal(access, connection, null, message, whatsappMessage);
     }
 
-    public Mono<Message> sendWhatsappMessage(
-            MessageAccess access, WhatsappMessageRequest whatsappMessageRequest, Connection connection) {
+    public Mono<Message> sendMessage(WhatsappMessageRequest whatsappMessageRequest) {
 
         if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
 
-        var message = whatsappMessageRequest.getMessage();
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.messageConnectionService.getConnection(
+                        access.getAppCode(), access.getClientCode(), whatsappMessageRequest.getConnectionName()),
+                (access, connection) -> {
+                    var message = whatsappMessageRequest.getMessage();
 
-        WhatsappMessage whatsappMessage = this.createWhatsappMessage(access, message.getTo(), message.getType());
+                    WhatsappMessage whatsappMessage =
+                            this.createWhatsappMessage(access, message.getTo(), message.getType());
 
-        return this.sendMessageInternal(
-                access, connection, whatsappMessageRequest.getWhatsappPhoneNumberId(), message, whatsappMessage);
+                    return this.sendMessageInternal(
+                            access,
+                            connection,
+                            whatsappMessageRequest.getWhatsappPhoneNumberId(),
+                            message,
+                            whatsappMessage);
+                });
     }
 
     private Mono<Message> sendMessageInternal(
