@@ -2,12 +2,15 @@ package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 
-import java.util.Map;
+import java.util.*;
 
-import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.*;
+import com.fincity.saas.ui.document.MobileAppGenerationStatus;
+import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -15,8 +18,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
 import com.fincity.saas.ui.repository.ApplicationRepository;
 
@@ -33,14 +34,17 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
     private UIFillerService fillerService;
 
+    private MobileAppGenerationStatusService statusService;
+
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
     @Autowired
-    public ApplicationService(PageService pageService, UIFillerService fillerService) {
+    public ApplicationService(PageService pageService, UIFillerService fillerService, MobileAppGenerationStatusService statusService) {
         super(Application.class);
         this.pageService = pageService;
         this.fillerService = fillerService;
+        this.statusService = statusService;
     }
 
     protected ApplicationService() {
@@ -49,7 +53,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
     @PostConstruct
     public void init() {
-        // this cyclic reference is need for picking shell page definition & the other
+        // this cyclic reference is need for picking shell page definition and the other
         // page definitions in the page service from application properties.
         this.pageService.setApplicationService(this);
     }
@@ -173,8 +177,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 return Mono.empty();
 
                             if (cApp == null && mergedApp != null) {
-                                cacheService.put(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), mergedApp,
-                                        key);
+                                return cacheService.put(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode), mergedApp,
+                                        key).map(e -> clonedApp.getProperties());
                             }
 
                             return Mono.justOrEmpty(clonedApp.getProperties());
@@ -231,11 +235,11 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 object.getProperties().remove("manifest");
                             }
 
-                            if (object.getProperties().get("sso2") instanceof Map sso2) {
+                            if (object.getProperties().get("sso2") instanceof Map<?, ?> sso2) {
 
                                 String url = StringUtil.safeValueOf(sso2.get("urlPrefix"));
                                 if (url != null) {
-                                    sso2.put("urlPrefix", processForVariables(url));
+                                    ((Map<String, String>) sso2).put("urlPrefix", processForVariables(url));
                                 }
                             }
 
@@ -285,4 +289,133 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
         return url;
     }
+
+    @SuppressWarnings({"unchecked"})
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    public Mono<List<Map<String, Object>>> listMobileApps(String appCode, String clientCode) {
+
+        return flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> clientCode == null ? Mono.just(true) : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+
+                (ca, hasAccess) -> {
+
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION,
+                                "Authorities.Application_CREATE");
+
+                    return this.readProperties(appCode, appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()));
+                },
+
+                (ca, hasAccess, props) -> {
+                    if (props == null) return Mono.just(List.<Map<String, Object>>of());
+
+                    final var mobileApps = props.get("mobileApps");
+
+                    if (mobileApps == null) return Mono.just(List.<Map<String, Object>>of());
+
+                    if (mobileApps instanceof Map<?, ?> map)
+                        return Mono.just((((Map<String, Map<String, Object>>) map).values().stream().sorted(
+                                (a, b) -> a.get("name").toString().compareToIgnoreCase(b.get("name").toString())
+                        ).toList()));
+
+                    return Mono.just(List.<Map<String, Object>>of());
+                },
+
+                (ca, hasAccess, props, mApps) -> {
+
+                    if (mApps.isEmpty()) return Mono.just(mApps);
+
+                    List<Map<String, Object>> mAppsList = new ArrayList<>();
+                    Set<String> mAppKeys = new HashSet<>();
+
+                    for (Map<String, Object> mApp : mApps) {
+
+                        String mAppKey = mApp.get("key").toString();
+                        mAppsList.add(CloneUtil.cloneMapObject(mApp));
+                        mAppKeys.add(mAppKey);
+                    }
+
+                    return this.statusService.getMobileAppGenerationStatus(appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()), mAppKeys)
+                            .map(map -> {
+                                mAppsList.forEach(mApp -> {
+                                    String key = StringUtil.safeValueOf(mApp.get("key"));
+                                    if (key == null) return;
+                                    mApp.put("status", map.get(key));
+                                });
+                                return mAppsList;
+                            });
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.listMobileApps"));
+    }
+
+    public Mono<Boolean> generateMobileApp(String appCode, String clientCode, String mobileAppKey) {
+
+        return flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> clientCode == null ? Mono.just(true) : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+
+                (ca, hasAccess) -> {
+
+                    if (!BooleanUtil.safeValueOf(hasAccess))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION,
+                                "Authorities.Application_CREATE");
+
+                    return this.statusService.updateStatus(ca.getUser().getId(), appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()), mobileAppKey, MobileAppGenerationStatus.Status.PENDING)
+                            .map(e -> true);
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.generateMobileApp"));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<Map<String, Object>> findNextAppToGenerate() {
+
+        return flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> {
+                    if (ca.isSystemClient()) return this.statusService.getNextMobileAppToGenerate();
+
+                    return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), UIMessageResourceService.INTERNAL_ONLY);
+                },
+
+                (ca, gen) -> this.readProperties(gen.getAppCode(), gen.getAppCode(), ca.getClientCode())
+                        .mapNotNull(e -> {
+                            if (e == null) return null;
+
+                            if (e.get("mobileApps") instanceof Map<?, ?> map) {
+                                Map<String, Object> mApp = (Map<String, Object>) ((Map<String, Object>) map.get("mobileApps")).get(gen.getMobileAppKey());
+
+                                if (mApp == null) return null;
+
+                                mApp = CloneUtil.cloneMapObject(mApp);
+                                mApp.put("version", gen.getVersion());
+                                mApp.put("statusId", gen.getId());
+                                return mApp;
+                            }
+
+                            return null;
+                        })
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.findNextAppToGenerate"));
+    }
+
+    public Mono<Boolean> updateStatus(String id, MobileAppStatusUpdateRequest request) {
+
+        return flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> {
+                    if (ca.isSystemClient()) return this.statusService.updateStatus(id, request);
+
+                    return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), UIMessageResourceService.INTERNAL_ONLY);
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.findNextAppToGenerate"));
+    }
+
 }
