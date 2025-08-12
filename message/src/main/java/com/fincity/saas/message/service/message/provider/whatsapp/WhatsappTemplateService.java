@@ -14,6 +14,7 @@ import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
+import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

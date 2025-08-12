@@ -1,4 +1,4 @@
-package com.fincity.saas.message.service.message.provider.whatsapp;
+package com.fincity.saas.message.service.message.provider.whatsapp.api;
 
 import com.fincity.saas.message.configuration.WebClientConfig;
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;

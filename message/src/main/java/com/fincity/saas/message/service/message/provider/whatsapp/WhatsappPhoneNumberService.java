@@ -11,6 +11,7 @@ import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
+import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
