@@ -7,7 +7,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
-        <relativePath />
+        <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
@@ -20,6 +20,7 @@
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
         <nocode-kirun-version>3.12.0</nocode-kirun-version>
         <saas-commons-version>2.0.0</saas-commons-version>
+        <jooq.version>3.20.3</jooq.version>
     </properties>
     <dependencies>
         <dependency>
@@ -35,8 +36,17 @@
             <artifactId>spring-data-commons</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+            <!-- Version is managed by dependencyManagement section -->
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -67,10 +77,6 @@
             <artifactId>commons</artifactId>
             <version>${saas-commons-version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -80,6 +86,11 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jooq</groupId>
+                <artifactId>jooq</artifactId>
+                <version>${jooq.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -93,5 +104,5 @@
             </snapshots>
         </repository>
 
-  </repositories>
+    </repositories>
 </project>

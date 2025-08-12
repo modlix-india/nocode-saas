@@ -1,6 +1,7 @@
 package com.fincity.saas.core.controller;
 
 import com.fincity.saas.commons.core.document.Connection;
+import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
@@ -49,5 +50,15 @@ public class ConnectionController
         String clientCode = request.getHeaders().getFirst("clientCode");
 
         return this.oAuth2RestService.getAccessToken(appCode, clientCode, connectionName);
+    }
+
+    @GetMapping("/internal")
+    public Mono<Connection> getConnection(
+            @RequestParam String connectionName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam String connectionType) {
+        return this.service.readInternalConnection(
+                connectionName, appCode, clientCode, ConnectionType.valueOf(connectionType));
     }
 }

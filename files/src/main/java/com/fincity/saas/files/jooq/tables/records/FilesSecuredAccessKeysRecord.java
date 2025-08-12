@@ -189,6 +189,6 @@ public class FilesSecuredAccessKeysRecord extends UpdatableRecordImpl<FilesSecur
         setAccessedCount(accessedCount);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

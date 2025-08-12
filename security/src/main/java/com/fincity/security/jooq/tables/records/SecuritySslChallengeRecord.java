@@ -304,6 +304,6 @@ public class SecuritySslChallengeRecord extends UpdatableRecordImpl<SecuritySslC
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

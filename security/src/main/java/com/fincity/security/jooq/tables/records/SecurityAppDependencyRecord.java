@@ -169,6 +169,6 @@ public class SecurityAppDependencyRecord extends UpdatableRecordImpl<SecurityApp
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

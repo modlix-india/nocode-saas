@@ -1,13 +1,13 @@
 package com.fincity.security.service;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import com.fincity.saas.commons.util.StringUtil;
-import com.google.common.base.Functions;
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang.NotImplementedException;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -256,7 +256,7 @@ public class ProfileService
         }
 
         Map<ULong, Map<String, Object>> roleIndex = queue.stream().filter(m -> Objects.nonNull(m.get("roleId")))
-                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Functions.identity()));
+                .collect(Collectors.toMap(m -> ULong.valueOf(m.get("roleId").toString()), Function.identity()));
 
         if (roleIndex.isEmpty()) return Mono.just(p);
 
@@ -485,6 +485,17 @@ public class ProfileService
 
         return this.dao.getUserAppHavingProfile(userId);
 
+    }
+
+    public Mono<List<ULong>> getAppProfilesHavingAuthorities(
+            ULong appId, ULong clientId, List<String> authorities) {
+
+        if (authorities == null || authorities.isEmpty()) return Mono.empty();
+
+        return this.clientHierarchyService
+                .getClientHierarchy(clientId)
+                .flatMap(clientHierarchy ->
+                        this.dao.getAppProfileHavingAuthorities(appId, clientHierarchy, authorities));
     }
 
 }

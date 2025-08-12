@@ -261,6 +261,6 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
         setDesignationId(designationId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

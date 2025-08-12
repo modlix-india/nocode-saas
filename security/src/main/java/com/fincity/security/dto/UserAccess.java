@@ -17,9 +17,9 @@ public class UserAccess implements Serializable {
     @Serial
     private static final long serialVersionUID = -2830351092181121428L;
 
-    private Boolean app;
-    private Boolean owner;
+    private boolean app;
+    private boolean owner;
+    private boolean clientAccess;
     private String appOneTimeToken;
     private String appURL;
-
 }

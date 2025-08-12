@@ -45,6 +45,7 @@ import com.fincity.security.jooq.tables.SecuritySslRequest;
 import com.fincity.security.jooq.tables.SecurityUser;
 import com.fincity.security.jooq.tables.SecurityUserAddress;
 import com.fincity.security.jooq.tables.SecurityUserInvite;
+import com.fincity.security.jooq.tables.SecurityUserRequest;
 import com.fincity.security.jooq.tables.SecurityUserToken;
 import com.fincity.security.jooq.tables.SecurityV2Role;
 import com.fincity.security.jooq.tables.SecurityV2RolePermission;
@@ -56,6 +57,7 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -278,6 +280,11 @@ public class Security extends SchemaImpl {
     public final SecurityUserInvite SECURITY_USER_INVITE = SecurityUserInvite.SECURITY_USER_INVITE;
 
     /**
+     * The table <code>security.security_user_request</code>.
+     */
+    public final SecurityUserRequest SECURITY_USER_REQUEST = SecurityUserRequest.SECURITY_USER_REQUEST;
+
+    /**
      * The table <code>security.security_user_token</code>.
      */
     public final SecurityUserToken SECURITY_USER_TOKEN = SecurityUserToken.SECURITY_USER_TOKEN;
@@ -306,7 +313,7 @@ public class Security extends SchemaImpl {
      * No further instances allowed
      */
     private Security() {
-        super("security", null);
+        super(DSL.name("security"), null, DSL.comment(""));
     }
 
 
@@ -359,6 +366,7 @@ public class Security extends SchemaImpl {
             SecurityUser.SECURITY_USER,
             SecurityUserAddress.SECURITY_USER_ADDRESS,
             SecurityUserInvite.SECURITY_USER_INVITE,
+            SecurityUserRequest.SECURITY_USER_REQUEST,
             SecurityUserToken.SECURITY_USER_TOKEN,
             SecurityV2Role.SECURITY_V2_ROLE,
             SecurityV2RolePermission.SECURITY_V2_ROLE_PERMISSION,
