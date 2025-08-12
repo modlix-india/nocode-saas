@@ -4,9 +4,11 @@ import com.fincity.saas.message.controller.base.BaseUpdatableController;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappPhoneNumberService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +25,12 @@ public class WhatsappPhoneNumberController
                 WhatsappPhoneNumberService> {
 
     @PostMapping("/sync/{connectionName}")
-    public Mono<ResponseEntity<List<WhatsappPhoneNumber>>> syncPhoneNumbers(@PathVariable String connectionName) {
+    public Mono<ResponseEntity<List<WhatsappPhoneNumber>>> syncPhoneNumbers(@PathVariable final String connectionName) {
         return this.service.syncPhoneNumbers(connectionName).collectList().map(ResponseEntity::ok);
+    }
+
+    @PatchMapping("/default" + "/{" + PATH_VARIABLE_ID + "}")
+    public Mono<ResponseEntity<WhatsappPhoneNumber>> setDefault(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
+        return this.service.setDefault(identity).map(ResponseEntity::ok);
     }
 }

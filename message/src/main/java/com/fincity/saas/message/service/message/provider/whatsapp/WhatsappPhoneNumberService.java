@@ -5,6 +5,7 @@ import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumbe
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
@@ -102,6 +103,29 @@ public class WhatsappPhoneNumberService
                         this.savePhoneNumbers(phoneNumbers.getT1(), phoneNumbers.getT2(), messageAccess));
     }
 
+    public Mono<WhatsappPhoneNumber> setDefault(Identity phoneNumber) {
+        return FlatMapUtil.flatMapMonoWithNull(
+                super::hasAccess,
+                access -> super.readIdentityWithAccess(access, phoneNumber),
+                (access, whatsappPhoneNumber) -> this.getDefaultWhatsAppPhoneNumber(access),
+                (access, whatsappPhoneNumber, defaultPhoneNumber) -> {
+                    if (defaultPhoneNumber == null) return this.updateDefault(whatsappPhoneNumber, Boolean.TRUE);
+
+                    if (whatsappPhoneNumber.getId().equals(defaultPhoneNumber.getId()))
+                        return Mono.just(defaultPhoneNumber);
+
+                    return Mono.zip(
+                                    this.updateDefault(whatsappPhoneNumber, Boolean.TRUE),
+                                    this.updateDefault(defaultPhoneNumber, Boolean.FALSE))
+                            .map(Tuple2::getT1);
+                });
+    }
+
+    private Mono<WhatsappPhoneNumber> updateDefault(WhatsappPhoneNumber whatsappPhoneNumber, Boolean isDefault) {
+        return super.update(whatsappPhoneNumber.setIsDefault(isDefault))
+                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
     public Mono<WhatsappPhoneNumber> getByPhoneNumberId(MessageAccess messageAccess, String phoneNumberId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
@@ -174,5 +198,9 @@ public class WhatsappPhoneNumberService
 
     private Mono<WhatsappBusinessManagementApi> getBusinessManagementApi(Connection connection) {
         return this.whatsappApiFactory.newBusinessManagementApiFromConnection(connection);
+    }
+
+    private Mono<WhatsappPhoneNumber> getDefaultWhatsAppPhoneNumber(MessageAccess messageAccess) {
+        return this.dao.getDefaultPhoneNumber(messageAccess);
     }
 }

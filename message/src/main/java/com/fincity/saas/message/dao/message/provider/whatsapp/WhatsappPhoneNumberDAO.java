@@ -79,4 +79,16 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(e -> e.into(this.pojoClass)));
     }
+
+    public Mono<WhatsappPhoneNumber> getDefaultPhoneNumber(MessageAccess messageAccess) {
+        return FlatMapUtil.flatMapMono(
+                () -> super.messageAccessCondition(
+                        FilterCondition.make(WhatsappPhoneNumber.Fields.isDefault, Boolean.TRUE)
+                                .setOperator(FilterConditionOperator.IS_TRUE),
+                        messageAccess),
+                super::filter,
+                (messageAccessCondition, jCondition) -> Mono.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(e -> e.into(this.pojoClass)));
+    }
 }

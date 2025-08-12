@@ -12,7 +12,6 @@ import com.fincity.saas.message.model.message.whatsapp.phone.TwoStepCode;
 import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.AbstractWhatsappApi;
-
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
