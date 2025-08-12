@@ -1,9 +1,11 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.business;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
 import com.fincity.saas.message.configuration.message.whatsapp.WhatsappApiConfig;
 import com.fincity.saas.message.model.message.whatsapp.config.CommerceDataItem;
 import com.fincity.saas.message.model.message.whatsapp.config.GraphCommerceSettings;
+import com.fincity.saas.message.model.message.whatsapp.errors.WhatsappApiError;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.model.message.whatsapp.phone.RequestCode;
@@ -12,11 +14,16 @@ import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.MessageTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
+import com.fincity.saas.message.service.MessageResourceService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -25,17 +32,26 @@ public class WhatsappBusinessManagementApi {
     private final WhatsappBusinessManagementApiService apiService;
     private final ApiVersion apiVersion;
     private final WebClient webClient;
+    private final MessageResourceService messageResourceService;
 
     public WhatsappBusinessManagementApi(WebClient webClient) {
-        this.apiVersion = WhatsappApiConfig.API_VERSION;
-        this.webClient = webClient;
-        this.apiService = new WhatsappBusinessManagementApiServiceImpl(webClient);
+        this(webClient, WhatsappApiConfig.API_VERSION, null);
     }
 
     public WhatsappBusinessManagementApi(WebClient webClient, ApiVersion apiVersion) {
+        this(webClient, apiVersion, null);
+    }
+
+    public WhatsappBusinessManagementApi(WebClient webClient, MessageResourceService messageResourceService) {
+        this(webClient, WhatsappApiConfig.API_VERSION, messageResourceService);
+    }
+
+    public WhatsappBusinessManagementApi(
+            WebClient webClient, ApiVersion apiVersion, MessageResourceService messageResourceService) {
         this.apiVersion = apiVersion;
         this.webClient = webClient;
-        this.apiService = new WhatsappBusinessManagementApiServiceImpl(webClient);
+        this.messageResourceService = messageResourceService;
+        this.apiService = new WhatsappBusinessManagementApiServiceImpl(webClient, messageResourceService);
     }
 
     public Mono<Template> createMessageTemplate(String whatsappBusinessAccountId, MessageTemplate messageTemplate) {
@@ -109,8 +125,21 @@ public class WhatsappBusinessManagementApi {
         return apiService.updateWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, commerceDataItem);
     }
 
-    private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient)
+    private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient, MessageResourceService msgService)
             implements WhatsappBusinessManagementApiService {
+
+        private static final Logger logger = LoggerFactory.getLogger(WhatsappBusinessManagementApiServiceImpl.class);
+
+        private Mono<Throwable> handleWhatsappApiError(ClientResponse clientResponse) {
+            return clientResponse.bodyToMono(WhatsappApiError.class).flatMap(errorBody -> {
+                logger.error("Error response received from WhatsApp API: {}", errorBody);
+
+                return this.msgService.throwStrMessage(
+                        msg -> new GenericException(
+                                HttpStatus.valueOf(clientResponse.statusCode().value()), msg),
+                        errorBody.getError().getMessage());
+            });
+        }
 
         @Override
         public Mono<Template> createMessageTemplate(
@@ -124,6 +153,9 @@ public class WhatsappBusinessManagementApi {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(messageTemplate)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Template.class);
         }
 
@@ -143,6 +175,9 @@ public class WhatsappBusinessManagementApi {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(messageTemplate)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Template.class);
         }
 
@@ -155,6 +190,9 @@ public class WhatsappBusinessManagementApi {
                             .queryParam("name", name)
                             .build(apiVersion, whatsappBusinessAccountId))
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Response.class);
         }
 
@@ -167,6 +205,9 @@ public class WhatsappBusinessManagementApi {
                             apiVersion,
                             whatsappBusinessAccountId)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(MessageTemplates.class);
         }
 
@@ -181,6 +222,9 @@ public class WhatsappBusinessManagementApi {
                         return uriBuilder.build(apiVersion, whatsappBusinessAccountId);
                     })
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(MessageTemplates.class);
         }
 
@@ -195,6 +239,9 @@ public class WhatsappBusinessManagementApi {
                         return uriBuilder.build(apiVersion, phoneNumberId);
                     })
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(PhoneNumber.class);
         }
 
@@ -207,6 +254,9 @@ public class WhatsappBusinessManagementApi {
                             apiVersion,
                             whatsappBusinessAccountId)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(PhoneNumbers.class);
         }
 
@@ -218,6 +268,9 @@ public class WhatsappBusinessManagementApi {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestCode)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Response.class);
         }
 
@@ -229,6 +282,9 @@ public class WhatsappBusinessManagementApi {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(verifyCode)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Response.class);
         }
 
@@ -243,6 +299,9 @@ public class WhatsappBusinessManagementApi {
                         return uriBuilder.build(apiVersion, phoneNumberId);
                     })
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(GraphCommerceSettings.class);
         }
 
@@ -255,6 +314,9 @@ public class WhatsappBusinessManagementApi {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(commerceDataItem)
                     .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
                     .bodyToMono(Response.class);
         }
     }

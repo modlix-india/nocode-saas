@@ -7,7 +7,6 @@ import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 import com.fincity.saas.message.model.request.message.MessageRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;

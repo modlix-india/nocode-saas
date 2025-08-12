@@ -5,9 +5,7 @@ import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
-import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
-import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

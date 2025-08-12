@@ -132,11 +132,16 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
 
         return FlatMapUtil.flatMapMono(
                 () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
-                conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
-                (conn, typedConn) -> Mono.justOrEmpty(
-                        typedConn.getClientCode().equals(clientCode)
-                                        || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
-                                ? typedConn
-                                : null));
+                conn -> {
+	                if (conn.getConnectionType() == type) return Mono.justOrEmpty(conn);
+	                return Mono.justOrEmpty((Connection) null);
+                },
+                (conn, typedConn) -> {
+	                if (typedConn.getClientCode().equals(clientCode)
+			                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())) return Mono.justOrEmpty(
+			                typedConn);
+	                return Mono.justOrEmpty(
+			                (Connection) null);
+                });
     }
 }
