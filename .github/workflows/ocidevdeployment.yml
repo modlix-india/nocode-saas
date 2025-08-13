@@ -66,6 +66,9 @@ jobs:
       - name: Building entity-processor
         working-directory: ./entity-processor
         run: mvn clean install
+      - name: Building entity-collector
+        working-directory: ./entity-collector
+        run: mvn clean install
       - name: Building notification
         working-directory: ./notification
         run: mvn clean install
@@ -157,6 +160,14 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag dev-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server:latest
+      - name: Pushing Entity Collector Docker Image to OCI
+        working-directory: ./entity-collector
+        run: |
+          docker build -t dev-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag dev-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag dev-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-collector-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-collector-server:latest
       - name: Pushing Notification Docker Image to OCI
         working-directory: ./notification
         run: |
