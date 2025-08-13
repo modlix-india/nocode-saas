@@ -101,7 +101,7 @@ public abstract class BaseUpdatableService<
     }
 
     @Autowired
-    public void setMessageResourceService(ProcessorMessageResourceService msgService) {
+    public void setMsgService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
