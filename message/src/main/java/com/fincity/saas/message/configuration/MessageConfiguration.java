@@ -41,7 +41,15 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
 
     @Bean
     public SecurityWebFilterChain filterChain(ServerHttpSecurity http, FeignAuthenticationService authService) {
-        return this.springSecurityFilterChain(http, authService, this.objectMapper);
+        return this.springSecurityFilterChain(
+                http,
+                authService,
+                this.objectMapper,
+                "api/call/callback",
+                "api/call/callback/**",
+                "api/call/exotel/connect",
+                "/api/message/whatsapp/webhook",
+                "/api/message/whatsapp/webhook/**");
     }
 
     @Bean
