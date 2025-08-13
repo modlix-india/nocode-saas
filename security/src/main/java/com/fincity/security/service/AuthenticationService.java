@@ -667,9 +667,12 @@ public class AuthenticationService implements IAuthenticationService {
             String reqAppCode = request.getHeaders().getFirst(AppService.AC);
             String clientCode = request.getHeaders().getFirst(ClientService.CC);
 
+            final AuthenticationIdentifierType identifier = (username.indexOf('@') != -1) ? AuthenticationIdentifierType.EMAIL_ID
+                    : AuthenticationIdentifierType.USER_NAME;
+
             return FlatMapUtil.flatMapMono(
                             () -> this.userService.findNonDeletedUserNClient(
-                                    username, null, clientCode, reqAppCode, AuthenticationIdentifierType.USER_NAME),
+                                    username, null, clientCode, reqAppCode, identifier),
                             tup -> this.userService
                                     .checkUserAndClient(tup, clientCode)
                                     .flatMap(BooleanUtil::safeValueOfWithEmpty),

@@ -352,6 +352,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.listMobileApps"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<Boolean> generateMobileApp(String appCode, String clientCode, String mobileAppKey) {
 
         return flatMapMono(
@@ -373,6 +374,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.generateMobileApp"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
     @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> findNextAppToGenerate() {
 
@@ -390,13 +392,16 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                             if (e == null) return null;
 
                             if (e.get("mobileApps") instanceof Map<?, ?> map) {
-                                Map<String, Object> mApp = (Map<String, Object>) ((Map<String, Object>) map.get("mobileApps")).get(gen.getMobileAppKey());
+                                Map<String, Object> mApp = (Map<String, Object>) map.get(gen.getMobileAppKey());
 
                                 if (mApp == null) return null;
 
                                 mApp = CloneUtil.cloneMapObject(mApp);
                                 mApp.put("version", gen.getVersion());
                                 mApp.put("statusId", gen.getId());
+                                mApp.put("appCode", gen.getAppCode());
+                                mApp.put("clientCode", ca.getClientCode());
+                                
                                 return mApp;
                             }
 
@@ -405,6 +410,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.findNextAppToGenerate"));
     }
 
+    @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
     public Mono<Boolean> updateStatus(String id, MobileAppStatusUpdateRequest request) {
 
         return flatMapMono(
