@@ -164,19 +164,19 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     }
 
     /**
-     * Setter for <code>message.message_whatsapp_messages.FROM_PHONE</code>.
-     * Phone number of the sender.
+     * Setter for <code>message.message_whatsapp_messages.FROM</code>. Phone
+     * number of the sender.
      */
-    public MessageWhatsappMessagesRecord setFromPhone(String value) {
+    public MessageWhatsappMessagesRecord setFrom(String value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_whatsapp_messages.FROM_PHONE</code>.
-     * Phone number of the sender.
+     * Getter for <code>message.message_whatsapp_messages.FROM</code>. Phone
+     * number of the sender.
      */
-    public String getFromPhone() {
+    public String getFrom() {
         return (String) get(8);
     }
 
@@ -198,19 +198,19 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     }
 
     /**
-     * Setter for <code>message.message_whatsapp_messages.TO_PHONE</code>. Phone
+     * Setter for <code>message.message_whatsapp_messages.TO</code>. Phone
      * number of the recipient.
      */
-    public MessageWhatsappMessagesRecord setToPhone(String value) {
+    public MessageWhatsappMessagesRecord setTo(String value) {
         set(10, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_whatsapp_messages.TO_PHONE</code>. Phone
+     * Getter for <code>message.message_whatsapp_messages.TO</code>. Phone
      * number of the recipient.
      */
-    public String getToPhone() {
+    public String getTo() {
         return (String) get(10);
     }
 
@@ -494,7 +494,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     /**
      * Create a detached, initialised MessageWhatsappMessagesRecord
      */
-    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String from, Short toDialCode, String to, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES);
 
         setId(id);
@@ -505,9 +505,9 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
         setMessageId(messageId);
         setWhatsappPhoneNumberId(whatsappPhoneNumberId);
         setFromDialCode(fromDialCode);
-        setFromPhone(fromPhone);
+        setFrom(from);
         setToDialCode(toDialCode);
-        setToPhone(toPhone);
+        setTo(to);
         setMessageType(messageType);
         setMessageStatus(messageStatus);
         setSentTime(sentTime);

@@ -124,19 +124,19 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     }
 
     /**
-     * Setter for <code>message.message_messages.FROM_PHONE</code>. Phone number
-     * of the sender.
+     * Setter for <code>message.message_messages.FROM</code>. Phone number of
+     * the sender.
      */
-    public MessageMessagesRecord setFromPhone(String value) {
+    public MessageMessagesRecord setFrom(String value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_messages.FROM_PHONE</code>. Phone number
-     * of the sender.
+     * Getter for <code>message.message_messages.FROM</code>. Phone number of
+     * the sender.
      */
-    public String getFromPhone() {
+    public String getFrom() {
         return (String) get(6);
     }
 
@@ -158,19 +158,19 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     }
 
     /**
-     * Setter for <code>message.message_messages.TO_PHONE</code>. Phone number
-     * of the recipient.
+     * Setter for <code>message.message_messages.TO</code>. Phone number of the
+     * recipient.
      */
-    public MessageMessagesRecord setToPhone(String value) {
+    public MessageMessagesRecord setTo(String value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>message.message_messages.TO_PHONE</code>. Phone number
-     * of the recipient.
+     * Getter for <code>message.message_messages.TO</code>. Phone number of the
+     * recipient.
      */
-    public String getToPhone() {
+    public String getTo() {
         return (String) get(8);
     }
 
@@ -452,7 +452,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     /**
      * Create a detached, initialised MessageMessagesRecord
      */
-    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String connectionName, String messageProvider, Byte isOutbound, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, ULong whatsappMessageId, ULong whatsappTemplateId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String from, Short toDialCode, String to, String connectionName, String messageProvider, Byte isOutbound, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, ULong whatsappMessageId, ULong whatsappTemplateId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageMessages.MESSAGE_MESSAGES);
 
         setId(id);
@@ -461,9 +461,9 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
         setUserId(userId);
         setCode(code);
         setFromDialCode(fromDialCode);
-        setFromPhone(fromPhone);
+        setFrom(from);
         setToDialCode(toDialCode);
-        setToPhone(toPhone);
+        setTo(to);
         setConnectionName(connectionName);
         setMessageProvider(messageProvider);
         setIsOutbound(isOutbound);

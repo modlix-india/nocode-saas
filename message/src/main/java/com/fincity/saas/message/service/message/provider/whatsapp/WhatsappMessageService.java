@@ -1,15 +1,18 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
+import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message.MessageBuilder;
 import com.fincity.saas.message.model.message.whatsapp.messages.TextMessage;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IChange;
@@ -32,6 +35,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -49,14 +53,19 @@ public class WhatsappMessageService
 
     private final WhatsappPhoneNumberService whatsappPhoneNumberService;
 
+    private final WhatsappCswService customerServiceWindowService;
+
     @Value("${facebook.whatsapp.webhook.verify-token:null}")
     private String verifyToken;
 
     @Autowired
     public WhatsappMessageService(
-            WhatsappApiFactory whatsappApiFactory, WhatsappPhoneNumberService whatsappPhoneNumberService) {
+            WhatsappApiFactory whatsappApiFactory,
+            WhatsappPhoneNumberService whatsappPhoneNumberService,
+            WhatsappCswService customerServiceWindowService) {
         this.whatsappApiFactory = whatsappApiFactory;
         this.whatsappPhoneNumberService = whatsappPhoneNumberService;
+        this.customerServiceWindowService = customerServiceWindowService;
     }
 
     @Override
@@ -149,10 +158,12 @@ public class WhatsappMessageService
                         (vConn, businessAccountId) ->
                                 this.getWhatsappPhoneNumber(whatsappPhoneNumberId, access, businessAccountId),
                         (vConn, businessAccountId, phoneNumberId) ->
+                                this.validateCustomerServiceWindow(access, phoneNumberId, whatsappMessage),
+                        (vConn, businessAccountId, phoneNumberId, validated) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
-                        (vConn, businessAccountId, phoneNumberId, api) ->
+                        (vConn, businessAccountId, phoneNumberId, validated, api) ->
                                 api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getOutMessage()),
-                        (vConn, businessAccountId, phoneNumberId, api, response) -> {
+                        (vConn, businessAccountId, phoneNumberId, validated, api, response) -> {
                             whatsappMessage.setWhatsappBusinessAccountId(businessAccountId);
                             whatsappMessage.setWhatsappPhoneNumberId(phoneNumberId.getId());
                             whatsappMessage.setMessageId(
@@ -160,9 +171,9 @@ public class WhatsappMessageService
                             whatsappMessage.setMessageResponse(response);
                             return this.createInternal(access, whatsappMessage);
                         },
-                        (vConn, businessAccountId, phoneNumberId, api, response, created) ->
+                        (vConn, businessAccountId, phoneNumberId, validated, api, response, created) ->
                                 this.toMessage(created).map(msg -> msg.setConnectionName(connection.getName())),
-                        (vConn, businessAccountId, phoneNumberId, api, response, created, msg) ->
+                        (vConn, businessAccountId, phoneNumberId, validated, api, response, created, msg) ->
                                 this.messageEventService
                                         .sendMessageEvent(
                                                 access.getAppCode(),
@@ -307,5 +318,45 @@ public class WhatsappMessageService
         }
 
         return super.update(whatsappMessage);
+    }
+
+    private Mono<Boolean> validateCustomerServiceWindow(
+            MessageAccess access, WhatsappPhoneNumber whatsappPhoneNumber, WhatsappMessage whatsappMessage) {
+
+        PhoneNumber customerPhone = PhoneNumber.of(whatsappMessage.getToDialCode(), whatsappMessage.getTo());
+
+        boolean isTemplateMessage = whatsappMessage.getMessageType() == MessageType.TEMPLATE;
+
+        return customerServiceWindowService
+                .canSendMessage(access, whatsappPhoneNumber, customerPhone, isTemplateMessage)
+                .flatMap(canSend -> {
+                    if (Boolean.FALSE.equals(canSend)) {
+                        return Mono.error(
+                                new GenericException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Cannot send non-template message outside customer service window. "
+                                                + "Customer service window is open for 24 hours after receiving a message from the customer. "
+                                                + "Use template messages to initiate conversations or send messages outside the window."));
+                    }
+                    return Mono.just(true);
+                });
+    }
+
+    public Mono<WhatsappCswService.CswStatus> getCustomerServiceWindowStatus(
+            MessageAccess access, Identity whatsappPhoneNumberId, String customerPhoneNumber) {
+
+        PhoneNumber customerPhone = PhoneNumber.of(customerPhoneNumber);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.whatsappPhoneNumberService.readIdentityWithAccessEmpty(access, whatsappPhoneNumberId),
+                whatsappPhoneNumber -> customerServiceWindowService.getCustomerServiceWindowStatus(
+                        access, whatsappPhoneNumber, customerPhone));
+    }
+
+    public Mono<Boolean> canSendNonTemplateMessage(
+            MessageAccess access, Identity whatsappPhoneNumberId, String customerPhoneNumber) {
+
+        return getCustomerServiceWindowStatus(access, whatsappPhoneNumberId, customerPhoneNumber)
+                .map(WhatsappCswService.CswStatus::canSendNonTemplateMessage);
     }
 }

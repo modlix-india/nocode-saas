@@ -11,9 +11,9 @@ CREATE TABLE `message`.`message_whatsapp_messages` (
 
     `WHATSAPP_PHONE_NUMBER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'ID of the associated Business phone number.',
     `FROM_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the sender\'s phone number.',
-    `FROM_PHONE` CHAR(15) NULL COMMENT 'Phone number of the sender.',
+    `FROM` CHAR(15) NULL COMMENT 'Phone number of the sender.',
     `TO_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the recipient\'s phone number.',
-    `TO_PHONE` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
+    `TO` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
 
     `MESSAGE_TYPE` ENUM (
         'AUDIO',
@@ -55,8 +55,8 @@ CREATE TABLE `message`.`message_whatsapp_messages` (
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_WHATSAPP_MESSAGES_CODE` (`CODE`),
     INDEX `IDX1_WHATSAPP_MESSAGES_MESSAGE_ID` (`MESSAGE_ID`),
-    INDEX `IDX2_WHATSAPP_MESSAGES_FROM_PHONE` (`FROM_DIAL_CODE`, `FROM_PHONE`),
-    INDEX `IDX3_WHATSAPP_MESSAGES_TO_PHONE` (`TO_DIAL_CODE`, `TO_PHONE`),
+    INDEX `IDX2_WHATSAPP_MESSAGES_FROM` (`FROM_DIAL_CODE`, `FROM`),
+    INDEX `IDX3_WHATSAPP_MESSAGES_TO` (`TO_DIAL_CODE`, `TO`),
     INDEX `IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS` (`MESSAGE_STATUS`)
 
 ) ENGINE = InnoDB
@@ -110,9 +110,9 @@ CREATE TABLE `message`.`message_messages` (
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
 
     `FROM_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the sender\'s phone number.',
-    `FROM_PHONE` CHAR(15) NULL COMMENT 'Phone number of the sender.',
+    `FROM` CHAR(15) NULL COMMENT 'Phone number of the sender.',
     `TO_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the recipient\'s phone number.',
-    `TO_PHONE` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
+    `TO` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
 
     `CONNECTION_NAME` VARCHAR(255) NULL COMMENT 'Name of the connection used for the message.',
     `MESSAGE_PROVIDER` CHAR(50) NULL COMMENT 'Name of the message provider (e.g., WhatsApp or similar).',
@@ -136,8 +136,8 @@ CREATE TABLE `message`.`message_messages` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_MESSAGES_CODE` (`CODE`),
-    INDEX `IDX1_MESSAGES_FROM_PHONE` (`FROM_DIAL_CODE`, `FROM_PHONE`),
-    INDEX `IDX2_MESSAGES_TO_PHONE` (`TO_DIAL_CODE`, `TO_PHONE`),
+    INDEX `IDX1_MESSAGES_FROM` (`FROM_DIAL_CODE`, `FROM`),
+    INDEX `IDX2_MESSAGES_TO` (`TO_DIAL_CODE`, `TO`),
     INDEX `IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS` (`MESSAGE_STATUS`),
     CONSTRAINT `FK1_MESSAGES_WHATSAPP_MESSAGES_ID` FOREIGN KEY (`WHATSAPP_MESSAGE_ID`)
         REFERENCES `message_whatsapp_messages` (`ID`)
@@ -194,9 +194,9 @@ CREATE TABLE `message`.`message_messages` (
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
 
     `FROM_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the sender\'s phone number.',
-    `FROM_PHONE` CHAR(15) NULL COMMENT 'Phone number of the sender.',
+    `FROM` CHAR(15) NULL COMMENT 'Phone number of the sender.',
     `TO_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the recipient\'s phone number.',
-    `TO_PHONE` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
+    `TO` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
 
     `CONNECTION_NAME` VARCHAR(255) NULL COMMENT 'Name of the connection used for the message.',
     `MESSAGE_PROVIDER` CHAR(50) NULL COMMENT 'Name of the message provider (e.g., WhatsApp or similar).',
@@ -220,8 +220,8 @@ CREATE TABLE `message`.`message_messages` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_MESSAGES_CODE` (`CODE`),
-    INDEX `IDX1_MESSAGES_FROM_PHONE` (`FROM_DIAL_CODE`, `FROM_PHONE`),
-    INDEX `IDX2_MESSAGES_TO_PHONE` (`TO_DIAL_CODE`, `TO_PHONE`),
+    INDEX `IDX1_MESSAGES_FROM` (`FROM_DIAL_CODE`, `FROM`),
+    INDEX `IDX2_MESSAGES_TO` (`TO_DIAL_CODE`, `TO`),
     INDEX `IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS` (`MESSAGE_STATUS`),
     CONSTRAINT `FK1_MESSAGES_WHATSAPP_MESSAGES_ID` FOREIGN KEY (`WHATSAPP_MESSAGE_ID`)
         REFERENCES `message_whatsapp_messages` (`ID`)

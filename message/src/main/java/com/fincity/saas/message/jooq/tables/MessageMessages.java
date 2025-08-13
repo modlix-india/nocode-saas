@@ -103,10 +103,10 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     public final TableField<MessageMessagesRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the sender's phone number.");
 
     /**
-     * The column <code>message.message_messages.FROM_PHONE</code>. Phone number
-     * of the sender.
+     * The column <code>message.message_messages.FROM</code>. Phone number of
+     * the sender.
      */
-    public final TableField<MessageMessagesRecord, String> FROM_PHONE = createField(DSL.name("FROM_PHONE"), SQLDataType.CHAR(15), this, "Phone number of the sender.");
+    public final TableField<MessageMessagesRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15), this, "Phone number of the sender.");
 
     /**
      * The column <code>message.message_messages.TO_DIAL_CODE</code>. Dial code
@@ -115,10 +115,10 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     public final TableField<MessageMessagesRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the recipient's phone number.");
 
     /**
-     * The column <code>message.message_messages.TO_PHONE</code>. Phone number
-     * of the recipient.
+     * The column <code>message.message_messages.TO</code>. Phone number of the
+     * recipient.
      */
-    public final TableField<MessageMessagesRecord, String> TO_PHONE = createField(DSL.name("TO_PHONE"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
+    public final TableField<MessageMessagesRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
 
     /**
      * The column <code>message.message_messages.CONNECTION_NAME</code>. Name of
@@ -279,7 +279,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX1_MESSAGES_FROM_PHONE, Indexes.MESSAGE_MESSAGES_IDX2_MESSAGES_TO_PHONE, Indexes.MESSAGE_MESSAGES_IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS);
+        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX1_MESSAGES_FROM, Indexes.MESSAGE_MESSAGES_IDX2_MESSAGES_TO, Indexes.MESSAGE_MESSAGES_IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS);
     }
 
     @Override

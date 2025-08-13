@@ -66,6 +66,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setTo(to.getNumber())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.SENT)
+                .setSentTime(LocalDateTime.now())
                 .setOutbound(Boolean.TRUE)
                 .setOutMessage(message);
     }

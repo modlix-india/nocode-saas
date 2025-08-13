@@ -117,10 +117,10 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     public final TableField<MessageWhatsappMessagesRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the sender's phone number.");
 
     /**
-     * The column <code>message.message_whatsapp_messages.FROM_PHONE</code>.
-     * Phone number of the sender.
+     * The column <code>message.message_whatsapp_messages.FROM</code>. Phone
+     * number of the sender.
      */
-    public final TableField<MessageWhatsappMessagesRecord, String> FROM_PHONE = createField(DSL.name("FROM_PHONE"), SQLDataType.CHAR(15), this, "Phone number of the sender.");
+    public final TableField<MessageWhatsappMessagesRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15), this, "Phone number of the sender.");
 
     /**
      * The column <code>message.message_whatsapp_messages.TO_DIAL_CODE</code>.
@@ -129,10 +129,10 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     public final TableField<MessageWhatsappMessagesRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the recipient's phone number.");
 
     /**
-     * The column <code>message.message_whatsapp_messages.TO_PHONE</code>. Phone
+     * The column <code>message.message_whatsapp_messages.TO</code>. Phone
      * number of the recipient.
      */
-    public final TableField<MessageWhatsappMessagesRecord, String> TO_PHONE = createField(DSL.name("TO_PHONE"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
+    public final TableField<MessageWhatsappMessagesRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
 
     /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
@@ -296,7 +296,7 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM_PHONE, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO_PHONE, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS);
+        return Arrays.asList(Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX2_WHATSAPP_MESSAGES_FROM, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX3_WHATSAPP_MESSAGES_TO, Indexes.MESSAGE_WHATSAPP_MESSAGES_IDX4_WHATSAPP_MESSAGES_MESSAGE_STATUS);
     }
 
     @Override
