@@ -36,6 +36,11 @@ spring:
         - id: entity-collector
           uri: lb://entity-collector
           predicates:
+            - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**,
+        - id: message
+          uri: lb://message
+          predicates:
+            - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**,
             - Path=/api/entity/collector/**, /*/api/entity/collector/**, /*/*/api/entity/collector/**, /*/*/*/api/entity/collector/**, /*/*/*/*/api/entity/collector/**, /*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**,
 
         - id: ui
