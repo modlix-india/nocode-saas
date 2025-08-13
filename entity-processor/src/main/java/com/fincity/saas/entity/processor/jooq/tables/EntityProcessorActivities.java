@@ -9,8 +9,6 @@ import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesActivityAction;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesObjectEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -151,7 +149,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
      * Activity Action categories for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Activity Action categories for this Activity.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "Activity Action categories for this Activity.", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
 
     /**
      * The column
@@ -165,7 +163,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
      * Entity Series of the object associated with this Activity. 
      */
-    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorActivitiesObjectEntitySeries.class), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<EntityProcessorActivitiesObjectEntitySeries, EntitySeries>(EntityProcessorActivitiesObjectEntitySeries.class, EntitySeries.class));
+    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<String, EntitySeries>(String.class, EntitySeries.class));
 
     /**
      * The column

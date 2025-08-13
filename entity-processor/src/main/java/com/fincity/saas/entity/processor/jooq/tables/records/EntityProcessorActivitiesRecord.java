@@ -448,6 +448,6 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }
