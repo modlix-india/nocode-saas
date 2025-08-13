@@ -1,6 +1,7 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType;
@@ -24,7 +25,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private QualityRatingType qualityRating;
     private String verifiedName;
     private String phoneNumberId;
-    private String codeVerificationStatus;
+    private CodeVerificationStatus codeVerificationStatus;
     private NameStatusType nameStatus;
     private PlatformType platformType;
     private Throughput throughput;

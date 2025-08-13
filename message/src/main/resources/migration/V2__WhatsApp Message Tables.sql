@@ -163,7 +163,7 @@ CREATE TABLE `message`.`message_whatsapp_phone_number` (
     `QUALITY_RATING` ENUM ('GREEN', 'YELLOW', 'RED', 'NA', 'UNKNOWN') NULL COMMENT 'Quality rating of the phone number.',
     `VERIFIED_NAME` VARCHAR(255) NULL COMMENT 'Verified name associated with the phone number.',
     `PHONE_NUMBER_ID` VARCHAR(255) NULL COMMENT 'WhatsApp phone number ID from Meta.',
-    `CODE_VERIFICATION_STATUS` VARCHAR(125) NULL COMMENT 'Status of code verification.',
+    `CODE_VERIFICATION_STATUS` ENUM ('VERIFIED', 'NOT_VERIFIED', 'EXPIRED') NULL COMMENT 'Status of code verification.',
     `NAME_STATUS` ENUM ('APPROVED', 'AVAILABLE_WITHOUT_REVIEW', 'DECLINED', 'EXPIRED', 'PENDING_REVIEW', 'NONE') NULL COMMENT 'Status of the verified name.',
     `PLATFORM_TYPE` ENUM ('CLOUD_API', 'ON_PREMISE', 'NOT_APPLICABLE') NULL COMMENT 'Platform type for WhatsApp Business.',
     `THROUGHPUT_LEVEL_TYPE` ENUM ('STANDARD', 'HIGH', 'NOT_APPLICABLE') NULL COMMENT 'Throughput level for message sending.',

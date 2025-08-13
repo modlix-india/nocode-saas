@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq.tables;
 
 
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
@@ -126,7 +127,7 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
      * <code>message.message_whatsapp_phone_number.CODE_VERIFICATION_STATUS</code>.
      * Status of code verification.
      */
-    public final TableField<MessageWhatsappPhoneNumberRecord, String> CODE_VERIFICATION_STATUS = createField(DSL.name("CODE_VERIFICATION_STATUS"), SQLDataType.VARCHAR(125), this, "Status of code verification.");
+    public final TableField<MessageWhatsappPhoneNumberRecord, CodeVerificationStatus> CODE_VERIFICATION_STATUS = createField(DSL.name("CODE_VERIFICATION_STATUS"), SQLDataType.VARCHAR(12), this, "Status of code verification.", new EnumConverter<String, CodeVerificationStatus>(String.class, CodeVerificationStatus.class));
 
     /**
      * The column

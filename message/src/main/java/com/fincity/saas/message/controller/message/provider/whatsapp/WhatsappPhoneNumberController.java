@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -24,9 +25,15 @@ public class WhatsappPhoneNumberController
                 WhatsappPhoneNumberDAO,
                 WhatsappPhoneNumberService> {
 
-    @PostMapping("/sync/{connectionName}")
-    public Mono<ResponseEntity<List<WhatsappPhoneNumber>>> syncPhoneNumbers(@PathVariable final String connectionName) {
+    @PostMapping("/sync")
+    public Mono<ResponseEntity<List<WhatsappPhoneNumber>>> syncPhoneNumbers(@RequestParam final String connectionName) {
         return this.service.syncPhoneNumbers(connectionName).collectList().map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/sync/" + "/{" + PATH_VARIABLE_ID + "}")
+    public Mono<ResponseEntity<WhatsappPhoneNumber>> syncPhoneNumber(
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam final String connectionName) {
+        return this.service.syncPhoneNumber(connectionName, identity).map(ResponseEntity::ok);
     }
 
     @PatchMapping("/default" + "/{" + PATH_VARIABLE_ID + "}")

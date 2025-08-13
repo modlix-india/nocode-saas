@@ -396,6 +396,12 @@
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus</userType>
+                                            <includeExpression>.*\.CODE_VERIFICATION_STATUS</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
                                     </forcedTypes>
                                 </database>
                                 <generate>

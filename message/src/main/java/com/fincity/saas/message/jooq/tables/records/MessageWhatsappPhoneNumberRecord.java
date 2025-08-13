@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq.tables.records;
 
 
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
@@ -193,7 +194,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * <code>message.message_whatsapp_phone_number.CODE_VERIFICATION_STATUS</code>.
      * Status of code verification.
      */
-    public MessageWhatsappPhoneNumberRecord setCodeVerificationStatus(String value) {
+    public MessageWhatsappPhoneNumberRecord setCodeVerificationStatus(CodeVerificationStatus value) {
         set(9, value);
         return this;
     }
@@ -203,8 +204,8 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * <code>message.message_whatsapp_phone_number.CODE_VERIFICATION_STATUS</code>.
      * Status of code verification.
      */
-    public String getCodeVerificationStatus() {
-        return (String) get(9);
+    public CodeVerificationStatus getCodeVerificationStatus() {
+        return (CodeVerificationStatus) get(9);
     }
 
     /**
@@ -389,7 +390,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
     /**
      * Create a detached, initialised MessageWhatsappPhoneNumberRecord
      */
-    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, String codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Byte isDefault, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Byte isDefault, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER);
 
         setId(id);
