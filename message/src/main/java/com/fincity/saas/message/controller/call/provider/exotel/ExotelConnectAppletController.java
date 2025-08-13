@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/call/exotel")
+@RequestMapping("/api/message/call/exotel")
 public class ExotelConnectAppletController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExotelConnectAppletController.class);

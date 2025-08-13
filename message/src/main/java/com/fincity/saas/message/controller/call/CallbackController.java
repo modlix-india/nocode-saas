@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
-import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -15,7 +14,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping(AbstractCallProviderService.CALL_BACK_URI)
+@RequestMapping("/api/message/call/callback")
 public class CallbackController {
 
     private final ExotelCallService exotelCallService;

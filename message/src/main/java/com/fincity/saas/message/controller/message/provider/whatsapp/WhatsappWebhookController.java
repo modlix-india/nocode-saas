@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @RestController
-@RequestMapping("/api/message/whatsapp/webhook")
+@RequestMapping("/api/message/whatsapp/webhooks")
 public class WhatsappWebhookController {
 
     private static final Logger logger = LoggerFactory.getLogger(WhatsappWebhookController.class);

@@ -29,7 +29,7 @@ public abstract class AbstractCallProviderService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements ICallService<D> {
 
-    public static final String CALL_BACK_URI = "/api/call/callback";
+    public static final String CALL_BACK_URI = "/api/message/call/callback";
     protected CallService callService;
     protected CallConnectionService callConnectionService;
     protected CallEventService callEventService;
