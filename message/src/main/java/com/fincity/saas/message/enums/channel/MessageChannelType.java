@@ -16,7 +16,7 @@ public enum MessageChannelType implements EnumType {
     WHATS_APP("WHATS_APP", MessageRecipientType.PHONE_NUMBER),
     WHATS_APP_TEMPLATE("WHATS_APP_TEMPLATE", MessageRecipientType.PHONE_NUMBER),
     IN_APP("IN_APP"),
-    SMS("SMS", MessageRecipientType.PHONE_NUMBER);
+    SMS("TEXT", MessageRecipientType.PHONE_NUMBER);
 
     private final String literal;
     private final Set<MessageRecipientType> allowedRecipientTypes;

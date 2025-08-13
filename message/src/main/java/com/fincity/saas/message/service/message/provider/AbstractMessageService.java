@@ -45,7 +45,7 @@ public abstract class AbstractMessageService<
 
     @Override
     public ConnectionType getConnectionType() {
-        return ConnectionType.SMS;
+        return ConnectionType.TEXT;
     }
 
     protected Mono<Boolean> isValidConnection(Connection connection) {

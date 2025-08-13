@@ -17,7 +17,7 @@ public enum ConnectionType {
 
     WEB_PUSH,
 
-    SMS(ConnectionSubType.WHATSAPP),
+    TEXT(ConnectionSubType.WHATSAPP),
 
     CALL(ConnectionSubType.EXOTEL);
 
