@@ -66,6 +66,15 @@ jobs:
       - name: Building entity-processor
         working-directory: ./entity-processor
         run: mvn clean install
+      - name: Building entity-collector
+        working-directory: ./entity-collector
+        run: mvn clean install
+      - name: Building notification
+        working-directory: ./notification
+        run: mvn clean install
+      - name: Building message
+        working-directory: ./message
+        run: mvn clean install
       - name: Login to OCIR
         uses: docker/login-action@v3
         with:
@@ -151,3 +160,27 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag stage-entity-processor-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-processor-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-processor-server:latest
+      - name: Pushing Entity Collector Docker Image to OCI
+        working-directory: ./entity-collector
+        run: |
+          docker build -t stage-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-entity-collector-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-collector-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-entity-collector-server:latest
+      - name: Pushing Notification Docker Image to OCI
+        working-directory: ./notification
+        run: |
+          docker build -t stage-notification-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-notification-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-notification-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-notification-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-notification-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-notification-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-notification-server:latest
+      - name: Pushing Message Docker Image to OCI
+        working-directory: ./message
+        run: |
+          docker build -t stage-message-server:${{ steps.dockerVersion.outputs.VERSION }} .
+          docker tag stage-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:latest
