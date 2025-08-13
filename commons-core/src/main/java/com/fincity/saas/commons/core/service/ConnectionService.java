@@ -25,7 +25,8 @@ import reactor.util.context.Context;
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
 
     @Autowired(required = false)
-    @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+    @Qualifier("pubRedisAsyncCommand")
+    private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
     @Value("${redis.connection.eviction.channel:connectionChannel}")
     private String channel;
@@ -133,15 +134,13 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         return FlatMapUtil.flatMapMono(
                 () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
                 conn -> {
-	                if (conn.getConnectionType() == type) return Mono.justOrEmpty(conn);
-	                return Mono.justOrEmpty((Connection) null);
+                    if (conn.getConnectionType() == type) return Mono.justOrEmpty(conn);
+                    return Mono.empty();
                 },
                 (conn, typedConn) -> {
-	                if (typedConn.getClientCode().equals(clientCode)
-			                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())) return Mono.justOrEmpty(
-			                typedConn);
-	                return Mono.justOrEmpty(
-			                (Connection) null);
+                    if (typedConn.getClientCode().equals(clientCode)
+                            || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())) return Mono.justOrEmpty(typedConn);
+                    return Mono.empty();
                 });
     }
 }
