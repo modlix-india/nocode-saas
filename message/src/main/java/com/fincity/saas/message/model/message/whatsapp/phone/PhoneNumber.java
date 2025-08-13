@@ -3,6 +3,7 @@ package com.fincity.saas.message.model.message.whatsapp.phone;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType;
@@ -32,7 +33,7 @@ public final class PhoneNumber implements Serializable {
     private String id;
 
     @JsonProperty("code_verification_status")
-    private String codeVerificationStatus;
+    private CodeVerificationStatus codeVerificationStatus;
 
     @JsonProperty("name_status")
     private NameStatusType nameStatus;

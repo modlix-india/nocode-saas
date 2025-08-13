@@ -7,13 +7,11 @@ import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
-import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message.MessageBuilder;
 import com.fincity.saas.message.model.message.whatsapp.messages.TextMessage;
-import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IChange;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IEntry;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
@@ -90,7 +88,7 @@ public class WhatsappMessageService
                         .setTo(providerObject.getTo())
                         .setMessageProvider(this.getConnectionSubType().getProvider())
                         .setIsOutbound(providerObject.isOutbound())
-                        .setMessageStatus(providerObject.getStatus())
+                        .setMessageStatus(providerObject.getMessageStatus())
                         .setSentTime(
                                 providerObject.getSentTime() != null
                                         ? providerObject.getSentTime().toString()
@@ -113,14 +111,13 @@ public class WhatsappMessageService
 
         if (!messageRequest.isValid()) return super.throwMissingParam("text");
 
-        var message = MessageBuilder.builder()
-                .setTo(messageRequest.getToNumber().getNumber())
-                .buildTextMessage(new TextMessage().setBody(messageRequest.getText()));
+        WhatsappMessage whatsappMessage = WhatsappMessage.ofOutbound(
+                MessageBuilder.builder()
+                        .setTo(messageRequest.getToNumber().getNumber())
+                        .buildTextMessage(new TextMessage().setBody(messageRequest.getText())),
+                PhoneUtil.parse(access.getUser().getPhoneNumber()));
 
-        WhatsappMessage whatsappMessage =
-                this.createWhatsappMessage(access, messageRequest.getToNumber().getNumber(), MessageType.TEXT);
-
-        return this.sendMessageInternal(access, connection, null, message, whatsappMessage);
+        return this.sendMessageInternal(access, connection, null, whatsappMessage);
     }
 
     public Mono<Message> sendMessage(WhatsappMessageRequest whatsappMessageRequest) {
@@ -131,26 +128,19 @@ public class WhatsappMessageService
                 super::hasAccess,
                 access -> this.messageConnectionService.getConnection(
                         access.getAppCode(), access.getClientCode(), whatsappMessageRequest.getConnectionName()),
-                (access, connection) -> {
-                    var message = whatsappMessageRequest.getMessage();
-
-                    WhatsappMessage whatsappMessage =
-                            this.createWhatsappMessage(access, message.getTo(), message.getType());
-
-                    return this.sendMessageInternal(
-                            access,
-                            connection,
-                            whatsappMessageRequest.getWhatsappPhoneNumberId(),
-                            message,
-                            whatsappMessage);
-                });
+                (access, connection) -> this.sendMessageInternal(
+                        access,
+                        connection,
+                        whatsappMessageRequest.getWhatsappPhoneNumberId(),
+                        WhatsappMessage.ofOutbound(
+                                whatsappMessageRequest.getMessage(),
+                                PhoneUtil.parse(access.getUser().getPhoneNumber()))));
     }
 
     private Mono<Message> sendMessageInternal(
             MessageAccess access,
             Connection connection,
             Identity whatsappPhoneNumberId,
-            com.fincity.saas.message.model.message.whatsapp.messages.Message message,
             WhatsappMessage whatsappMessage) {
 
         return FlatMapUtil.flatMapMono(
@@ -161,13 +151,12 @@ public class WhatsappMessageService
                         (vConn, businessAccountId, phoneNumberId) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
                         (vConn, businessAccountId, phoneNumberId, api) ->
-                                api.sendMessage(phoneNumberId.getPhoneNumberId(), message),
+                                api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getOutMessage()),
                         (vConn, businessAccountId, phoneNumberId, api, response) -> {
                             whatsappMessage.setWhatsappBusinessAccountId(businessAccountId);
                             whatsappMessage.setWhatsappPhoneNumberId(phoneNumberId.getId());
                             whatsappMessage.setMessageId(
                                     response.getMessages().getFirst().getId());
-                            whatsappMessage.setOutMessage(message);
                             whatsappMessage.setMessageResponse(response);
                             return this.createInternal(access, whatsappMessage);
                         },
@@ -195,17 +184,6 @@ public class WhatsappMessageService
             logger.error("Webhook verification failed: Invalid mode or token");
             return Mono.error(new RuntimeException("Webhook verification failed"));
         }
-    }
-
-    private WhatsappMessage createWhatsappMessage(MessageAccess access, String to, MessageType messageType) {
-
-        WhatsappMessage whatsappMessage =
-                new WhatsappMessage(PhoneUtil.parse(to).getNumber(), messageType);
-
-        whatsappMessage.setFrom(
-                PhoneUtil.parse(access.getUser().getPhoneNumber()).getNumber());
-
-        return whatsappMessage;
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {
@@ -275,27 +253,9 @@ public class WhatsappMessageService
 
         return this.whatsappPhoneNumberService
                 .getByPhoneNumberId(access, phoneNumberId)
-                .flatMap(whatsappPhoneNumber -> {
-                    WhatsappMessage whatsappMessage = new WhatsappMessage(message.getFrom(), message.getType());
-                    whatsappMessage.setWhatsappBusinessAccountId(whatsappPhoneNumber.getWhatsappBusinessAccountId());
-                    whatsappMessage.setMessageId(message.getId());
-                    whatsappMessage.setWhatsappPhoneNumberId(whatsappPhoneNumber.getId());
-                    whatsappMessage.setOutbound(false);
-                    whatsappMessage.setStatus(MessageStatus.DELIVERED);
-
-                    if (message.getTimestamp() != null) {
-                        long timestamp = Long.parseLong(message.getTimestamp());
-                        LocalDateTime dateTime =
-                                LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneOffset.UTC);
-                        whatsappMessage.setDeliveredTime(dateTime);
-                    }
-
-                    whatsappMessage.setInMessage(message);
-
-                    return this.createInternal(
-                            MessageAccess.of(appCode, clientCode, whatsappPhoneNumber.getUserId(), Boolean.TRUE),
-                            whatsappMessage);
-                });
+                .flatMap(whatsappPhoneNumber -> this.createInternal(
+                        MessageAccess.of(appCode, clientCode, whatsappPhoneNumber.getUserId(), Boolean.TRUE),
+                        WhatsappMessage.ofInbound(message, appCode, whatsappPhoneNumber.getId())));
     }
 
     private Mono<Void> processStatusUpdates(List<IStatus> statuses) {
@@ -322,7 +282,7 @@ public class WhatsappMessageService
     }
 
     private Mono<WhatsappMessage> updateMessageStatus(WhatsappMessage whatsappMessage, IStatus status) {
-        whatsappMessage.setStatus(status.getStatus());
+        whatsappMessage.setMessageStatus(status.getStatus());
 
         if (status.getTimestamp() != null) {
             long timestamp = Long.parseLong(status.getTimestamp());

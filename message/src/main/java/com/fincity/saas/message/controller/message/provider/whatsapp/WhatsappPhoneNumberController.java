@@ -30,7 +30,8 @@ public class WhatsappPhoneNumberController
     }
 
     @PatchMapping("/default" + "/{" + PATH_VARIABLE_ID + "}")
-    public Mono<ResponseEntity<WhatsappPhoneNumber>> setDefault(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
+    public Mono<ResponseEntity<WhatsappPhoneNumber>> setDefault(
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity) {
         return this.service.setDefault(identity).map(ResponseEntity::ok);
     }
 }

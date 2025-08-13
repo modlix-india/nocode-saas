@@ -331,6 +331,12 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType</userType>
+                                            <includeExpression>.*\.MESSAGE_TYPE</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus</userType>
                                             <includeExpression>.*\.MESSAGE_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

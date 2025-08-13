@@ -2,7 +2,7 @@ package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
@@ -18,10 +18,10 @@ public class Message implements Serializable {
     private static final long serialVersionUID = -9202268963191141253L;
 
     @JsonProperty("messaging_product")
-    private static final String messagingProduct = "whatsapp"; // NOSONAR
+    private final String messagingProduct = "whatsapp"; // NOSONAR
 
     @JsonProperty("recipient_type")
-    private static final String recipientType = "individual"; // NOSONAR
+    private final String recipientType = "individual"; // NOSONAR
 
     @JsonProperty("context")
     private Context context;

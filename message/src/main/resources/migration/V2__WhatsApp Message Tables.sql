@@ -9,13 +9,30 @@ CREATE TABLE `message`.`message_whatsapp_messages` (
 
     `MESSAGE_ID` VARCHAR(255) NULL COMMENT 'WhatsApp message ID.',
 
-    `PHONE_NUMBER_ID` CHAR(20) NOT NULL COMMENT 'ID of the associated Business phone number.',
+    `WHATSAPP_PHONE_NUMBER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'ID of the associated Business phone number.',
     `FROM_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the sender\'s phone number.',
     `FROM_PHONE` CHAR(15) NULL COMMENT 'Phone number of the sender.',
     `TO_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the recipient\'s phone number.',
     `TO_PHONE` CHAR(15) NULL COMMENT 'Phone number of the recipient.',
 
-    `MESSAGE_TYPE` VARCHAR(50) NULL COMMENT 'Type of the message (TEXT, IMAGE, VIDEO, etc.).',
+    `MESSAGE_TYPE` ENUM (
+        'AUDIO',
+        'BUTTON',
+        'CONTACTS',
+        'DOCUMENT',
+        'LOCATION',
+        'TEXT',
+        'TEMPLATE',
+        'IMAGE',
+        'INTERACTIVE',
+        'ORDER',
+        'REACTION',
+        'STICKER',
+        'SYSTEM',
+        'UNKNOWN',
+        'VIDEO',
+        'UNSUPPORTED'
+        ) NOT NULL DEFAULT 'TEXT' COMMENT 'Type of the message (TEXT, IMAGE, VIDEO, etc.).',
 
     `MESSAGE_STATUS` ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED', 'DELETED') NOT NULL DEFAULT 'SENT' COMMENT 'Status of the message.',
     `SENT_TIME` DATETIME NULL COMMENT 'Timestamp when the message was sent.',

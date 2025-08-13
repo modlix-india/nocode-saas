@@ -51,8 +51,11 @@ public class MessageService extends BaseUpdatableService<MessageMessagesRecord, 
                         super::hasAccess,
                         access -> this.connectionService.getConnection(
                                 access.getAppCode(), access.getClientCode(), messageRequest.getConnectionName()),
-                        (access, connection) -> services.get(connection.getConnectionSubType())
-                                .sendMessage(access, messageRequest, connection),
+                        (access, connection) -> {
+                            IMessageService<?> service = services.get(connection.getConnectionSubType());
+
+                            return service.sendMessage(access, messageRequest, connection);
+                        },
                         (access, connection, message) -> this.createInternal(access, message))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MessageService.sendMessage"));
     }

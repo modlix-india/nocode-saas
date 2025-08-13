@@ -6,6 +6,7 @@ package com.fincity.saas.message.jooq.tables;
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
@@ -104,10 +105,10 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
 
     /**
      * The column
-     * <code>message.message_whatsapp_messages.PHONE_NUMBER_ID</code>. ID of the
-     * associated Business phone number.
+     * <code>message.message_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
+     * ID of the associated Business phone number.
      */
-    public final TableField<MessageWhatsappMessagesRecord, String> PHONE_NUMBER_ID = createField(DSL.name("PHONE_NUMBER_ID"), SQLDataType.CHAR(20).nullable(false), this, "ID of the associated Business phone number.");
+    public final TableField<MessageWhatsappMessagesRecord, ULong> WHATSAPP_PHONE_NUMBER_ID = createField(DSL.name("WHATSAPP_PHONE_NUMBER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "ID of the associated Business phone number.");
 
     /**
      * The column <code>message.message_whatsapp_messages.FROM_DIAL_CODE</code>.
@@ -137,7 +138,7 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * The column <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
      * Type of the message (TEXT, IMAGE, VIDEO, etc.).
      */
-    public final TableField<MessageWhatsappMessagesRecord, String> MESSAGE_TYPE = createField(DSL.name("MESSAGE_TYPE"), SQLDataType.VARCHAR(50), this, "Type of the message (TEXT, IMAGE, VIDEO, etc.).");
+    public final TableField<MessageWhatsappMessagesRecord, MessageType> MESSAGE_TYPE = createField(DSL.name("MESSAGE_TYPE"), SQLDataType.VARCHAR(11).nullable(false).defaultValue(DSL.inline("TEXT", SQLDataType.VARCHAR)), this, "Type of the message (TEXT, IMAGE, VIDEO, etc.).", new EnumConverter<String, MessageType>(String.class, MessageType.class));
 
     /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_STATUS</code>.

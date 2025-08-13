@@ -2,9 +2,10 @@ package com.fincity.saas.message.dto.message.provider.whatsapp;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
+import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
-import com.fincity.saas.message.model.message.whatsapp.messages.type.MessageType;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
@@ -37,7 +38,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private MessageType messageType;
 
-    private MessageStatus status;
+    private MessageStatus messageStatus;
     private LocalDateTime sentTime;
     private LocalDateTime deliveredTime;
     private LocalDateTime readTime;
@@ -54,53 +55,36 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         super();
     }
 
-    public WhatsappMessage(String to, MessageType messageType) {
-        super();
-        this.to = to;
-        this.messageType = messageType;
-        this.isOutbound = true;
-        this.status = MessageStatus.SENT;
-        this.sentTime = LocalDateTime.now();
+    public static WhatsappMessage ofOutbound(Message message, PhoneNumber from) {
+
+        PhoneNumber to = PhoneNumber.of(message.getTo());
+
+        return new WhatsappMessage()
+                .setFromDialCode(from.getCountryCode())
+                .setFrom(from.getNumber())
+                .setToDialCode(to.getCountryCode())
+                .setTo(to.getNumber())
+                .setMessageType(message.getType())
+                .setMessageStatus(MessageStatus.SENT)
+                .setOutbound(Boolean.TRUE)
+                .setOutMessage(message);
     }
 
-    public WhatsappMessage(String from, String messageId, MessageType messageType) {
-        super();
-        this.from = from;
-        this.messageId = messageId;
-        this.messageType = messageType;
-        this.isOutbound = false;
-        this.status = MessageStatus.DELIVERED;
-        this.deliveredTime = LocalDateTime.now();
-    }
+    public static WhatsappMessage ofInbound(
+            IMessage message, String whatsappBusinessAccountId, ULong whatsappPhoneNumberId) {
 
-    public WhatsappMessage updateStatus(MessageStatus status) {
-        this.status = status;
+        PhoneNumber from = PhoneNumber.of(message.getFrom());
 
-        LocalDateTime now = LocalDateTime.now();
-
-        switch (status) {
-            case SENT -> {
-                if (this.sentTime == null) this.sentTime = now;
-            }
-            case DELIVERED -> {
-                if (this.deliveredTime == null) this.deliveredTime = now;
-            }
-            case READ -> {
-                if (this.readTime == null) this.readTime = now;
-            }
-            case FAILED -> {
-                if (this.failedTime == null) this.failedTime = now;
-            }
-            default -> {
-                // ignored
-            }
-        }
-        return this;
-    }
-
-    public WhatsappMessage updateStatus(MessageStatus status, String failureReason) {
-        this.updateStatus(status);
-        this.failureReason = failureReason;
-        return this;
+        return new WhatsappMessage()
+                .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
+                .setMessageId(message.getId())
+                .setWhatsappPhoneNumberId(whatsappPhoneNumberId)
+                .setFromDialCode(from.getCountryCode())
+                .setFrom(from.getNumber())
+                .setMessageType(message.getType())
+                .setMessageStatus(MessageStatus.DELIVERED)
+                .setDeliveredTime(message.getTimestampAsDate())
+                .setOutbound(Boolean.FALSE)
+                .setInMessage(message);
     }
 }

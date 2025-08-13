@@ -5,6 +5,7 @@ package com.fincity.saas.message.jooq.tables.records;
 
 
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
@@ -128,21 +129,21 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
 
     /**
      * Setter for
-     * <code>message.message_whatsapp_messages.PHONE_NUMBER_ID</code>. ID of the
-     * associated Business phone number.
+     * <code>message.message_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
+     * ID of the associated Business phone number.
      */
-    public MessageWhatsappMessagesRecord setPhoneNumberId(String value) {
+    public MessageWhatsappMessagesRecord setWhatsappPhoneNumberId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>message.message_whatsapp_messages.PHONE_NUMBER_ID</code>. ID of the
-     * associated Business phone number.
+     * <code>message.message_whatsapp_messages.WHATSAPP_PHONE_NUMBER_ID</code>.
+     * ID of the associated Business phone number.
      */
-    public String getPhoneNumberId() {
-        return (String) get(6);
+    public ULong getWhatsappPhoneNumberId() {
+        return (ULong) get(6);
     }
 
     /**
@@ -217,7 +218,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Setter for <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
      * Type of the message (TEXT, IMAGE, VIDEO, etc.).
      */
-    public MessageWhatsappMessagesRecord setMessageType(String value) {
+    public MessageWhatsappMessagesRecord setMessageType(MessageType value) {
         set(11, value);
         return this;
     }
@@ -226,8 +227,8 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Getter for <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
      * Type of the message (TEXT, IMAGE, VIDEO, etc.).
      */
-    public String getMessageType() {
-        return (String) get(11);
+    public MessageType getMessageType() {
+        return (MessageType) get(11);
     }
 
     /**
@@ -493,7 +494,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     /**
      * Create a detached, initialised MessageWhatsappMessagesRecord
      */
-    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, String phoneNumberId, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, String messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String fromPhone, Short toDialCode, String toPhone, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES);
 
         setId(id);
@@ -502,7 +503,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
         setUserId(userId);
         setCode(code);
         setMessageId(messageId);
-        setPhoneNumberId(phoneNumberId);
+        setWhatsappPhoneNumberId(whatsappPhoneNumberId);
         setFromDialCode(fromDialCode);
         setFromPhone(fromPhone);
         setToDialCode(toDialCode);
