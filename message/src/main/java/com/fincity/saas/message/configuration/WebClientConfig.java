@@ -10,12 +10,12 @@ import com.fincity.saas.message.service.RestConnectionService;
 import java.util.Base64;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-// TODO: Move to new WebClient Config in new spring boot 4.0
-@Configuration
+// TODO: Move to new WebClient in new spring boot 4.0
+@Component
 public class WebClientConfig {
 
     private RestConnectionService restConnectionService;
