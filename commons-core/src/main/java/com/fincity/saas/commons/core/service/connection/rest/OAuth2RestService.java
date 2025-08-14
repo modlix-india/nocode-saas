@@ -402,10 +402,10 @@ public class OAuth2RestService extends AbstractRestTokenService {
                         connectionName));
     }
 
-    public Mono<String> getAccessToken(String connectionName) {
-        return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> connectionService
-                .read(connectionName, ca.getUrlAppCode(), ca.getClientCode(), ConnectionType.REST_API)
-                .flatMap(this::getAccessToken));
+    public Mono<String> getAccessToken(String connectionName, String clientCode, String appCode) {
+        return  this.connectionService
+                .read(connectionName, appCode, clientCode, ConnectionType.REST_API)
+                .flatMap(this::getAccessToken);
     }
 
     private Mono<Void> invalidAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {

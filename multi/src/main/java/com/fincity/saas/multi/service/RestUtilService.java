@@ -26,8 +26,7 @@ public class RestUtilService {
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> coreService.getConnectionOAuth2Token(ca.getAccessToken(), forwardedHost,
-                        forwardedPort, clientCode, headerAppCode, connectionName),
+                ca -> coreService.getConnectionOAuth2Token(clientCode, headerAppCode, connectionName),
 
                 (ca, token) -> webClient.get()
                         .uri(uriBuilder -> uriBuilder
