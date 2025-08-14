@@ -45,7 +45,7 @@ public final class EntityUtil {
     }
 
     public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode) {
-        return coreService.getConnectionOAuth2Token("", "", clientCode, appCode, CONNECTION_NAME);
+        return coreService.getConnectionOAuth2Token(clientCode, appCode, CONNECTION_NAME);
     }
 
     public static Mono<String> fetchOAuthToken(
@@ -56,7 +56,7 @@ public final class EntityUtil {
             EntityCollectorLogService logService,
             ULong logId) {
         return coreService
-                .getConnectionOAuth2Token( "", "", clientCode, appCode, CONNECTION_NAME)
+                .getConnectionOAuth2Token( clientCode, appCode, CONNECTION_NAME)
                 .onErrorResume(error ->
                         logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
     }

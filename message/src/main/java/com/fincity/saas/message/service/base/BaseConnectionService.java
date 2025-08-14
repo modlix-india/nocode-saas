@@ -87,7 +87,7 @@ public abstract class BaseConnectionService {
     private Mono<String> getCoreToken(String appCode, String clientCode, String connectionName) {
         return this.cacheService.cacheValueOrGet(
                 CACHE_NAME_REST_OAUTH2,
-                () -> this.coreService.getConnectionOAuth2Token("", "", clientCode, appCode, connectionName),
+                () -> this.coreService.getConnectionOAuth2Token(clientCode, appCode, connectionName),
                 this.getCacheKey(connectionName, clientCode, appCode));
     }
 }

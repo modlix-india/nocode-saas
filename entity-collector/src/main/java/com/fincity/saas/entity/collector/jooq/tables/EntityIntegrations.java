@@ -77,7 +77,7 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
      * The column <code>entity_collector.entity_integrations.APP_CODE</code>.
      * App Code
      */
-    public final TableField<EntityIntegrationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(8).nullable(false), this, "App Code");
+    public final TableField<EntityIntegrationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code");
 
     /**
      * The column

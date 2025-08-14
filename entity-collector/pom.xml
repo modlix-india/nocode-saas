@@ -231,7 +231,7 @@
                                             <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
                                             <includeExpression>INCOMING_ENTITY_DATA|OUTGOING_ENTITY_DATA</includeExpression>
                                             <includeTypes>JSON</includeTypes>
-                                            <genericConverter>true</genericConverter>
+                                            <genericConverter>false</genericConverter>
                                         </forcedType>
                                     </forcedTypes>
                                 </database>
