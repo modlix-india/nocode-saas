@@ -13,7 +13,7 @@
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>entity-collector</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>Entity-Collector</name>
     <description>Fincity SAAS entity-collector server</description>
     <properties>
@@ -228,8 +228,10 @@
                                     <forcedTypes>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor</converter>
-                                            <includeExpression>INCOMING_ENTITY_DATA|OUTGOING_ENTITY_DATA</includeExpression>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor
+                                            </converter>
+                                            <includeExpression>INCOMING_ENTITY_DATA|OUTGOING_ENTITY_DATA
+                                            </includeExpression>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>false</genericConverter>
                                         </forcedType>
