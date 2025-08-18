@@ -23,8 +23,6 @@ public interface IFeignCoreService {
 
     @GetMapping(CONNECTION_PATH + "/oauth2/token/{connectionName}")
     Mono<String> getConnectionOAuth2Token(
-            @RequestHeader(name = "X-Forwarded-Host", required = false) String forwardedHost,
-            @RequestHeader(name = "X-Forwarded-Port", required = false) String forwardedPort,
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader("appCode") String headerAppCode,
             @PathVariable("connectionName") String connectionName);

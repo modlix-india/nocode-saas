@@ -43,9 +43,13 @@ public class ConnectionController
         return this.oAuth2RestService.revokeConnectionToken(connectionName).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/oauth2/token/{connectionName}")
-    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName) {
-        return this.oAuth2RestService.getAccessToken(connectionName);
+    @GetMapping("/internal/oauth2/token/{connectionName}")
+    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName, ServerHttpRequest request) {
+
+        String appCode = request.getHeaders().getFirst("appCode");
+        String clientCode = request.getHeaders().getFirst("clientCode");
+
+        return this.oAuth2RestService.getAccessToken(appCode, clientCode, connectionName);
     }
 
     @GetMapping("/internal")
