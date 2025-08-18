@@ -201,6 +201,10 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+        </dependency>
+        <dependency>
             <groupId>jakarta.websocket</groupId>
             <artifactId>jakarta.websocket-api</artifactId>
             <version>${package.o.jakarta.websocket-api.version}</version>
@@ -285,29 +289,41 @@
                                     <inputSchema>${database.schema.name}</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.model.request.NotificationChannel</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <userType>com.fincity.saas.notification.model.request.NotificationChannel
+                                            </userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*NOTIFICATION_CHANNEL</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.model.message.channel.InAppMessage</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <userType>com.fincity.saas.notification.model.message.channel.InAppMessage
+                                            </userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*IN_APP_MESSAGE</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.model.response.NotificationErrorInfo</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <userType>
+                                                com.fincity.saas.notification.model.response.NotificationErrorInfo
+                                            </userType>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*ERROR_INFO</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <converter>
+                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
+                                            </converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                         </forcedType>
@@ -324,7 +340,8 @@
                                             <includeTypes>ENUM</includeTypes>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.notification.enums.NotificationDeliveryStatus</userType>
+                                            <userType>com.fincity.saas.notification.enums.NotificationDeliveryStatus
+                                            </userType>
                                             <enumConverter>true</enumConverter>
                                             <includeExpression>.*\.NOTIFICATION_DELIVERY_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
