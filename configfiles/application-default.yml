@@ -62,7 +62,7 @@ entity-processor:
   db:
     url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
     username: root
-    password: Vishwas123#
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
 
@@ -70,7 +70,7 @@ notification:
   db:
     url: r2dbc:mysql://localhost:3306/notification?serverTimezone=UTC
     username: root
-    password: Vishwas123#
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/notification
 
@@ -78,9 +78,20 @@ message:
   db:
     url: r2dbc:mysql://localhost:3306/message?serverTimezone=UTC
     username: root
-    password: Vishwas123#
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/message
+
+entity-collector:
+  db:
+    url: r2dbc:mysql://localhost:3306/entity_collector?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/entity_collector
+  meta:
+    webhook:
+      verify-token: TEST_THE_API
 
 spring:
   flyway:
