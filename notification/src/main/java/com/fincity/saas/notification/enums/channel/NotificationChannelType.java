@@ -31,7 +31,7 @@ public enum NotificationChannelType implements EnumType {
     IN_APP("IN_APP", ConnectionType.IN_APP, InAppMessage::new),
     MOBILE_PUSH("MOBILE_PUSH", ConnectionType.MOBILE_PUSH, MobilePushMessage::new),
     WEB_PUSH("WEB_PUSH", ConnectionType.WEB_PUSH, WebPushMessage::new),
-    SMS("SMS", ConnectionType.SMS, SmsMessage::new, NotificationRecipientType.TO);
+    SMS("SMS", ConnectionType.TEXT, SmsMessage::new, NotificationRecipientType.TO);
 
     private static final Map<ConnectionType, NotificationChannelType> BY_CONNECTION_TYPE = new HashMap<>();
 

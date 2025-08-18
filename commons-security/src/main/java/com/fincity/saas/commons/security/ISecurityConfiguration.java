@@ -38,8 +38,7 @@ public interface ISecurityConfiguration {
 					authorize
 							.pathMatchers(HttpMethod.OPTIONS).permitAll()
 							.pathMatchers("(.*internal.*)").permitAll()
-							.pathMatchers("/actuator/**").permitAll()
-							.pathMatchers("/swagger-ui/**", "/swagger-resources/**", "/webjars/**", "/v3/api-docs/**").permitAll();
+							.pathMatchers("/actuator/**").permitAll();
 					if (exclusionList != null && exclusionList.length != 0)
 						authorize.pathMatchers(exclusionList).permitAll();
 
