@@ -407,7 +407,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Boolean> checkBusinessClientUser(ULong clientId, String userName, String emailId, String phoneNumber) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.clientService.getClientTypeNCode(clientId),
+                () -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
                 clientTypeNCode ->
                         clientTypeNCode.getT1().equals("INDV") ? Mono.empty() : Mono.just(clientTypeNCode.getT1()),
                 (clientTypeNCode, clientType) ->
@@ -477,7 +477,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.getUserClientId(key),
                         clientId ->
-                                this.clientService.getClientTypeNCode(clientId).map(Tuple2::getT1),
+                                this.clientService.getClientTypeNCodeNClientLevel(clientId).map(Tuple2::getT1),
                         (clientId, clientType) -> switch (clientType) {
                             case "INDV" -> this.clientHierarchyService
                                     .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
@@ -499,7 +499,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                         () -> this.clientService
-                                .getClientTypeNCode(entity.getClientId())
+                                .getClientTypeNCodeNClientLevel(entity.getClientId())
                                 .map(Tuple2::getT1),
                         clientType -> switch (clientType) {
                             case "INDV" -> this.clientHierarchyService
