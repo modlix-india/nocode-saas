@@ -28,6 +28,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
@@ -37,15 +38,15 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
         super(Client.class, SECURITY_CLIENT, SECURITY_CLIENT.ID);
     }
 
-    public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
+    public Mono<Tuple3<String, String, String>> getClientTypeNCode(ULong id) {
 
-        return Flux.from(this.dslContext.select(SECURITY_CLIENT.TYPE_CODE, SECURITY_CLIENT.CODE)
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT.TYPE_CODE, SECURITY_CLIENT.CODE, SECURITY_CLIENT.LEVEL_TYPE)
                         .from(SECURITY_CLIENT)
                         .where(SECURITY_CLIENT.ID.eq(id))
                         .limit(1))
                 .take(1)
                 .singleOrEmpty()
-                .map(r -> Tuples.of(r.value1(), r.value2()));
+                .map(r -> Tuples.of(r.value1(), r.value2(), r.value3().toString()));
     }
 
     @Override
