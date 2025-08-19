@@ -563,14 +563,18 @@ public class AuthenticationService implements IAuthenticationService {
                                         : token.getT1().substring(token.getT1().length() - 50))
                         .setExpiresAt(token.getT2())
                         .setIpAddress(address))
-                .map(t -> new AuthenticationResponse()
-                        .setUser(user.toContextUser())
-                        .setClient(client)
-                        .setVerifiedAppCode(appCode)
-                        .setLoggedInClientCode(linClient.getCode())
-                        .setLoggedInClientId(linClient.getId().toBigInteger())
-                        .setAccessToken(token.getT1())
-                        .setAccessTokenExpiryAt(token.getT2()))
+                .flatMap(t -> this.clientService.getManagedClientOfClientById(client.getId())
+                        .map(mc -> new AuthenticationResponse()
+                                .setUser(user.toContextUser())
+                                .setClient(client)
+                                .setVerifiedAppCode(appCode)
+                                .setLoggedInClientCode(linClient.getCode())
+                                .setLoggedInClientId(linClient.getId().toBigInteger())
+                                .setAccessToken(token.getT1())
+                                .setAccessTokenExpiryAt(token.getT2())
+                                .setManagedClientId(mc.getId().toBigInteger())
+                                .setManagedClientCode(mc.getCode())
+                        ))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeToken"));
     }
 
@@ -833,13 +837,17 @@ public class AuthenticationService implements IAuthenticationService {
                         (ca, client, revoked) -> {
                             if (Boolean.TRUE.equals(revoked)) return this.generateNewToken(ca, request, client);
 
-                            return Mono.just(new AuthenticationResponse()
-                                    .setUser(ca.getUser())
-                                    .setClient(client)
-                                    .setLoggedInClientCode(ca.getLoggedInFromClientCode())
-                                    .setLoggedInClientId(ca.getLoggedInFromClientId())
-                                    .setAccessToken(ca.getAccessToken())
-                                    .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt()));
+                            return this.clientService.getManagedClientOfClientById(client.getId())
+                                    .map(mc -> new AuthenticationResponse()
+                                            .setUser(ca.getUser())
+                                            .setClient(client)
+                                            .setLoggedInClientCode(ca.getLoggedInFromClientCode())
+                                            .setLoggedInClientId(ca.getLoggedInFromClientId())
+                                            .setAccessToken(ca.getAccessToken())
+                                            .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
+                                            .setManagedClientCode(mc.getCode())
+                                            .setManagedClientId(mc.getId().toBigInteger())
+                                    );
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
     }
@@ -848,49 +856,53 @@ public class AuthenticationService implements IAuthenticationService {
             ContextAuthentication ca, ServerHttpRequest request, Client client) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> {
-                            JWTClaims claims = JWTUtil.getClaimsFromToken(tokenKey, ca.getAccessToken());
+                () -> {
+                    JWTClaims claims = JWTUtil.getClaimsFromToken(tokenKey, ca.getAccessToken());
 
-                            JWTGenerateTokenParameters params = JWTGenerateTokenParameters.builder()
-                                    .userId(ca.getUser().getId())
-                                    .secretKey(tokenKey)
-                                    .expiryInMin(
-                                            client.getTokenValidityMinutes() <= 0
-                                                    ? this.defaultExpiryInMinutes
-                                                    : client.getTokenValidityMinutes())
-                                    .host(claims.getHostName())
-                                    .port(claims.getPort())
-                                    .loggedInClientId(claims.getLoggedInClientId())
-                                    .loggedInClientCode(claims.getLoggedInClientCode())
-                                    .build();
+                    JWTGenerateTokenParameters params = JWTGenerateTokenParameters.builder()
+                            .userId(ca.getUser().getId())
+                            .secretKey(tokenKey)
+                            .expiryInMin(
+                                    client.getTokenValidityMinutes() <= 0
+                                            ? this.defaultExpiryInMinutes
+                                            : client.getTokenValidityMinutes())
+                            .host(claims.getHostName())
+                            .port(claims.getPort())
+                            .loggedInClientId(claims.getLoggedInClientId())
+                            .loggedInClientCode(claims.getLoggedInClientCode())
+                            .build();
 
-                            return Mono.just(JWTUtil.generateToken(params));
-                        },
-                        token -> {
-                            InetSocketAddress inetAddress = request.getRemoteAddress();
-                            final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
+                    return Mono.just(JWTUtil.generateToken(params));
+                },
+                token -> {
+                    InetSocketAddress inetAddress = request.getRemoteAddress();
+                    final String hostAddress = inetAddress == null ? null : inetAddress.getHostString();
 
-                            return tokenService.create(new TokenObject()
-                                    .setUserId(ULong.valueOf(ca.getUser().getId()))
-                                    .setToken(token.getT1())
-                                    .setPartToken(
-                                            token.getT1().length() < 50
-                                                    ? token.getT1()
-                                                    : token.getT1()
-                                                    .substring(token.getT1()
-                                                            .length()
-                                                            - 50))
-                                    .setExpiresAt(token.getT2())
-                                    .setIpAddress(hostAddress));
-                        },
-                        (token, t) -> Mono.just(new AuthenticationResponse()
+                    return tokenService.create(new TokenObject()
+                            .setUserId(ULong.valueOf(ca.getUser().getId()))
+                            .setToken(token.getT1())
+                            .setPartToken(
+                                    token.getT1().length() < 50
+                                            ? token.getT1()
+                                            : token.getT1()
+                                            .substring(token.getT1()
+                                                    .length()
+                                                    - 50))
+                            .setExpiresAt(token.getT2())
+                            .setIpAddress(hostAddress));
+                },
+                (token, t) -> this.clientService.getManagedClientOfClientById(client.getId())
+                        .map(mc -> new AuthenticationResponse()
                                 .setUser(ca.getUser())
                                 .setClient(client)
                                 .setLoggedInClientCode(ca.getLoggedInFromClientCode())
                                 .setLoggedInClientId(ca.getLoggedInFromClientId())
                                 .setAccessToken(token.getT1())
-                                .setAccessTokenExpiryAt(token.getT2())))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
+                                .setAccessTokenExpiryAt(token.getT2())
+                                .setManagedClientCode(mc.getCode())
+                                .setManagedClientId(mc.getId().toBigInteger())
+                        )
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
     }
 
     private String fillValues(String url, String token) {
