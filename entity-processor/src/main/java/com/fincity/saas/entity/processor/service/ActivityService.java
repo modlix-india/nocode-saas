@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
@@ -89,9 +90,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
         return this.securityService
                 .getUserInternal(actorId.toBigInteger())
-                .map(user -> IdAndValue.of(
-                        ULongUtil.valueOf(user.get("id")),
-                        NameUtil.assembleFullName(user.get("firstName"), user.get("middleName"), user.get("lastName"))))
+                .map(this::getUserIdAndValue)
                 .switchIfEmpty(this.getLoggedInUser());
     }
 
@@ -659,11 +658,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         }
     }
 
-    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
+    private IdAndValue<ULong, String> getUserIdAndValue(UserResponse user) {
         return IdAndValue.of(
-                ULongUtil.valueOf(userMap.get("id")),
-                NameUtil.assembleFullName(
-                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
+                ULongUtil.valueOf(user.getId()),
+                NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName()));
     }
 
     private Mono<JsonElement> extractDifference(JsonElement incoming, JsonElement existing) {

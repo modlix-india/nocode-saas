@@ -39,8 +39,8 @@ public class ReactivePaginationUtil {
         });
     }
 
-    public static <T> Mono<Page<T>> toPage(Flux<T> flux, Pageable pageable) {
-        return flux.collectList().map(list -> {
+    public static <T> Mono<Page<T>> toPage(List<T> list, Pageable pageable) {
+        return Mono.fromCallable(() -> {
             if (CollectionUtils.isEmpty(list)) return Page.empty();
 
             Pageable effectivePageable = pageable;
@@ -57,16 +57,17 @@ public class ReactivePaginationUtil {
         });
     }
 
-    public static <T> Mono<Page<T>> toPage(Flux<T> flux, Pageable pageable, long totalElements) {
-        if (pageable == null)
-            return flux.collectList()
-                    .map(list -> new PageImpl<>(list, PageRequest.of(0, Integer.MAX_VALUE), list.size()));
+    public static <T> Mono<Page<T>> toPage(List<T> list, Pageable pageable, long totalElements) {
+        return Mono.fromCallable(() -> {
+            if (pageable == null) return new PageImpl<>(list, PageRequest.of(0, list.size()), list.size());
 
-        return sort(flux, pageable)
-                .skip(pageable.getOffset())
-                .take(pageable.getPageSize())
-                .collectList()
-                .map(list -> new PageImpl<>(list, pageable, totalElements));
+            List<T> sortedList = sortListInternal(list, pageable);
+            int start = Math.toIntExact(pageable.getOffset());
+            int end = Math.min((start + pageable.getPageSize()), sortedList.size());
+
+            List<T> pageContent = start >= sortedList.size() ? List.of() : sortedList.subList(start, end);
+            return new PageImpl<>(pageContent, pageable, totalElements);
+        });
     }
 
     private static <T> List<T> sortListInternal(List<T> list, Pageable pageable) {
@@ -86,20 +87,16 @@ public class ReactivePaginationUtil {
         return copy;
     }
 
-    public static <T> Flux<T> sort(Flux<T> flux, Pageable pageable) {
-        if (pageable.getSort().isUnsorted()) return flux;
+    public static <T> Flux<T> sort(List<T> list, Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) return Flux.fromIterable(list);
 
         List<Sort.Order> orders = pageable.getSort().get().toList();
 
         Comparator<T> comparator = createComparator(orders);
 
-        return flux.collectList()
-                .map(list -> {
-                    List<T> sortedList = new ArrayList<>(list);
-                    sortedList.sort(comparator);
-                    return sortedList;
-                })
-                .flatMapMany(Flux::fromIterable);
+        List<T> sortedList = new ArrayList<>(list);
+        sortedList.sort(comparator);
+        return Flux.fromIterable(sortedList);
     }
 
     public static Mono<Pageable> updatePageable(Pageable pageable, Map<String, String> sortMap, boolean keepAll) {

@@ -3,6 +3,8 @@ package com.fincity.saas.commons.security.feign;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.UserResponse;
+
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -156,10 +158,10 @@ public interface IFeignSecurityService {
             @RequestHeader("X-Real-IP") String ipAddress);
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
-    Mono<Map<String, Object>> getUserInternal(@PathVariable("id") BigInteger id);
+    Mono<UserResponse> getUserInternal(@PathVariable("id") BigInteger id);
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal}")
-    Mono<List<Map<String, Object>>> getUserInternal(@RequestParam List<BigInteger> userIds);
+    Mono<List<UserResponse>> getUserInternal(@RequestParam List<BigInteger> userIds);
 
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(
@@ -169,8 +171,12 @@ public interface IFeignSecurityService {
     Mono<List<BigInteger>> getUserSubOrgInternal(
             @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
 
+    @GetMapping(value = "${security.feign.getUserSubOrgInternalUsers:/api/security/users/internal/{userId}/sub-org/users}")
+    Mono<List<UserResponse>> getUserSubOrgInternalUsers(
+            @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
+
     @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
-    Mono<Map<String,Object>> getUserAdminEmailsInternal(
+    Mono<Map<String, Object>> getUserAdminEmailsInternal(
             @RequestHeader(name = "clientCode") String clientCode,
             @RequestHeader(name = "appCode") String headerAppCode);
 }

@@ -27,6 +27,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
+import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 
@@ -106,9 +107,9 @@ public class UserSubOrganizationService
 
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
         return Mono.zip(
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId))
-                ).map(evicted -> evicted.getT1() && evicted.getT2());
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
+                .map(evicted -> evicted.getT1() && evicted.getT2());
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -272,5 +273,30 @@ public class UserSubOrganizationService
                 this.getCacheName(),
                 () -> this.dao.getUserIdsByClientId(clientId, null).collectList(),
                 this.getCacheKey(clientId, OWNER));
+    }
+
+    private Flux<UserResponse> mapIdsToResponses(Flux<ULong> idsFlux) {
+        return idsFlux.collectList()
+                .flatMapMany(ids -> (ids == null || ids.isEmpty())
+                        ? Flux.empty()
+                        : this.userService.readByIds(ids).flatMapMany(Flux::fromIterable))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.mapIdsToResponses"));
+    }
+
+    public Flux<UserResponse> getCurrentUserSubOrgUsers() {
+        return this.mapIdsToResponses(this.getCurrentUserSubOrg())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrgUsers"));
+    }
+
+    public Flux<UserResponse> getUserSubOrgInternalUsers(String appCode, ULong clientId, ULong userId) {
+        return this.mapIdsToResponses(this.getUserSubOrgInternal(appCode, clientId, userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgInternalUsers"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
+    public Flux<UserResponse> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
+
+        return this.mapIdsToResponses(this.getUserSubOrg(appCode, clientId, userId, managerId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgUsers"));
     }
 }

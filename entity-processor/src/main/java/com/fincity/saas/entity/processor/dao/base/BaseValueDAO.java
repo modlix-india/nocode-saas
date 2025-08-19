@@ -69,12 +69,17 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .defaultIfEmpty(Boolean.FALSE);
     }
 
-    public Mono<List<D>> getAllValues(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean isParent) {
+    public Mono<List<D>> getValues(
+            String appCode,
+            String clientCode,
+            Platform platform,
+            ULong productTemplateId,
+            Boolean isParent,
+            ULong... valueEntityIds) {
         return Flux.from(this.dslContext
                         .selectFrom(this.table)
                         .where(DSL.and(this.getBaseValueConditions(
-                                appCode, clientCode, platform, productTemplateId, isParent))))
+                                appCode, clientCode, platform, productTemplateId, isParent, valueEntityIds))))
                 .map(e -> e.into(super.pojoClass))
                 .collectList();
     }
@@ -88,22 +93,12 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
                 .map(e -> e.into(super.pojoClass));
     }
 
-    public Mono<List<D>> getAllProductTemplates(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return Flux.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(DSL.and(
-                                this.getBaseValueConditions(appCode, clientCode, platform, productTemplateId, null))))
-                .map(e -> e.into(super.pojoClass))
-                .collectList();
-    }
-
     protected List<Condition> getBaseCommonConditions(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, Boolean onlyParent) {
         List<Condition> conditions = new ArrayList<>();
         conditions.add(super.appCodeField.eq(appCode));
         conditions.add(super.clientCodeField.eq(clientCode));
-        conditions.add(this.productTemplateIdField.eq(productTemplateId));
+        if (productTemplateId != null) conditions.add(this.productTemplateIdField.eq(productTemplateId));
         if (platform != null) conditions.add(this.platformField.eq(platform));
         if (onlyParent != null) conditions.add(this.isParentField.eq(onlyParent));
         return conditions;

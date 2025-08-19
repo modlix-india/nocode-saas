@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.analytics.util;
 
 import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusCount;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,65 +11,37 @@ import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @UtilityClass
 public class ReportUtil {
 
-    public static <T> Flux<StatusCount> toStatusCounts(
-            Flux<PerValueCount> perValueCountFlux,
-            Mono<Map<ULong, String>> objectNameMapMono,
-            Flux<T> requiredValueFlux,
-            Function<T, String> getNameFunction,
+    public static Flux<StatusCount> toStatusCounts(
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> objectNameList,
+            List<String> requiredValueList,
             Boolean includeZero) {
 
-        Mono<Map<String, Long>> initialValueMapMono = requiredValueFlux.collect(
-                Collectors.toMap(getNameFunction, v -> 0L, (existing, replacement) -> existing, LinkedHashMap::new));
-
-        return Mono.zip(initialValueMapMono, objectNameMapMono)
-                .flatMapMany(
-                        tuple -> processToStatusCounts(perValueCountFlux, tuple.getT2(), tuple.getT1(), includeZero));
+        return toStatusCounts(perValueCountList, objectNameList, requiredValueList, Function.identity(), includeZero);
     }
 
     public static <T> Flux<StatusCount> toStatusCounts(
-            Flux<PerValueCount> perValueCountFlux,
-            Map<ULong, String> objectNameMap,
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> objectNameList,
             List<T> requiredValueList,
             Function<T, String> getNameFunction,
             Boolean includeZero) {
 
-        return toStatusCounts(
-                perValueCountFlux,
-                Mono.just(objectNameMap),
-                Flux.fromIterable(requiredValueList),
-                getNameFunction,
-                includeZero);
-    }
+        Map<String, Long> initialValueMap = requiredValueList.stream()
+                .collect(Collectors.toMap(
+                        getNameFunction, v -> 0L, (existing, replacement) -> existing, LinkedHashMap::new));
 
-    public static Flux<StatusCount> toStatusCounts(
-            Flux<PerValueCount> perValueCountFlux, Mono<Map<ULong, String>> objectNameMapMono) {
+        Map<ULong, List<PerValueCount>> grouped = perValueCountList.stream()
+                .collect(Collectors.groupingBy(PerValueCount::getId, LinkedHashMap::new, Collectors.toList()));
 
-        return objectNameMapMono.flatMapMany(objectNameMap -> perValueCountFlux.map(pvc -> StatusCount.of(
-                pvc.getId(), objectNameMap.get(pvc.getId()), pvc.getCount(), Map.of(pvc.getValue(), pvc.getCount()))));
-    }
-
-    public static Flux<StatusCount> toStatusCounts(
-            Flux<PerValueCount> perValueCountFlux, Map<ULong, String> objectNameMap) {
-        return toStatusCounts(perValueCountFlux, Mono.just(objectNameMap));
-    }
-
-    private static Flux<StatusCount> processToStatusCounts(
-            Flux<PerValueCount> perValueCountFlux,
-            Map<ULong, String> objectNameMap,
-            Map<String, Long> initialValueMap,
-            boolean includeZero) {
-
-        return perValueCountFlux
-                .collect(Collectors.groupingBy(PerValueCount::getId, LinkedHashMap::new, Collectors.toList()))
-                .flatMapMany(grouped -> includeZero
-                        ? addZeroCountsAndConvert(grouped, objectNameMap, initialValueMap)
-                        : convertGroupsToStatusCounts(grouped, objectNameMap, initialValueMap));
+        return Boolean.TRUE.equals(includeZero)
+                ? addZeroCountsAndConvert(grouped, IdAndValue.toMap(objectNameList), initialValueMap)
+                : convertGroupsToStatusCounts(grouped, IdAndValue.toMap(objectNameList), initialValueMap);
     }
 
     private static Flux<StatusCount> addZeroCountsAndConvert(
@@ -104,15 +77,15 @@ public class ReportUtil {
                 .runOn(Schedulers.parallel())
                 .map(entry -> {
                     ULong id = entry.getKey();
-                    List<PerValueCount> perValueCountList = entry.getValue();
+                    List<PerValueCount> pvcList = entry.getValue();
 
-                    if (perValueCountList.isEmpty())
+                    if (pvcList.isEmpty())
                         return StatusCount.of(id, objectNameMap.get(id), 0L, new LinkedHashMap<>(initialValueMap));
 
                     Map<String, Long> valueCounts = new LinkedHashMap<>(initialValueMap);
                     long totalCount = 0L;
 
-                    for (PerValueCount pvc : perValueCountList) {
+                    for (PerValueCount pvc : pvcList) {
                         valueCounts.put(pvc.getValue(), pvc.getCount());
                         totalCount += pvc.getCount();
                     }

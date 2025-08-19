@@ -386,12 +386,21 @@ public abstract class BaseValueService<
                 .ifPresent(parentValue -> result.get(parentValue).addAll(children)));
     }
 
+    public Mono<List<D>> getValuesFlat(
+            String appCode,
+            String clientCode,
+            Platform platform,
+            ULong productTemplateId,
+            Boolean isParent,
+            ULong... valueEntityIds) {
+        return this.dao.getValues(appCode, clientCode, platform, productTemplateId, isParent, valueEntityIds);
+    }
+
     private Mono<Map<ULong, D>> getAllValueMap(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao
-                        .getAllProductTemplates(appCode, clientCode, platform, productTemplateId)
+                () -> this.getValuesFlat(appCode, clientCode, platform, productTemplateId, null)
                         .map(BaseUpdatableDto::toIdMap),
                 super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
