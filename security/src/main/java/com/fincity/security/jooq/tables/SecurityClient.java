@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
@@ -108,6 +109,11 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      * client
      */
     public final TableField<SecurityClientRecord, String> TYPE_CODE = createField(DSL.name("TYPE_CODE"), SQLDataType.CHAR(4).nullable(false), this, "Type of client");
+
+    /**
+     * The column <code>security.security_client.LEVEL_TYPE</code>.
+     */
+    public final TableField<SecurityClientRecord, SecurityClientLevelType> LEVEL_TYPE = createField(DSL.name("LEVEL_TYPE"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("CLIENT", SQLDataType.VARCHAR)).asEnumDataType(SecurityClientLevelType.class), this, "");
 
     /**
      * The column <code>security.security_client.TOKEN_VALIDITY_MINUTES</code>.

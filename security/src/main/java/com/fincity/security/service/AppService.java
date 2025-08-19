@@ -392,7 +392,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                         () -> this.read(appId),
 
-                        app -> this.clientService.getClientTypeNCode(clientId),
+                        app -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
 
                         (app, typNCode) -> cacheService.evict(CACHE_NAME_APP_WRITE_ACCESS, app.getAppCode(), ":",
                                 typNCode.getT2()),

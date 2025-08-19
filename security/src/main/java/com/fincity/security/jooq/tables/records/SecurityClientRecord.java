@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.SecurityClient;
 
@@ -86,11 +87,26 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     }
 
     /**
+     * Setter for <code>security.security_client.LEVEL_TYPE</code>.
+     */
+    public SecurityClientRecord setLevelType(SecurityClientLevelType value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.LEVEL_TYPE</code>.
+     */
+    public SecurityClientLevelType getLevelType() {
+        return (SecurityClientLevelType) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_client.TOKEN_VALIDITY_MINUTES</code>.
      * Token validity in minutes
      */
     public SecurityClientRecord setTokenValidityMinutes(UInteger value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -99,7 +115,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * Token validity in minutes
      */
     public UInteger getTokenValidityMinutes() {
-        return (UInteger) get(4);
+        return (UInteger) get(5);
     }
 
     /**
@@ -107,7 +123,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * default locale
      */
     public SecurityClientRecord setLocaleCode(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -116,7 +132,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * default locale
      */
     public String getLocaleCode() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -124,7 +140,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * the client
      */
     public SecurityClientRecord setStatusCode(SecurityClientStatusCode value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -133,7 +149,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * the client
      */
     public SecurityClientStatusCode getStatusCode() {
-        return (SecurityClientStatusCode) get(6);
+        return (SecurityClientStatusCode) get(7);
     }
 
     /**
@@ -142,7 +158,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business types.
      */
     public SecurityClientRecord setBusinessType(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -152,7 +168,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business types.
      */
     public String getBusinessType() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -160,7 +176,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * user who created this row
      */
     public SecurityClientRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -169,7 +185,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -177,7 +193,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * this row is created
      */
     public SecurityClientRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -186,7 +202,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -194,7 +210,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * user who updated this row
      */
     public SecurityClientRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -203,7 +219,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -211,7 +227,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * this row is updated
      */
     public SecurityClientRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -220,7 +236,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     /**
@@ -228,7 +244,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business size input
      */
     public SecurityClientRecord setBusinessSize(String value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -237,7 +253,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business size input
      */
     public String getBusinessSize() {
-        return (String) get(12);
+        return (String) get(13);
     }
 
     /**
@@ -245,7 +261,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business industry
      */
     public SecurityClientRecord setIndustry(String value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -254,7 +270,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
      * business industry
      */
     public String getIndustry() {
-        return (String) get(13);
+        return (String) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -280,13 +296,14 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     /**
      * Create a detached, initialised SecurityClientRecord
      */
-    public SecurityClientRecord(ULong id, String code, String name, String typeCode, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry) {
+    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry) {
         super(SecurityClient.SECURITY_CLIENT);
 
         setId(id);
         setCode(code);
         setName(name);
         setTypeCode(typeCode);
+        setLevelType(levelType);
         setTokenValidityMinutes(tokenValidityMinutes);
         setLocaleCode(localeCode);
         setStatusCode(statusCode);

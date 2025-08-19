@@ -308,6 +308,12 @@ public class FilesAccessPathService
                             if (!managed.booleanValue())
                                 return Mono.empty();
 
+                            if (ca.isSystemClient() &&
+                                    path.contains(SecuredFileResourceService.WITH_IN_CLIENT) &&
+                                    SecurityContextUtil.hasAuthority("Authorities.ROLE_MobileApp_UPLOADER", ca.getAuthorities())) {
+                                return Mono.just(true);
+                            }
+
                             return this.dao.hasPathWriteAccess(path, ULong.valueOf(ca.getUser()
                                     .getId()), clientCode, resourceType, ca.getAuthorities()
                                     .stream()

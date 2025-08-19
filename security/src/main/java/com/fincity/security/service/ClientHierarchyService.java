@@ -86,17 +86,9 @@ public class ClientHierarchyService
                 () -> this.dao.getUserClientHierarchy(userId), userId);
     }
 
-    public Mono<ClientHierarchy> getClientHierarchy(String clientCode) {
-        return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
-    }
 
     public Flux<ULong> getClientHierarchyIds(ULong clientId) {
         return this.getClientHierarchy(clientId)
-                .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
-    }
-
-    public Flux<ULong> getUserClientHierarchyIds(ULong userId) {
-        return this.getUserClientHierarchy(userId)
                 .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
     }
 
@@ -130,7 +122,7 @@ public class ClientHierarchyService
         if (level.equals(ClientHierarchy.Level.SYSTEM))
             return this.clientService.getSystemClientId();
 
-        return this.getClientHierarchy(clientId).map(clientHierarchy -> clientHierarchy.getManagingClient(level));
+        return this.getClientHierarchy(clientId).mapNotNull(clientHierarchy -> clientHierarchy.getManagingClient(level));
     }
 
     public Mono<Boolean> isUserBeingManaged(ULong managingClientId, ULong userId) {
