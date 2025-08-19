@@ -345,7 +345,7 @@ public abstract class BaseValueService<
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.dao.getAllValues(appCode, clientCode, platform, productTemplateId, null),
+                        this.getValuesFlat(appCode, clientCode, platform, productTemplateId, null),
                         this.getAllValueMap(appCode, clientCode, platform, productTemplateId)),
                 this::processValuesAndBuildHierarchy);
     }
