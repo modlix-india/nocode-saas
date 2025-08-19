@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.filter.BaseProcessorFilter;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import org.jooq.Field;
 import org.jooq.Table;
@@ -41,6 +42,18 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         return this.addUserIds(condition, access)
                 .flatMap(uCondition -> super.processorAccessCondition(uCondition, access));
+    }
+
+    private <T extends BaseProcessorFilter<T>> Mono<AbstractCondition> applyFilterCondition(
+            AbstractCondition condition, ProcessorAccess access, T filter) {
+
+        if (filter == null) return addUserIds(condition, access);
+
+        filter.filterAssignedUserIds(access.getSubOrg());
+
+        if (condition == null || condition.isEmpty()) return Mono.empty();
+
+        return Mono.empty();
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {

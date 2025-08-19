@@ -46,7 +46,11 @@ public abstract class BaseProcessorService<
     @Override
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
-                () -> this.checkEntity(entity, access), cEntity -> super.createInternal(access, cEntity));
+                () -> this.checkEntity(entity, access),
+                cEntity -> access.isOutsideUser()
+                        ? Mono.just(cEntity.setClientId(access.getUser().getClientId()))
+                        : Mono.just(cEntity),
+                (cEntity, uEntity) -> super.createInternal(access, uEntity));
     }
 
     public Mono<D> readIdentityWithOwnerAccess(Identity identity) {

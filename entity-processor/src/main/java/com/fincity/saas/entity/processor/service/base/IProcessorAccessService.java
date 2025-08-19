@@ -72,8 +72,10 @@ public interface IProcessorAccessService {
                 (acTup, hasAppAccess, isUserManaged, userSubOrg) -> Mono.just(ProcessorAccess.of(
                         acTup.getT1(),
                         acTup.getT2(),
+                        ca.getLoggedInFromClientCode(),
                         ULongUtil.valueOf(ca.getUser().getId()),
                         hasAppAccess && isUserManaged,
-                        userSubOrg)));
+                        userSubOrg,
+                        ca.getUser())));
     }
 }

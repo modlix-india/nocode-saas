@@ -61,37 +61,27 @@ public class ClientService
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
     private static final String CACHE_NAME_CLIENT_ID = "clientId";
-
+    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+            AuthenticationPasswordType.class);
     @Autowired
     private CacheService cacheService;
-
     @Autowired
     @Lazy
     private AppService appService;
-
     @Autowired
     private SecurityMessageResourceService securityMessageResourceService;
-
     @Autowired
     private AppRegistrationV2DAO appRegistrationDAO;
-
     @Autowired
     private ClientHierarchyService clientHierarchyService;
-
     @Autowired
     private ClientPasswordPolicyService clientPasswordPolicyService;
-
     @Autowired
     private ClientPinPolicyService clientPinPolicyService;
-
     @Autowired
     private ClientOtpPolicyService clientOtpPolicyService;
-
     @Value("${security.subdomain.endings}")
     private String[] subDomainURLEndings;
-
-    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
-            AuthenticationPasswordType.class);
 
     @PostConstruct
     public void init() {

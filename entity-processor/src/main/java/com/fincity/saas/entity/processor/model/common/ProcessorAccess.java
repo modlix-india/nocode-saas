@@ -2,6 +2,8 @@ package com.fincity.saas.entity.processor.model.common;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -19,41 +21,61 @@ public final class ProcessorAccess implements Serializable {
 
     private String appCode;
     private String clientCode;
+    private String loggedInClientCode;
     private ULong userId;
     private List<ULong> subOrg;
 
     private boolean hasAccessFlag;
+    private ContextUser user;
+    private boolean hasBpAccess;
 
     public static ProcessorAccess of(
-            String appCode, String clientCode, ULong userId, boolean hasAccessFlag, List<BigInteger> subOrg) {
+            String appCode,
+            String clientCode,
+            String loggedInClientCode,
+            ULong userId,
+            boolean hasAccessFlag,
+            List<BigInteger> subOrg,
+            ContextUser user) {
         return new ProcessorAccess()
                 .setAppCode(appCode)
                 .setClientCode(clientCode)
+                .setLoggedInClientCode(loggedInClientCode)
                 .setUserId(userId)
                 .setHasAccessFlag(hasAccessFlag)
-                .setSubOrg(subOrg);
+                .setSubOrg(subOrg)
+                .setUser(user)
+                .setHasBpAccess(
+                        user != null ? BusinessPartnerConstant.isBpManager(user.getAuthorities()) : Boolean.FALSE);
     }
 
     public static ProcessorAccess of(String appCode, String clientCode, boolean hasAccessFlag) {
-        return of(appCode, clientCode, null, hasAccessFlag, null);
+        return of(appCode, clientCode, clientCode, null, hasAccessFlag, null, null);
     }
 
     public static ProcessorAccess ofNull() {
-        return of(null, null, null, false, null);
+        return of(null, null, null, null, false, null, null);
     }
 
     public static ProcessorAccess of(ContextAuthentication ca, List<BigInteger> subOrg) {
         return of(
                 ca.getUrlAppCode(),
                 ca.getClientCode(),
+                ca.getLoggedInFromClientCode(),
                 ULongUtil.valueOf(ca.getUser().getId()),
                 true,
-                subOrg);
+                subOrg,
+                ca.getUser());
     }
 
     public ProcessorAccess setSubOrg(List<BigInteger> userSubOrg) {
         if (userSubOrg == null) return this;
         this.subOrg = userSubOrg.stream().map(ULongUtil::valueOf).toList();
         return this;
+    }
+
+    public boolean isOutsideUser() {
+        if (this.loggedInClientCode == null) return false;
+        return this.clientCode.equals(this.loggedInClientCode);
     }
 }
