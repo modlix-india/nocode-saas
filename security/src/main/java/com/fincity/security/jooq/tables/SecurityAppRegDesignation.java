@@ -123,7 +123,7 @@ public class SecurityAppRegDesignation extends TableImpl<SecurityAppRegDesignati
      * <code>security.security_app_reg_designation.DEPARTMENT_ID</code>.
      * Department ID for which this designation belongs to
      */
-    public final TableField<SecurityAppRegDesignationRecord, ULong> DEPARTMENT_ID = createField(DSL.name("DEPARTMENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Department ID for which this designation belongs to");
+    public final TableField<SecurityAppRegDesignationRecord, ULong> DEPARTMENT_ID = createField(DSL.name("DEPARTMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Department ID for which this designation belongs to");
 
     /**
      * The column
