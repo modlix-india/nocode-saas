@@ -1,6 +1,8 @@
 package com.fincity.saas.ui.controller;
 
+import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
+import feign.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +13,6 @@ import com.fincity.saas.ui.service.ApplicationService;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("api/ui/applications")
@@ -19,21 +20,27 @@ public class ApplicationController
         extends AbstractOverridableDataController<Application, ApplicationRepository, ApplicationService> {
 
     @GetMapping("/{appCode}/mobileApps")
-    public Mono<ResponseEntity<List<Map<String, Object>>>> listMobileApps(@PathVariable String appCode, @RequestParam(required = false) String clientCode) {
+    public Mono<ResponseEntity<List<MobileApp>>> listMobileApps(@PathVariable String appCode, @RequestParam(required = false) String clientCode) {
 
         return this.service.listMobileApps(appCode, clientCode)
                 .map(ResponseEntity::ok);
     }
 
-    @GetMapping("/{appCode}/mobileApps/generate")
-    public Mono<ResponseEntity<Boolean>> generateMobileApp(@PathVariable String appCode, @RequestParam(required = false) String clientCode, @RequestParam String mobileAppKey) {
+    @DeleteMapping("/{appCode}/mobileApps/{id}")
+    public Mono<ResponseEntity<Boolean>> deleteApp(@PathVariable String appCode, @PathVariable String id) {
 
-        return this.service.generateMobileApp(appCode, clientCode, mobileAppKey)
+        return this.service.deleteMobileApp(appCode, id).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/{appCode}/mobileApps")
+    public Mono<ResponseEntity<MobileApp>> updateMobileApp(@PathVariable String appCode, @RequestBody MobileApp mobileApp) {
+
+        return this.service.updateMobileApp(mobileApp.setAppCode(appCode))
                 .map(ResponseEntity::ok);
     }
 
     @GetMapping("/mobileApps/next")
-    public Mono<ResponseEntity<Map<String, Object>>> nextMobileApp() {
+    public Mono<ResponseEntity<MobileApp>> nextMobileApp() {
         return this.service.findNextAppToGenerate()
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());

@@ -2,10 +2,12 @@ package com.fincity.saas.ui.service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.util.*;
-import com.fincity.saas.ui.document.MobileAppGenerationStatus;
+import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,17 +36,17 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
     private UIFillerService fillerService;
 
-    private MobileAppGenerationStatusService statusService;
+    private MobileAppService mobileAppService;
 
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
     @Autowired
-    public ApplicationService(PageService pageService, UIFillerService fillerService, MobileAppGenerationStatusService statusService) {
+    public ApplicationService(PageService pageService, UIFillerService fillerService, MobileAppService mobileAppService) {
         super(Application.class);
         this.pageService = pageService;
         this.fillerService = fillerService;
-        this.statusService = statusService;
+        this.mobileAppService = mobileAppService;
     }
 
     protected ApplicationService() {
@@ -290,9 +292,26 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
         return url;
     }
 
-    @SuppressWarnings({"unchecked"})
-    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
-    public Mono<List<Map<String, Object>>> listMobileApps(String appCode, String clientCode) {
+
+    @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
+    public Mono<Boolean> deleteMobileApp(String appCode, String id) {
+
+        return flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.mobileAppService.readMobileApp(id),
+
+                (ca, mobileApp) -> this.securityService.hasWriteAccess(mobileApp.getAppCode(), mobileApp.getClientCode()).filter(BooleanUtil::safeValueOf),
+
+                (ca, mobileApp, hasAccess) -> this.securityService.isBeingManaged(ca.getClientCode(), mobileApp.getClientCode()),
+
+                (ca, mobileApp, hasAccess, beingManaged) -> this.mobileAppService.deleteMobileApp(id)
+        ).switchIfEmpty(this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), UIMessageResourceService.UNABLE_TO_DELETE, "Mobile Application", id))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.deleteMobileApp"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
+    public Mono<List<MobileApp>> listMobileApps(String appCode, String clientCode) {
 
         return flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -307,58 +326,18 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION,
                                 "Authorities.Application_CREATE");
 
-                    return this.readProperties(appCode, appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()));
-                },
-
-                (ca, hasAccess, props) -> {
-                    if (props == null) return Mono.just(List.<Map<String, Object>>of());
-
-                    final var mobileApps = props.get("mobileApps");
-
-                    if (mobileApps == null) return Mono.just(List.<Map<String, Object>>of());
-
-                    if (mobileApps instanceof Map<?, ?> map)
-                        return Mono.just((((Map<String, Map<String, Object>>) map).values().stream().sorted(
-                                (a, b) -> a.get("name").toString().compareToIgnoreCase(b.get("name").toString())
-                        ).toList()));
-
-                    return Mono.just(List.<Map<String, Object>>of());
-                },
-
-                (ca, hasAccess, props, mApps) -> {
-
-                    if (mApps.isEmpty()) return Mono.just(mApps);
-
-                    List<Map<String, Object>> mAppsList = new ArrayList<>();
-                    Set<String> mAppKeys = new HashSet<>();
-
-                    for (Map<String, Object> mApp : mApps) {
-
-                        String mAppKey = mApp.get("key").toString();
-                        mAppsList.add(CloneUtil.cloneMapObject(mApp));
-                        mAppKeys.add(mAppKey);
-                    }
-
-                    return this.statusService.getMobileAppGenerationStatus(appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()), mAppKeys)
-                            .map(map -> {
-                                mAppsList.forEach(mApp -> {
-                                    String key = StringUtil.safeValueOf(mApp.get("key"));
-                                    if (key == null) return;
-                                    mApp.put("status", map.get(key));
-                                });
-                                return mAppsList;
-                            });
+                    return this.mobileAppService.list(appCode, CommonsUtil.nonNullValue(ca.getClientCode(), clientCode));
                 }
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.listMobileApps"));
     }
 
-    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
-    public Mono<Boolean> generateMobileApp(String appCode, String clientCode, String mobileAppKey) {
+    @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
+    public Mono<MobileApp> updateMobileApp(MobileApp mobileApp) {
 
         return flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> clientCode == null ? Mono.just(true) : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+                ca -> mobileApp.getClientCode() == null ? Mono.just(true) : this.securityService.isBeingManaged(ca.getClientCode(), mobileApp.getClientCode()),
 
                 (ca, hasAccess) -> {
 
@@ -368,45 +347,52 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 AbstractMongoMessageResourceService.FORBIDDEN_PERMISSION,
                                 "Authorities.Application_CREATE");
 
-                    return this.statusService.updateStatus(ca.getUser().getId(), appCode, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()), mobileAppKey, MobileAppGenerationStatus.Status.PENDING)
-                            .map(e -> true);
+                    if (mobileApp.getClientCode() == null)
+                        mobileApp.setClientCode(ca.getClientCode());
+
+                    mobileApp.setStatus(MobileApp.Status.PENDING);
+
+                    if (mobileApp.getId() == null) {
+                        mobileApp.setCreatedAt(LocalDateTime.now());
+                        mobileApp.setCreatedBy(ca.getUser().getId().toString());
+                        mobileApp.setUpdatedAt(mobileApp.getCreatedAt());
+                    } else {
+                        mobileApp.setUpdatedAt(LocalDateTime.now());
+                    }
+
+                    if (mobileApp.getDetails() == null) {
+                        return this.messageResourceService.throwMessage(msg ->
+                                new GenericException(HttpStatus.BAD_REQUEST, msg), UIMessageResourceService.MOBILE_APP_BAD_REQUEST);
+                    }
+
+                    if (StringUtil.safeIsBlank(mobileApp.getDetails().getStartURL())) {
+                        String prefix = "";
+                        if (!StringUtil.safeIsBlank(appCodeSuffix)) {
+                            prefix = appCodeSuffix.replace(".", "").trim();
+                            if (!prefix.isBlank()) prefix += ".";
+                        }
+                        mobileApp.getDetails().setStartURL("https://" + prefix + "modlix.com/" + mobileApp.getAppCode() + "/" + mobileApp.getClientCode() + "/page/");
+                    }
+
+                    mobileApp.setUpdatedBy(ca.getUser().getId().toString());
+
+                    return this.mobileAppService.update(mobileApp);
                 }
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.generateMobileApp"));
+
     }
 
     @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
-    @SuppressWarnings("unchecked")
-    public Mono<Map<String, Object>> findNextAppToGenerate() {
+    public Mono<MobileApp> findNextAppToGenerate() {
 
         return flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> {
-                    if (ca.isSystemClient()) return this.statusService.getNextMobileAppToGenerate();
+                    if (ca.isSystemClient()) return this.mobileAppService.getNextMobileAppToGenerate();
 
                     return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), UIMessageResourceService.INTERNAL_ONLY);
-                },
-
-                (ca, gen) -> this.readProperties(gen.getAppCode(), gen.getAppCode(), ca.getClientCode())
-                        .mapNotNull(e -> {
-                            if (e == null) return null;
-
-                            if (e.get("mobileApps") instanceof Map<?, ?> map) {
-                                Map<String, Object> mApp = (Map<String, Object>) map.get(gen.getMobileAppKey());
-
-                                if (mApp == null) return null;
-
-                                mApp = CloneUtil.cloneMapObject(mApp);
-                                mApp.put("version", gen.getVersion());
-                                mApp.put("statusId", gen.getId());
-                                mApp.put("appCode", gen.getAppCode());
-                                mApp.put("clientCode", ca.getClientCode());
-                                
-                                return mApp;
-                            }
-
-                            return null;
-                        })
+                }
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.findNextAppToGenerate"));
     }
 
@@ -417,7 +403,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> {
-                    if (ca.isSystemClient()) return this.statusService.updateStatus(id, request);
+                    if (ca.isSystemClient()) return this.mobileAppService.updateStatus(id, request);
 
                     return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), UIMessageResourceService.INTERNAL_ONLY);
                 }

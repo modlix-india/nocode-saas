@@ -572,7 +572,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setLoggedInClientId(linClient.getId().toBigInteger())
                                 .setAccessToken(token.getT1())
                                 .setAccessTokenExpiryAt(token.getT2())
-                                .setManagedClientId(mc.getId().toBigInteger())
+                                .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                                 .setManagedClientCode(mc.getCode())
                         ))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeToken"));
@@ -846,7 +846,7 @@ public class AuthenticationService implements IAuthenticationService {
                                             .setAccessToken(ca.getAccessToken())
                                             .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
                                             .setManagedClientCode(mc.getCode())
-                                            .setManagedClientId(mc.getId().toBigInteger())
+                                            .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                                     );
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
@@ -900,7 +900,7 @@ public class AuthenticationService implements IAuthenticationService {
                                 .setAccessToken(token.getT1())
                                 .setAccessTokenExpiryAt(token.getT2())
                                 .setManagedClientCode(mc.getCode())
-                                .setManagedClientId(mc.getId().toBigInteger())
+                                .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                         )
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.generateNewToken"));
     }

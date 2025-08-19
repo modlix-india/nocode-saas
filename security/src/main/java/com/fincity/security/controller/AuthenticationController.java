@@ -107,7 +107,7 @@ public class AuthenticationController {
                                             .setAccessToken(ca.getAccessToken())
                                             .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
                                             .setManagedClientCode(mc.getCode())
-                                            .setManagedClientId(mc.getId().toBigInteger())
+                                            .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                                     );
                         },
 

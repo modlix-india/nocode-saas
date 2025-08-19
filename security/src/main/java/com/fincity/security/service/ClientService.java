@@ -317,7 +317,7 @@ public class ClientService
     public Mono<Client> getManagedClientOfClientById(ULong clientId) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
                 () -> this.clientHierarchyService.getManagingClient(clientId, ClientHierarchy.Level.ZERO)
-                        .flatMap(this::getClientInfoById),
+                        .flatMap(this::getClientInfoById).defaultIfEmpty(new Client()),
                 clientId);
     }
 
