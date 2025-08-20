@@ -1,7 +1,5 @@
 package com.fincity.saas.entity.processor.dao.base;
 
-import java.util.List;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -13,6 +11,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import com.fincity.saas.entity.processor.util.FilterUtil;
+import java.util.List;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
@@ -45,16 +44,19 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.addUserIds(condition, access),
                 uCondition -> this.addClientIds(uCondition, access),
                 (uCondition, cCondition) -> super.processorAccessCondition(cCondition, access));
     }
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
-        if (!BusinessPartnerConstant.isBpManager(access.getUser().getAuthorities())) return Mono.just(condition);
+        if (!BusinessPartnerConstant.isBpManager(access.getUser().getAuthorities())) {
+            if (this.isEmptyCondition(condition)) return Mono.empty();
+            return condition.removeConditionWithField(BaseProcessorDto.Fields.clientId);
+        }
 
-        if (isEmptyCondition(condition))
+        if (this.isEmptyCondition(condition))
             return this.buildInCondition(BaseProcessorDto.Fields.clientId, access.getClientHierarchy());
 
         return this.updateExistingCondition(
@@ -94,12 +96,9 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             AbstractCondition root, String field, List<?> hierarchy, Object equalsValue) {
         return FlatMapUtil.flatMapMono(() -> root.findConditionWithField(field).collectList(), existingConditions -> {
             for (FilterCondition fc : existingConditions) {
-                if (fc.getOperator() == FilterConditionOperator.IN) {
+                if (fc.getOperator() == FilterConditionOperator.IN)
                     fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), hierarchy));
-                }
-                if (fc.getOperator() == FilterConditionOperator.EQUALS) {
-                    fc.setValue(equalsValue);
-                }
+                if (fc.getOperator() == FilterConditionOperator.EQUALS) fc.setValue(equalsValue);
             }
             return Mono.just(root);
         });
