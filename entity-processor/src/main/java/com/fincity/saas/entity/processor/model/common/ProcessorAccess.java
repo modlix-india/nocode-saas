@@ -24,18 +24,20 @@ public final class ProcessorAccess implements Serializable {
     private String loggedInClientCode;
     private ULong userId;
     private List<ULong> subOrg;
+    private List<ULong> clientHierarchy;
 
     private boolean hasAccessFlag;
     private ContextUser user;
     private boolean hasBpAccess;
 
-    public static ProcessorAccess of(
+    public static ProcessorAccess of( // NOSONAR
             String appCode,
             String clientCode,
             String loggedInClientCode,
-            ULong userId,
+            BigInteger userId,
             boolean hasAccessFlag,
             List<BigInteger> subOrg,
+            List<BigInteger> clientHierarchy,
             ContextUser user) {
         return new ProcessorAccess()
                 .setAppCode(appCode)
@@ -44,38 +46,53 @@ public final class ProcessorAccess implements Serializable {
                 .setUserId(userId)
                 .setHasAccessFlag(hasAccessFlag)
                 .setSubOrg(subOrg)
+                .setClientHierarchy(clientHierarchy)
                 .setUser(user)
                 .setHasBpAccess(
                         user != null ? BusinessPartnerConstant.isBpManager(user.getAuthorities()) : Boolean.FALSE);
     }
 
     public static ProcessorAccess of(String appCode, String clientCode, boolean hasAccessFlag) {
-        return of(appCode, clientCode, clientCode, null, hasAccessFlag, null, null);
+        return of(appCode, clientCode, clientCode, null, hasAccessFlag, null, null, null);
     }
 
     public static ProcessorAccess ofNull() {
-        return of(null, null, null, null, false, null, null);
+        return of(null, null, null, null, false, null, null, null);
     }
 
-    public static ProcessorAccess of(ContextAuthentication ca, List<BigInteger> subOrg) {
+    public static ProcessorAccess of(
+            ContextAuthentication ca, List<BigInteger> subOrg, List<BigInteger> clientHierarchy) {
         return of(
                 ca.getUrlAppCode(),
                 ca.getClientCode(),
                 ca.getLoggedInFromClientCode(),
-                ULongUtil.valueOf(ca.getUser().getId()),
+                ca.getUser().getId(),
                 true,
                 subOrg,
+                clientHierarchy,
                 ca.getUser());
-    }
-
-    public ProcessorAccess setSubOrg(List<BigInteger> userSubOrg) {
-        if (userSubOrg == null) return this;
-        this.subOrg = userSubOrg.stream().map(ULongUtil::valueOf).toList();
-        return this;
     }
 
     public boolean isOutsideUser() {
         if (this.loggedInClientCode == null) return false;
         return this.clientCode.equals(this.loggedInClientCode);
+    }
+
+    private ProcessorAccess setUserId(BigInteger userId) {
+        if (userId == null) return this;
+        this.userId = ULongUtil.valueOf(userId);
+        return this;
+    }
+
+    private ProcessorAccess setSubOrg(List<BigInteger> userSubOrg) {
+        if (userSubOrg == null) return this;
+        this.subOrg = userSubOrg.stream().map(ULongUtil::valueOf).toList();
+        return this;
+    }
+
+    private ProcessorAccess setClientHierarchy(List<BigInteger> clientHierarchy) {
+        if (clientHierarchy == null) return this;
+        this.clientHierarchy = clientHierarchy.stream().map(ULongUtil::valueOf).toList();
+        return this;
     }
 }

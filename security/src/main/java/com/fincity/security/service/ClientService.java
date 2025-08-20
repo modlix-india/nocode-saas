@@ -139,6 +139,10 @@ public class ClientService
         return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
     }
 
+    public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
+        return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
+    }
+
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()
@@ -413,7 +417,7 @@ public class ClientService
     }
 
     public Mono<Boolean> isClientActive(ULong clientId) {
-        return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
+        return this.getClientHierarchy(clientId)
                 .flatMap(clientHie -> this.dao.isClientActive(clientHie));
     }
 
