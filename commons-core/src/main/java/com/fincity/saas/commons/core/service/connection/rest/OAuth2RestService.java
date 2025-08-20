@@ -404,7 +404,7 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
     public Mono<String> getAccessToken(String connectionName, String clientCode, String appCode) {
         return  this.connectionService
-                .read(connectionName, appCode, clientCode, ConnectionType.REST_API)
+                .readInternalConnection(connectionName, appCode, clientCode, ConnectionType.REST_API)
                 .flatMap(this::getAccessToken);
     }
 
