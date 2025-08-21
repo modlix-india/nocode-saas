@@ -1,12 +1,11 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappDebugTokenService;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/message/whatsapp/debug-token")
