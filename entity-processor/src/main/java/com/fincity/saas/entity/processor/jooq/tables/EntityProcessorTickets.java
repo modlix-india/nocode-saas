@@ -195,6 +195,13 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
+     * client who created this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this ticket.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.CREATED_BY</code>. ID of
      * the user who created this row.
      */
