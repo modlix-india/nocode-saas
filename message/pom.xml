@@ -40,7 +40,6 @@
         <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
         <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
-        <package.i.saas-commons-mongo-version>2.0.0</package.i.saas-commons-mongo-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
@@ -87,11 +86,6 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-jooq</artifactId>
             <version>${package.i.saas-commons-jooq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${package.i.saas-commons-mongo-version}</version>
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
