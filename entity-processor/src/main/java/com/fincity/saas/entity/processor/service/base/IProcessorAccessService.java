@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -41,22 +42,14 @@ public interface IProcessorAccessService {
 
         if (ca.isAuthenticated())
             return this.getUserInheritanceInfo(ca)
-                    .map(userInheritanceInfo ->
-                            ProcessorAccess.of(ca, userInheritanceInfo.getT1(), userInheritanceInfo.getT2()));
+                    .map(userInheritanceInfo -> ProcessorAccess.of(ca, userInheritanceInfo));
 
         return FlatMapUtil.flatMapMono(
                 () -> SecurityContextUtil.resolveAppAndClientCode(null, null),
                 acTup -> this.getHasAccessFlag(acTup, ca),
                 (acTup, hasAppAccess) -> this.getUserInheritanceInfo(ca),
                 (acTup, hasAppAccess, userInheritanceInfo) -> Mono.just(ProcessorAccess.of(
-                        acTup.getT1(),
-                        acTup.getT2(),
-                        ca.getLoggedInFromClientCode(),
-                        ca.getUser().getId(),
-                        hasAppAccess,
-                        userInheritanceInfo.getT1(),
-                        userInheritanceInfo.getT2(),
-                        ca.getUser())));
+                        acTup.getT1(), acTup.getT2(), hasAppAccess, ca.getUser(), userInheritanceInfo)));
     }
 
     private Mono<Boolean> getHasAccessFlag(Tuple2<String, String> acTup, ContextAuthentication ca) {
@@ -82,16 +75,23 @@ public interface IProcessorAccessService {
                 (hasAppAccess, isUserManaged) -> BooleanUtil.safeValueOf(hasAppAccess && isUserManaged));
     }
 
-    private Mono<Tuple2<List<BigInteger>, List<BigInteger>>> getUserInheritanceInfo(ContextAuthentication ca) {
-        return Mono.zip(
-                this.getSecurityService()
-                        .getUserSubOrgInternal(
-                                ca.getUser().getId(),
-                                ca.getUrlAppCode(),
-                                ca.getUser().getClientId()),
-                BusinessPartnerConstant.isBpManager(ca.getUser().getAuthorities())
-                        ? this.getSecurityService()
-                                .getClientHierarchy(ca.getUser().getClientId())
-                        : Mono.just(List.of()));
+    private Mono<ProcessorAccess.UserInheritanceInfo> getUserInheritanceInfo(ContextAuthentication ca) {
+
+        Mono<List<BigInteger>> userSubOrgMono = this.getSecurityService()
+                .getUserSubOrgInternal(
+                        ca.getUser().getId(), ca.getUrlAppCode(), ca.getUser().getClientId());
+
+        Mono<List<BigInteger>> clientHierarchyMono = BusinessPartnerConstant.isBpManager(
+                        ca.getUser().getAuthorities())
+                ? this.getSecurityService().getClientHierarchy(ca.getUser().getClientId())
+                : Mono.just(List.of());
+
+        Mono<Client> managedClientMono = ca.getClientLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP)
+                ? this.getSecurityService()
+                        .getManagedClientOfClientById(ca.getUser().getClientId())
+                : Mono.empty();
+
+        return Mono.zip(userSubOrgMono, clientHierarchyMono, managedClientMono.defaultIfEmpty(new Client()))
+                .map(userInheritTup -> ProcessorAccess.UserInheritanceInfo.of(ca, userInheritTup));
     }
 }

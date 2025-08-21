@@ -72,6 +72,11 @@ public class ClientController
         return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
     }
 
+    @GetMapping("/internal/managedClient")
+    public Mono<ResponseEntity<Client>> getManagedClientOfClientById(@RequestParam ULong clientId) {
+        return this.service.getManagedClientOfClientById(clientId).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/clientHierarchy")
     public Mono<ResponseEntity<List<ULong>>> getClientHierarchy(@RequestParam ULong clientId) {
         return this.service.getClientHierarchy(clientId).map(ResponseEntity::ok);

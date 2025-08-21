@@ -16,6 +16,8 @@ public class BusinessPartnerConstant {
 
     public static final String OWNER = "owner";
 
+    public static final String CLIENT_LEVEL_TYPE_BP = "CUSTOMER";
+
     public static boolean isBpManager(Collection<? extends GrantedAuthority> collection) {
         return SecurityContextUtil.hasAuthority(BP_MANAGER_ROLE, collection)
                 || SecurityContextUtil.hasAuthority(OWNER_ROLE, collection);

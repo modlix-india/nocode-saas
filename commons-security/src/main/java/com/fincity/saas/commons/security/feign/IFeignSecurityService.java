@@ -40,6 +40,9 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getClientByCode:/api/security/clients/internal/getClientByCode}")
     Mono<Client> getClientByCode(@RequestParam String clientCode);
 
+    @GetMapping("${security.feign.getManagedClientOfClientById:/api/security/clients/internal/managedClient}")
+    Mono<Client> getManagedClientOfClientById(@RequestParam BigInteger clientId);
+
     @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
     Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 

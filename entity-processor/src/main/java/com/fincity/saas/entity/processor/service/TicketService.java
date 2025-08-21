@@ -234,7 +234,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         super::hasAccess,
                         access -> super.readIdentityWithOwnerAccess(access, ticketId),
                         (access, ticket) -> {
-                            if (!access.getSubOrg().contains(ticketReassignRequest.getUserId()))
+                            if (!access.getUserInherit().getSubOrg().contains(ticketReassignRequest.getUserId()))
                                 return this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.INVALID_USER_ACCESS);

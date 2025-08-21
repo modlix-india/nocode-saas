@@ -130,7 +130,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
-        return Mono.just(this.addAppCodeAndClientCode(condition, access.getAppCode(), access.getClientCode()));
+        return Mono.just(this.addAppCodeAndClientCode(condition, access));
     }
 
     private Mono<AbstractCondition> processorAccessCondition(ProcessorAccess access, ULong id) {
@@ -141,20 +141,29 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return this.processorAccessCondition(codeCondition(code), access);
     }
 
-    private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, String appCode, String clientCode) {
+    private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
         if (condition == null || condition.isEmpty())
-            return ComplexCondition.and(
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
-                            .setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
-                            .setOperator(FilterConditionOperator.EQUALS));
+            return ComplexCondition.and(this.getAppCodeCondition(access), this.getClientCodeCondition(access));
 
-        return ComplexCondition.and(
-                condition,
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
-                        .setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
-                        .setOperator(FilterConditionOperator.EQUALS));
+        return ComplexCondition.and(condition, this.getAppCodeCondition(access), this.getClientCodeCondition(access));
+    }
+
+    private AbstractCondition getAppCodeCondition(ProcessorAccess access) {
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                .setOperator(FilterConditionOperator.EQUALS);
+    }
+
+    private AbstractCondition getClientCodeCondition(ProcessorAccess access) {
+        if (access.isOutsideUser())
+            return ComplexCondition.or(
+                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                            .setOperator(FilterConditionOperator.IN),
+                    FilterCondition.make(
+                                    AbstractFlowUpdatableDTO.Fields.clientCode,
+                                    access.getUserInherit().getManagedClientCode())
+                            .setOperator(FilterConditionOperator.IN));
+
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode());
     }
 
     public Mono<D> readInternal(ULong id) {

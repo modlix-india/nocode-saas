@@ -81,7 +81,7 @@ public abstract class BaseProcessorService<
     public Mono<D> checkUserAccess(ProcessorAccess access, D entity) {
         ULong accessUser = entity.getAccessUser();
 
-        return (accessUser != null && access.getSubOrg().contains(accessUser)) ? Mono.just(entity) : Mono.empty();
+        return (accessUser != null && access.getUserInherit().getSubOrg().contains(accessUser)) ? Mono.just(entity) : Mono.empty();
     }
 
     @Override
