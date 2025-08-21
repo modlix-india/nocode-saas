@@ -63,6 +63,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TICKET;
     }
@@ -234,7 +239,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         super::hasAccess,
                         access -> super.readIdentityWithOwnerAccess(access, ticketId),
                         (access, ticket) -> {
-                            if (!access.getSubOrg().contains(ticketReassignRequest.getUserId()))
+                            if (!access.getUserInherit().getSubOrg().contains(ticketReassignRequest.getUserId()))
                                 return this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.INVALID_USER_ACCESS);

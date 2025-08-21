@@ -29,6 +29,11 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TASK_TYPE;
     }
