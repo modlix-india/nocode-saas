@@ -3,7 +3,7 @@ package com.fincity.saas.ui.service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 

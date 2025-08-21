@@ -4,6 +4,9 @@ import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import java.io.Serial;
 import java.io.Serializable;
+
+import org.jooq.types.ULong;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -23,6 +26,7 @@ public abstract class BaseContentRequest<T extends BaseContentRequest<T>> extend
     private Boolean hasAttachment;
     private Identity ownerId;
     private Identity ticketId;
+    private ULong userId;
 
     public T setOwnerId(Identity ownerId) {
         this.ownerId = ownerId;
