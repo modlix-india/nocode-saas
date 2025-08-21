@@ -15,6 +15,11 @@ import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.security.jooq.tables.*;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -40,10 +45,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.SecurityProfile;
-import com.fincity.security.jooq.tables.SecurityProfileUser;
-import com.fincity.security.jooq.tables.SecurityUser;
-import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
@@ -625,5 +626,53 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .map(record -> record.into(User.class))
                 .distinct()
                 .collectList();
+    }
+
+    @Override
+    protected Condition filterConditionFilter(FilterCondition fc) {
+
+        if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
+            return super.filterConditionFilter(fc);
+
+        if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
+            return DSL.trueCondition();
+
+        if (fc.getField().equals("appId")) {
+
+            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                    SECURITY_PROFILE.APP_ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue()))) :
+                    SECURITY_PROFILE.APP_ID.in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+
+            if (fc.isNegate())
+                idCondition = DSL.not(idCondition);
+
+            return DSL.exists(
+                    DSL.select(DSL.value(1))
+                            .from(SECURITY_PROFILE_USER)
+                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                            .where(DSL.and(
+                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                    idCondition
+                            ))
+            );
+        }
+
+        Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                SECURITY_APP.APP_CODE.eq(fc.getValue().toString()) :
+                SECURITY_APP.APP_CODE.in(this.multiFieldValue(SECURITY_APP.APP_CODE, fc.getValue(), fc.getMultiValue()));
+
+        if (fc.isNegate())
+            codeCondition = DSL.not(codeCondition);
+
+        return DSL.exists(
+                DSL.select(DSL.value(1))
+                        .from(SECURITY_PROFILE_USER)
+                        .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                        .where(DSL.and(
+                                SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                codeCondition
+                        ))
+        );
     }
 }
