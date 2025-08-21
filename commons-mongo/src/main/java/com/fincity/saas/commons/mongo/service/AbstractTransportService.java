@@ -7,7 +7,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.mongo.document.Transport;
 import com.fincity.saas.commons.mongo.enums.TransportFileType;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.model.TransportRequest;
 import com.fincity.saas.commons.mongo.repository.TransportRepository;

@@ -1,6 +1,6 @@
 package com.fincity.saas.commons.mongo.document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import java.util.List;
 import lombok.Data;

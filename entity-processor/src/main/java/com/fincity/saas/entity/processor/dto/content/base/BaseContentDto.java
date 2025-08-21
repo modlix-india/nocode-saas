@@ -1,16 +1,20 @@
 package com.fincity.saas.entity.processor.dto.content.base;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import java.io.Serial;
+import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -29,10 +33,13 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
     private Boolean hasAttachment;
     private ULong ownerId;
     private ULong ticketId;
+    private ULong userId;
+    private ULong clientId;
 
     protected BaseContentDto() {
         super();
         this.relationsMap.put(Fields.ticketId, EntitySeries.TICKET.getTable());
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
     }
 
     protected BaseContentDto(BaseContentDto<T> baseContentDto) {
@@ -42,6 +49,8 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
         this.hasAttachment = baseContentDto.hasAttachment;
         this.ownerId = baseContentDto.ownerId;
         this.ticketId = baseContentDto.ticketId;
+        this.userId = baseContentDto.userId;
+        this.clientId = baseContentDto.clientId;
     }
 
     @JsonIgnore

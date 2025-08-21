@@ -3,7 +3,7 @@ package com.fincity.saas.ui.document;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
