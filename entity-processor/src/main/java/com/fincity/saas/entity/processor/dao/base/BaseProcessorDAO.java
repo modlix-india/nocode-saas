@@ -51,7 +51,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
-        if (!BusinessPartnerConstant.isBpManager(access.getUser().getAuthorities())) {
+        if (!access.isHasBpAccess()) {
             if (this.isEmptyCondition(condition)) return Mono.empty();
             return condition.removeConditionWithField(BaseProcessorDto.Fields.clientId);
         }
