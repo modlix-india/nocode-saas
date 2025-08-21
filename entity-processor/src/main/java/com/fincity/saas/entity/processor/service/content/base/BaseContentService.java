@@ -56,6 +56,11 @@ public abstract class BaseContentService<
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
+    }
+
+    @Override
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
         return super.createInternal(access, entity)
                 .flatMap(cContent ->
@@ -110,7 +115,7 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.readById(access, id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
                         .then(Mono.just(deleted)));

@@ -1,8 +1,6 @@
 package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -30,7 +28,6 @@ import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -76,12 +73,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     @Autowired
     private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
         this.recordEnrichmentService = recordEnrichmentService;
-    }
-
-    protected <T, V> Mono<T> objectNotFoundError(V value) {
-        return messageResourceService
-                .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), value)
-                .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
@@ -202,14 +193,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
                 .map(rec -> Boolean.TRUE)
                 .defaultIfEmpty(Boolean.FALSE);
-    }
-
-    public Mono<Integer> deleteByCode(String code) {
-
-        DeleteQuery<R> query = dslContext.deleteQuery(table);
-        query.addConditions(codeField.eq(code));
-
-        return Mono.from(query);
     }
 
     public Mono<Integer> deleteMultiple(List<ULong> ids) {

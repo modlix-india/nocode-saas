@@ -28,6 +28,11 @@ public class SimpleComplexRuleRelationService
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.SIMPLE_COMPLEX_CONDITION_RELATION;
     }

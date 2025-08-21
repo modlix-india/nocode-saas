@@ -81,7 +81,9 @@ public abstract class BaseProcessorService<
     public Mono<D> checkUserAccess(ProcessorAccess access, D entity) {
         ULong accessUser = entity.getAccessUser();
 
-        return (accessUser != null && access.getUserInherit().getSubOrg().contains(accessUser)) ? Mono.just(entity) : Mono.empty();
+        return (accessUser != null && access.getUserInherit().getSubOrg().contains(accessUser))
+                ? Mono.just(entity)
+                : Mono.empty();
     }
 
     @Override
@@ -111,7 +113,7 @@ public abstract class BaseProcessorService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.read(id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 }

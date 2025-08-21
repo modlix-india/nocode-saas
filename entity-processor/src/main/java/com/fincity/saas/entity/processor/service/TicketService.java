@@ -63,6 +63,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TICKET;
     }

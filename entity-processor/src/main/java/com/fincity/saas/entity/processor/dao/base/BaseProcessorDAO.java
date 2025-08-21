@@ -57,7 +57,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         }
 
         if (this.isEmptyCondition(condition))
-            return this.buildInCondition(BaseProcessorDto.Fields.clientId, access.getUserInherit().getClientHierarchy());
+            return this.buildInCondition(
+                    BaseProcessorDto.Fields.clientId, access.getUserInherit().getClientHierarchy());
 
         return this.updateExistingCondition(
                         condition,
@@ -65,20 +66,27 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                         access.getUserInherit().getClientHierarchy(),
                         ULongUtil.valueOf(access.getUser().getClientId()))
                 .switchIfEmpty(this.appendNewCondition(
-                        condition, BaseProcessorDto.Fields.clientId, access.getUserInherit().getClientHierarchy()));
+                        condition,
+                        BaseProcessorDto.Fields.clientId,
+                        access.getUserInherit().getClientHierarchy()));
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
         if (!hasAccessAssignment()) return Mono.just(condition);
 
-        if (isEmptyCondition(condition)) return this.buildInCondition(this.jUserAccessField, access.getUserInherit().getSubOrg());
+        if (isEmptyCondition(condition))
+            return this.buildInCondition(
+                    this.jUserAccessField, access.getUserInherit().getSubOrg());
 
         return this.updateExistingCondition(
                         condition,
                         this.jUserAccessField,
                         access.getUserInherit().getSubOrg(),
                         ULongUtil.valueOf(access.getUser().getId()))
-                .switchIfEmpty(this.appendNewCondition(condition, this.jUserAccessField, access.getUserInherit().getSubOrg()));
+                .switchIfEmpty(this.appendNewCondition(
+                        condition,
+                        this.jUserAccessField,
+                        access.getUserInherit().getSubOrg()));
     }
 
     private boolean isEmptyCondition(AbstractCondition condition) {

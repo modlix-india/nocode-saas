@@ -89,6 +89,11 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     protected Mono<Boolean> evictCache(D entity) {
         return Mono.zip(
                 super.evictCache(entity),
