@@ -35,6 +35,11 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.OWNER;
     }

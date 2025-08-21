@@ -186,8 +186,12 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
     }
 
+    @Override
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
-        return this.validateEntity(entity, access).flatMap(this::updateInternal);
+        return FlatMapUtil.flatMapMono(
+                () -> this.validateEntity(entity, access),
+                vEntity -> super.updateInternal(access, entity),
+                (vEntity, updated) -> this.evictCache(updated).map(evicted -> updated));
     }
 
     @Override
@@ -195,14 +199,14 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> key != null ? this.read(key) : Mono.empty(),
-                (access, entity) -> super.update(key, fields),
+                (access, entity) -> super.updateInternal(access, key, fields),
                 (access, entity, updated) ->
                         this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
     }
 
-    public Mono<D> updateInternal(D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> super.update(entity), updated -> this.evictCache(entity).map(evicted -> updated));
+    public Mono<D> updateInternalAndEvictCache(ProcessorAccess access, D entity) {
+        return FlatMapUtil.flatMapMono(() -> super.updateInternal(access, entity), updated -> this.evictCache(entity)
+                .map(evicted -> updated));
     }
 
     @Override
@@ -210,7 +214,7 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.read(id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 

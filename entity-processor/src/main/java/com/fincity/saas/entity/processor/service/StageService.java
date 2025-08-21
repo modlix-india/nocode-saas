@@ -42,6 +42,11 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.STAGE;
     }
@@ -76,7 +81,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                             && !s.getId().equals(entity.getId());
                                 })
                                 .map(s -> s.setOrder(s.getOrder() + 1))
-                                .flatMap(this::updateInternal)
+                                .flatMap(oStage -> super.updateInternalAndEvictCache(access, oStage))
                                 .then(Mono.just(entity));
                     })
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
@@ -330,7 +335,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .flatMap(entry -> {
                                         Stage stage = parentStageMap.get(entry.getKey());
                                         stage.setOrder(entry.getValue());
-                                        return this.updateInternal(stage);
+                                        return this.updateInternalAndEvictCache(access, stage);
                                     })
                                     .collectList();
                         })

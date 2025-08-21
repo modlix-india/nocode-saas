@@ -43,6 +43,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String CONTENT_FORBIDDEN_ACCESS = "content_forbidden_access";
     public static final String TASK_ALREADY_COMPLETED = "task_already_completed";
     public static final String TASK_ALREADY_CANCELLED = "task_already_cancelled";
+    public static final String OUTSIDE_USER_ACCESS = "outside_user_access";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
