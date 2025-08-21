@@ -157,6 +157,13 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_owners.CLIENT_ID</code>. Id of
+     * client who created this owner.
+     */
+    public final TableField<EntityProcessorOwnersRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this owner.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_owners.CREATED_BY</code>. ID of
      * the user who created this row.
      */

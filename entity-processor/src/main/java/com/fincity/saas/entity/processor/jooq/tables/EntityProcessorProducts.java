@@ -133,6 +133,13 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.CLIENT_ID</code>. Id of
+     * client who created this product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this product.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
      * the user who created this row.
      */
