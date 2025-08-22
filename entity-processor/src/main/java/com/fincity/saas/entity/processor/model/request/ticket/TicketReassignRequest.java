@@ -1,16 +1,13 @@
 package com.fincity.saas.entity.processor.model.request.ticket;
 
-import java.io.Serial;
-import java.io.Serializable;
-
-import org.jooq.types.ULong;
-
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

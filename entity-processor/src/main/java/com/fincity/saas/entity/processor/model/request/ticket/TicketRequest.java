@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
-
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
