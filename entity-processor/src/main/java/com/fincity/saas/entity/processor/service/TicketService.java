@@ -115,7 +115,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         super::hasPublicAccess,
                         access -> this.productService.updateIdentity(ticketRequest.getProductId()),
                         (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
-                        (access, productIdentity, pTicket) -> super.createInternal(access, pTicket))
+                        (access, productIdentity, pTicket) -> super.createInternal(access, pTicket),
+                        (access, productIdentity, pTicket, created) ->
+                                this.createTicketNote(access, ticketRequest, created),
+                        (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
+                                .acCreate(created)
+                                .thenReturn(created)
+                                .thenReturn(created))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
@@ -136,6 +142,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 Mono.just(ticket.setProductId(productIdentity.getULongId())),
                         (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
                         (access, productIdentity, isDuplicate, pTicket, created) ->
+                                this.createTicketNote(access, ticketRequest, created),
+                        (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
@@ -252,7 +260,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             return FlatMapUtil.flatMapMono(
                                     () -> this.setTicketAssignment(ticket, ticketReassignRequest.getUserId()),
                                     super::updateInternal,
-                                    (aTicket, uTicket) -> this.createNote(access, ticketReassignRequest, uTicket),
+                                    (aTicket, uTicket) ->
+                                            this.createTicketReassignmentNote(access, ticketReassignRequest, uTicket),
                                     (aTicket, uTicket, cNote) -> this.activityService
                                             .acReassign(
                                                     uTicket.getId(),
@@ -264,17 +273,26 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-    private Mono<Boolean> createNote(
+    private Mono<Boolean> createTicketReassignmentNote(
             ProcessorAccess access, TicketReassignRequest ticketReassignRequest, Ticket ticket) {
 
         if (!ticketReassignRequest.hasNote()) return Mono.just(Boolean.FALSE);
 
-        NoteRequest noteRequest = ticketReassignRequest.getNoteRequest() != null
-                ? ticketReassignRequest.getNoteRequest()
-                : new NoteRequest();
+        return this.createNote(
+                access, ticketReassignRequest.getNoteRequest(), ticketReassignRequest.getComment(), ticket);
+    }
 
-        if (noteRequest.getContent() == null || noteRequest.getContent().isEmpty())
-            noteRequest.setContent(ticketReassignRequest.getComment());
+    private Mono<Boolean> createTicketNote(ProcessorAccess access, TicketRequest ticketRequest, Ticket ticket) {
+
+        NoteRequest noteRequest =
+                ticketRequest.getNoteRequest() == null ? new NoteRequest() : ticketRequest.getNoteRequest();
+
+        return this.createNote(access, noteRequest, ticketRequest.getComment(), ticket);
+    }
+
+    private Mono<Boolean> createNote(ProcessorAccess access, NoteRequest noteRequest, String comment, Ticket ticket) {
+
+        if (noteRequest.getContent() == null || noteRequest.getContent().isEmpty()) noteRequest.setContent(comment);
         noteRequest.setTicketId(ticket.getIdentity());
         noteRequest.setOwnerId(null);
 
