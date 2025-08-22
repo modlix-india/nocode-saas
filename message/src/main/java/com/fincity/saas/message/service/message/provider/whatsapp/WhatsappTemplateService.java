@@ -158,14 +158,16 @@ public class WhatsappTemplateService
                                     || retrievedTemplates.getData().isEmpty())
                                 return super.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP, existingTemplate.getTemplateId());
+                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP,
+                                        existingTemplate.getTemplateId());
 
                             Template apiTemplate = retrievedTemplates.getData().getFirst();
 
                             if (!apiTemplate.getId().equals(existingTemplate.getTemplateId()))
                                 return super.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP, existingTemplate.getTemplateId());
+                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP,
+                                        existingTemplate.getTemplateId());
 
                             existingTemplate.setStatus(apiTemplate.getStatus());
 

@@ -184,7 +184,7 @@ public class WhatsappPhoneNumberService
                         messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
                 this::getWhatsappBusinessAccountId,
                 (connection, businessAccountId) -> this.getBusinessManagementApi(connection),
-                (connection, businessAccountId, api) -> api.retrievePhoneNumber(businessAccountId, phoneNumberId),
+                (connection, businessAccountId, api) -> api.retrievePhoneNumber(phoneNumberId),
                 (connection, businessAccountId, api, phoneNumber) ->
                         Mono.just(Tuples.of(businessAccountId, phoneNumber)));
     }

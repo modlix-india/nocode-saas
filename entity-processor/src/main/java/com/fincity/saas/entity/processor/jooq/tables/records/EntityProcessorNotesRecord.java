@@ -217,12 +217,48 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
     }
 
     /**
+     * Setter for <code>entity_processor.entity_processor_notes.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public EntityProcessorNotesRecord setUserId(ULong value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_notes.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public ULong getUserId() {
+        return (ULong) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_notes.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public EntityProcessorNotesRecord setClientId(ULong value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_notes.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public ULong getClientId() {
+        return (ULong) get(12);
+    }
+
+    /**
      * Setter for
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.
      */
     public EntityProcessorNotesRecord setTempActive(Byte value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -232,7 +268,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * Temporary active flag for this note.
      */
     public Byte getTempActive() {
-        return (Byte) get(11);
+        return (Byte) get(13);
     }
 
     /**
@@ -241,7 +277,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * check if this note is active or not.
      */
     public EntityProcessorNotesRecord setIsActive(Byte value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -251,7 +287,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * check if this note is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(12);
+        return (Byte) get(14);
     }
 
     /**
@@ -260,7 +296,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public EntityProcessorNotesRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -270,7 +306,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(15);
     }
 
     /**
@@ -279,7 +315,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public EntityProcessorNotesRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -289,7 +325,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -298,7 +334,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public EntityProcessorNotesRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -308,7 +344,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(17);
     }
 
     /**
@@ -317,7 +353,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public EntityProcessorNotesRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -327,7 +363,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(18);
     }
 
     // -------------------------------------------------------------------------
@@ -353,7 +389,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
     /**
      * Create a detached, initialised EntityProcessorNotesRecord
      */
-    public EntityProcessorNotesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, Byte hasAttachment, ULong ownerId, ULong ticketId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorNotesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, Byte hasAttachment, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES);
 
         setId(id);
@@ -367,6 +403,8 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
         setHasAttachment(hasAttachment);
         setOwnerId(ownerId);
         setTicketId(ticketId);
+        setUserId(userId);
+        setClientId(clientId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

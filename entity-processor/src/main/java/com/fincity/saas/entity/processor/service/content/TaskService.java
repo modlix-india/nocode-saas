@@ -50,9 +50,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, taskRequest),
                         (task) -> this.createContent(taskRequest),
-                        (task, content) -> content.isTicketContent()
-                                ? this.createTicketContent(access, content)
-                                : this.createOwnerContent(access, content))
+                        (task, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
     }
 

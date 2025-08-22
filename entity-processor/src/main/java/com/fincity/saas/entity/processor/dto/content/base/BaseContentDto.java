@@ -1,20 +1,17 @@
 package com.fincity.saas.entity.processor.dto.content.base;
 
-import java.io.Serial;
-
-import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -31,6 +28,7 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
 
     private String content;
     private Boolean hasAttachment;
+    private ContentEntitySeries contentEntitySeries;
     private ULong ownerId;
     private ULong ticketId;
     private ULong userId;
@@ -39,6 +37,7 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
     protected BaseContentDto() {
         super();
         this.relationsMap.put(Fields.ticketId, EntitySeries.TICKET.getTable());
+        this.relationsMap.put(Fields.ownerId, EntitySeries.OWNER.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
     }
 
@@ -47,21 +46,11 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
         this.version = baseContentDto.version;
         this.content = baseContentDto.content;
         this.hasAttachment = baseContentDto.hasAttachment;
+        this.contentEntitySeries = baseContentDto.contentEntitySeries;
         this.ownerId = baseContentDto.ownerId;
         this.ticketId = baseContentDto.ticketId;
         this.userId = baseContentDto.userId;
         this.clientId = baseContentDto.clientId;
-    }
-
-    @JsonIgnore
-    public boolean isTicketContent() {
-        return ticketId != null;
-    }
-
-    @JsonIgnore
-    public boolean isOwnerContent() {
-        if (isTicketContent()) return Boolean.FALSE;
-        return ownerId != null;
     }
 
     public T setOwnerId(ULong ownerId) {
@@ -71,6 +60,11 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
 
     public T setTicketId(ULong ticketId) {
         this.ticketId = ticketId;
+        return (T) this;
+    }
+
+    public T setUserId(ULong userId) {
+        this.userId = userId;
         return (T) this;
     }
 }
