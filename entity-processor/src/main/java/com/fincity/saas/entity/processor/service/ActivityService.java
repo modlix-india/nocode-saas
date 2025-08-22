@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
@@ -21,6 +22,7 @@ import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -89,9 +91,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
         return this.securityService
                 .getUserInternal(actorId.toBigInteger())
-                .map(user -> IdAndValue.of(
-                        ULongUtil.valueOf(user.get("id")),
-                        NameUtil.assembleFullName(user.get("firstName"), user.get("middleName"), user.get("lastName"))))
+                .map(this::getUserIdAndValue)
                 .switchIfEmpty(this.getLoggedInUser());
     }
 
@@ -295,7 +295,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
 
-        if (content.isOwnerContent()) return Mono.empty();
+        if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         return this.acContentCreate(content, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T]"));
@@ -303,7 +303,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content, String comment) {
 
-        if (content.isOwnerContent()) return Mono.empty();
+        if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         if (content instanceof Note note)
             return this.acNoteAdd(note, comment)
@@ -319,7 +319,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(T content, T updated) {
 
-        if (content.isOwnerContent()) return Mono.empty();
+        if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         return this.acContentUpdate(content, updated, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T, T]"));
@@ -327,7 +327,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(T content, T updated, String comment) {
 
-        if (content.isOwnerContent()) return Mono.empty();
+        if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         if (content instanceof Note note && updated instanceof Note updatedNote)
             return this.acNoteUpdate(note, updatedNote, comment)
@@ -659,11 +659,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         }
     }
 
-    private IdAndValue<ULong, String> getUserIdAndValue(Map<String, Object> userMap) {
+    private IdAndValue<ULong, String> getUserIdAndValue(UserResponse user) {
         return IdAndValue.of(
-                ULongUtil.valueOf(userMap.get("id")),
-                NameUtil.assembleFullName(
-                        userMap.get("firstName"), userMap.get("middleName"), userMap.get("lastName")));
+                ULongUtil.valueOf(user.getId()),
+                NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName()));
     }
 
     private Mono<JsonElement> extractDifference(JsonElement incoming, JsonElement existing) {

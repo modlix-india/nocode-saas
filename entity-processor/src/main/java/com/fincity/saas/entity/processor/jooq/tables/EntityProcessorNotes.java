@@ -133,6 +133,19 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
     public final TableField<EntityProcessorNotesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this note.");
 
     /**
+     * The column <code>entity_processor.entity_processor_notes.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public final TableField<EntityProcessorNotesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of user for which this task was created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_notes.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public final TableField<EntityProcessorNotesRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client for which this task was created.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.

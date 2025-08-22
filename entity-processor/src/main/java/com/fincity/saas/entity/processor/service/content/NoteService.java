@@ -33,13 +33,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
     }
 
     public Mono<Note> create(NoteRequest noteRequest) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.updateIdentities(access, noteRequest),
-                        (access, uRequest) -> this.createContent(uRequest),
-                        (access, uRequest, content) -> content.isTicketContent()
-                                ? super.createTicketContent(access, content)
-                                : super.createOwnerContent(access, content))
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, noteRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create"));
     }
 
@@ -47,9 +41,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, noteRequest),
                         this::createContent,
-                        (uRequest, content) -> content.isTicketContent()
-                                ? super.createTicketContent(access, content)
-                                : super.createOwnerContent(access, content))
+                        (uRequest, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createInternal"));
     }
 
