@@ -448,6 +448,6 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }
