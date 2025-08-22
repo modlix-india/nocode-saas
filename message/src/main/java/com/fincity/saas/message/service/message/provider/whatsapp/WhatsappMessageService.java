@@ -211,9 +211,12 @@ public class WhatsappMessageService
         if (whatsappPhoneNumberId != null && !whatsappPhoneNumberId.isNull())
             return whatsappPhoneNumberService
                     .readIdentityWithAccessEmpty(access, whatsappPhoneNumberId)
-                    .switchIfEmpty(whatsappPhoneNumberService.getByAccountId(access, businessAccountId));
+                    .switchIfEmpty(whatsappPhoneNumberService.getByAccountId(access, businessAccountId))
+                    .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
 
-        return whatsappPhoneNumberService.getByAccountId(access, businessAccountId);
+        return whatsappPhoneNumberService
+                .getByAccountId(access, businessAccountId)
+                .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
     public Mono<Void> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {

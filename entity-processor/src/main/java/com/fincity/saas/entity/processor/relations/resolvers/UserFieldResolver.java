@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.relations.resolvers;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.util.IClassConvertor;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,13 +37,13 @@ public class UserFieldResolver implements RelationResolver {
         if (idsToResolve.size() == 1)
             return this.securityService
                     .getUserInternal(idsToResolve.iterator().next().toBigInteger())
-                    .map(user -> Map.of(ULongUtil.valueOf(user.get("id")), user));
+                    .map(userResponse -> Map.of(ULongUtil.valueOf(userResponse.getId()), userResponse.toMap()));
 
         return securityService
                 .getUserInternal(idsToResolve.stream().map(ULong::toBigInteger).toList())
                 .map(userList -> userList.stream()
-                        .collect(
-                                Collectors.toMap(userMap -> ULongUtil.valueOf(userMap.get("id")), userMap -> userMap)));
+                        .collect(Collectors.toMap(
+                                userResponse -> ULongUtil.valueOf(userResponse.getId()), IClassConvertor::toMap)));
     }
 
     public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields) {

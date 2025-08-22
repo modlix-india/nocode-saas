@@ -9,8 +9,6 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesPlatform;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesStageType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
@@ -116,7 +114,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
      * POST_QUALIFICATION.
      */
-    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<String, Platform>(String.class, Platform.class));
 
     /**
      * The column
@@ -157,7 +155,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.STAGE_TYPE</code>. Stage
      * type can be Open or Closed.
      */
-    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesStageType.class), this, "Stage type can be Open or Closed.", new EnumConverter<EntityProcessorStagesStageType, StageType>(EntityProcessorStagesStageType.class, StageType.class));
+    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)), this, "Stage type can be Open or Closed.", new EnumConverter<String, StageType>(String.class, StageType.class));
 
     /**
      * The column

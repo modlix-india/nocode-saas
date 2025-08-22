@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.*;
 import com.fincity.security.service.UserInviteService;
@@ -188,6 +189,15 @@ public class UserController
             @PathVariable ULong userId, @RequestParam String appCode, @RequestParam ULong clientId) {
         return this.userSubOrgService
                 .getUserSubOrgInternal(appCode, clientId, userId)
+                .collectList()
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/{userId}/sub-org/users")
+    public Mono<ResponseEntity<List<UserResponse>>> getUserSubOrgInternalUsers(
+            @PathVariable ULong userId, @RequestParam String appCode, @RequestParam ULong clientId) {
+        return this.userSubOrgService
+                .getUserSubOrgInternalUsers(appCode, clientId, userId)
                 .collectList()
                 .map(ResponseEntity::ok);
     }

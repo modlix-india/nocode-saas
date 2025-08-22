@@ -417,6 +417,6 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

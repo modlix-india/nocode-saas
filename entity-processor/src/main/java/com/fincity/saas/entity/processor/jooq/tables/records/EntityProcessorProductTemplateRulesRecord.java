@@ -490,6 +490,6 @@ public class EntityProcessorProductTemplateRulesRecord extends UpdatableRecordIm
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

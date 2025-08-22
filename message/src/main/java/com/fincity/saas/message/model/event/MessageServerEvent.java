@@ -1,7 +1,7 @@
 package com.fincity.saas.message.model.event;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fincity.saas.message.util.IClassConvertor;
+import com.fincity.saas.commons.util.IClassConvertor;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.Map;

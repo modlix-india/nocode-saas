@@ -2,11 +2,11 @@ package com.fincity.saas.message.model.request.call.provider.exotel;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelCallType;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelRecordingChannel;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelRecordingFormat;
 import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelStartPlaybackTo;
-import com.fincity.saas.message.util.IClassConvertor;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.Data;
