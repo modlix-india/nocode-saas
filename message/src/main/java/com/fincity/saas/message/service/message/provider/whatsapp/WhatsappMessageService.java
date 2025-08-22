@@ -120,6 +120,8 @@ public class WhatsappMessageService
 
         if (!messageRequest.isValid()) return super.throwMissingParam("text");
 
+        if (!messageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+
         WhatsappMessage whatsappMessage = WhatsappMessage.ofOutbound(
                 MessageBuilder.builder()
                         .setTo(messageRequest.getToNumber().getNumber())
@@ -132,6 +134,8 @@ public class WhatsappMessageService
     public Mono<Message> sendMessage(WhatsappMessageRequest whatsappMessageRequest) {
 
         if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
+
+        if (!whatsappMessageRequest.hasConnection()) return super.throwMissingParam("connectionName");
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
