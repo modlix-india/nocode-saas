@@ -51,27 +51,30 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
         if (template != null) {
             whatsappTemplate
                     .setTemplateId(template.getId())
-                    .setTemplateName(template.getName())
-                    .setLanguage(template.getLanguage())
+                    .setCategory(template.getCategory())
                     .setStatus(template.getStatus())
                     .setPreviousCategory(template.getPreviousCategory());
-
-            if (template.getComponents() != null) {
-                ComponentList componentList = new ComponentList();
-                componentList.addAll(template.getComponents());
-                whatsappTemplate.setComponents(componentList);
-            }
 
             if (template.getRejectedReason() != null) whatsappTemplate.setRejectedReason(template.getRejectedReason());
         }
 
-        if (messageTemplate != null)
+        if (messageTemplate != null) {
+
             whatsappTemplate
+                    .setTemplateName(messageTemplate.getName())
+                    .setLanguage(messageTemplate.getLanguage().getValue())
                     .setAllowCategoryChange(messageTemplate.isAllowCategoryChange())
                     .setCategory(messageTemplate.getCategory())
                     .setSubCategory(messageTemplate.getSubCategory())
                     .setMessageSendTtlSeconds(ULongUtil.valueOf(messageTemplate.getMessageSendTtlSeconds()))
                     .setParameterFormat(messageTemplate.getParameterFormat());
+
+            if (messageTemplate.getComponents() != null) {
+                ComponentList componentList = new ComponentList();
+                componentList.addAll(messageTemplate.getComponents());
+                whatsappTemplate.setComponents(componentList);
+            }
+        }
 
         return whatsappTemplate;
     }

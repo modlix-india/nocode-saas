@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/message/whatsapp/template")
+@RequestMapping("/api/message/whatsapp/templates")
 public class WhatsappTemplateController
         extends BaseUpdatableController<
                 MessageWhatsappTemplatesRecord, WhatsappTemplate, WhatsappTemplateDAO, WhatsappTemplateService> {
