@@ -49,6 +49,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String TEMPLATE_DAILY_EDIT_LIMIT_EXCEEDED = "template_daily_edit_limit_exceeded";
     public static final String TEMPLATE_MONTHLY_EDIT_LIMIT_EXCEEDED = "template_monthly_edit_limit_exceeded";
     public static final String TEMPLATE_NAME_LENGTH_EXCEEDED = "template_name_length_exceeded";
+    public static final String TEMPLATE_NOT_FOUND_IN_WHATSAPP = "template_not_found_in_whatsapp";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
