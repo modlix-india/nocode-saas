@@ -1,8 +1,8 @@
 package com.fincity.saas.message.service.call.event;
 
+import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.message.model.event.MessageServerEvent;
 import com.fincity.saas.message.service.event.AbstractServerSentEventService;
-import com.fincity.saas.message.util.IClassConvertor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.jooq.types.ULong;

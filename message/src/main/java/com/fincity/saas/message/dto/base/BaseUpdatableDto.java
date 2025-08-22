@@ -2,10 +2,10 @@ package com.fincity.saas.message.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.message.model.base.BaseResponse;
 import com.fincity.saas.message.model.common.Identity;
-import com.fincity.saas.message.util.IClassConvertor;
 import java.io.Serial;
 import java.util.Collection;
 import java.util.Map;

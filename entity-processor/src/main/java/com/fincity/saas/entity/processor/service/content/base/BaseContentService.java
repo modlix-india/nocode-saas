@@ -2,9 +2,11 @@ package com.fincity.saas.entity.processor.service.content.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ActivityService;
@@ -174,8 +176,17 @@ public abstract class BaseContentService<
                 });
     }
 
-    protected Mono<D> createTicketContent(ProcessorAccess access, D content) {
-        if (content.getTicketId() == null || content.isOwnerContent()) return Mono.empty();
+    protected Mono<D> createContent(ProcessorAccess access, D content) {
+        return switch (content.getContentEntitySeries()) {
+            case OWNER -> this.createOwnerContent(access, content);
+            case TICKET -> this.createTicketContent(access, content);
+            case USER -> this.createUserContent(access, content);
+        };
+    }
+
+    private Mono<D> createTicketContent(ProcessorAccess access, D content) {
+        if (content.getTicketId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.TICKET))
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
@@ -189,8 +200,9 @@ public abstract class BaseContentService<
                         content.getTicketId()));
     }
 
-    protected Mono<D> createOwnerContent(ProcessorAccess access, D content) {
-        if (content.getOwnerId() == null || content.isTicketContent()) return Mono.empty();
+    private Mono<D> createOwnerContent(ProcessorAccess access, D content) {
+        if (content.getOwnerId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.OWNER))
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ownerService.readById(content.getOwnerId()),
@@ -200,5 +212,24 @@ public abstract class BaseContentService<
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.ownerService.getEntityName(),
                         content.getTicketId()));
+    }
+
+    private Mono<D> createUserContent(ProcessorAccess access, D content) {
+        if (content.getUserId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.USER))
+            return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.securityService.getUserInternal(
+                                content.getUserId().toBigInteger()),
+                        user -> {
+                            content.setUserId(ULongUtil.valueOf(user.getId()));
+                            content.setClientId(ULongUtil.valueOf(user.getClientId()));
+                            return this.createInternal(access, content);
+                        })
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        this.ticketService.getEntityName(),
+                        content.getUserId()));
     }
 }

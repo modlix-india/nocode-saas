@@ -137,6 +137,19 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
     public final TableField<EntityProcessorTasksRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this task.");
 
     /**
+     * The column <code>entity_processor.entity_processor_tasks.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of user for which this task was created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client for which this task was created.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_tasks.TASK_TYPE_ID</code>. Type
      * of the task.

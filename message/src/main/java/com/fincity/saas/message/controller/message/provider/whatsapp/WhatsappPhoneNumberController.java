@@ -30,7 +30,7 @@ public class WhatsappPhoneNumberController
         return this.service.syncPhoneNumbers(connectionName).collectList().map(ResponseEntity::ok);
     }
 
-    @PostMapping("/sync/" + "/{" + PATH_VARIABLE_ID + "}")
+    @PostMapping("/sync" + "/{" + PATH_VARIABLE_ID + "}")
     public Mono<ResponseEntity<WhatsappPhoneNumber>> syncPhoneNumber(
             @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam final String connectionName) {
         return this.service.syncPhoneNumber(connectionName, identity).map(ResponseEntity::ok);
