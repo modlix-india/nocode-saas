@@ -29,8 +29,10 @@ public class Note extends BaseContentDto<Note> {
     }
 
     public static Note of(NoteRequest noteRequest) {
-        Note note =
-                (Note) new Note().setContent(noteRequest.getContent()).setHasAttachment(noteRequest.getHasAttachment());
+        Note note = (Note) new Note()
+                .setContent(noteRequest.getContent())
+                .setHasAttachment(noteRequest.getHasAttachment())
+                .setContentEntitySeries(noteRequest.getContentEntitySeries());
 
         return switch (note.getContentEntitySeries()) {
             case OWNER -> note.setOwnerId(noteRequest.getOwnerId().getULongId());

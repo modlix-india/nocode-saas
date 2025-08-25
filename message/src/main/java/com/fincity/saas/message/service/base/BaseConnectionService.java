@@ -1,13 +1,16 @@
 package com.fincity.saas.message.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.message.feign.IFeignCoreService;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
+import com.fincity.saas.message.service.MessageResourceService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -17,6 +20,7 @@ public abstract class BaseConnectionService {
     private CacheService cacheService;
     private IFeignCoreService coreService;
     private IFeignSecurityService securityService;
+    private MessageResourceService msgService;
 
     @Autowired
     private void setCacheService(CacheService cacheService) {
@@ -33,6 +37,11 @@ public abstract class BaseConnectionService {
         this.securityService = securityService;
     }
 
+    @Autowired
+    private void setMsgService(MessageResourceService msgService) {
+        this.msgService = msgService;
+    }
+
     private String getCacheNames(String... entityNames) {
         return String.join("_", entityNames);
     }
@@ -45,9 +54,13 @@ public abstract class BaseConnectionService {
 
     public Mono<Connection> getConnection(String appCode, String clientCode, String connectionName) {
         return FlatMapUtil.flatMapMono(
-                () -> this.securityService.appInheritance(appCode, clientCode, clientCode),
-                inheritance ->
-                        this.getMessageConn(appCode, connectionName, getConnectionType(), clientCode, inheritance));
+                        () -> this.securityService.appInheritance(appCode, clientCode, clientCode),
+                        inheritance -> this.getMessageConn(
+                                appCode, connectionName, getConnectionType(), clientCode, inheritance))
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                        MessageResourceService.CONNECTION_NOT_FOUND,
+                        connectionName));
     }
 
     public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {

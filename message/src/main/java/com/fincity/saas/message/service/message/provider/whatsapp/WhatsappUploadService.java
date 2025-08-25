@@ -24,7 +24,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class WhatsappUploadService implements IMessageAccessService {
 
-    private static final String KEY_FACEBOOK_APP_ID = "facebookAppId";
+    private static final String KEY_META_APP_ID = "metaAppId";
     private static final String PARAM_UPLOAD_SESSION_ID = "uploadSessionId";
     private static final String PARAM_FILE_CONTENT = "fileContent";
 
@@ -67,9 +67,9 @@ public class WhatsappUploadService implements IMessageAccessService {
 
     private Mono<Connection> isValidConnection(Connection connection) {
 
-        String facebookAppId = (String) connection.getConnectionDetails().getOrDefault(KEY_FACEBOOK_APP_ID, null);
+        String facebookAppId = (String) connection.getConnectionDetails().getOrDefault(KEY_META_APP_ID, null);
 
-        if (facebookAppId == null || facebookAppId.isEmpty()) return this.throwMissingParam(KEY_FACEBOOK_APP_ID);
+        if (facebookAppId == null || facebookAppId.isEmpty()) return this.throwMissingParam(KEY_META_APP_ID);
 
         if (connection.getConnectionType() != ConnectionType.TEXT
                 || !connection.getConnectionSubType().equals(ConnectionSubType.WHATSAPP))
@@ -94,7 +94,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     String facebookAppId =
-                            (String) connection.getConnectionDetails().getOrDefault(KEY_FACEBOOK_APP_ID, null);
+                            (String) connection.getConnectionDetails().getOrDefault(KEY_META_APP_ID, null);
 
                     return api.startUploadSession(
                             facebookAppId,
