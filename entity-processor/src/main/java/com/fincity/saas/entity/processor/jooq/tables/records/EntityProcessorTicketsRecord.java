@@ -517,6 +517,6 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

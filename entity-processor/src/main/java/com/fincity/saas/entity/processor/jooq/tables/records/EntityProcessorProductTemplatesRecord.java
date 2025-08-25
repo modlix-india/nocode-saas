@@ -308,6 +308,6 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }
