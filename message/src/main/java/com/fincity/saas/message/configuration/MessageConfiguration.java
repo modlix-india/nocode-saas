@@ -48,8 +48,8 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 "api/call/callback",
                 "api/call/callback/**",
                 "api/call/exotel/connect",
-                "/api/message/whatsapp/webhook",
-                "/api/message/whatsapp/webhook/**");
+                "/api/message/whatsapp/webhooks",
+                "/api/message/whatsapp/webhooks/**");
     }
 
     @Bean
