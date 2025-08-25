@@ -36,7 +36,6 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -189,14 +188,11 @@ public class WhatsappMessageService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
 
-    public Mono<ResponseEntity<String>> verifyMetaWebhook(String mode, String token, String challenge) {
+    public Mono<String> verifyMetaWebhook(String mode, String token, String challenge) {
 
         logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
 
-        return Mono.just(
-                SUBSCRIBE.equals(mode) && verifyToken.equals(token)
-                        ? ResponseEntity.ok(challenge)
-                        : ResponseEntity.status(HttpStatus.FORBIDDEN).body("Verification token mismatch"));
+        return SUBSCRIBE.equals(mode) && verifyToken.equals(token) ? Mono.just(challenge) : Mono.empty();
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {

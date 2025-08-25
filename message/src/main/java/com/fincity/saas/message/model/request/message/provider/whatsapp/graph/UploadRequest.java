@@ -17,6 +17,6 @@ public class UploadRequest extends BaseMessageRequest {
     private static final long serialVersionUID = 2408405228459380129L;
 
     private String uploadSessionId;
-    private Long fileOffset; // optional, defaults to 0 when not provided
-    private byte[] fileContent; // base64-encoded in JSON
+    private Long fileOffset;
+    private byte[] fileContent;
 }
