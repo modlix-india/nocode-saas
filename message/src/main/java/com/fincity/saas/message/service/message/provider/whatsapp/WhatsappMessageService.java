@@ -1,8 +1,20 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
@@ -24,20 +36,13 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
+import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -189,14 +194,11 @@ public class WhatsappMessageService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
 
-    public Mono<ResponseEntity<String>> verifyMetaWebhook(String mode, String token, String challenge) {
+    public Mono<String> verifyMetaWebhook(String mode, String token, String challenge) {
 
         logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
 
-        return Mono.just(
-                SUBSCRIBE.equals(mode) && verifyToken.equals(token)
-                        ? ResponseEntity.ok(challenge)
-                        : ResponseEntity.status(HttpStatus.FORBIDDEN).body("Verification token mismatch"));
+	    return SUBSCRIBE.equals(mode) && verifyToken.equals(token) ? Mono.just(challenge) : Mono.empty();
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {
