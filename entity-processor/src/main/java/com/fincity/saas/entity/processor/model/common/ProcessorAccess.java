@@ -66,6 +66,10 @@ public final class ProcessorAccess implements Serializable {
         return BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP.equals(this.userInherit.clientLevelType);
     }
 
+    public String getEffectiveClientCode() {
+        return isOutsideUser() ? this.getUserInherit().getManagedClientCode() : this.getClientCode();
+    }
+
     @Data
     @Accessors(chain = true)
     public static class UserInheritanceInfo implements Serializable {
