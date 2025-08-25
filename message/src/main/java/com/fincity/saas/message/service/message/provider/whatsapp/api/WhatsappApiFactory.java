@@ -6,6 +6,7 @@ import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import com.fincity.saas.message.service.message.provider.whatsapp.cloud.WhatsappBusinessCloudApi;
+import com.fincity.saas.message.service.message.provider.whatsapp.graph.ResumableUploadApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -58,5 +59,25 @@ public class WhatsappApiFactory {
 
     public WhatsappBusinessManagementApi newBusinessManagementApi(WebClient webClient, ApiVersion apiVersion) {
         return new WhatsappBusinessManagementApi(webClient, apiVersion, messageResourceService);
+    }
+
+    public Mono<ResumableUploadApi> newResumableUploadApiFromConnection(Connection connection) {
+        return webClientConfig
+                .createWhatsappWebClient(connection)
+                .map(wc -> new ResumableUploadApi(wc, messageResourceService));
+    }
+
+    public Mono<ResumableUploadApi> newResumableUploadApiFromConnection(Connection connection, ApiVersion apiVersion) {
+        return webClientConfig
+                .createWhatsappWebClient(connection)
+                .map(webClient -> new ResumableUploadApi(webClient, apiVersion, messageResourceService));
+    }
+
+    public ResumableUploadApi newResumableUploadApi(WebClient webClient) {
+        return new ResumableUploadApi(webClient, messageResourceService);
+    }
+
+    public ResumableUploadApi newResumableUploadApi(WebClient webClient, ApiVersion apiVersion) {
+        return new ResumableUploadApi(webClient, apiVersion, messageResourceService);
     }
 }
