@@ -38,10 +38,11 @@ public class WhatsappWebhookController {
             @RequestParam("hub.verify_token") String token,
             @RequestParam("hub.challenge") String challenge) {
 
-        return whatsappMessageService
-                .verifyWebhook(mode, token, challenge)
+        return this.whatsappMessageService
+                .verifyMetaWebhook(mode, token, challenge)
                 .map(ResponseEntity::ok)
-                .onErrorReturn(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+                .switchIfEmpty(
+                        Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).build()));
     }
 
     @PostMapping
