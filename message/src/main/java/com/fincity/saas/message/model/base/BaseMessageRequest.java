@@ -13,4 +13,8 @@ public abstract class BaseMessageRequest implements Serializable {
 
     private ULong userId;
     private String connectionName;
+
+    public boolean hasConnection() {
+        return connectionName != null && !connectionName.isEmpty();
+    }
 }

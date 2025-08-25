@@ -490,6 +490,6 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

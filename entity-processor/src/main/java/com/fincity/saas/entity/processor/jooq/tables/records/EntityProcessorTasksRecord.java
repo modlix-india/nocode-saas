@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 
@@ -182,11 +183,30 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
     }
 
     /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tasks.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public EntityProcessorTasksRecord setContentEntitySeries(ContentEntitySeries value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tasks.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public ContentEntitySeries getContentEntitySeries() {
+        return (ContentEntitySeries) get(9);
+    }
+
+    /**
      * Setter for <code>entity_processor.entity_processor_tasks.OWNER_ID</code>.
      * Owner related to this task.
      */
     public EntityProcessorTasksRecord setOwnerId(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -195,7 +215,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Owner related to this task.
      */
     public ULong getOwnerId() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -204,7 +224,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * related to this task.
      */
     public EntityProcessorTasksRecord setTicketId(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -214,7 +234,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * related to this task.
      */
     public ULong getTicketId() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -222,7 +242,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Id of user for which this task was created.
      */
     public EntityProcessorTasksRecord setUserId(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -231,7 +251,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Id of user for which this task was created.
      */
     public ULong getUserId() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -240,7 +260,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * client for which this task was created.
      */
     public EntityProcessorTasksRecord setClientId(ULong value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -250,7 +270,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * client for which this task was created.
      */
     public ULong getClientId() {
-        return (ULong) get(12);
+        return (ULong) get(13);
     }
 
     /**
@@ -259,7 +279,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * of the task.
      */
     public EntityProcessorTasksRecord setTaskTypeId(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -269,7 +289,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * of the task.
      */
     public ULong getTaskTypeId() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -277,7 +297,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Due date for this task.
      */
     public EntityProcessorTasksRecord setDueDate(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -286,7 +306,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Due date for this task.
      */
     public LocalDateTime getDueDate() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -295,7 +315,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Priority level of the task.
      */
     public EntityProcessorTasksRecord setTaskPriority(TaskPriority value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -305,7 +325,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Priority level of the task.
      */
     public TaskPriority getTaskPriority() {
-        return (TaskPriority) get(15);
+        return (TaskPriority) get(16);
     }
 
     /**
@@ -314,7 +334,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * to tell, is the task Completed
      */
     public EntityProcessorTasksRecord setIsCompleted(Byte value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -324,7 +344,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * to tell, is the task Completed
      */
     public Byte getIsCompleted() {
-        return (Byte) get(16);
+        return (Byte) get(17);
     }
 
     /**
@@ -333,7 +353,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Timestamp when this task was Completed
      */
     public EntityProcessorTasksRecord setCompletedDate(LocalDateTime value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -343,7 +363,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Timestamp when this task was Completed
      */
     public LocalDateTime getCompletedDate() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -352,7 +372,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * to tell, is the task Cancelled
      */
     public EntityProcessorTasksRecord setIsCancelled(Byte value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -362,7 +382,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * to tell, is the task Cancelled
      */
     public Byte getIsCancelled() {
-        return (Byte) get(18);
+        return (Byte) get(19);
     }
 
     /**
@@ -371,7 +391,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Timestamp when this task was Cancelled
      */
     public EntityProcessorTasksRecord setCancelledDate(LocalDateTime value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -381,7 +401,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Timestamp when this task was Cancelled
      */
     public LocalDateTime getCancelledDate() {
-        return (LocalDateTime) get(19);
+        return (LocalDateTime) get(20);
     }
 
     /**
@@ -390,7 +410,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Message
      */
     public EntityProcessorTasksRecord setIsDelayed(Byte value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -400,7 +420,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Message
      */
     public Byte getIsDelayed() {
-        return (Byte) get(20);
+        return (Byte) get(21);
     }
 
     /**
@@ -409,7 +429,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Whether this task has a reminder set.
      */
     public EntityProcessorTasksRecord setHasReminder(Byte value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -419,7 +439,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Whether this task has a reminder set.
      */
     public Byte getHasReminder() {
-        return (Byte) get(21);
+        return (Byte) get(22);
     }
 
     /**
@@ -428,7 +448,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * reminder date and time for this task.
      */
     public EntityProcessorTasksRecord setNextReminder(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -438,7 +458,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * reminder date and time for this task.
      */
     public LocalDateTime getNextReminder() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     /**
@@ -447,7 +467,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Temporary active flag for this task.
      */
     public EntityProcessorTasksRecord setTempActive(Byte value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -457,7 +477,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * Temporary active flag for this task.
      */
     public Byte getTempActive() {
-        return (Byte) get(23);
+        return (Byte) get(24);
     }
 
     /**
@@ -466,7 +486,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * check if this task is active or not.
      */
     public EntityProcessorTasksRecord setIsActive(Byte value) {
-        set(24, value);
+        set(25, value);
         return this;
     }
 
@@ -476,7 +496,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * check if this task is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(24);
+        return (Byte) get(25);
     }
 
     /**
@@ -485,7 +505,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public EntityProcessorTasksRecord setCreatedBy(ULong value) {
-        set(25, value);
+        set(26, value);
         return this;
     }
 
@@ -495,7 +515,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(25);
+        return (ULong) get(26);
     }
 
     /**
@@ -504,7 +524,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public EntityProcessorTasksRecord setCreatedAt(LocalDateTime value) {
-        set(26, value);
+        set(27, value);
         return this;
     }
 
@@ -514,7 +534,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(26);
+        return (LocalDateTime) get(27);
     }
 
     /**
@@ -523,7 +543,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public EntityProcessorTasksRecord setUpdatedBy(ULong value) {
-        set(27, value);
+        set(28, value);
         return this;
     }
 
@@ -533,7 +553,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(27);
+        return (ULong) get(28);
     }
 
     /**
@@ -542,7 +562,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public EntityProcessorTasksRecord setUpdatedAt(LocalDateTime value) {
-        set(28, value);
+        set(29, value);
         return this;
     }
 
@@ -552,7 +572,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(28);
+        return (LocalDateTime) get(29);
     }
 
     // -------------------------------------------------------------------------
@@ -578,7 +598,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
     /**
      * Create a detached, initialised EntityProcessorTasksRecord
      */
-    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Byte isCompleted, LocalDateTime completedDate, Byte isCancelled, LocalDateTime cancelledDate, Byte isDelayed, Byte hasReminder, LocalDateTime nextReminder, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ContentEntitySeries contentEntitySeries, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Byte isCompleted, LocalDateTime completedDate, Byte isCancelled, LocalDateTime cancelledDate, Byte isDelayed, Byte hasReminder, LocalDateTime nextReminder, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTasks.ENTITY_PROCESSOR_TASKS);
 
         setId(id);
@@ -590,6 +610,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
         setVersion(version);
         setContent(content);
         setHasAttachment(hasAttachment);
+        setContentEntitySeries(contentEntitySeries);
         setOwnerId(ownerId);
         setTicketId(ticketId);
         setUserId(userId);
@@ -610,6 +631,6 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

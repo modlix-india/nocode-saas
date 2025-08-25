@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
@@ -35,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -118,6 +120,13 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
      * Whether this note has attachments.
      */
     public final TableField<EntityProcessorNotesRecord, Byte> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Whether this note has attachments.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_notes.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public final TableField<EntityProcessorNotesRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this content was created", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
 
     /**
      * The column <code>entity_processor.entity_processor_notes.OWNER_ID</code>.

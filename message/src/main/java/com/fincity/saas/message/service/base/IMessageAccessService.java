@@ -36,6 +36,12 @@ public interface IMessageAccessService {
 
     private Mono<MessageAccess> getMessageAccess(ContextAuthentication ca) {
 
+        if (ca.getUser().getPhoneNumber() == null)
+            return this.getMsgService()
+                    .throwMessage(
+                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                            MessageResourceService.PHONE_NUMBER_REQUIRED);
+
         if (ca.isAuthenticated()) return Mono.just(MessageAccess.of(ca));
 
         return FlatMapUtil.flatMapMono(
