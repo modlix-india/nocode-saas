@@ -36,6 +36,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -46,8 +47,8 @@ public class WhatsappMessageService
         extends AbstractMessageService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappMessageDAO> {
 
     public static final String WHATSAPP_PROVIDER_URI = "/whatsapp";
-
     private static final String WHATSAPP_MESSAGE_CACHE = "whatsappMessage";
+    private static final String SUBSCRIBE = "subscribe";
 
     private final WhatsappApiFactory whatsappApiFactory;
 
@@ -55,7 +56,7 @@ public class WhatsappMessageService
 
     private final WhatsappCswService customerServiceWindowService;
 
-    @Value("${facebook.whatsapp.webhook.verify-token:null}")
+    @Value("${meta.webhook.verify-token:null}")
     private String verifyToken;
 
     @Autowired
@@ -188,17 +189,14 @@ public class WhatsappMessageService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
 
-    public Mono<String> verifyWebhook(String mode, String token, String challenge) {
+    public Mono<ResponseEntity<String>> verifyMetaWebhook(String mode, String token, String challenge) {
 
         logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
 
-        if ("subscribe".equals(mode) && verifyToken.equals(token)) {
-            logger.info("Webhook verified successfully");
-            return Mono.just(challenge);
-        } else {
-            logger.error("Webhook verification failed: Invalid mode or token");
-            return Mono.error(new RuntimeException("Webhook verification failed"));
-        }
+        return Mono.just(
+                SUBSCRIBE.equals(mode) && verifyToken.equals(token)
+                        ? ResponseEntity.ok(challenge)
+                        : ResponseEntity.status(HttpStatus.FORBIDDEN).body("Verification token mismatch"));
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {

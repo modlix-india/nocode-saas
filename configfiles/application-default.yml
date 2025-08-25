@@ -89,9 +89,6 @@ entity-collector:
     password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/entity_collector
-  meta:
-    webhook:
-      verify-token: TEST_THE_API
 
 spring:
   flyway:
@@ -129,6 +126,10 @@ smsService:
 
 app:
   base-url: http://localhost:8080
+
+meta:
+  webhook:
+    verify-token: TEST_THE_API
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594
