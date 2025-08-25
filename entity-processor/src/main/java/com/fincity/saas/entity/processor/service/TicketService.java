@@ -117,8 +117,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         access -> this.productService.updateIdentity(ticketRequest.getProductId()),
                         (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
                         (access, productIdentity, pTicket) -> super.createInternal(access, pTicket),
-                        (access, productIdentity, pTicket, created) ->
-                                this.createNote(access, ticketRequest, created),
+                        (access, productIdentity, pTicket, created) -> this.createNote(access, ticketRequest, created),
                         (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(created)
                                 .thenReturn(created)
@@ -137,8 +136,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         super::hasAccess,
                         access -> this.productService.checkAndUpdateIdentityWithAccess(
                                 access, ticketRequest.getProductId()),
-                        (access, productIdentity) ->
-                                this.checkDuplicate(access.getAppCode(), access.getClientCode(), ticketRequest),
+                        (access, productIdentity) -> this.checkDuplicate(access, ticketRequest),
                         (access, productIdentity, isDuplicate) ->
                                 Mono.just(ticket.setProductId(productIdentity.getULongId())),
                         (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
@@ -261,8 +259,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                             return FlatMapUtil.flatMapMono(
                                     () -> this.setTicketAssignment(ticket, ticketReassignRequest.getUserId()),
                                     super::updateInternal,
-                                    (aTicket, uTicket) ->
-                                            this.createNote(access, ticketReassignRequest, uTicket),
+                                    (aTicket, uTicket) -> this.createNote(access, ticketReassignRequest, uTicket),
                                     (aTicket, uTicket, cNote) -> this.activityService
                                             .acReassign(
                                                     uTicket.getId(),
@@ -305,11 +302,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.productService.readById(ticket.getProductId()),
-                        product -> this.setDefaultStage(
-                                ticket, access.getAppCode(), access.getClientCode(), product.getProductTemplateId()),
+                        product -> this.setDefaultStage(access, ticket, product.getProductTemplateId()),
                         (product, sTicket) -> this.productStageRuleService.getUserAssignment(
-                                access.getAppCode(),
-                                access.getClientCode(),
+                                access,
                                 product.getId(),
                                 sTicket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
@@ -320,14 +315,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
     }
 
-    private Mono<Ticket> setDefaultStage(Ticket ticket, String appCode, String clientCode, ULong productTemplateId) {
+    private Mono<Ticket> setDefaultStage(ProcessorAccess access, Ticket ticket, ULong productTemplateId) {
 
         if (productTemplateId == null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.stageService.getFirstStage(appCode, clientCode, productTemplateId),
-                        stage ->
-                                this.stageService.getFirstStatus(appCode, clientCode, productTemplateId, stage.getId()),
+                        () -> this.stageService.getFirstStage(access, productTemplateId),
+                        stage -> this.stageService.getFirstStatus(access, productTemplateId, stage.getId()),
                         (stage, status) -> {
                             if (stage != null) ticket.setStage(stage.getId());
                             if (status != null) ticket.setStatus(status.getId());
@@ -337,11 +331,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setDefaultStage"));
     }
 
-    private Mono<Boolean> checkDuplicate(String appCode, String clientCode, TicketRequest ticketRequest) {
+    private Mono<Boolean> checkDuplicate(ProcessorAccess access, TicketRequest ticketRequest) {
         return this.dao
                 .readByNumberAndEmail(
-                        appCode,
-                        clientCode,
+                        access,
                         ticketRequest.getProductId().getULongId(),
                         ticketRequest.getPhoneNumber() != null
                                 ? ticketRequest.getPhoneNumber().getCountryCode()
@@ -359,9 +352,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .then(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                        this.getEntityPrefix(appCode),
+                                        this.getEntityPrefix(access.getAppCode()),
                                         existing.getId(),
-                                        this.getEntityPrefix(appCode)));
+                                        this.getEntityPrefix(access.getClientCode())));
                     return Mono.just(Boolean.FALSE);
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE))
