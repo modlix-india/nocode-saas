@@ -67,37 +67,30 @@ public class ProductStageRuleService
     }
 
     @Override
-    protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
+    protected Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
                         () -> productService.readIdentityInternal(entityId),
                         product -> super.stageService.getAllStages(
-                                appCode,
-                                clientCode,
+                                access,
                                 product.getProductTemplateId(),
                                 stageIds != null ? stageIds.toArray(new ULong[0]) : null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getStageIds"));
     }
 
     @Override
-    protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
+    protected Mono<ULong> getStageId(ProcessorAccess access, Identity entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
                         () -> productService.readIdentityInternal(entityId),
-                        product -> super.stageService.getStage(
-                                appCode, clientCode, product.getProductTemplateId(), stageId))
+                        product -> super.stageService.getStage(access, product.getProductTemplateId(), stageId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getStageId"));
     }
 
     @Override
     public Mono<ULong> getUserAssignment(
-            String appCode,
-            String clientCode,
-            ULong entityId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data) {
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
+                        () -> this.getRuleWithOrder(
+                                access.getAppCode(), access.getEffectiveClientCode(), entityId, stageId),
                         productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
                         (productRule, eRule) -> super.update(eRule).flatMap(rule -> {
                             ULong assignedUserId = rule.getLastAssignedUserId();
@@ -105,29 +98,17 @@ public class ProductStageRuleService
                             return Mono.just(assignedUserId);
                         }))
                 .switchIfEmpty(this.getUserAssignmentFromTemplate(
-                        appCode, clientCode, entityId, stageId, tokenPrefix, userId, data))
+                        access, entityId, stageId, tokenPrefix, userId, data))
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
 
     public Mono<ULong> getUserAssignmentFromTemplate(
-            String appCode,
-            String clientCode,
-            ULong entityId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data) {
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
         return FlatMapUtil.flatMapMono(
                         () -> productService.readById(entityId),
                         product -> this.productTemplateRuleService.getUserAssignment(
-                                appCode,
-                                clientCode,
-                                product.getProductTemplateId(),
-                                stageId,
-                                tokenPrefix,
-                                userId,
-                                data))
+                                access, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
     }
 }

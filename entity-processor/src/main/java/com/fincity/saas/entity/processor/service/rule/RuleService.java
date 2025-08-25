@@ -49,14 +49,12 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
     protected abstract String getEntityRefName();
 
-    protected abstract Mono<Set<ULong>> getStageIds(
-            String appCode, String clientCode, Identity entityId, List<ULong> stageIds);
+    protected abstract Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds);
 
-    protected abstract Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId);
+    protected abstract Mono<ULong> getStageId(ProcessorAccess access, Identity entityId, ULong stageId);
 
     public abstract Mono<ULong> getUserAssignment(
-            String appCode,
-            String clientCode,
+            ProcessorAccess access,
             ULong entityId,
             ULong stageId,
             String tokenPrefix,
@@ -163,19 +161,19 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getEntityId(access, entityId),
-                        (access, entity) -> this.getRuleResponseWithOrder(
-                                access.getAppCode(), access.getClientCode(), entity, stageIds))
+                        (access, entity) -> this.getRuleResponseWithOrder(access, entity, stageIds))
                 .switchIfEmpty(Mono.just(Map.of()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleService.getRuleResponseWithOrder"));
     }
 
     private Mono<Map<Integer, RuleResponse<D>>> getRuleResponseWithOrder(
-            String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
+            ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getStageIds(appCode, clientCode, entityId, stageIds),
+                () -> this.getStageIds(access, entityId, stageIds),
                 allStages -> Mono.zip(
-                        this.getRuleResponses(appCode, clientCode, entityId.getULongId(), allStages),
-                        this.getDefaultResponse(appCode, clientCode, entityId.getULongId())),
+                        this.getRuleResponses(
+                                access.getAppCode(), access.getClientCode(), entityId.getULongId(), allStages),
+                        this.getDefaultResponse(access.getAppCode(), access.getClientCode(), entityId.getULongId())),
                 (allStages, rules) -> {
                     Map<Integer, RuleResponse<D>> rulesMap = rules.getT1().stream()
                             .collect(Collectors.toMap(r -> r.getRule().getOrder(), Function.identity(), (a, b) -> b));
@@ -190,18 +188,16 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getEntityId(access, entityId),
-                        (access, entity) ->
-                                this.getRuleWithOrder(access.getAppCode(), access.getClientCode(), entity, stageIds))
+                        (access, entity) -> this.getRuleWithOrder(access, entity, stageIds))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleService.getRuleWithOrder"));
     }
 
-    private Mono<Map<Integer, D>> getRuleWithOrder(
-            String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
+    private Mono<Map<Integer, D>> getRuleWithOrder(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getStageIds(appCode, clientCode, entityId, stageIds),
+                () -> this.getStageIds(access, entityId, stageIds),
                 allStages -> Mono.zip(
-                        this.getRules(appCode, clientCode, entityId.getULongId(), allStages),
-                        this.getDefault(appCode, clientCode, entityId.getULongId())),
+                        this.getRules(access.getAppCode(), access.getClientCode(), entityId.getULongId(), allStages),
+                        this.getDefault(access.getAppCode(), access.getClientCode(), entityId.getULongId())),
                 (allStages, rules) -> {
                     Map<Integer, D> rulesMap = rules.getT1().stream()
                             .collect(Collectors.toMap(Rule::getOrder, Function.identity(), (a, b) -> b));
@@ -300,9 +296,8 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getEntityId(access, entityId),
-                        (access, entity) -> this.getRuleWithOrder(
-                                        access.getAppCode(), access.getClientCode(), entity, null)
-                                .switchIfEmpty(Mono.just(Map.of())),
+                        (access, entity) ->
+                                this.getRuleWithOrder(access, entity, null).switchIfEmpty(Mono.just(Map.of())),
                         (access, entity, rules) -> {
                             if (rules.isEmpty()) return Mono.just(Boolean.TRUE);
 
@@ -403,10 +398,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
 
         if (ruleRequest.getRule().getStageId().isId())
             return this.getStageId(
-                            access.getAppCode(),
-                            access.getClientCode(),
-                            entityId,
-                            ruleRequest.getRule().getStageId().getULongId())
+                            access, entityId, ruleRequest.getRule().getStageId().getULongId())
                     .map(stageId -> ruleRequest)
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -415,7 +407,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
         return FlatMapUtil.flatMapMono(
                 () -> this.stageService.checkAndUpdateIdentityWithAccess(
                         access, ruleRequest.getRule().getStageId()),
-                stage -> this.getStageId(access.getAppCode(), access.getClientCode(), entityId, stage.getULongId())
+                stage -> this.getStageId(access, entityId, stage.getULongId())
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.TEMPLATE_STAGE_INVALID)),

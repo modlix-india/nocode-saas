@@ -66,7 +66,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     public Mono<Owner> create(OwnerRequest ownerRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
+                        access -> this.checkDuplicate(access, ownerRequest),
                         (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
     }
@@ -93,11 +93,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return FlatMapUtil.flatMapMono(
                         () -> this.dao
                                 .readByNumberAndEmail(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        ticket.getDialCode(),
-                                        ticket.getPhoneNumber(),
-                                        ticket.getEmail())
+                                        access, ticket.getDialCode(), ticket.getPhoneNumber(), ticket.getEmail())
                                 .switchIfEmpty(this.createInternal(access, Owner.of(ticket))),
                         owner -> {
                             if (owner.getId() == null)
@@ -109,11 +105,10 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketPhoneOwner"));
     }
 
-    private Mono<Boolean> checkDuplicate(String appCode, String clientCode, OwnerRequest ownerRequest) {
+    private Mono<Boolean> checkDuplicate(ProcessorAccess access, OwnerRequest ownerRequest) {
         return this.dao
                 .readByNumberAndEmail(
-                        appCode,
-                        clientCode,
+                        access,
                         ownerRequest.getPhoneNumber() != null
                                 ? ownerRequest.getPhoneNumber().getCountryCode()
                                 : null,
@@ -128,9 +123,9 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                this.getEntityPrefix(appCode),
+                                this.getEntityPrefix(access.getAppCode()),
                                 existing.getId(),
-                                this.getEntityPrefix(appCode));
+                                this.getEntityPrefix(access.getAppCode()));
 
                     return Mono.just(Boolean.FALSE);
                 })
