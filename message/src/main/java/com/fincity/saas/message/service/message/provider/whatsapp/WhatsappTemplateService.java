@@ -79,7 +79,7 @@ public class WhatsappTemplateService
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, validationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, validationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -105,7 +105,7 @@ public class WhatsappTemplateService
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -142,7 +142,7 @@ public class WhatsappTemplateService
     public Mono<WhatsappTemplate> updateTemplateStatus(WhatsappTemplateRequest whatsappTemplateRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        messageAccess -> super.messageConnectionService.getConnection(
+                        messageAccess -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
