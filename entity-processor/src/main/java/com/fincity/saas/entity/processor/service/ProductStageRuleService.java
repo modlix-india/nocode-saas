@@ -97,8 +97,7 @@ public class ProductStageRuleService
                             if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
                             return Mono.just(assignedUserId);
                         }))
-                .switchIfEmpty(this.getUserAssignmentFromTemplate(
-                        access, entityId, stageId, tokenPrefix, userId, data))
+                .switchIfEmpty(this.getUserAssignmentFromTemplate(access, entityId, stageId, tokenPrefix, userId, data))
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
