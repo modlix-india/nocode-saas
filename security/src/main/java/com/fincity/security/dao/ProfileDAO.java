@@ -575,7 +575,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         appCode == null || appCode.equals("nothing") ? DSL.trueCondition() :
                                 SECURITY_APP.APP_CODE.eq(appCode)));
 
-        // If no profiles are assigned to the user in an app we shall search for default profiles.
+        // If no profiles are assigned to the user in an app, we shall search for default profiles.
         return Flux.from(query).map(Record1::value1)
                 .collect(Collectors.toSet())
                 .flatMap(e -> {
@@ -809,12 +809,18 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     }
 
     public Flux<ULong> getAssignedProfileIds(ULong userId, ULong appId) {
+
+        Condition appCondition;
+
+        if (appId == null) appCondition = DSL.trueCondition();
+        else appCondition = SECURITY_PROFILE.APP_ID.eq(appId);
+
         return Flux.from(this.dslContext.select(SECURITY_PROFILE_USER.PROFILE_ID)
                 .from(SECURITY_PROFILE_USER)
                 .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                 .where(DSL.and(
                         SECURITY_PROFILE_USER.USER_ID.eq(userId),
-                        SECURITY_PROFILE.APP_ID.eq(appId)
+                        appCondition
                 ))).map(Record1::value1);
     }
 
@@ -842,7 +848,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                         .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
                         .orderBy(
-                                // Prioritize profiles with Owner role
+                                // Prioritize profiles with an Owner role
                                 DSL.case_()
                                         .when(SECURITY_V2_ROLE.NAME.eq("Owner"), 1)
                                         .otherwise(2),

@@ -3,7 +3,9 @@ package com.fincity.security.controller;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.*;
 import com.fincity.security.service.UserInviteService;
@@ -11,7 +13,9 @@ import com.fincity.security.service.UserRequestService;
 import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -131,7 +135,7 @@ public class UserController
     }
 
     @PostMapping("/invite")
-    public Mono<ResponseEntity<Map<String,Object>>> inviteUser(@RequestBody UserInvite invite) {
+    public Mono<ResponseEntity<Map<String, Object>>> inviteUser(@RequestBody UserInvite invite) {
         return this.inviteService.createInvite(invite).map(ResponseEntity::ok);
     }
 
@@ -220,13 +224,38 @@ public class UserController
     }
 
     @GetMapping("/internal/adminEmails")
-    public Mono<ResponseEntity<Map<String, Object>>> getUserAdminEmails(ServerHttpRequest request){
+    public Mono<ResponseEntity<Map<String, Object>>> getUserAdminEmails(ServerHttpRequest request) {
         return this.service.getUserAdminEmails(request).map(ResponseEntity::ok);
     }
 
     @GetMapping("/requestUser/{requestId}")
     public Mono<ResponseEntity<User>> getUserFromRequestId(@PathVariable String requestId) {
         return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/noMapping")
+    @Override
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(Query query) {
+        return Mono.just(ResponseEntity.badRequest()
+                .build());
+    }
+
+    @GetMapping()
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
+        return this.service.readPageFilter(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
+                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(PATH_QUERY)
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(@RequestBody Query query, ServerHttpRequest request) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service.readPageFilter(pageable, query.getCondition())
+                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .map(ResponseEntity::ok);
     }
 
 }

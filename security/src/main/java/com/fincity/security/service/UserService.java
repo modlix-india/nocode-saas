@@ -68,11 +68,15 @@ import reactor.util.function.Tuples;
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
+    private static final String FILL_PROFILES = "fillProfiles";
+    private static final String FILL_CLIENT = "fillClients";
+    private static final String FILL_MANAGING_CLIENT = "fillManagingClients";
+    private static final String FILL_CREATED_BY = "fillCreatedBy";
+
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
 
     private static final String CACHE_NAME_USER_ROLE = "userRoles";
-
     private static final String CACHE_NAME_USER = "user";
 
     private static final int VALIDITY_MINUTES = 30;
@@ -1088,12 +1092,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (levelType, departments, departmentIndex, designations, designationIndex, userDesignations) -> {
                             if (userDesignations.isEmpty()
                                     || !designationIndex.containsKey(
-                                    userDesignations.get(0).getDesignationId())) return Mono.just(true);
+                                    userDesignations.getFirst().getDesignationId())) return Mono.just(true);
 
                             return this.dao.addDesignation(
                                     userId,
                                     designationIndex
-                                            .get(userDesignations.get(0).getDesignationId())
+                                            .get(userDesignations.getFirst().getDesignationId())
                                             .getT2()
                                             .getId());
                         })
@@ -1329,7 +1333,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .getUsersForProfiles(appAdminProfiles, client.getId())
                                 .flatMap(users -> {
                                     if (users.isEmpty()) {
-                                        return Mono.empty(); // Convert empty list to empty Mono to trigger switchIfEmpty
+                                        return Mono.empty(); // Convert the empty list to empty Mono to trigger switchIfEmpty
                                     }
                                     return Mono.just(users);
                                 })
@@ -1347,5 +1351,32 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         .map(emails -> Map.of("emails", emails, "addApp", Boolean.TRUE))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getAppUserAdminEmails"))
                 .defaultIfEmpty(Map.of("emails", List.of(), "addApp", Boolean.FALSE));
+    }
+
+    public Mono<List<User>> fillDetails(List<User> users, ServerHttpRequest request) {
+
+        String appCode = request.getQueryParams().getFirst("appCode");
+        String appId = request.getQueryParams().getFirst("appId");
+
+        boolean fillProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_PROFILES));
+        boolean fillClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CLIENT));
+        boolean fillManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_MANAGING_CLIENT));
+        boolean fillCreatedBy = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CREATED_BY));
+
+        Flux<User> userFlux = Flux.fromIterable(users);
+
+        if (fillProfiles)
+            userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
+
+        if (fillClient)
+            userFlux = userFlux.flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
+
+        if (fillManagingClient)
+            userFlux = userFlux.flatMap(user -> this.clientService.getManagedClientOfClientById(user.getClientId()).map(user::setManagingClient));
+
+        if (fillCreatedBy)
+            userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0).flatMap(user -> this.dao.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+
+        return userFlux.collectList();
     }
 }

@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.security.jooq.tables.*;
@@ -30,8 +29,6 @@ import org.jooq.SelectLimitPercentStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -57,15 +54,13 @@ import reactor.util.context.Context;
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
-    @Autowired
-    private PasswordEncoder encoder;
+    private final PasswordEncoder encoder;
+    private final ClientDAO clientDAO;
 
-    @Lazy
-    @Autowired
-    private ClientDAO clientDAO;
-
-    protected UserDAO() {
+    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao) {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
+        this.encoder = encoder;
+        this.clientDAO = clientDao;
     }
 
     @Override
@@ -284,32 +279,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private Mono<Integer> setPassword(ULong userId, ULong currentUserId, String encryptedPassword) {
 
-        Mono.from(this.dslContext
-                        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
-                                SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
-                        .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId))
-                .subscribe();
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                .set(SECURITY_USER.PASSWORD, encryptedPassword)
-                .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
-                .set(SECURITY_USER.UPDATED_BY, currentUserId)
-                .where(SECURITY_USER.ID.eq(userId)));
+        return Mono.from(this.dslContext
+                .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
+                        SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
+                .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId)).flatMap(x ->
+                Mono.from(this.dslContext.update(SECURITY_USER)
+                        .set(SECURITY_USER.PASSWORD, encryptedPassword)
+                        .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
+                        .set(SECURITY_USER.UPDATED_BY, currentUserId)
+                        .where(SECURITY_USER.ID.eq(userId))));
     }
 
     private Mono<Integer> setPin(ULong userId, ULong currentUserId, String encryptedPin) {
 
-        Mono.from(this.dslContext
+        return Mono.from(this.dslContext
                         .insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
                                 SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
                         .values(userId, encryptedPin, ByteUtil.ONE, currentUserId))
-                .subscribe();
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                .set(SECURITY_USER.PIN, encryptedPin)
-                .set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
-                .set(SECURITY_USER.UPDATED_BY, currentUserId)
-                .where(SECURITY_USER.ID.eq(userId)));
+                .flatMap(x -> Mono.from(this.dslContext.update(SECURITY_USER)
+                        .set(SECURITY_USER.PIN, encryptedPin)
+                        .set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
+                        .set(SECURITY_USER.UPDATED_BY, currentUserId)
+                        .where(SECURITY_USER.ID.eq(userId))));
     }
 
     public Mono<User> readInternal(ULong id) {
