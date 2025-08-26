@@ -1,5 +1,11 @@
 package com.fincity.saas.entity.processor.service.content;
 
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -12,10 +18,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
-import java.time.LocalDateTime;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -56,23 +59,15 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
     private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
 
-        Mono<Identity> ticketIdMono = taskRequest.getTicketId() != null
-                ? this.checkTicket(access, taskRequest.getTicketId())
-                : Mono.just(Identity.ofNull());
+        if (taskRequest.getUserId() != null) return Mono.just(taskRequest);
 
-        Mono<Identity> ownerIdMono = ticketIdMono.flatMap(ticketId -> taskRequest.getOwnerId() != null
-                ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
-                : Mono.just(Identity.ofNull()));
-
-        Mono<Identity> taskTypeIdMono = taskRequest.getTaskTypeId() != null
-                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
-                : Mono.just(Identity.ofNull());
-
-        return Mono.zip(ticketIdMono, ownerIdMono, taskTypeIdMono)
-                .map(tuple3 -> taskRequest
-                        .setTicketId(tuple3.getT1())
-                        .setOwnerId(tuple3.getT2())
-                        .setTaskTypeId(tuple3.getT3()))
+        return FlatMapUtil.flatMapMono(
+                        () -> super.updateBaseIdentities(access, taskRequest),
+                        bTaskRequest -> taskRequest.getTaskTypeId() != null
+                                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(
+                                        access, taskRequest.getTaskTypeId())
+                                : Mono.just(Identity.ofNull()),
+                        (bTaskRequest, uTaskType) -> Mono.just(bTaskRequest.setTaskTypeId(uTaskType)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updateIdentities"));
     }
 
