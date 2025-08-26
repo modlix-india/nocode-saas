@@ -54,12 +54,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected abstract Mono<ULong> getStageId(ProcessorAccess access, Identity entityId, ULong stageId);
 
     public abstract Mono<ULong> getUserAssignment(
-            ProcessorAccess access,
-            ULong entityId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data);
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data);
 
     @Autowired
     private void setComplexRuleService(ComplexRuleService complexRuleService) {

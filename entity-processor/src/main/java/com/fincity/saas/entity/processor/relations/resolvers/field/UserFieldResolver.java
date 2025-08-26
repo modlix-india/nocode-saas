@@ -1,8 +1,9 @@
-package com.fincity.saas.entity.processor.relations.resolvers;
+package com.fincity.saas.entity.processor.relations.resolvers.field;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.IClassConvertor;
+import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;

@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.enums;
 
 import com.fincity.saas.entity.processor.dto.Activity;
 import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
@@ -14,9 +15,11 @@ import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -74,7 +77,8 @@ public enum EntitySeries implements EnumType {
     TASK("TASK", "Task", 24, "Task", EntityProcessorTasks.ENTITY_PROCESSOR_TASKS),
     TASK_TYPE("TASK_TYPE", "TaskType", 24, "TaskType", EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES),
     NOTE("NOTE", "Note", 24, "Note", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES),
-    ACTIVITY("ACTIVITY", "Activity", 25, "Activity", null);
+    ACTIVITY("ACTIVITY", "Activity", 25, "Activity", EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES),
+    PARTNER("PARTNER", "Partner", 26, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -90,7 +94,9 @@ public enum EntitySeries implements EnumType {
             Map.entry(PRODUCT_TEMPLATE_RULE, "ProjectTemplateRule"),
             Map.entry(TASK, "Task"),
             Map.entry(TASK_TYPE, "TaskType"),
-            Map.entry(NOTE, "Note"));
+            Map.entry(NOTE, "Note"),
+            Map.entry(ACTIVITY, "activity"),
+            Map.entry(PARTNER, "Partner"));
 
     private final String literal;
     private final String displayName;
@@ -137,6 +143,7 @@ public enum EntitySeries implements EnumType {
             case TASK_TYPE -> TaskType.class;
             case NOTE -> Note.class;
             case ACTIVITY -> Activity.class;
+            case PARTNER -> Partner.class;
         };
     }
 

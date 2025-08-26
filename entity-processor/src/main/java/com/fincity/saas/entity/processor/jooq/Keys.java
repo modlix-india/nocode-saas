@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -22,6 +23,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActi
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductStageRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
@@ -59,6 +61,8 @@ public class Keys {
     public static final UniqueKey<EntityProcessorNotesRecord> KEY_ENTITY_PROCESSOR_NOTES_UK1_NOTES_CODE = Internal.createUniqueKey(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES, DSL.name("KEY_entity_processor_notes_UK1_NOTES_CODE"), new TableField[] { EntityProcessorNotes.ENTITY_PROCESSOR_NOTES.CODE }, true);
     public static final UniqueKey<EntityProcessorOwnersRecord> KEY_ENTITY_PROCESSOR_OWNERS_PRIMARY = Internal.createUniqueKey(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS, DSL.name("KEY_entity_processor_owners_PRIMARY"), new TableField[] { EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS.ID }, true);
     public static final UniqueKey<EntityProcessorOwnersRecord> KEY_ENTITY_PROCESSOR_OWNERS_UK1_OWNERS_CODE = Internal.createUniqueKey(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS, DSL.name("KEY_entity_processor_owners_UK1_OWNERS_CODE"), new TableField[] { EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS.CODE }, true);
+    public static final UniqueKey<EntityProcessorPartnersRecord> KEY_ENTITY_PROCESSOR_PARTNERS_PRIMARY = Internal.createUniqueKey(EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS, DSL.name("KEY_entity_processor_partners_PRIMARY"), new TableField[] { EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS.ID }, true);
+    public static final UniqueKey<EntityProcessorPartnersRecord> KEY_ENTITY_PROCESSOR_PARTNERS_UK1_PARTNERS_CODE = Internal.createUniqueKey(EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS, DSL.name("KEY_entity_processor_partners_UK1_PARTNERS_CODE"), new TableField[] { EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS.CODE }, true);
     public static final UniqueKey<EntityProcessorProductStageRulesRecord> KEY_ENTITY_PROCESSOR_PRODUCT_STAGE_RULES_PRIMARY = Internal.createUniqueKey(EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES, DSL.name("KEY_entity_processor_product_stage_rules_PRIMARY"), new TableField[] { EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.ID }, true);
     public static final UniqueKey<EntityProcessorProductStageRulesRecord> KEY_ENTITY_PROCESSOR_PRODUCT_STAGE_RULES_UK1_PRODUCT_RULES_CODE = Internal.createUniqueKey(EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES, DSL.name("KEY_entity_processor_product_stage_rules_UK1_PRODUCT_RULES_CODE"), new TableField[] { EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.CODE }, true);
     public static final UniqueKey<EntityProcessorProductStageRulesRecord> KEY_ENTITY_PROCESSOR_PRODUCT_STAGE_RULES_UK2_PRODUCT_RULES_PRODUCT_TEMPLATE_ID_STAGE_ID = Internal.createUniqueKey(EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES, DSL.name("KEY_entity_processor_product_stage_rules_UK2_PRODUCT_RULES_PRODUCT_TEMPLATE_ID_STAGE_ID"), new TableField[] { EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.APP_CODE, EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.CLIENT_CODE, EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.PRODUCT_ID, EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.STAGE_ID, EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES.ORDER }, true);
