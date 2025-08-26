@@ -1,16 +1,18 @@
-package com.fincity.saas.notification.oserver.core.service;
+package com.fincity.saas.message.oserver.core.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.notification.feign.IFeignCoreService;
+import com.fincity.saas.message.feign.IFeignCoreService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
+
+    protected static final String CACHE_NAME = "Cache";
 
     protected CacheService cacheService;
 
@@ -35,8 +37,8 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
         this.securityService = securityService;
     }
 
-    protected String getCacheNames(String... entityNames) {
-        return String.join("_", entityNames);
+    public String getCacheName(String appCode, String name) {
+        return this.getObjectName() + CACHE_NAME + "_" + appCode + "_" + name;
     }
 
     protected abstract Mono<T> fetchCoreDocument(
@@ -52,18 +54,18 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
                 inheritance -> this.getDocument(appCode, urlClientCode, clientCode, inheritance, documentName));
     }
 
-    protected Mono<T> getDocument(
+    private Mono<T> getDocument(
             String appCode, String urlClientCode, String clientCode, List<String> inheritance, String documentName) {
 
         if (inheritance == null || inheritance.isEmpty()) return Mono.empty();
 
         if (inheritance.size() == 1)
             return this.cacheService
-                    .<T>get(this.getCacheNames(appCode, documentName), inheritance.getFirst())
+                    .<T>get(this.getCacheName(appCode, documentName), inheritance.getFirst())
                     .switchIfEmpty(this.getCoreDocumentInternal(appCode, urlClientCode, clientCode, documentName));
 
         return Flux.fromIterable(inheritance)
-                .flatMap(cc -> this.cacheService.<T>get(this.getCacheNames(appCode, documentName), cc))
+                .flatMap(cc -> this.cacheService.<T>get(this.getCacheName(appCode, documentName), cc))
                 .next()
                 .switchIfEmpty(this.getCoreDocumentInternal(appCode, urlClientCode, clientCode, documentName));
     }
@@ -72,6 +74,6 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
             String appCode, String urlClientCode, String clientCode, String documentName) {
         return FlatMapUtil.flatMapMono(
                 () -> this.fetchCoreDocument(appCode, urlClientCode, clientCode, documentName),
-                document -> this.cacheService.put(this.getCacheNames(appCode, documentName), document, clientCode));
+                document -> this.cacheService.put(this.getCacheName(appCode, documentName), document, clientCode));
     }
 }
