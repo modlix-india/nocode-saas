@@ -18,5 +18,4 @@ public class UploadRequest extends BaseMessageRequest {
 
     private String uploadSessionId;
     private Long fileOffset;
-    private byte[] fileContent;
 }

@@ -7,9 +7,11 @@ import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.Up
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappUploadService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -29,8 +31,10 @@ public class WhatsappUploadController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(@RequestBody UploadRequest uploadRequest) {
-        return this.service.startOrResumeUpload(uploadRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
+            @RequestPart(name = "file") Mono<FilePart> filePart,
+            @RequestPart(name = "request") UploadRequest uploadRequest) {
+        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
     }
 
     @PostMapping("/status")
@@ -39,7 +43,9 @@ public class WhatsappUploadController {
     }
 
     @PostMapping("/resume")
-    public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(@RequestBody UploadRequest uploadRequest) {
-        return this.service.resumeUploadFromStatus(uploadRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
+            @RequestPart(name = "file") Mono<FilePart> filePart,
+            @RequestPart(name = "request") UploadRequest uploadRequest) {
+        return this.service.resumeUploadFromStatus(uploadRequest, filePart).map(ResponseEntity::ok);
     }
 }

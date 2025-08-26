@@ -5,6 +5,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.service.RestConnectionService;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -12,7 +13,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class WhatsappDebugTokenService extends RestConnectionService {
+public class WhatsappDebugTokenService {
+
+    private RestConnectionService restConnectionService;
+
+    @Autowired
+    private void setRestConnectionService(RestConnectionService restConnectionService) {
+        this.restConnectionService = restConnectionService;
+    }
 
     public Mono<Map<String, Object>> debugToken(String connectionName) {
 
@@ -20,9 +28,10 @@ public class WhatsappDebugTokenService extends RestConnectionService {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.getConnection(ca.getUrlAppCode(), ca.getClientCode(), connectionName),
-                        (ca, connection) ->
-                                this.getConnectionOAuth2Token(ca.getUrlAppCode(), ca.getClientCode(), connectionName),
+                        ca -> restConnectionService.getCoreDocument(
+                                ca.getUrlAppCode(), ca.getClientCode(), connectionName),
+                        (ca, connection) -> restConnectionService.getConnectionOAuth2Token(
+                                ca.getUrlAppCode(), ca.getClientCode(), connectionName),
                         (ca, connection, token) -> {
                             @SuppressWarnings("unchecked")
                             Map<String, Object> tokenDetails = (Map<String, Object>)

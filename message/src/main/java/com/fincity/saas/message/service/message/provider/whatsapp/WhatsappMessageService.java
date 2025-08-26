@@ -139,7 +139,7 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), whatsappMessageRequest.getConnectionName()),
                 (access, connection) -> this.sendMessageInternal(
                         access,

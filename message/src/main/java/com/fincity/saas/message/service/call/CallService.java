@@ -49,7 +49,7 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
     public Mono<Call> makeCall(CallRequest callRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.connectionService.getConnection(
+                        access -> this.connectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), callRequest.getConnectionName()),
                         (access, connection) -> services.get(connection.getConnectionSubType())
                                 .makeCall(access, callRequest, connection),

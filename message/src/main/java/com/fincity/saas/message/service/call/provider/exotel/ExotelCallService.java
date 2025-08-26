@@ -204,7 +204,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
                         publicAccess -> super.getUserIdAndPhone(incomingCallRequest.getUserId()),
-                        (publicAccess, user) -> super.callConnectionService.getConnection(
+                        (publicAccess, user) -> super.callConnectionService.getCoreDocument(
                                 publicAccess.getAppCode(),
                                 publicAccess.getClientCode(),
                                 incomingCallRequest.getConnectionName()),
