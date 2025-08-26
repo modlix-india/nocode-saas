@@ -62,7 +62,8 @@ public class Task extends BaseContentDto<Task> {
                 .setNextReminder(taskRequest.getNextReminder())
                 .setName(taskRequest.getName())
                 .setContent(taskRequest.getContent())
-                .setHasAttachment(taskRequest.getHasAttachment());
+                .setHasAttachment(taskRequest.getHasAttachment())
+                .setContentEntitySeries(taskRequest.getContentEntitySeries());
 
         return switch (task.getContentEntitySeries()) {
             case OWNER -> task.setOwnerId(taskRequest.getOwnerId().getULongId());
