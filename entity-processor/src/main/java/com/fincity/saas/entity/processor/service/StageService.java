@@ -92,8 +92,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.getLatestStageByOrder(access, entity.getProductTemplateId()),
-                        latestStage -> {
+                        () -> this.getLatestStageByOrder(access, entity.getProductTemplateId()), latestStage -> {
                             if (latestStage == null) return Mono.just(entity.setOrder(1));
 
                             return Mono.just(entity.setOrder(latestStage.getOrder() + 1));
@@ -289,20 +288,18 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStage"));
     }
 
-    public Mono<Set<ULong>> getAllStages(
-           ProcessorAccess access, ULong productTemplateId, ULong... stageIds) {
-        return super.getAllValueIds(access, null, productTemplateId)
-                .flatMap(stageIdsInternal -> {
-                    if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
+    public Mono<Set<ULong>> getAllStages(ProcessorAccess access, ULong productTemplateId, ULong... stageIds) {
+        return super.getAllValueIds(access, null, productTemplateId).flatMap(stageIdsInternal -> {
+            if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
 
-                    if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
+            if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
 
-                    if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
+            if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
 
-                    stageIdsInternal.retainAll(List.of(stageIds));
+            stageIdsInternal.retainAll(List.of(stageIds));
 
-                    return Mono.just(stageIdsInternal);
-                });
+            return Mono.just(stageIdsInternal);
+        });
     }
 
     public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {
