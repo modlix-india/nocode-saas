@@ -68,10 +68,10 @@ import reactor.util.function.Tuples;
 @Service
 public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
-    private static final String FILL_PROFILES = "fillProfiles";
-    private static final String FILL_CLIENT = "fillClients";
-    private static final String FILL_MANAGING_CLIENT = "fillManagingClients";
-    private static final String FILL_CREATED_BY = "fillCreatedBy";
+    private static final String FETCH_PROFILES = "fetchProfiles";
+    private static final String FETCH_CLIENT = "fetchClients";
+    private static final String FETCH_MANAGING_CLIENT = "fetchManagingClients";
+    private static final String FETCH_CREATED_BY = "fetchCreatedBy";
 
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
@@ -389,7 +389,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return Flux.fromIterable(passEntities.entrySet())
                 .flatMap(passEntry -> this.passwordPolicyCheck(
-                                clientId, null, urlAppCode, userId, passEntry.getKey(), passEntry.getValue())
+                                clientId, urlAppCode, userId, passEntry.getKey(), passEntry.getValue())
                         .onErrorResume(e -> Mono.just(Boolean.FALSE)))
                 .all(result -> result)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.passwordEntitiesPolicyCheck"));
@@ -397,15 +397,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     private Mono<Boolean> passwordPolicyCheck(
             ULong urlClientId,
-            ULong appId,
             String appCode,
             ULong userId,
             AuthenticationPasswordType passwordType,
             String password) {
 
-        return appId != null
-                ? this.clientService.validatePasswordPolicy(urlClientId, appId, userId, passwordType, password)
-                : this.clientService.validatePasswordPolicy(urlClientId, appCode, userId, passwordType, password);
+        return this.clientService.validatePasswordPolicy(urlClientId, appCode, userId, passwordType, password);
     }
 
     private Mono<Boolean> checkBusinessClientUser(ULong clientId, String userName, String emailId, String phoneNumber) {
@@ -576,7 +573,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .map(x -> 1));
     }
 
-    public Mono<User> readInternal(String appCode, ULong id) {
+    public Mono<User> readInternal(ULong id) {
         return this.dao.readInternal(id);
     }
 
@@ -610,7 +607,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
 
         return this.dao.checkRoleAssignedForUser(userId, roleId).flatMap(result -> {
-            if (Boolean.TRUE.equals(result)) return Mono.just(result);
+            if (Boolean.TRUE.equals(result)) return Mono.just(true);
 
             return FlatMapUtil.flatMapMono(
                             SecurityContextUtil::getUsersContextAuthentication,
@@ -884,7 +881,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 : Mono.just(Boolean.TRUE)),
                         areEqual -> this.passwordPolicyCheck(
                                 ULongUtil.valueOf(ca.getLoggedInFromClientId()),
-                                null,
                                 ca.getUrlAppCode(),
                                 user.getId(),
                                 reqPassword.getPassType(),
@@ -1353,28 +1349,28 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .defaultIfEmpty(Map.of("emails", List.of(), "addApp", Boolean.FALSE));
     }
 
-    public Mono<List<User>> fillDetails(List<User> users, ServerHttpRequest request) {
+    public Mono<List<User>> fetchDetails(List<User> users, ServerHttpRequest request) {
 
         String appCode = request.getQueryParams().getFirst("appCode");
         String appId = request.getQueryParams().getFirst("appId");
 
-        boolean fillProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_PROFILES));
-        boolean fillClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CLIENT));
-        boolean fillManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_MANAGING_CLIENT));
-        boolean fillCreatedBy = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CREATED_BY));
+        boolean fetchProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_PROFILES));
+        boolean fetchClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_CLIENT));
+        boolean fetchManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_MANAGING_CLIENT));
+        boolean fetchCreatedBy = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_CREATED_BY));
 
         Flux<User> userFlux = Flux.fromIterable(users);
 
-        if (fillProfiles)
+        if (fetchProfiles)
             userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
 
-        if (fillClient)
+        if (fetchClient)
             userFlux = userFlux.flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
 
-        if (fillManagingClient)
+        if (fetchManagingClient)
             userFlux = userFlux.flatMap(user -> this.clientService.getManagedClientOfClientById(user.getClientId()).map(user::setManagingClient));
 
-        if (fillCreatedBy)
+        if (fetchCreatedBy)
             userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0).flatMap(user -> this.dao.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
         return userFlux.collectList();

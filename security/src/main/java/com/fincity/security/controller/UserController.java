@@ -244,7 +244,7 @@ public class UserController
     public Mono<ResponseEntity<Page<User>>> readPageFilter(Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
         return this.service.readPageFilter(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
-                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .flatMap(page -> this.service.fetchDetails(page.getContent(), request).thenReturn(page))
                 .map(ResponseEntity::ok);
     }
 
@@ -254,7 +254,7 @@ public class UserController
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
         return this.service.readPageFilter(pageable, query.getCondition())
-                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .flatMap(page -> this.service.fetchDetails(page.getContent(), request).thenReturn(page))
                 .map(ResponseEntity::ok);
     }
 
