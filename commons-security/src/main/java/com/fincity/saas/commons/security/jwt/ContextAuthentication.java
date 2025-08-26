@@ -81,9 +81,4 @@ public class ContextAuthentication implements Authentication {
 
         return CLIENT_TYPE_SYSTEM.equals(this.clientTypeCode);
     }
-
-    @JsonIgnore
-    public String getUrlClientCodeOrElse(boolean getUrl) {
-        return getUrl ? this.urlClientCode : this.clientCode;
-    }
 }
