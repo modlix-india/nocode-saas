@@ -22,6 +22,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String FORBIDDEN_UPDATE = "forbidden_update";
     public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
     public static final String CONNECTION_NOT_FOUND = "connection_not_found";
+    public static final String CONNECTION_TOKEN_NOT_FOUND = "connection_token_not_found";
     public static final String MAIL_SEND_ERROR = "mail_send_error";
     public static final String PHONE_NUMBER_REQUIRED = "phone_number_required";
 

@@ -1,7 +1,7 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
+import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
@@ -26,15 +26,20 @@ public class WhatsappUploadController {
     }
 
     @PostMapping("/session")
-    public Mono<ResponseEntity<BaseId>> startUploadSession(@RequestBody UploadSessionRequest uploadSessionRequest) {
+    public Mono<ResponseEntity<UploadSessionId>> startUploadSession(
+            @RequestBody UploadSessionRequest uploadSessionRequest) {
         return this.service.startUploadSession(uploadSessionRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping
     public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "request") UploadRequest uploadRequest) {
-        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
+            @RequestPart(name = "connectionName") String connectionName,
+            @RequestPart(name = "uploadSessionId") String uploadSessionId,
+            @RequestPart(name = "fileOffset") String fileOffset) {
+        return this.service
+                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/status")
@@ -45,7 +50,11 @@ public class WhatsappUploadController {
     @PostMapping("/resume")
     public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "request") UploadRequest uploadRequest) {
-        return this.service.resumeUploadFromStatus(uploadRequest, filePart).map(ResponseEntity::ok);
+            @RequestPart(name = "connectionName") String connectionName,
+            @RequestPart(name = "uploadSessionId") String uploadSessionId,
+            @RequestPart(name = "fileOffset") String fileOffset) {
+        return this.service
+                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
+                .map(ResponseEntity::ok);
     }
 }
