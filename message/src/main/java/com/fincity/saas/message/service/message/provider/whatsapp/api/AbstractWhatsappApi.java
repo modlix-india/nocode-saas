@@ -41,16 +41,14 @@ public abstract class AbstractWhatsappApi {
             ClientResponse clientResponse, MessageResourceService msgService) {
         Logger logger = LoggerFactory.getLogger(AbstractWhatsappApi.class);
 
-        // Check the content type of the response
         String contentType =
                 clientResponse.headers().contentType().map(Object::toString).orElse("");
 
-        // If the content type is not JSON, handle the `application/octet-stream`
         if (!contentType.contains("application/json")) {
             logger.error("Unsupported content type received: {}. Falling back to default handling.", contentType);
             return clientResponse
-                    .bodyToMono(String.class) // Attempt to extract raw response as String
-                    .defaultIfEmpty("No response body received.") // Handle empty body
+                    .bodyToMono(String.class)
+                    .defaultIfEmpty("No response body received.")
                     .flatMap(responseBody -> {
                         logger.error("Raw response body: {}", responseBody);
                         return Mono.error(new GenericException(
@@ -59,7 +57,6 @@ public abstract class AbstractWhatsappApi {
                     });
         }
 
-        // Handle JSON response as expected
         return clientResponse.bodyToMono(WhatsappApiError.class).flatMap(errorBody -> {
             logger.error("Error response received from WhatsApp API: {}", errorBody);
 
