@@ -1,7 +1,9 @@
 package com.fincity.security.dto;
 
 import java.io.Serial;
+import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.security.jooq.enums.SecurityClientLevelType;
 import org.jooq.types.ULong;
 
@@ -33,6 +35,18 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String industry;
     private SecurityClientLevelType levelType;
 
+    private Integer activeUsers;
+    private Integer inactiveUsers;
+    private Integer deletedUsers;
+    private Integer lockedUsers;
+    private Integer passwordExpiredUsers;
+
+    private List<User> owners;
+    private Client managagingClient;
+    private List<App> apps;
+    private User createdByUser;
+
+
     public static SecurityClientLevelType getChildClientLevelType(SecurityClientLevelType level) {
         return switch (level) {
             case SYSTEM -> SecurityClientLevelType.CLIENT;
@@ -48,5 +62,11 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 
     public static SecurityClientLevelType getClientLevelType(String level) {
         return SecurityClientLevelType.valueOf(level);
+    }
+
+    @JsonProperty(value = "totalUsers")
+    public Integer getTotalUsers() {
+        if (activeUsers == null) return null;
+        return activeUsers + inactiveUsers + deletedUsers + lockedUsers + passwordExpiredUsers;
     }
 }

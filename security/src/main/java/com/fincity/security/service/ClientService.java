@@ -6,6 +6,9 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.security.dto.App;
+import com.fincity.security.dto.User;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +47,7 @@ import com.fincity.security.service.policy.ClientPinPolicyService;
 import com.fincity.security.service.policy.IPolicyService;
 
 import jakarta.annotation.PostConstruct;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple3;
@@ -51,6 +55,20 @@ import reactor.util.function.Tuple3;
 @Service
 public class ClientService
         extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
+
+//    private Integer activeUsers;
+//    private Integer inactiveUsers;
+//    private Integer deletedUsers;
+//    private Integer lockedUsers;
+//    private Integer passwordExpiredUsers;
+//
+//    private List<User> owners;
+//    private Client managagingClient;
+//    private List<App> apps;
+//    private User createdByUser;
+
+    private static final String FETCH_USER_COUNT = "fetchUserCount";
+
 
     public static final String CACHE_CLIENT_URL_LIST = "list";
     public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
@@ -444,5 +462,32 @@ public class ClientService
 
                     return this.dao.createProfileRestrictions(client.getId(), profileIds);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
+    }
+
+    public Mono<List<Client>> fillDetails(List<Client> users, ServerHttpRequest request) {
+
+        String appCode = request.getQueryParams().getFirst("appCode");
+        String appId = request.getQueryParams().getFirst("appId");
+
+        boolean fillProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_PROFILES));
+        boolean fillClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CLIENT));
+        boolean fillManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_MANAGING_CLIENT));
+        boolean fillCreatedBy = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CREATED_BY));
+
+        Flux<User> userFlux = Flux.fromIterable(users);
+
+        if (fillProfiles)
+            userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
+
+        if (fillClient)
+            userFlux = userFlux.flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
+
+        if (fillManagingClient)
+            userFlux = userFlux.flatMap(user -> this.clientService.getManagedClientOfClientById(user.getClientId()).map(user::setManagingClient));
+
+        if (fillCreatedBy)
+            userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0).flatMap(user -> this.dao.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+
+        return userFlux.collectList();
     }
 }

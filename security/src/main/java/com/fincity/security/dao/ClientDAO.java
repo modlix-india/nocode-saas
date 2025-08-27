@@ -1,12 +1,19 @@
 package com.fincity.security.dao;
 
 import static com.fincity.saas.commons.util.StringUtil.*;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityClient.*;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
 import java.util.List;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import org.jooq.Condition;
 import org.jooq.Record;
 import org.jooq.Record1;
@@ -194,5 +201,71 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                                 SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION.PROFILE_ID)
                         .values(clientId, profileId))
                 .collectList().map(List::size).map(e -> e > 0);
+    }
+
+    @Override
+    protected Condition filterConditionFilter(FilterCondition fc) {
+
+        if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
+            return super.filterConditionFilter(fc);
+
+        if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
+            return DSL.trueCondition();
+
+//        select * from security.security_client c
+//        where exists (
+//                select 1 from security.security_app a where a.client_id = c.id and a.id = 2
+//    ) or
+//        exists (
+//                select 1 from security.security_app_access aa where aa.client_id = c.id and aa.app_id = 2
+//        );
+//
+//        select * from security.security_client c
+//        where exists (
+//                select 1 from security.security_app a where a.client_id = c.id and a.app_code = 'appbuilder'
+//    ) or
+//        exists (
+//                select 1 from security.security_app_access aa
+//                left join security.security_app a on a.id = aa.app_id
+//                where aa.client_id = c.id and a.app_code = 'appbuilder'
+//        );
+
+        if (fc.getField().equals("appId")) {
+
+            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                    SECURITY_PROFILE.APP_ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue()))) :
+                    SECURITY_PROFILE.APP_ID.in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+
+            if (fc.isNegate())
+                idCondition = DSL.not(idCondition);
+
+            return DSL.exists(
+                    DSL.select(DSL.value(1))
+                            .from(SECURITY_PROFILE_USER)
+                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                            .where(DSL.and(
+                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                    idCondition
+                            ))
+            );
+        }
+
+        Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                SECURITY_APP.APP_CODE.eq(fc.getValue().toString()) :
+                SECURITY_APP.APP_CODE.in(this.multiFieldValue(SECURITY_APP.APP_CODE, fc.getValue(), fc.getMultiValue()));
+
+        if (fc.isNegate())
+            codeCondition = DSL.not(codeCondition);
+
+        return DSL.exists(
+                DSL.select(DSL.value(1))
+                        .from(SECURITY_PROFILE_USER)
+                        .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                        .where(DSL.and(
+                                SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                codeCondition
+                        ))
+        );
     }
 }
