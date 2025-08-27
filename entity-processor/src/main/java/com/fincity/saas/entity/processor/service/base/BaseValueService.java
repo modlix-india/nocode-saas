@@ -186,8 +186,12 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
     }
 
+    @Override
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
-        return this.validateEntity(entity, access).flatMap(this::updateInternal);
+        return FlatMapUtil.flatMapMono(
+                () -> this.validateEntity(entity, access),
+                vEntity -> super.updateInternal(access, entity),
+                (vEntity, updated) -> this.evictCache(updated).map(evicted -> updated));
     }
 
     @Override
@@ -195,14 +199,14 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> key != null ? this.read(key) : Mono.empty(),
-                (access, entity) -> super.update(key, fields),
+                (access, entity) -> super.updateInternal(access, key, fields),
                 (access, entity, updated) ->
                         this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
     }
 
-    public Mono<D> updateInternal(D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> super.update(entity), updated -> this.evictCache(entity).map(evicted -> updated));
+    public Mono<D> updateInternalAndEvictCache(ProcessorAccess access, D entity) {
+        return FlatMapUtil.flatMapMono(() -> super.updateInternal(access, entity), updated -> this.evictCache(entity)
+                .map(evicted -> updated));
     }
 
     @Override
@@ -210,7 +214,7 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.read(id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
@@ -233,8 +237,7 @@ public abstract class BaseValueService<
             Platform platform, ULong productTemplateId, ULong parentId) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.getAllValuesInOrderInternal(
-                                access.getAppCode(), access.getClientCode(), platform, productTemplateId, parentId))
+                        access -> this.getAllValuesInOrderInternal(access, platform, productTemplateId, parentId))
                 .map(BaseValueResponse::toList)
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
@@ -243,14 +246,18 @@ public abstract class BaseValueService<
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.getAllValues(
-                                access.getAppCode(), access.getClientCode(), platform, productTemplateId, parentId))
+                                access.getAppCode(),
+                                access.getEffectiveClientCode(),
+                                platform,
+                                productTemplateId,
+                                parentId))
                 .map(BaseValueResponse::toList)
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrder(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.getAllValuesInOrderInternal(appCode, clientCode, platform, productTemplateId)
+            ProcessorAccess access, Platform platform, ULong productTemplateId) {
+        return this.getAllValuesInOrderInternal(access, platform, productTemplateId)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         ProcessorMessageResourceService.NO_VALUES_FOUND,
@@ -259,8 +266,9 @@ public abstract class BaseValueService<
     }
 
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrderInternal(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong... parentIds) {
-        return this.getAllValues(appCode, clientCode, platform, productTemplateId, parentIds)
+            ProcessorAccess access, Platform platform, ULong productTemplateId, ULong... parentIds) {
+        return this.getAllValues(
+                        access.getAppCode(), access.getEffectiveClientCode(), platform, productTemplateId, parentIds)
                 .flatMap(map -> {
                     if (map == null || map.isEmpty()) return Mono.empty();
 
@@ -278,9 +286,8 @@ public abstract class BaseValueService<
                 });
     }
 
-    public Mono<Set<ULong>> getAllValueIds(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.getAllValues(appCode, clientCode, platform, productTemplateId)
+    public Mono<Set<ULong>> getAllValueIds(ProcessorAccess access, Platform platform, ULong productTemplateId) {
+        return this.getAllValues(access.getAppCode(), access.getEffectiveClientCode(), platform, productTemplateId)
                 .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
     }
 
@@ -305,7 +312,7 @@ public abstract class BaseValueService<
         });
     }
 
-    public Mono<Map.Entry<D, Set<D>>> getValue(
+    protected Mono<Map.Entry<D, Set<D>>> getValue(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong parentId) {
 
         if (parentId == null) return Mono.empty();
@@ -317,7 +324,7 @@ public abstract class BaseValueService<
                         .orElse(null));
     }
 
-    public Mono<Map<D, Set<D>>> getAllValues(
+    protected Mono<Map<D, Set<D>>> getAllValues(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong... parentIds) {
 
         if (parentIds == null

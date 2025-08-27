@@ -79,7 +79,7 @@ public class WhatsappTemplateService
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, validationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, validationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -105,7 +105,7 @@ public class WhatsappTemplateService
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -142,7 +142,7 @@ public class WhatsappTemplateService
     public Mono<WhatsappTemplate> updateTemplateStatus(WhatsappTemplateRequest whatsappTemplateRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        messageAccess -> super.messageConnectionService.getConnection(
+                        messageAccess -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -158,11 +158,21 @@ public class WhatsappTemplateService
                                     || retrievedTemplates.getData().isEmpty())
                                 return super.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        "template_not_found_in_whatsapp");
+                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP,
+                                        existingTemplate.getTemplateId());
 
                             Template apiTemplate = retrievedTemplates.getData().getFirst();
+
+                            if (!apiTemplate.getId().equals(existingTemplate.getTemplateId()))
+                                return super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                        MessageResourceService.TEMPLATE_NOT_FOUND_IN_WHATSAPP,
+                                        existingTemplate.getTemplateId());
+
                             existingTemplate.setStatus(apiTemplate.getStatus());
-                            existingTemplate.setRejectedReason(apiTemplate.getRejectedReason());
+
+                            if (apiTemplate.getStatus().equals(TemplateStatus.REJECTED))
+                                existingTemplate.setRejectedReason(apiTemplate.getRejectedReason());
 
                             return super.update(existingTemplate);
                         })

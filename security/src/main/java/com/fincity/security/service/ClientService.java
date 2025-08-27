@@ -79,37 +79,27 @@ public class ClientService
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
     private static final String CACHE_NAME_CLIENT_ID = "clientId";
-
+    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+            AuthenticationPasswordType.class);
     @Autowired
     private CacheService cacheService;
-
     @Autowired
     @Lazy
     private AppService appService;
-
     @Autowired
     private SecurityMessageResourceService securityMessageResourceService;
-
     @Autowired
     private AppRegistrationV2DAO appRegistrationDAO;
-
     @Autowired
     private ClientHierarchyService clientHierarchyService;
-
     @Autowired
     private ClientPasswordPolicyService clientPasswordPolicyService;
-
     @Autowired
     private ClientPinPolicyService clientPinPolicyService;
-
     @Autowired
     private ClientOtpPolicyService clientOtpPolicyService;
-
     @Value("${security.subdomain.endings}")
     private String[] subDomainURLEndings;
-
-    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
-            AuthenticationPasswordType.class);
 
     @PostConstruct
     public void init() {
@@ -165,6 +155,10 @@ public class ClientService
 
     public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong userId) {
         return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
+    }
+
+    public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
+        return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
     }
 
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -441,7 +435,7 @@ public class ClientService
     }
 
     public Mono<Boolean> isClientActive(ULong clientId) {
-        return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
+        return this.getClientHierarchy(clientId)
                 .flatMap(clientHie -> this.dao.isClientActive(clientHie));
     }
 

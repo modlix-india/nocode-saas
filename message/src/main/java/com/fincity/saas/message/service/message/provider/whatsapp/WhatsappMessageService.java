@@ -46,8 +46,8 @@ public class WhatsappMessageService
         extends AbstractMessageService<MessageWhatsappMessagesRecord, WhatsappMessage, WhatsappMessageDAO> {
 
     public static final String WHATSAPP_PROVIDER_URI = "/whatsapp";
-
     private static final String WHATSAPP_MESSAGE_CACHE = "whatsappMessage";
+    private static final String SUBSCRIBE = "subscribe";
 
     private final WhatsappApiFactory whatsappApiFactory;
 
@@ -55,7 +55,7 @@ public class WhatsappMessageService
 
     private final WhatsappCswService customerServiceWindowService;
 
-    @Value("${facebook.whatsapp.webhook.verify-token:null}")
+    @Value("${meta.webhook.verify-token:null}")
     private String verifyToken;
 
     @Autowired
@@ -120,6 +120,8 @@ public class WhatsappMessageService
 
         if (!messageRequest.isValid()) return super.throwMissingParam("text");
 
+        if (!messageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+
         WhatsappMessage whatsappMessage = WhatsappMessage.ofOutbound(
                 MessageBuilder.builder()
                         .setTo(messageRequest.getToNumber().getNumber())
@@ -133,9 +135,11 @@ public class WhatsappMessageService
 
         if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
 
+        if (!whatsappMessageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), whatsappMessageRequest.getConnectionName()),
                 (access, connection) -> this.sendMessageInternal(
                         access,
@@ -184,17 +188,11 @@ public class WhatsappMessageService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
 
-    public Mono<String> verifyWebhook(String mode, String token, String challenge) {
+    public Mono<String> verifyMetaWebhook(String mode, String token, String challenge) {
 
         logger.info("Received webhook verification request: mode={}, token={}, challenge={}", mode, token, challenge);
 
-        if ("subscribe".equals(mode) && verifyToken.equals(token)) {
-            logger.info("Webhook verified successfully");
-            return Mono.just(challenge);
-        } else {
-            logger.error("Webhook verification failed: Invalid mode or token");
-            return Mono.error(new RuntimeException("Webhook verification failed"));
-        }
+        return SUBSCRIBE.equals(mode) && verifyToken.equals(token) ? Mono.just(challenge) : Mono.empty();
     }
 
     private Mono<String> getWhatsappBusinessAccountId(Connection connection) {

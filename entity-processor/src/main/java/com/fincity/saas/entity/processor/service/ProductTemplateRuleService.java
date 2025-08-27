@@ -60,37 +60,30 @@ public class ProductTemplateRuleService
     }
 
     @Override
-    protected Mono<Set<ULong>> getStageIds(String appCode, String clientCode, Identity entityId, List<ULong> stageIds) {
+    protected Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
         return FlatMapUtil.flatMapMono(
                         () -> productTemplateService.readIdentityInternal(entityId),
                         productTemplate -> super.stageService.getAllStages(
-                                appCode,
-                                clientCode,
+                                access,
                                 productTemplate.getId(),
                                 stageIds != null ? stageIds.toArray(new ULong[0]) : null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageIds"));
     }
 
     @Override
-    protected Mono<ULong> getStageId(String appCode, String clientCode, Identity entityId, ULong stageId) {
+    protected Mono<ULong> getStageId(ProcessorAccess access, Identity entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
                         () -> productTemplateService.readIdentityInternal(entityId),
-                        productTemplate ->
-                                super.stageService.getStage(appCode, clientCode, productTemplate.getId(), stageId))
+                        productTemplate -> super.stageService.getStage(access, productTemplate.getId(), stageId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageId"));
     }
 
     @Override
     public Mono<ULong> getUserAssignment(
-            String appCode,
-            String clientCode,
-            ULong entityId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data) {
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.getRuleWithOrder(appCode, clientCode, entityId, stageId),
+                        () -> this.getRuleWithOrder(
+                                access.getAppCode(), access.getEffectiveClientCode(), entityId, stageId),
                         productTemplateRules -> super.ruleExecutionService.executeRules(
                                 productTemplateRules, tokenPrefix, userId, data),
                         (productTemplateRules, eRule) -> super.update(eRule).flatMap(rule -> {

@@ -3,6 +3,7 @@ package com.fincity.saas.notification.oserver.core.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.notification.enums.channel.NotificationChannelType;
 import com.fincity.saas.notification.oserver.core.document.Connection;
+import com.fincity.saas.notification.oserver.core.document.Notification;
 import com.fincity.saas.notification.oserver.core.enums.ConnectionType;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,11 @@ public class NotificationConnectionService extends AbstractCoreService<Connectio
     private static final String NOTIFICATION_CONNECTION_TYPE = ConnectionType.NOTIFICATION.name();
 
     private static final String CHANNEL_CONNECTIONS = "channelConnections";
+
+    @Override
+    protected String getObjectName() {
+        return Notification.class.getSimpleName();
+    }
 
     @Override
     protected Mono<Connection> fetchCoreDocument(

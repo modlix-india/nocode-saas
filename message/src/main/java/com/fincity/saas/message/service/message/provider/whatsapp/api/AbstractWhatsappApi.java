@@ -47,7 +47,13 @@ public abstract class AbstractWhatsappApi {
             return msgService.throwStrMessage(
                     msg -> new GenericException(
                             HttpStatus.valueOf(clientResponse.statusCode().value()), msg),
-                    errorBody.getError().getMessage());
+                    errorBody.getError().getMessage()
+                            + (errorBody.getError().getErrorUserSubtitle() != null
+                                    ? ". " + errorBody.getError().getErrorUserSubtitle()
+                                    : "")
+                            + (errorBody.getError().getErrorUserMsg() != null
+                                    ? ". " + errorBody.getError().getErrorUserMsg()
+                                    : ""));
         });
     }
 

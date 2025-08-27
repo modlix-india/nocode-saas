@@ -21,8 +21,9 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String FORBIDDEN_CREATE = "forbidden_create";
     public static final String FORBIDDEN_UPDATE = "forbidden_update";
     public static final String TEMPLATE_DATA_NOT_FOUND = "template_data_not_found";
-    public static final String CONNECTION_DETAILS_MISSING = "connection_details_missing";
+    public static final String CONNECTION_NOT_FOUND = "connection_not_found";
     public static final String MAIL_SEND_ERROR = "mail_send_error";
+    public static final String PHONE_NUMBER_REQUIRED = "phone_number_required";
 
     public static final String INVALID_CONNECTION_TYPE = "invalid_connection_type";
     public static final String URL_CREATION_ERROR = "url_creation_error";
@@ -49,6 +50,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String TEMPLATE_DAILY_EDIT_LIMIT_EXCEEDED = "template_daily_edit_limit_exceeded";
     public static final String TEMPLATE_MONTHLY_EDIT_LIMIT_EXCEEDED = "template_monthly_edit_limit_exceeded";
     public static final String TEMPLATE_NAME_LENGTH_EXCEEDED = "template_name_length_exceeded";
+    public static final String TEMPLATE_NOT_FOUND_IN_WHATSAPP = "template_not_found_in_whatsapp";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

@@ -42,6 +42,11 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.STAGE;
     }
@@ -76,7 +81,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                             && !s.getId().equals(entity.getId());
                                 })
                                 .map(s -> s.setOrder(s.getOrder() + 1))
-                                .flatMap(this::updateInternal)
+                                .flatMap(oStage -> super.updateInternalAndEvictCache(access, oStage))
                                 .then(Mono.just(entity));
                     })
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
@@ -87,9 +92,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.getLatestStageByOrder(
-                                access.getAppCode(), access.getClientCode(), entity.getProductTemplateId()),
-                        latestStage -> {
+                        () -> this.getLatestStageByOrder(access, entity.getProductTemplateId()), latestStage -> {
                             if (latestStage == null) return Mono.just(entity.setOrder(1));
 
                             return Mono.just(entity.setOrder(latestStage.getOrder() + 1));
@@ -244,21 +247,21 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.updateOrCreateChildren"));
     }
 
-    public Mono<Stage> getLatestStageByOrder(String appCode, String clientCode, ULong productTemplateId) {
-        return super.getAllValuesInOrderInternal(appCode, clientCode, null, productTemplateId)
+    public Mono<Stage> getLatestStageByOrder(ProcessorAccess access, ULong productTemplateId) {
+        return super.getAllValuesInOrderInternal(access, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getLatestStageByOrder"));
     }
 
-    public Mono<Stage> getFirstStage(String appCode, String clientCode, ULong productTemplateId) {
-        return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
+    public Mono<Stage> getFirstStage(ProcessorAccess access, ULong productTemplateId) {
+        return super.getAllValuesInOrder(access, null, productTemplateId)
                 .map(NavigableMap::firstKey)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStage"));
     }
 
-    public Mono<Stage> getFirstStatus(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
-        return super.getAllValuesInOrder(appCode, clientCode, null, productTemplateId)
+    public Mono<Stage> getFirstStatus(ProcessorAccess access, ULong productTemplateId, ULong stageId) {
+        return super.getAllValuesInOrder(access, null, productTemplateId)
                 .flatMap(navigableMap -> {
                     Stage stage = navigableMap.keySet().stream()
                             .filter(key -> key.getId().equals(stageId))
@@ -275,8 +278,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStatus"));
     }
 
-    public Mono<ULong> getStage(String appCode, String clientCode, ULong productTemplateId, ULong stageId) {
-        return super.getAllValueIds(appCode, clientCode, null, productTemplateId)
+    public Mono<ULong> getStage(ProcessorAccess access, ULong productTemplateId, ULong stageId) {
+        return super.getAllValueIds(access, null, productTemplateId)
                 .flatMap(stageIdsInternal -> {
                     if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.empty();
                     if (!stageIdsInternal.contains(stageId)) return Mono.empty();
@@ -285,20 +288,18 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStage"));
     }
 
-    public Mono<Set<ULong>> getAllStages(
-            String appCode, String clientCode, ULong productTemplateId, ULong... stageIds) {
-        return super.getAllValueIds(appCode, clientCode, null, productTemplateId)
-                .flatMap(stageIdsInternal -> {
-                    if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
+    public Mono<Set<ULong>> getAllStages(ProcessorAccess access, ULong productTemplateId, ULong... stageIds) {
+        return super.getAllValueIds(access, null, productTemplateId).flatMap(stageIdsInternal -> {
+            if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
 
-                    if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
+            if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
 
-                    if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
+            if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
 
-                    stageIdsInternal.retainAll(List.of(stageIds));
+            stageIdsInternal.retainAll(List.of(stageIds));
 
-                    return Mono.just(stageIdsInternal);
-                });
+            return Mono.just(stageIdsInternal);
+        });
     }
 
     public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {
@@ -330,7 +331,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .flatMap(entry -> {
                                         Stage stage = parentStageMap.get(entry.getKey());
                                         stage.setOrder(entry.getValue());
-                                        return this.updateInternal(stage);
+                                        return this.updateInternalAndEvictCache(access, stage);
                                     })
                                     .collectList();
                         })

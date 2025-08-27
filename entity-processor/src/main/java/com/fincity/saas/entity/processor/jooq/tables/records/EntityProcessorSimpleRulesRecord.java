@@ -509,6 +509,6 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

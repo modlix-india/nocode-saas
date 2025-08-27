@@ -64,9 +64,14 @@ public class OAuth2RestService extends AbstractRestTokenService {
 
     @Override
     public Mono<RestResponse> call(Connection connection, RestRequest request, boolean fileDownload) {
+
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> getAccessToken(connection),
-                        token -> makeRestCall(connection, request, token, fileDownload))
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> getAccessToken(ca.getUrlAppCode(), ca.getClientCode(), connection),
+
+                        (ca, token) -> makeRestCall(connection, request, token, fileDownload))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RestAuthService.call"));
     }
 
@@ -75,50 +80,35 @@ public class OAuth2RestService extends AbstractRestTokenService {
         return this.call(connection, request, false);
     }
 
-    private Mono<String> getAccessToken(Connection connection) {
+    private Mono<String> getAccessToken(String appCode, String clientCode, Connection connection) {
 
         Map<String, Object> connectionDetails = connection.getConnectionDetails();
         String grantTypeString = (String) connectionDetails.get(AUTH_GRANT_TYPE);
         boolean isAuthorizationCode = OAuth2GrantTypes.AUTHORIZATION_CODE.name().equals(grantTypeString);
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
-                    if (!ca.isAuthenticated()) {
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                CoreMessageResourceService.FORBIDDEN_EXECUTION,
-                                connection.getName());
+        return this.getExistingAccessToken(connection.getName(), clientCode, appCode)
+                .flatMap(token -> {
+
+                    if (token.getExpiresAt() == null || token.getExpiresAt().isAfter(LocalDateTime.now())) {
+                        return Mono.just(token.getToken());
                     }
 
-                    return this.getExistingAccessToken(connection.getName(), ca.getClientCode(), ca.getUrlAppCode())
-                            .flatMap(token -> {
-                                if (token.getExpiresAt() == null
-                                        || token.getExpiresAt().isAfter(LocalDateTime.now())) {
-                                    return Mono.just(token.getToken());
-                                }
+                    if (isAuthorizationCode) {
+                        return refreshAccessToken(connection, clientCode, appCode);
+                    }
 
-                                if (isAuthorizationCode) {
-                                    return refreshAccessToken(connection, ca.getClientCode(), ca.getUrlAppCode());
-                                }
-
-                                return cacheService
-                                        .evict(
-                                                CACHE_NAME_REST_OAUTH2,
-                                                getCacheKeys(
-                                                        connection.getName(),
-                                                        token.getClientCode(),
-                                                        token.getAppCode()))
-                                        .flatMap(v -> createClientCredentialsToken(connection));
-                            })
-                            .switchIfEmpty(Mono.defer(() -> {
-                                if (isAuthorizationCode) {
-                                    return refreshAccessToken(connection, ca.getClientCode(), ca.getUrlAppCode());
-                                }
-                                return createClientCredentialsToken(connection);
-                            }));
+                    return cacheService
+                            .evict(
+                                    CACHE_NAME_REST_OAUTH2,
+                                    getCacheKeys(connection.getName(), token.getClientCode(), token.getAppCode()))
+                            .flatMap(v -> createClientCredentialsToken(connection));
                 })
-                .switchIfEmpty(Mono.error(new GenericException(
-                        HttpStatus.BAD_REQUEST, "Access denied: Integration token unavailable or expired")));
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (isAuthorizationCode) {
+                        return refreshAccessToken(connection, clientCode, appCode);
+                    }
+                    return createClientCredentialsToken(connection);
+                }));
     }
 
     private Mono<CoreToken> getExistingAccessToken(String connectionName, String clientCode, String appCode) {
@@ -402,10 +392,14 @@ public class OAuth2RestService extends AbstractRestTokenService {
                         connectionName));
     }
 
-    public Mono<String> getAccessToken(String connectionName, String clientCode, String appCode) {
-        return  this.connectionService
-                .readInternalConnection(connectionName, appCode, clientCode, ConnectionType.REST_API)
-                .flatMap(this::getAccessToken);
+    public Mono<String> getAccessToken(String appCode, String clientCode, String connectionName) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.connectionService.readInternalConnection(
+                        connectionName, appCode, clientCode, ConnectionType.REST_API),
+
+                connection -> this.getAccessToken(appCode, clientCode, connection));
     }
 
     private Mono<Void> invalidAuthCallback(ServerHttpRequest request, ServerHttpResponse response) {

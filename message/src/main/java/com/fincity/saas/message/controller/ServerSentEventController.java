@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 @RestController
-@RequestMapping("/api/events")
+@RequestMapping("/api/message/events")
 public class ServerSentEventController {
 
     private final CallEventService eventService;

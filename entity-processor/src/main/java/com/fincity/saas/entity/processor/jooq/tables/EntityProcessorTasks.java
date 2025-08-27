@@ -4,10 +4,10 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTasksTaskPriority;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes.EntityProcessorTaskTypesPath;
@@ -124,6 +124,13 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
     public final TableField<EntityProcessorTasksRecord, String> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.VARCHAR(255), this, "Whether this task has attachments.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public final TableField<EntityProcessorTasksRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this content was created", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
+
+    /**
      * The column <code>entity_processor.entity_processor_tasks.OWNER_ID</code>.
      * Owner related to this task.
      */
@@ -135,6 +142,19 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * related to this task.
      */
     public final TableField<EntityProcessorTasksRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this task.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tasks.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of user for which this task was created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client for which this task was created.");
 
     /**
      * The column
@@ -154,7 +174,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.TASK_PRIORITY</code>.
      * Priority level of the task.
      */
-    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorTasksTaskPriority.class), this, "Priority level of the task.", new EnumConverter<EntityProcessorTasksTaskPriority, TaskPriority>(EntityProcessorTasksTaskPriority.class, TaskPriority.class));
+    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)), this, "Priority level of the task.", new EnumConverter<String, TaskPriority>(String.class, TaskPriority.class));
 
     /**
      * The column

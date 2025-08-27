@@ -1,8 +1,11 @@
 package com.fincity.security.controller;
 
+
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dto.User;
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -75,6 +78,16 @@ public class ClientController
                                                             @RequestParam String clientCode) {
 
         return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/managedClient")
+    public Mono<ResponseEntity<Client>> getManagedClientOfClientById(@RequestParam ULong clientId) {
+        return this.service.getManagedClientOfClientById(clientId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/clientHierarchy")
+    public Mono<ResponseEntity<List<ULong>>> getClientHierarchy(@RequestParam ULong clientId) {
+        return this.service.getClientHierarchy(clientId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/validateClientCode")

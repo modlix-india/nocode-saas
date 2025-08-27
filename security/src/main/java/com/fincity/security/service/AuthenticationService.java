@@ -402,7 +402,7 @@ public class AuthenticationService implements IAuthenticationService {
                                     appCode,
                                     user,
                                     new OtpVerificationRequest()
-                                            .setPurpose(OtpPurpose.PASSWORD_RESET)
+                                            .setPurpose(OtpPurpose.LOGIN)
                                             .setOtp(passwordString));
                         },
                         isValid -> Boolean.FALSE.equals(isValid)
