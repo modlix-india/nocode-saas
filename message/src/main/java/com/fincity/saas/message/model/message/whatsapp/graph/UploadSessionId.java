@@ -45,7 +45,6 @@ public class UploadSessionId extends BaseId<UploadSessionId> {
         this.upload = m.group(1);
         this.sig = m.group(2);
 
-        // Canonicalize
         super.setId(UPLOAD_PREFIX + this.upload + SIG_SEPARATOR + this.sig);
         return this;
     }
