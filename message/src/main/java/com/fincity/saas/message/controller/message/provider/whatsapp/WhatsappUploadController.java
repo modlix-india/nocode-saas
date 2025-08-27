@@ -1,6 +1,5 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
@@ -27,7 +26,8 @@ public class WhatsappUploadController {
     }
 
     @PostMapping("/session")
-    public Mono<ResponseEntity<UploadSessionId>> startUploadSession(@RequestBody UploadSessionRequest uploadSessionRequest) {
+    public Mono<ResponseEntity<UploadSessionId>> startUploadSession(
+            @RequestBody UploadSessionRequest uploadSessionRequest) {
         return this.service.startUploadSession(uploadSessionRequest).map(ResponseEntity::ok);
     }
 

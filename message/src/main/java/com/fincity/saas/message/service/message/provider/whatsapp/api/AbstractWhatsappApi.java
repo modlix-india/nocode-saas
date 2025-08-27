@@ -60,26 +60,22 @@ public abstract class AbstractWhatsappApi {
         }
 
         // Handle JSON response as expected
-        return clientResponse
-                .bodyToMono(WhatsappApiError.class)
-                .flatMap(errorBody -> {
-                    logger.error("Error response received from WhatsApp API: {}", errorBody);
+        return clientResponse.bodyToMono(WhatsappApiError.class).flatMap(errorBody -> {
+            logger.error("Error response received from WhatsApp API: {}", errorBody);
 
-                    String errorMessage = errorBody.getError().getMessage()
-                            + (errorBody.getError().getErrorUserSubtitle() != null
-                                    ? ". " + errorBody.getError().getErrorUserSubtitle()
-                                    : "")
-                            + (errorBody.getError().getErrorUserMsg() != null
-                                    ? ". " + errorBody.getError().getErrorUserMsg()
-                                    : "");
+            String errorMessage = errorBody.getError().getMessage()
+                    + (errorBody.getError().getErrorUserSubtitle() != null
+                            ? ". " + errorBody.getError().getErrorUserSubtitle()
+                            : "")
+                    + (errorBody.getError().getErrorUserMsg() != null
+                            ? ". " + errorBody.getError().getErrorUserMsg()
+                            : "");
 
-                    return msgService.throwStrMessage(
-                            msg -> new GenericException(
-                                    HttpStatus.valueOf(
-                                            clientResponse.statusCode().value()),
-                                    msg),
-                            errorMessage);
-                });
+            return msgService.throwStrMessage(
+                    msg -> new GenericException(
+                            HttpStatus.valueOf(clientResponse.statusCode().value()), msg),
+                    errorMessage);
+        });
     }
 
     protected abstract Object createApiService();

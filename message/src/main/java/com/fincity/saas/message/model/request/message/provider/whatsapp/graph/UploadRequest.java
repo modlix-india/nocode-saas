@@ -1,10 +1,8 @@
 package com.fincity.saas.message.model.request.message.provider.whatsapp.graph;
 
-import java.io.Serial;
-
 import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

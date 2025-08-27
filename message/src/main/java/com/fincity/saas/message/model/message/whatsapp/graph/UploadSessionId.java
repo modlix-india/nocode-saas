@@ -1,12 +1,9 @@
 package com.fincity.saas.message.model.message.whatsapp.graph;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

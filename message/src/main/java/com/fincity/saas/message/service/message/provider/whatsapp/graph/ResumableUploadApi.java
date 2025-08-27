@@ -1,7 +1,6 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.graph;
 
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
