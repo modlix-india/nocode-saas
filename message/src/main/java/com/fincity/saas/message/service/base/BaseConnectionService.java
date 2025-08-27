@@ -1,8 +1,13 @@
 package com.fincity.saas.message.service.base;
 
+import org.springframework.http.HttpStatus;
+
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.oserver.core.service.AbstractCoreService;
+import com.fincity.saas.message.service.MessageResourceService;
+
 import reactor.core.publisher.Mono;
 
 public abstract class BaseConnectionService extends AbstractCoreService<Connection> {
@@ -22,16 +27,25 @@ public abstract class BaseConnectionService extends AbstractCoreService<Connecti
     @Override
     protected Mono<Connection> fetchCoreDocument(
             String appCode, String urlClientCode, String clientCode, String documentName) {
-        return super.coreService.getConnection(
-                urlClientCode,
-                documentName,
-                appCode,
-                clientCode,
-                getConnectionType().name());
+        return super.coreService
+                .getConnection(
+                        urlClientCode,
+                        documentName,
+                        appCode,
+                        clientCode,
+                        getConnectionType().name())
+                .switchIfEmpty(super.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        MessageResourceService.CONNECTION_NOT_FOUND,
+                        documentName));
     }
 
     public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {
-        return this.getCoreToken(appCode, clientCode, connectionName);
+        return this.getCoreToken(appCode, clientCode, connectionName)
+                .switchIfEmpty(super.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        MessageResourceService.CONNECTION_TOKEN_NOT_FOUND,
+                        connectionName));
     }
 
     private Mono<String> getCoreToken(String appCode, String clientCode, String connectionName) {

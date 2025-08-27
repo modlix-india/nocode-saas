@@ -1,10 +1,16 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
+import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
@@ -15,12 +21,8 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.IMessageAccessService;
 import com.fincity.saas.message.service.message.MessageConnectionService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
+
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -85,7 +87,7 @@ public class WhatsappUploadService implements IMessageAccessService {
         return Mono.just(connection);
     }
 
-    public Mono<BaseId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
+    public Mono<UploadSessionId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
@@ -117,7 +119,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
                     if (filePartMono == null) return this.throwMissingParam(PARAM_FILE);
 
@@ -140,7 +142,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
 
                     return api.getUploadStatus(uploadRequest.getUploadSessionId());
@@ -158,7 +160,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
                     return readFilePartBytes(filePartMono)
                             .flatMap(bytes -> api.resumeUploadFromStatus(uploadRequest.getUploadSessionId(), bytes));

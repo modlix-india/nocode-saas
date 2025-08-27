@@ -1,18 +1,24 @@
 package com.fincity.saas.message.oserver.core.service;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.message.feign.IFeignCoreService;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fincity.saas.message.service.MessageResourceService;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
 
     protected static final String CACHE_NAME = "Cache";
+
+    protected MessageResourceService msgService;
 
     protected CacheService cacheService;
 
@@ -21,6 +27,11 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
     protected IFeignSecurityService securityService;
 
     protected abstract String getObjectName();
+
+    @Autowired
+    private void setMsgService(MessageResourceService msgService) {
+        this.msgService = msgService;
+    }
 
     @Autowired
     private void setCacheService(CacheService cacheService) {
@@ -37,7 +48,7 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
         this.securityService = securityService;
     }
 
-    public String getCacheName(String appCode, String name) {
+    protected String getCacheName(String appCode, String name) {
         return this.getObjectName() + CACHE_NAME + "_" + appCode + "_" + name;
     }
 

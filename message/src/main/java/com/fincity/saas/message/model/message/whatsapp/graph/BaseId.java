@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class BaseId implements Serializable {
+public abstract class BaseId<T extends BaseId<T>> implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1079516856485512246L;
