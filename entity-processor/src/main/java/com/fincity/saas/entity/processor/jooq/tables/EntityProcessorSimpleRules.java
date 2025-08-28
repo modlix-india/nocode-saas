@@ -8,8 +8,6 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesComparisonOperator;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorSimpleRulesMatchOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations.EntityProcessorSimpleComplexRuleRelationsPath;
@@ -158,7 +156,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.COMPARISON_OPERATOR</code>.
      * Operator for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> COMPARISON_OPERATOR = createField(DSL.name("COMPARISON_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesComparisonOperator.class), this, "Operator for this Simple Rule.", new EnumConverter<EntityProcessorSimpleRulesComparisonOperator, ComparisonOperator>(EntityProcessorSimpleRulesComparisonOperator.class, ComparisonOperator.class));
+    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> COMPARISON_OPERATOR = createField(DSL.name("COMPARISON_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)), this, "Operator for this Simple Rule.", new EnumConverter<String, ComparisonOperator>(String.class, ComparisonOperator.class));
 
     /**
      * The column
@@ -186,7 +184,7 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.MATCH_OPERATOR</code>.
      * Operator for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> MATCH_OPERATOR = createField(DSL.name("MATCH_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorSimpleRulesMatchOperator.class), this, "Operator for this Simple Rule.", new EnumConverter<EntityProcessorSimpleRulesMatchOperator, ComparisonOperator>(EntityProcessorSimpleRulesMatchOperator.class, ComparisonOperator.class));
+    public final TableField<EntityProcessorSimpleRulesRecord, ComparisonOperator> MATCH_OPERATOR = createField(DSL.name("MATCH_OPERATOR"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("EQUALS", SQLDataType.VARCHAR)), this, "Operator for this Simple Rule.", new EnumConverter<String, ComparisonOperator>(String.class, ComparisonOperator.class));
 
     /**
      * The column

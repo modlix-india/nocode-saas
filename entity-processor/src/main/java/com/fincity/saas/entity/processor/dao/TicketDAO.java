@@ -5,6 +5,7 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicke
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Condition;
@@ -30,23 +31,24 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     public Mono<Ticket> readByNumberAndEmail(
-            String appCode, String clientCode, ULong productId, Integer dialCode, String number, String email) {
+            ProcessorAccess access, ULong productId, Integer dialCode, String number, String email) {
         return Mono.from(this.dslContext
                         .selectFrom(this.table)
-                        .where(this.getOwnerIdentifierConditions(
-                                appCode, clientCode, productId, dialCode, number, email))
+                        .where(this.getOwnerIdentifierConditions(access, productId, dialCode, number, email))
                         .orderBy(this.idField.desc())
                         .limit(1))
                 .map(e -> e.into(this.pojoClass));
     }
 
     private List<Condition> getOwnerIdentifierConditions(
-            String appCode, String clientCode, ULong productId, Integer dialCode, String number, String email) {
+            ProcessorAccess access, ULong productId, Integer dialCode, String number, String email) {
 
         List<Condition> conditions = new ArrayList<>();
 
-        conditions.add(this.appCodeField.eq(appCode));
-        conditions.add(this.clientCodeField.eq(clientCode));
+        conditions.add(this.appCodeField.eq(access.getAppCode()));
+        conditions.add(this.clientCodeField.eq(access.getClientCode()));
+
+        if (access.isOutsideUser()) conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 

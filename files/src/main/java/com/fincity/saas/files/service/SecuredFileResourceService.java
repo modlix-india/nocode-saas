@@ -27,7 +27,9 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+
 import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.files.dao.FileSystemDao;
 import com.fincity.saas.files.dto.FilesSecuredAccessKey;
@@ -53,7 +55,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     private static final String CREATE_KEY = "/createKey";
 
     private static final String USER_IMAGES = "_userImages";
-    private static final String WITH_IN_CLIENT = "_withInClient";
+    public static final String WITH_IN_CLIENT = "_withInClient";
     private static final String WITH_IN_SUB_CLIENT = "_withInSubClient";
     private static final String ALL_SUB_CLIENTS = "_allSubClients";
 
@@ -83,9 +85,9 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     private final IFeignSecurityService securityService;
 
     public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
-            FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
-            FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
-            FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
+                                      FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
+                                      FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
+                                      FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
         super(filesAccessPathService, msgService, fileUploadDownloadService);
         this.fileSecuredAccessService = fileSecuredAccessService;
         this.fileSystemDao = fileSystemDao;
@@ -132,14 +134,13 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                     ca -> switch (firstFolderName) {
                         case USER_IMAGES -> Mono.just(true);
                         case WITH_IN_CLIENT -> Mono.just(ca.getClientCode().equals(finalClientCode));
-                        case WITH_IN_SUB_CLIENT ->
-                            ca.getClientCode().equals(finalClientCode) ? Mono.just(false)
-                                    : this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
+                        case WITH_IN_SUB_CLIENT -> ca.getClientCode().equals(finalClientCode) ? Mono.just(false)
+                                : this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
                         case ALL_SUB_CLIENTS ->
-                            this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
+                                this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
                         default -> Mono.just(false);
                     }).contextWrite(Context.of(LogUtil.METHOD_NAME,
-                            "SecuredFileResourceService.checkReadAccessWithClientCode"));
+                    "SecuredFileResourceService.checkReadAccessWithClientCode"));
 
         return this.fileAccessService.hasReadAccess(resourcePath, finalClientCode, FilesAccessPathResourceType.SECURED);
     }
@@ -161,14 +162,14 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.checkReadAccessWithClientCode(tup.getT2())
-                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        () -> this.checkReadAccessWithClientCode(tup.getT2())
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
+                        hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
 
-                (hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
+                        (hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -176,7 +177,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     }
 
     public Mono<Void> downloadFileByKey(String key, DownloadOptions downloadOptions, ServerHttpRequest request,
-            ServerHttpResponse response) {
+                                        ServerHttpResponse response) {
 
         if (safeIsBlank(key)) {
             return null;
@@ -247,42 +248,42 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> (userId == null) ? Mono.just(ca.getUser().getId())
-                        : this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode())
+                        ca -> (userId == null) ? Mono.just(ca.getUser().getId())
+                                : this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode())
                                 .filter(Boolean::booleanValue)
                                 .filter(t -> SecurityContextUtil.hasAuthority("Authorities.User_UPDATE",
                                         ca.getUser().getAuthorities()))
                                 .map(e -> userId.toBigInteger()),
 
-                (ca, uid) -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
-                        .subscribeOn(Schedulers.boundedElastic()),
+                        (ca, uid) -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
+                                .subscribeOn(Schedulers.boundedElastic()),
 
-                (ca, uid, tempDirectory) -> {
+                        (ca, uid, tempDirectory) -> {
 
-                    Path file = tempDirectory.resolve(fp.filename());
-                    return fp.transferTo(file).thenReturn(file.toFile());
-                },
+                            Path file = tempDirectory.resolve(fp.filename());
+                            return fp.transferTo(file).thenReturn(file.toFile());
+                        },
 
-                (ca, uid, tempDirectory, file) -> Mono
-                        .fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
+                        (ca, uid, tempDirectory, file) -> Mono
+                                .fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
 
-                (ca, uid, temp, file, sourceTuple) -> Mono.defer(() -> Mono.just(Tuples.of(
-                        ImageTransformUtil.transformImage(sourceTuple.getT1(), BufferedImage.TYPE_INT_ARGB, details),
-                        BufferedImage.TYPE_INT_ARGB)))
-                        .subscribeOn(Schedulers.boundedElastic()),
+                        (ca, uid, temp, file, sourceTuple) -> Mono.defer(() -> Mono.just(Tuples.of(
+                                        ImageTransformUtil.transformImage(sourceTuple.getT1(), BufferedImage.TYPE_INT_ARGB, details),
+                                        BufferedImage.TYPE_INT_ARGB)))
+                                .subscribeOn(Schedulers.boundedElastic()),
 
-                (ca, uid, temp, file,
-                        sTuple, imgTuple) -> Mono.fromCallable(() -> {
+                        (ca, uid, temp, file,
+                         sTuple, imgTuple) -> Mono.fromCallable(() -> {
                             File finalFile = temp.resolve(uid + ".png").toFile();
                             ImageIO.write(imgTuple.getT1(), "png", finalFile);
                             return finalFile;
                         }).subscribeOn(Schedulers.boundedElastic()),
 
-                (ca, uid, temp, file,
-                        sTuple, imgTuple, finalFile) -> this.getFSService().createFileFromFile("SYSTEM",
-                                USER_IMAGES, finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
+                        (ca, uid, temp, file,
+                         sTuple, imgTuple, finalFile) -> this.getFSService().createFileFromFile("SYSTEM",
+                                        USER_IMAGES, finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
                                 .<FileDetail>map(
                                         fd -> this.convertToFileDetailWhileCreation("/_userImages", "SYSTEM", fd)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.uploadUserImage"));

@@ -8,7 +8,6 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplateRulesUserDistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules.EntityProcessorComplexRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules.EntityProcessorSimpleRulesPath;
@@ -166,7 +165,7 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_template_rules.USER_DISTRIBUTION_TYPE</code>.
      * User distribution strategy for this rule.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, DistributionType> USER_DISTRIBUTION_TYPE = createField(DSL.name("USER_DISTRIBUTION_TYPE"), SQLDataType.VARCHAR(14).nullable(false).defaultValue(DSL.inline("ROUND_ROBIN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductTemplateRulesUserDistributionType.class), this, "User distribution strategy for this rule.", new EnumConverter<EntityProcessorProductTemplateRulesUserDistributionType, DistributionType>(EntityProcessorProductTemplateRulesUserDistributionType.class, DistributionType.class));
+    public final TableField<EntityProcessorProductTemplateRulesRecord, DistributionType> USER_DISTRIBUTION_TYPE = createField(DSL.name("USER_DISTRIBUTION_TYPE"), SQLDataType.VARCHAR(14).nullable(false).defaultValue(DSL.inline("ROUND_ROBIN", SQLDataType.VARCHAR)), this, "User distribution strategy for this rule.", new EnumConverter<String, DistributionType>(String.class, DistributionType.class));
 
     /**
      * The column

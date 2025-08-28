@@ -1,10 +1,10 @@
 package com.fincity.saas.commons.security.feign;
 
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
+import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.UserResponse;
 
-import org.springframework.cloud.openfeign.CollectionFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,13 +12,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import com.fincity.saas.commons.security.dto.App;
-import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 @reactivefeign.spring.config.ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
@@ -43,8 +42,14 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getClientByCode:/api/security/clients/internal/getClientByCode}")
     Mono<Client> getClientByCode(@RequestParam String clientCode);
 
+    @GetMapping("${security.feign.getManagedClientOfClientById:/api/security/clients/internal/managedClient}")
+    Mono<Client> getManagedClientOfClientById(@RequestParam BigInteger clientId);
+
     @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
     Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
+
+    @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
+    Mono<List<BigInteger>> getClientHierarchy(@RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
     Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
@@ -159,10 +164,10 @@ public interface IFeignSecurityService {
             @RequestHeader("X-Real-IP") String ipAddress);
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
-    Mono<Map<String, Object>> getUserInternal(@PathVariable("id") BigInteger id);
+    Mono<UserResponse> getUserInternal(@PathVariable("id") BigInteger id);
 
     @GetMapping(value = "${security.feign.getUser:/api/security/users/internal}")
-    Mono<List<Map<String, Object>>> getUserInternal(@RequestParam List<BigInteger> userIds);
+    Mono<List<UserResponse>> getUserInternal(@RequestParam List<BigInteger> userIds);
 
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(

@@ -54,7 +54,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
-import com.fincity.security.model.UserResponse;
+import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -407,7 +407,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Boolean> checkBusinessClientUser(ULong clientId, String userName, String emailId, String phoneNumber) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.clientService.getClientTypeNCode(clientId),
+                () -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
                 clientTypeNCode ->
                         clientTypeNCode.getT1().equals("INDV") ? Mono.empty() : Mono.just(clientTypeNCode.getT1()),
                 (clientTypeNCode, clientType) ->
@@ -445,7 +445,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<UserResponse> readById(ULong userId) {
         return this.cacheService
                 .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId)
-                .map(UserResponse::new);
+                .flatMap(this::toUserResponse);
     }
 
     public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {
@@ -453,8 +453,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         .setField("id")
                         .setOperator(FilterConditionOperator.IN)
                         .setMultiValue(userIds))
-                .map(UserResponse::new)
+                .flatMap(this::toUserResponse)
                 .collectList();
+    }
+
+    private Mono<UserResponse> toUserResponse(User user) {
+        return Mono.just(new UserResponse()
+                .setId(user.getId().toBigInteger())
+                .setClientId(user.getClientId().toBigInteger())
+                .setUserName(user.getUserName())
+                .setEmailId(user.getEmailId())
+                .setPhoneNumber(user.getPhoneNumber())
+                .setFirstName(user.getFirstName())
+                .setLastName(user.getLastName())
+                .setMiddleName(user.getMiddleName())
+                .setLocaleCode(user.getLocaleCode()));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
@@ -477,7 +490,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.getUserClientId(key),
                         clientId ->
-                                this.clientService.getClientTypeNCode(clientId).map(Tuple2::getT1),
+                                this.clientService.getClientTypeNCodeNClientLevel(clientId).map(Tuple2::getT1),
                         (clientId, clientType) -> switch (clientType) {
                             case "INDV" -> this.clientHierarchyService
                                     .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
@@ -499,7 +512,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                         () -> this.clientService
-                                .getClientTypeNCode(entity.getClientId())
+                                .getClientTypeNCodeNClientLevel(entity.getClientId())
                                 .map(Tuple2::getT1),
                         clientType -> switch (clientType) {
                             case "INDV" -> this.clientHierarchyService

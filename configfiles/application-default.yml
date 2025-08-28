@@ -59,12 +59,10 @@ core:
       url: jdbc:mysql://localhost:3306/core
 
 entity-processor:
-  mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/entity-processor?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
     username: root
-    password: Vishwas123#
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
 
@@ -75,6 +73,22 @@ notification:
     password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/notification
+
+message:
+  db:
+    url: r2dbc:mysql://localhost:3306/message?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/message
+
+entity-collector:
+  db:
+    url: r2dbc:mysql://localhost:3306/entity_collector?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/entity_collector
 
 spring:
   flyway:
@@ -109,6 +123,13 @@ smsService:
     2factor:
       api:
         key: ~
+
+app:
+  base-url: http://localhost:8080
+
+meta:
+  webhook:
+    verify-token: TEST_THE_API
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594

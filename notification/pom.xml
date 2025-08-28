@@ -9,10 +9,11 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.1</version>
         <relativePath/>
+        <!-- lookup parent from a repository -->
     </parent>
     <groupId>com.fincity.saas</groupId>
     <artifactId>notification</artifactId>
-    <version>1.1.0</version>
+    <version>1.0.0</version>
     <name>Notification</name>
     <description>Fincity SAAS Notification Server</description>
     <properties>
@@ -39,7 +40,6 @@
         <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
         <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
-        <package.i.saas-commons-mongo-version>2.0.0</package.i.saas-commons-mongo-version>
         <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
@@ -89,11 +89,6 @@
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${package.i.saas-commons-mongo-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
             <artifactId>commons-mq</artifactId>
             <version>${package.i.saas-commons-mq-version}</version>
         </dependency>
@@ -101,6 +96,10 @@
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>
             <version>${package.i.saas-commons-security-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
         </dependency>
         <dependency>
             <groupId>com.playtika.reactivefeign</groupId>

@@ -1,5 +1,7 @@
 package com.fincity.saas.commons.mongo.model;
 
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+
 import reactor.core.publisher.Mono;
 
 public class ListResultObject extends AbstractOverridableDTO<ListResultObject> {

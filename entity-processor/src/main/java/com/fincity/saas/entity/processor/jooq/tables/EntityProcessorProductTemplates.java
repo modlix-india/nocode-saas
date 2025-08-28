@@ -7,7 +7,6 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorProductTemplatesProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
@@ -112,7 +111,7 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
      * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_TYPE</code>.
      * Type of Product Template.
      */
-    public final TableField<EntityProcessorProductTemplatesRecord, ProductTemplateType> PRODUCT_TEMPLATE_TYPE = createField(DSL.name("PRODUCT_TEMPLATE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("GENERAL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorProductTemplatesProductTemplateType.class), this, "Type of Product Template.", new EnumConverter<EntityProcessorProductTemplatesProductTemplateType, ProductTemplateType>(EntityProcessorProductTemplatesProductTemplateType.class, ProductTemplateType.class));
+    public final TableField<EntityProcessorProductTemplatesRecord, ProductTemplateType> PRODUCT_TEMPLATE_TYPE = createField(DSL.name("PRODUCT_TEMPLATE_TYPE"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("GENERAL", SQLDataType.VARCHAR)), this, "Type of Product Template.", new EnumConverter<String, ProductTemplateType>(String.class, ProductTemplateType.class));
 
     /**
      * The column

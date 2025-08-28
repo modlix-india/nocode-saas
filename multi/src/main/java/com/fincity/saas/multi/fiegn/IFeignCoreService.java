@@ -40,13 +40,4 @@ public interface IFeignCoreService {
                             @RequestHeader("appCode") String headerAppCode,
                             @RequestParam("deleteAppCode") String deleteAppCode);
 
-    @GetMapping("${core.connection.getOAuth2Token:/api/core/connections/oauth2/token/{connectionName}}")
-    Mono<String> getConnectionOAuth2Token(
-            @RequestHeader(name = "Authorization", required = true) String authorization,
-            @RequestHeader("X-Forwarded-Host") String forwardedHost,
-            @RequestHeader("X-Forwarded-Port") String forwardedPort,
-            @RequestHeader("clientCode") String clientCode,
-            @RequestHeader("appCode") String headerAppCode,
-            @PathVariable("connectionName") String connectionName
-    );
 }

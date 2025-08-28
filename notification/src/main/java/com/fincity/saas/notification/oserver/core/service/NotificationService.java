@@ -47,6 +47,11 @@ public class NotificationService extends AbstractCoreService<Notification> {
     }
 
     @Override
+    protected String getObjectName() {
+        return Notification.class.getSimpleName();
+    }
+
+    @Override
     protected Mono<Notification> fetchCoreDocument(
             String appCode, String urlClientCode, String clientCode, String documentName) {
         return super.coreService.getNotification(urlClientCode, documentName, appCode, clientCode);

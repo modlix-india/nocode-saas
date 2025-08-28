@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import java.util.List;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -22,16 +24,12 @@ import reactor.core.publisher.Mono;
 public class ClientHierarchyService
         extends AbstractJOOQDataService<SecurityClientHierarchyRecord, ULong, ClientHierarchy, ClientHierarchyDAO> {
 
+    private static final String CACHE_NAME_CLIENT_HIERARCHY = "clientHierarchy";
+    private static final String CACHE_NAME_USER_CLIENT_HIERARCHY = "userClientHierarchy";
     private final SecurityMessageResourceService securityMessageResourceService;
-
     private final CacheService cacheService;
-
     @Getter
     private ClientService clientService;
-
-    private static final String CACHE_NAME_CLIENT_HIERARCHY = "clientHierarchy";
-
-    private static final String CACHE_NAME_USER_CLIENT_HIERARCHY = "userClientHierarchy";
 
     public ClientHierarchyService(SecurityMessageResourceService securityMessageResourceService,
                                   CacheService cacheService) {
@@ -86,18 +84,14 @@ public class ClientHierarchyService
                 () -> this.dao.getUserClientHierarchy(userId), userId);
     }
 
-    public Mono<ClientHierarchy> getClientHierarchy(String clientCode) {
-        return this.clientService.getClientId(clientCode).flatMap(this::getClientHierarchy);
-    }
-
     public Flux<ULong> getClientHierarchyIds(ULong clientId) {
         return this.getClientHierarchy(clientId)
                 .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
     }
 
-    public Flux<ULong> getUserClientHierarchyIds(ULong userId) {
-        return this.getUserClientHierarchy(userId)
-                .flatMapMany(clientHierarchy -> Flux.fromIterable(clientHierarchy.getClientIds()));
+    public Mono<List<ULong>> getClientHierarchyIdInOrder(ULong clientId) {
+        return this.getClientHierarchy(clientId)
+                .map(ClientHierarchy::getClientIdsInOrder);
     }
 
     public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
@@ -130,7 +124,7 @@ public class ClientHierarchyService
         if (level.equals(ClientHierarchy.Level.SYSTEM))
             return this.clientService.getSystemClientId();
 
-        return this.getClientHierarchy(clientId).map(clientHierarchy -> clientHierarchy.getManagingClient(level));
+        return this.getClientHierarchy(clientId).mapNotNull(clientHierarchy -> clientHierarchy.getManagingClient(level));
     }
 
     public Mono<Boolean> isUserBeingManaged(ULong managingClientId, ULong userId) {

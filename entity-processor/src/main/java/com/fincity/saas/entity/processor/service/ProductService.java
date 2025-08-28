@@ -41,6 +41,11 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT;
     }
