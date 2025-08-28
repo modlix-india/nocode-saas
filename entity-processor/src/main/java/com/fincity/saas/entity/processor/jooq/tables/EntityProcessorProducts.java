@@ -140,13 +140,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
-     */
-    public final TableField<EntityProcessorProductsRecord, Byte> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather Partner has access to this product or not.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
      * the user who created this row.
      */
