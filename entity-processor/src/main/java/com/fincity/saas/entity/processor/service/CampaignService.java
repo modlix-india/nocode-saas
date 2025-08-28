@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
@@ -39,7 +38,9 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
     public Mono<Campaign> create(CampaignRequest campaignRequest) {
 
-        if (campaignRequest == null && StringUtil.safeIsBlank(campaignRequest.getProductCode())) {
+        if (campaignRequest.getProductId() == null
+                || campaignRequest.getProductId().isNull()) {
+
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     "Product information invalid or missing.");
@@ -49,12 +50,10 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
                         this::hasAccess,
 
-                        access -> campaignRequest.getCampaignId() != null
-                                ? this.productService.read(campaignRequest.getProductId())
-                                : this.productService.read(campaignRequest.getProductCode()),
+                        access -> this.productService.readIdentityInternal(campaignRequest.getProductId()),
 
                         (access, product) -> super.createInternal(
-                                access, Campaign.of(campaignRequest.setProductId(product.getId()))))
+                                access, Campaign.of(campaignRequest).setProductId(product.getId())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[CampaignRequest]"));
     }
 }

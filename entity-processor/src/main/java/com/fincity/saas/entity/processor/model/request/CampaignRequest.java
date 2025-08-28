@@ -1,11 +1,10 @@
 package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -22,8 +21,6 @@ public class CampaignRequest implements Serializable {
     private String campaignName;
     private String campaignType;
     private CampaignPlatform campaignPlatform;
-    private ULong productId;
-    private String productCode;
-
+    private Identity productId;
 }
 

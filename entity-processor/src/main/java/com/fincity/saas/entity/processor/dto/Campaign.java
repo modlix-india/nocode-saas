@@ -48,12 +48,11 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
                 .setCampaignId(campaignRequest.getCampaignId())
                 .setCampaignName(campaignRequest.getCampaignName())
                 .setCampaignType(campaignRequest.getCampaignType())
-                .setCampaignPlatform(campaignRequest.getCampaignPlatform())
-                .setProductId(campaignRequest.getProductId());
+                .setCampaignPlatform(campaignRequest.getCampaignPlatform());
     }
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.PRODUCT;
+        return EntitySeries.CAMPAIGN;
     }
 }
