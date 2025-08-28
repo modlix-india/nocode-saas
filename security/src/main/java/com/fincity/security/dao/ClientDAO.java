@@ -2,22 +2,28 @@ package com.fincity.security.dao;
 
 import static com.fincity.saas.commons.util.StringUtil.*;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityClient.*;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.*;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
-import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityProfileUser.SECURITY_PROFILE_USER;
-import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
+import static com.fincity.security.jooq.tables.SecurityProfile.SECURITY_PROFILE;
+import static com.fincity.security.jooq.tables.SecurityProfileRole.SECURITY_PROFILE_ROLE;
+import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import org.jooq.Condition;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import org.jooq.*;
 import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.SelectJoinStep;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
@@ -212,60 +218,90 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
         if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
             return DSL.trueCondition();
 
-//        select * from security.security_client c
-//        where exists (
-//                select 1 from security.security_app a where a.client_id = c.id and a.id = 2
-//    ) or
-//        exists (
-//                select 1 from security.security_app_access aa where aa.client_id = c.id and aa.app_id = 2
-//        );
-//
-//        select * from security.security_client c
-//        where exists (
-//                select 1 from security.security_app a where a.client_id = c.id and a.app_code = 'appbuilder'
-//    ) or
-//        exists (
-//                select 1 from security.security_app_access aa
-//                left join security.security_app a on a.id = aa.app_id
-//                where aa.client_id = c.id and a.app_code = 'appbuilder'
-//        );
-
         if (fc.getField().equals("appId")) {
 
-            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
-                    SECURITY_PROFILE.APP_ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue()))) :
-                    SECURITY_PROFILE.APP_ID.in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+            Condition idCondition1 = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                    SECURITY_APP.ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_APP.ID, fc.getValue()))) :
+                    SECURITY_APP.ID.in(this.multiFieldValue(SECURITY_APP.ID, fc.getValue(), fc.getMultiValue()));
 
-            if (fc.isNegate())
-                idCondition = DSL.not(idCondition);
+            Condition idCondition2 = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                    SECURITY_APP_ACCESS.APP_ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_APP_ACCESS.APP_ID, fc.getValue()))) :
+                    SECURITY_APP_ACCESS.APP_ID.in(this.multiFieldValue(SECURITY_APP_ACCESS.APP_ID, fc.getValue(), fc.getMultiValue()));
 
-            return DSL.exists(
-                    DSL.select(DSL.value(1))
-                            .from(SECURITY_PROFILE_USER)
-                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
-                            .where(DSL.and(
-                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                    idCondition
-                            ))
+            if (fc.isNegate()) {
+                idCondition1 = DSL.not(idCondition1);
+                idCondition2 = DSL.not(idCondition2);
+            }
+
+            return DSL.or(
+                    DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP).where(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(idCondition1))),
+                    DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(idCondition2)))
             );
         }
 
-        Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+        Condition appCodeCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
                 SECURITY_APP.APP_CODE.eq(fc.getValue().toString()) :
                 SECURITY_APP.APP_CODE.in(this.multiFieldValue(SECURITY_APP.APP_CODE, fc.getValue(), fc.getMultiValue()));
 
-        if (fc.isNegate())
-            codeCondition = DSL.not(codeCondition);
+        if (fc.isNegate()) appCodeCondition = DSL.not(appCodeCondition);
 
-        return DSL.exists(
-                DSL.select(DSL.value(1))
-                        .from(SECURITY_PROFILE_USER)
-                        .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
-                        .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
-                        .where(DSL.and(
-                                SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                codeCondition
-                        ))
+        return DSL.or(
+                DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP).where(SECURITY_APP.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(appCodeCondition))),
+                DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP_ACCESS)
+                        .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
+                        .where(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(appCodeCondition)))
         );
+    }
+
+    public Mono<List<Client>> fillUserCounts(Map<ULong, Client> map, String appCode, String appId) {
+
+        Condition appCondition = DSL.trueCondition();
+        if (!StringUtil.safeIsBlank(appCode)) appCondition = SECURITY_APP.APP_CODE.eq(appCode);
+        else if (!StringUtil.safeIsBlank(appId)) appCondition = SECURITY_APP.ID.eq(ULongUtil.valueOf(appId));
+
+        SelectConditionStep<Record3<ULong, ULong, SecurityUserStatusCode>> innerQuery = this.dslContext.selectDistinct(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID.as("clientId"), SECURITY_USER.STATUS_CODE.as("statusCode")).from(SECURITY_USER)
+                .leftJoin(SECURITY_PROFILE_USER).on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                .where(DSL.and(appCondition, SECURITY_USER.CLIENT_ID.in(map.keySet()), SECURITY_USER.STATUS_CODE.isNotNull()));
+
+        var clientField = DSL.field("clientId", ULong.class);
+        var statusField = DSL.field("statusCode", SecurityUserStatusCode.class);
+
+        return Flux.from(this.dslContext.select(clientField, statusField, DSL.count().as("count"))
+                        .from(innerQuery)
+                        .groupBy(clientField, statusField))
+                .collectList()
+                .map(counts -> {
+
+                    for (var count : counts) {
+                        if (count.value2() == null) continue;
+                        switch (count.value2()) {
+                            case ACTIVE -> map.get(count.value1()).setActiveUsers(count.value3());
+                            case INACTIVE -> map.get(count.value1()).setInactiveUsers(count.value3());
+                            case DELETED -> map.get(count.value1()).setDeletedUsers(count.value3());
+                            case LOCKED -> map.get(count.value1()).setLockedUsers(count.value3());
+                            case PASSWORD_EXPIRED -> map.get(count.value1()).setPasswordExpiredUsers(count.value3());
+                        }
+                    }
+
+                    return map.values().stream().toList();
+                });
+    }
+
+    public Mono<Map<ULong, Collection<ULong>>> getOwnersPerClient(Map<ULong, Client> map, String appCode, String appId) {
+
+        Condition appCondition = DSL.trueCondition();
+        if (!StringUtil.safeIsBlank(appCode)) appCondition = SECURITY_APP.APP_CODE.eq(appCode);
+        else if (!StringUtil.safeIsBlank(appId)) appCondition = SECURITY_APP.ID.eq(ULongUtil.valueOf(appId));
+
+        return Flux.from(this.dslContext.select(SECURITY_USER.CLIENT_ID, SECURITY_USER.ID).from(SECURITY_USER)
+                .leftJoin(SECURITY_PROFILE_USER).on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .leftJoin(SECURITY_PROFILE_ROLE).on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
+                .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition))
+        ).collectMultimap(Record2::value1, Record2::value2);
     }
 }

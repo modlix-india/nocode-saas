@@ -2,9 +2,9 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.net.URI;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.security.dto.App;
@@ -56,18 +56,11 @@ import reactor.util.function.Tuple3;
 public class ClientService
         extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
-//    private Integer activeUsers;
-//    private Integer inactiveUsers;
-//    private Integer deletedUsers;
-//    private Integer lockedUsers;
-//    private Integer passwordExpiredUsers;
-//
-//    private List<User> owners;
-//    private Client managagingClient;
-//    private List<App> apps;
-//    private User createdByUser;
-
-    private static final String FETCH_USER_COUNT = "fetchUserCount";
+    private static final String FETCH_USER_COUNT = "fetchUserCounts";
+    private static final String FETCH_OWNERS = "fetchOwners";
+    private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
+    private static final String FETCH_APPS = "fetchApps";
+    private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
 
 
     public static final String CACHE_CLIENT_URL_LIST = "list";
@@ -86,6 +79,9 @@ public class ClientService
     @Autowired
     @Lazy
     private AppService appService;
+    @Lazy
+    @Autowired
+    private UserService userService;
     @Autowired
     private SecurityMessageResourceService securityMessageResourceService;
     @Autowired
@@ -458,30 +454,56 @@ public class ClientService
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
     }
 
-    public Mono<List<Client>> fillDetails(List<Client> users, ServerHttpRequest request) {
+//    private static final String FETCH_USER_COUNT = "fetchUserCounts";
+//    private static final String FETCH_OWNERS = "fetchOwners";
+//    private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
+//    private static final String FETCH_APPS = "fetchApps";
+//    private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
+
+    public Mono<List<Client>> fillDetails(List<Client> clients, ServerHttpRequest request) {
 
         String appCode = request.getQueryParams().getFirst("appCode");
         String appId = request.getQueryParams().getFirst("appId");
 
-        boolean fillProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_PROFILES));
-        boolean fillClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CLIENT));
-        boolean fillManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_MANAGING_CLIENT));
-        boolean fillCreatedBy = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FILL_CREATED_BY));
+        boolean fetchUserCounts = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_USER_COUNT));
+        boolean fetchOwners = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_OWNERS));
+        boolean fetchManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_MANAGING_CLIENT));
+        boolean fetchApps = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_APPS));
+        boolean fetchCreatedByUser = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_CREATED_BY_USER));
 
-        Flux<User> userFlux = Flux.fromIterable(users);
+        Map<ULong, Client> map = clients.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
 
-        if (fillProfiles)
-            userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
+        Mono<List<Client>> clientsMono = Mono.just(clients);
 
-        if (fillClient)
-            userFlux = userFlux.flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
+        if (fetchCreatedByUser)
+            clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
+                    .filter(c -> c.getCreatedBy() != null)
+                    .flatMap(c -> this.userService.readInternal(c.getCreatedBy()).map(c::setCreatedByUser))
+                    .collectList();
 
-        if (fillManagingClient)
-            userFlux = userFlux.flatMap(user -> this.clientService.getManagedClientOfClientById(user.getClientId()).map(user::setManagingClient));
+        if (fetchApps)
+            clientsMono = clientsMono.flatMap(c -> this.appService.fillApps(map));
 
-        if (fillCreatedBy)
-            userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0).flatMap(user -> this.dao.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+        if (fetchManagingClient)
+            clientsMono = clientsMono.flatMapMany(Flux::fromIterable).flatMap(c ->
+                    this.clientHierarchyService.getManagingClient(c.getId(), ClientHierarchy.Level.ZERO)
+                            .flatMap(this::getClientInfoById).map(c::setManagagingClient)
+            ).collectList();
 
-        return userFlux.collectList();
+        if (fetchUserCounts)
+            clientsMono = clientsMono.flatMap(c -> this.dao.fillUserCounts(map, appCode, appId));
+        ;
+
+        if (fetchOwners)
+            clientsMono = clientsMono.flatMap(cs -> this.dao.getOwnersPerClient(map, appCode, appId))
+                    .flatMap(idsMap ->
+                            Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
+                                    .distinct().flatMap(this.userService::readByIdWithCache)
+                                    .collectMap(User::getId)
+                                    .map(userMap -> map.values().stream()
+                                            .map(client -> idsMap.get(client.getId()) == null ? client : client.setOwners(idsMap.get(client.getId()).stream().map(userMap::get).toList())).toList())
+                    );
+
+        return clientsMono;
     }
 }

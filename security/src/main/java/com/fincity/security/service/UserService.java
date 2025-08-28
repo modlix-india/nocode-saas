@@ -444,9 +444,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     public Mono<UserResponse> readById(ULong userId) {
-        return this.cacheService
-                .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId)
+        return this.readByIdWithCache(userId)
                 .flatMap(this::toUserResponse);
+    }
+
+    public Mono<User> readByIdWithCache(ULong userId) {
+        return this.cacheService
+                .cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId);
     }
 
     public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {

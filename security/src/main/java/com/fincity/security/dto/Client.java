@@ -35,11 +35,11 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
     private String industry;
     private SecurityClientLevelType levelType;
 
-    private Integer activeUsers;
-    private Integer inactiveUsers;
-    private Integer deletedUsers;
-    private Integer lockedUsers;
-    private Integer passwordExpiredUsers;
+    private int activeUsers;
+    private int inactiveUsers;
+    private int deletedUsers;
+    private int lockedUsers;
+    private int passwordExpiredUsers;
 
     private List<User> owners;
     private Client managagingClient;
@@ -66,7 +66,6 @@ public class Client extends AbstractUpdatableDTO<ULong, ULong> {
 
     @JsonProperty(value = "totalUsers")
     public Integer getTotalUsers() {
-        if (activeUsers == null) return null;
         return activeUsers + inactiveUsers + deletedUsers + lockedUsers + passwordExpiredUsers;
     }
 }

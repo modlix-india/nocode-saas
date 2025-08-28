@@ -916,4 +916,17 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"));
     }
+
+    public Mono<List<Client>> fillApps(Map<ULong, Client> clients) {
+        return this.dao.getAppsIDsPerClient(clients.keySet())
+                .flatMap(map -> Flux.fromStream(map.values().stream().flatMap(List::stream)).distinct()
+                        .flatMap(this::getAppById).collectMap(App::getId)
+                        .map(appMap -> clients.values().stream()
+                                .map(c ->
+                                        map.get(c.getId()) != null ?
+                                                c.setApps(map.get(c.getId()).stream().map(appMap::get).collect(Collectors.toList())) : c
+                                )
+                                .toList())
+                );
+    }
 }
