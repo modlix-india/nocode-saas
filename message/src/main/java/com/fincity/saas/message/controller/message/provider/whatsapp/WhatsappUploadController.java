@@ -34,12 +34,8 @@ public class WhatsappUploadController {
     @PostMapping
     public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "connectionName") String connectionName,
-            @RequestPart(name = "uploadSessionId") String uploadSessionId,
-            @RequestPart(name = "fileOffset") String fileOffset) {
-        return this.service
-                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
-                .map(ResponseEntity::ok);
+            @RequestPart(name = "request") UploadRequest uploadRequest) {
+        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
     }
 
     @PostMapping("/status")
@@ -50,11 +46,7 @@ public class WhatsappUploadController {
     @PostMapping("/resume")
     public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "connectionName") String connectionName,
-            @RequestPart(name = "uploadSessionId") String uploadSessionId,
-            @RequestPart(name = "fileOffset") String fileOffset) {
-        return this.service
-                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
-                .map(ResponseEntity::ok);
+            @RequestPart(name = "request") UploadRequest uploadRequest) {
+        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
     }
 }
