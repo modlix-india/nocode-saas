@@ -69,7 +69,7 @@ public final class IMessage implements Serializable {
     private IOrder order;
 
     @JsonProperty("system")
-    private System system;
+    private ISystem system;
 
     @JsonProperty("video")
     private IVideo video;

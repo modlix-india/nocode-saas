@@ -47,9 +47,9 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private boolean isOutbound;
 
-    private Message outMessage;
-    private MessageResponse messageResponse;
+    private Message message;
     private IMessage inMessage;
+    private MessageResponse messageResponse;
 
     public WhatsappMessage() {
         super();
@@ -68,7 +68,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setMessageStatus(MessageStatus.SENT)
                 .setSentTime(LocalDateTime.now())
                 .setOutbound(Boolean.TRUE)
-                .setOutMessage(message);
+                .setMessage(message);
     }
 
     public static WhatsappMessage ofInbound(

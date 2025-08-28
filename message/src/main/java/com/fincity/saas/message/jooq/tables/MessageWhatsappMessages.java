@@ -13,6 +13,7 @@ import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
+import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -187,6 +188,12 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * Message object send by WhatsApp.
      */
     public final TableField<MessageWhatsappMessagesRecord, com.fincity.saas.message.model.message.whatsapp.messages.Message> MESSAGE = createField(DSL.name("MESSAGE"), SQLDataType.JSON, this, "Entire Message object send by WhatsApp.", new JSONtoClassConverter<JSON, com.fincity.saas.message.model.message.whatsapp.messages.Message>(JSON.class, com.fincity.saas.message.model.message.whatsapp.messages.Message.class));
+
+    /**
+     * The column <code>message.message_whatsapp_messages.IN_MESSAGE</code>.
+     * Inbound message object
+     */
+    public final TableField<MessageWhatsappMessagesRecord, IMessage> IN_MESSAGE = createField(DSL.name("IN_MESSAGE"), SQLDataType.JSON, this, "Inbound message object", new JSONtoClassConverter<JSON, IMessage>(JSON.class, IMessage.class));
 
     /**
      * The column
