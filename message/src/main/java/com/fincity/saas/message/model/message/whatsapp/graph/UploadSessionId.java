@@ -7,10 +7,12 @@ import java.util.regex.Pattern;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
+@FieldNameConstants
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UploadSessionId extends BaseId<UploadSessionId> {
 
