@@ -8,7 +8,6 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -60,11 +59,6 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_owners</code>.
      */
     public final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
-
-    /**
-     * The table <code>entity_processor.entity_processor_partners</code>.
-     */
-    public final EntityProcessorPartners ENTITY_PROCESSOR_PARTNERS = EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS;
 
     /**
      * The table
@@ -140,7 +134,6 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
-            EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
             EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES,
             EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
