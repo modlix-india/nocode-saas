@@ -36,6 +36,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();
     private String to;
 
+    private String customerWaId;
+
     private MessageType messageType;
 
     private MessageStatus messageStatus;
@@ -47,9 +49,9 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
 
     private boolean isOutbound;
 
-    private Message outMessage;
-    private MessageResponse messageResponse;
+    private Message message;
     private IMessage inMessage;
+    private MessageResponse messageResponse;
 
     public WhatsappMessage() {
         super();
@@ -68,7 +70,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setMessageStatus(MessageStatus.SENT)
                 .setSentTime(LocalDateTime.now())
                 .setOutbound(Boolean.TRUE)
-                .setOutMessage(message);
+                .setMessage(message);
     }
 
     public static WhatsappMessage ofInbound(
@@ -79,6 +81,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         return new WhatsappMessage()
                 .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
                 .setMessageId(message.getId())
+                .setCustomerWaId(message.getContacts().getFirst().getWaId())
                 .setWhatsappPhoneNumberId(whatsappPhoneNumberId)
                 .setFromDialCode(from.getCountryCode())
                 .setFrom(from.getNumber())
