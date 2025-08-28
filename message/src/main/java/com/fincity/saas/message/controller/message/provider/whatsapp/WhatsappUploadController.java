@@ -1,11 +1,13 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappUploadService;
+import com.google.gson.Gson;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,8 +23,11 @@ public class WhatsappUploadController {
 
     private final WhatsappUploadService service;
 
-    public WhatsappUploadController(WhatsappUploadService service) {
+    private final ObjectMapper objectMapper;
+
+    public WhatsappUploadController(WhatsappUploadService service, ObjectMapper objectMapper) {
         this.service = service;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/session")
@@ -33,9 +38,13 @@ public class WhatsappUploadController {
 
     @PostMapping
     public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
-            @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "request") UploadRequest uploadRequest) {
-        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
+            @RequestPart(name = "file") Mono<FilePart> filePart, @RequestPart(name = "request") String uploadRequest) {
+        try {
+            UploadRequest requestObject = objectMapper.readValue(uploadRequest, UploadRequest.class);
+            return this.service.startOrResumeUpload(requestObject, filePart).map(ResponseEntity::ok);
+        } catch (Exception e) {
+            return Mono.just(ResponseEntity.badRequest().build());
+        }
     }
 
     @PostMapping("/status")
@@ -45,8 +54,12 @@ public class WhatsappUploadController {
 
     @PostMapping("/resume")
     public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
-            @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "request") UploadRequest uploadRequest) {
-        return this.service.startOrResumeUpload(uploadRequest, filePart).map(ResponseEntity::ok);
+            @RequestPart(name = "file") Mono<FilePart> filePart, @RequestPart(name = "request") String uploadRequest) {
+        try {
+            UploadRequest requestObject = objectMapper.readValue(uploadRequest, UploadRequest.class);
+            return this.service.startOrResumeUpload(requestObject, filePart).map(ResponseEntity::ok);
+        } catch (Exception e) {
+            return Mono.just(ResponseEntity.badRequest().build());
+        }
     }
 }
