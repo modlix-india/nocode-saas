@@ -23,6 +23,5 @@ public final class IWebHook {
         } catch (Exception e) {
             throw new GenericException(HttpStatus.BAD_REQUEST, "Failed to parse webhook payload", e);
         }
-
     }
 }

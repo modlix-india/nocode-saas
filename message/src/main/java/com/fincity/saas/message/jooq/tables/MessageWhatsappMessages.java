@@ -136,6 +136,12 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     public final TableField<MessageWhatsappMessagesRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
 
     /**
+     * The column <code>message.message_whatsapp_messages.CUSTOMER_WA_ID</code>.
+     * Customer Whatsapp ID
+     */
+    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_WA_ID = createField(DSL.name("CUSTOMER_WA_ID"), SQLDataType.CHAR(20).nullable(false), this, "Customer Whatsapp ID");
+
+    /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
      * Type of the message (TEXT, IMAGE, VIDEO, etc.).
      */

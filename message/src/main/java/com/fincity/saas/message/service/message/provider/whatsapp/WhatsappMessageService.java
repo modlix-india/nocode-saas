@@ -1,15 +1,5 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -40,7 +30,14 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
-
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -175,6 +172,8 @@ public class WhatsappMessageService
                         (vConn, businessAccountId, phoneNumberId, validated, api, response) -> {
                             whatsappMessage.setWhatsappBusinessAccountId(businessAccountId);
                             whatsappMessage.setWhatsappPhoneNumberId(phoneNumberId.getId());
+                            whatsappMessage.setCustomerWaId(
+                                    response.getContacts().getFirst().getWaId());
                             whatsappMessage.setMessageId(
                                     response.getMessages().getFirst().getId());
                             whatsappMessage.setMessageResponse(response);
@@ -252,7 +251,7 @@ public class WhatsappMessageService
                     .flatMap(message -> processIncomingMessage(appCode, clientCode, message, value.getMetadata()))
                     .then();
         } else if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
-            return processStatusUpdates(value.getStatuses());
+            return this.processStatusUpdates(value.getStatuses());
         }
 
         return Mono.empty();
