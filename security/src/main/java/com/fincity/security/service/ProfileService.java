@@ -6,7 +6,9 @@ import java.util.stream.Collectors;
 
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.dto.*;
 import org.apache.commons.lang.NotImplementedException;
 import org.jooq.exception.DataAccessException;
 import org.jooq.types.ULong;
@@ -24,9 +26,6 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ProfileDAO;
-import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Profile;
-import com.fincity.security.dto.RoleV2;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
@@ -44,10 +43,7 @@ public class ProfileService
 
     private static final String PROFILE = "Profile";
 
-    private static final String DESCRIPTION = "description";
-    private static final String NAME = "name";
-
-    private static final String CACHE_NAME_ID = "profileId";
+    private static final String CACHE_AUTHORITIES_BY_ID = "profileAuthsById";
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
@@ -131,18 +127,18 @@ public class ProfileService
                                                 msg),
                                         SecurityMessageResourceService.FORBIDDEN_ROLE_ACCESS);
                             }
-                            return this.cleanProfileArrangment(entity);
+                            return this.cleanProfileArrangement(entity);
                         },
 
                         (ca, hasAppAccess, clientAlsoHasAppAccess, managed, clientHierarchy,
                          hasAccessToRoles, cleanedEntity) -> this.dao.createUpdateProfile(cleanedEntity, ULong.valueOf(ca.getUser().getId()), clientHierarchy)
-                                .flatMap(e -> this.fillProfileArrangements(e, true))
+                                .flatMap(this::fillProfileArrangements)
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
                 .flatMap(e -> {
 
-                    String cacheName = CACHE_NAME_ID + "_"
+                    String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
                             + (e.getRootProfileId() == null ? e.getId()
                             : e.getRootProfileId());
 
@@ -166,7 +162,8 @@ public class ProfileService
                                 StringFormatter.format(msg, PROFILE))))));
     }
 
-    private Mono<Profile> cleanProfileArrangment(Profile p) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Mono<Profile> cleanProfileArrangement(Profile p) {
 
         if (p.getArrangement() == null) return Mono.just(p);
 
@@ -230,13 +227,15 @@ public class ProfileService
                                         ULong.valueOf(ca.getUser().getClientId()))
                                 .filter(BooleanUtil::safeValueOf)
                                 .<Profile>map(x -> profile)
-                                .flatMap(p -> this.fillProfileArrangements(p, true))
+                                .flatMap(this::fillProfileArrangements)
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.read"));
     }
 
-    private Mono<Profile> fillProfileArrangements(Profile p, boolean fillArrangement) {
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Mono<Profile> fillProfileArrangements(Profile p) {
 
         if (p.getArrangement() == null) return Mono.just(p);
 
@@ -262,14 +261,10 @@ public class ProfileService
 
         return this.roleService.getRolesForProfileService(roleIndex.keySet())
                 .map(map -> {
-                            roleIndex.entrySet().forEach(entry -> {
-                                Map<String, Object> arrangement = entry.getValue();
-                                RoleV2 role = map.get(entry.getKey());
+                            roleIndex.forEach((key, arrangement) -> {
+                                RoleV2 role = map.get(key);
 
-                                arrangement.put("role", map.get(entry.getKey()));
-
-                                if (!fillArrangement) return;
-
+                                arrangement.put("role", map.get(key));
                                 arrangement.putIfAbsent("name", role.getName());
                                 arrangement.putIfAbsent("shortName", role.getShortName());
                                 arrangement.putIfAbsent("description", role.getDescription());
@@ -378,7 +373,7 @@ public class ProfileService
 
         return Flux.fromIterable(profileIds)
                 .flatMap(
-                        pid -> cacheService.cacheValueOrGet(CACHE_NAME_ID + "_" + pid,
+                        pid -> cacheService.cacheValueOrGet(CACHE_AUTHORITIES_BY_ID + "_" + pid,
                                         () -> this.dao.getProfileAuthorities(pid,
                                                         clientHierarchy).defaultIfEmpty(List.of())
                                                 .map(e -> {
@@ -467,7 +462,7 @@ public class ProfileService
     public Mono<List<ULong>> getProfileUsers(String appCode, List<ULong> profileIds) {
         return FlatMapUtil.flatMapMono(
                 () -> this.appService.getAppByCode(appCode),
-                 app -> this.getUsersForProfiles(app.getId(), profileIds));
+                app -> this.getUsersForProfiles(app.getId(), profileIds));
     }
 
     public Mono<List<ULong>> getUsersForProfiles(ULong appId, List<ULong> profileIds) {
@@ -496,6 +491,24 @@ public class ProfileService
                 .getClientHierarchy(clientId)
                 .flatMap(clientHierarchy ->
                         this.dao.getAppProfileHavingAuthorities(appId, clientHierarchy, authorities));
+    }
+
+    public Mono<User> fillUser(String appCode, String appId, User user) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+
+                () -> {
+                    if (!StringUtil.safeIsBlank(appCode))
+                        return this.appService.getAppByCode(appCode).map(App::getId).map(ULongUtil::valueOf);
+
+                    return Mono.justOrEmpty(ULongUtil.valueOf(appId));
+                },
+
+                ulAppId -> this.dao.getAssignedProfileIds(user.getId(), ulAppId)
+                        .flatMap(this::read)
+                        .collectList()
+                        .map(user::setProfiles)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
     }
 
 }
