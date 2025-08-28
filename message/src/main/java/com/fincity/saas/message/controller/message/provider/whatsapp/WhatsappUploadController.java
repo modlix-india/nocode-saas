@@ -1,11 +1,14 @@
 package com.fincity.saas.message.controller.message.provider.whatsapp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappUploadService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,8 +24,11 @@ public class WhatsappUploadController {
 
     private final WhatsappUploadService service;
 
-    public WhatsappUploadController(WhatsappUploadService service) {
+    private final ObjectMapper objectMapper;
+
+    public WhatsappUploadController(WhatsappUploadService service, ObjectMapper objectMapper) {
         this.service = service;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/session")
@@ -34,11 +40,9 @@ public class WhatsappUploadController {
     @PostMapping
     public Mono<ResponseEntity<FileHandle>> startOrResumeUpload(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "connectionName") String connectionName,
-            @RequestPart(name = "uploadSessionId") String uploadSessionId,
-            @RequestPart(name = "fileOffset") String fileOffset) {
+            @RequestPart(name = "uploadRequestString") String uploadRequestString) {
         return this.service
-                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
+                .startOrResumeUpload(this.toUploadRequest(uploadRequestString), filePart)
                 .map(ResponseEntity::ok);
     }
 
@@ -50,11 +54,18 @@ public class WhatsappUploadController {
     @PostMapping("/resume")
     public Mono<ResponseEntity<FileHandle>> resumeUploadFromStatus(
             @RequestPart(name = "file") Mono<FilePart> filePart,
-            @RequestPart(name = "connectionName") String connectionName,
-            @RequestPart(name = "uploadSessionId") String uploadSessionId,
-            @RequestPart(name = "fileOffset") String fileOffset) {
+            @RequestPart(name = "uploadRequestString") String uploadRequestString) {
         return this.service
-                .startOrResumeUpload(UploadRequest.of(connectionName, uploadSessionId, fileOffset), filePart)
+                .startOrResumeUpload(this.toUploadRequest(uploadRequestString), filePart)
                 .map(ResponseEntity::ok);
+    }
+
+    private UploadRequest toUploadRequest(String uploadRequest) {
+        try {
+            return objectMapper.readValue(uploadRequest, UploadRequest.class);
+        } catch (Exception e) {
+            throw new GenericException(
+                    HttpStatus.BAD_REQUEST, "Failed to parse uploadRequest into UploadRequest object", e);
+        }
     }
 }

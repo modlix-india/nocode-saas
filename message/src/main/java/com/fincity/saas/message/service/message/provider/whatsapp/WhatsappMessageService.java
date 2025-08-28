@@ -10,6 +10,7 @@ import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumbe
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.common.PhoneNumber;
@@ -118,9 +119,9 @@ public class WhatsappMessageService
     @Override
     public Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
 
-        if (!messageRequest.isValid()) return super.throwMissingParam("text");
+        if (!messageRequest.isValid()) return super.throwMissingParam(MessageRequest.Fields.text);
 
-        if (!messageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+        if (messageRequest.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         WhatsappMessage whatsappMessage = WhatsappMessage.ofOutbound(
                 MessageBuilder.builder()
@@ -135,7 +136,8 @@ public class WhatsappMessageService
 
         if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
 
-        if (!whatsappMessageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+        if (whatsappMessageRequest.isConnectionNull())
+            return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
