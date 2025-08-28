@@ -18,4 +18,5 @@ public class ProductRequest extends BaseRequest<ProductRequest> {
     private static final long serialVersionUID = 6940756756706631631L;
 
     private Identity productTemplateId;
+    private Boolean forPartner = Boolean.FALSE;
 }
