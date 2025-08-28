@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
@@ -33,6 +34,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -109,10 +111,10 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_SOURCE</code>.
+     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
      * Campaign Source
      */
-    public final TableField<EntityProcessorCampaignsRecord, String> CAMPAIGN_SOURCE = createField(DSL.name("CAMPAIGN_SOURCE"), SQLDataType.VARCHAR(32), this, "Campaign Source");
+    public final TableField<EntityProcessorCampaignsRecord, CampaignPlatform> CAMPAIGN_PLATFORM = createField(DSL.name("CAMPAIGN_PLATFORM"), SQLDataType.VARCHAR(8), this, "Campaign Source", new EnumConverter<String, CampaignPlatform>(String.class, CampaignPlatform.class));
 
     /**
      * The column
@@ -245,7 +247,7 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
 
     @Override
     public List<UniqueKey<EntityProcessorCampaignsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK1_CAMPAIGNS_ID);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK1_CAMPAIGNS_ID, Keys.KEY_ENTITY_PROCESSOR_CAMPAIGNS_UK2_CAMPAIGNS_CODE);
     }
 
     @Override

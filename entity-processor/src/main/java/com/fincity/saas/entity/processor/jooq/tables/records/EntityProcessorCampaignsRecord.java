@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 
 import java.time.LocalDateTime;
@@ -152,21 +153,21 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_SOURCE</code>.
+     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
      * Campaign Source
      */
-    public EntityProcessorCampaignsRecord setCampaignSource(String value) {
+    public EntityProcessorCampaignsRecord setCampaignPlatform(CampaignPlatform value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_SOURCE</code>.
+     * <code>entity_processor.entity_processor_campaigns.CAMPAIGN_PLATFORM</code>.
      * Campaign Source
      */
-    public String getCampaignSource() {
-        return (String) get(7);
+    public CampaignPlatform getCampaignPlatform() {
+        return (CampaignPlatform) get(7);
     }
 
     /**
@@ -325,7 +326,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Create a detached, initialised EntityProcessorCampaignsRecord
      */
-    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, String campaignSource, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, CampaignPlatform campaignPlatform, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS);
 
         setId(id);
@@ -335,7 +336,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
         setCampaignId(campaignId);
         setCampaignName(campaignName);
         setCampaignType(campaignType);
-        setCampaignSource(campaignSource);
+        setCampaignPlatform(campaignPlatform);
         setProductId(productId);
         setTempActive(tempActive);
         setIsActive(isActive);
