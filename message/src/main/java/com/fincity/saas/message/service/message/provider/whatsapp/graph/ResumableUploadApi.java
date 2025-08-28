@@ -1,8 +1,8 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.graph;
 
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
+import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.message.whatsapp.media.FileType;
 import com.fincity.saas.message.service.MessageResourceService;
@@ -10,11 +10,11 @@ import com.fincity.saas.message.service.message.provider.whatsapp.api.AbstractWh
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 public class ResumableUploadApi extends AbstractWhatsappApi {
 
-    private static final String UPLOAD_ID_PREFIX = "upload:";
     private final ResumableUploadApiService apiService;
 
     public ResumableUploadApi(WebClient webClient, MessageResourceService messageResourceService) {
@@ -33,20 +33,20 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         return new ResumableUploadApiServiceImpl(webClient, messageResourceService);
     }
 
-    public Mono<BaseId> startUploadSession(String appId, String fileName, long fileLength, FileType fileType) {
+    public Mono<UploadSessionId> startUploadSession(String appId, String fileName, long fileLength, FileType fileType) {
         return this.apiService.startUploadSession(
                 apiVersion.getValue(), appId, fileName, fileLength, fileType.getType());
     }
 
-    public Mono<FileHandle> startOrResumeUpload(String uploadSessionId, long fileOffset, byte[] fileContent) {
+    public Mono<FileHandle> startOrResumeUpload(UploadSessionId uploadSessionId, long fileOffset, byte[] fileContent) {
         return this.apiService.startOrResumeUpload(apiVersion.getValue(), uploadSessionId, fileOffset, fileContent);
     }
 
-    public Mono<UploadStatus> getUploadStatus(String uploadSessionId) {
+    public Mono<UploadStatus> getUploadStatus(UploadSessionId uploadSessionId) {
         return this.apiService.getUploadStatus(apiVersion.getValue(), uploadSessionId);
     }
 
-    public Mono<FileHandle> resumeUploadFromStatus(String uploadSessionId, byte[] fileContent) {
+    public Mono<FileHandle> resumeUploadFromStatus(UploadSessionId uploadSessionId, byte[] fileContent) {
         return this.apiService.resumeUploadFromStatus(apiVersion.getValue(), uploadSessionId, fileContent);
     }
 
@@ -58,33 +58,37 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<BaseId> startUploadSession(
+        public Mono<UploadSessionId> startUploadSession(
                 String apiVersion, String appId, String fileName, long fileLength, String fileType) {
             return webClient
                     .post()
-                    .uri(
-                            "/{api-version}/{app-id}/uploads?file_name={fileName}&file_length={fileLength}&file_type={fileType}",
-                            apiVersion,
-                            appId,
-                            fileName,
-                            fileLength,
-                            fileType)
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/{api-version}/{app-id}/uploads")
+                            .queryParam("file_name", fileName)
+                            .queryParam("file_length", fileLength)
+                            .queryParam("file_type", fileType)
+                            .build(apiVersion, appId))
                     .retrieve()
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
-                    .bodyToMono(BaseId.class);
+                    .bodyToMono(UploadSessionId.class);
         }
 
         @Override
         public Mono<FileHandle> startOrResumeUpload(
-                String apiVersion, String uploadSessionId, long fileOffset, byte[] fileContent) {
+                String apiVersion, UploadSessionId uploadSessionId, long fileOffset, byte[] fileContent) {
 
-            if (!uploadSessionId.startsWith(UPLOAD_ID_PREFIX)) uploadSessionId = UPLOAD_ID_PREFIX + uploadSessionId;
+            String uri = UriComponentsBuilder.newInstance()
+                    .path("/{api-version}/upload:{uploadSessionId}")
+                    .queryParam(UploadSessionId.Fields.sig, uploadSessionId.getSig())
+                    .build(Boolean.FALSE)
+                    .expand(apiVersion, uploadSessionId.getUpload())
+                    .toUriString();
 
             return webClient
                     .post()
-                    .uri("/{api-version}/{uploadSessionId}", apiVersion, uploadSessionId)
+                    .uri(uri)
                     .header("file_offset", String.valueOf(fileOffset))
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .bodyValue(fileContent)
@@ -96,13 +100,18 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<UploadStatus> getUploadStatus(String apiVersion, String uploadSessionId) {
+        public Mono<UploadStatus> getUploadStatus(String apiVersion, UploadSessionId uploadSessionId) {
 
-            if (!uploadSessionId.startsWith(UPLOAD_ID_PREFIX)) uploadSessionId = UPLOAD_ID_PREFIX + uploadSessionId;
+            String uri = UriComponentsBuilder.newInstance()
+                    .path("/{api-version}/upload:{uploadSessionId}")
+                    .queryParam(UploadSessionId.Fields.sig, uploadSessionId.getSig())
+                    .build(Boolean.FALSE)
+                    .expand(apiVersion, uploadSessionId.getUpload())
+                    .toUriString();
 
             return webClient
                     .get()
-                    .uri("/{api-version}/{uploadSessionId}", apiVersion, uploadSessionId)
+                    .uri(uri)
                     .retrieve()
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
@@ -111,7 +120,8 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<FileHandle> resumeUploadFromStatus(String apiVersion, String uploadSessionId, byte[] fileContent) {
+        public Mono<FileHandle> resumeUploadFromStatus(
+                String apiVersion, UploadSessionId uploadSessionId, byte[] fileContent) {
             return this.getUploadStatus(apiVersion, uploadSessionId)
                     .map(status -> status != null && status.getFileOffset() != null ? status.getFileOffset() : 0L)
                     .flatMap(offset -> this.startOrResumeUpload(apiVersion, uploadSessionId, offset, fileContent));

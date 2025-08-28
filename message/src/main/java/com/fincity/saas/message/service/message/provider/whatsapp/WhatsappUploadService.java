@@ -3,8 +3,9 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
+import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
@@ -85,7 +86,10 @@ public class WhatsappUploadService implements IMessageAccessService {
         return Mono.just(connection);
     }
 
-    public Mono<BaseId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
+    public Mono<UploadSessionId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
+
+        if (uploadSessionRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
@@ -108,6 +112,8 @@ public class WhatsappUploadService implements IMessageAccessService {
 
     public Mono<FileHandle> startOrResumeUpload(UploadRequest uploadRequest, Mono<FilePart> filePartMono) {
 
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.messageConnectionService.getCoreDocument(
@@ -117,7 +123,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
                     if (filePartMono == null) return this.throwMissingParam(PARAM_FILE);
 
@@ -131,6 +137,8 @@ public class WhatsappUploadService implements IMessageAccessService {
 
     public Mono<UploadStatus> getUploadStatus(UploadRequest uploadRequest) {
 
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.messageConnectionService.getCoreDocument(
@@ -140,7 +148,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
 
                     return api.getUploadStatus(uploadRequest.getUploadSessionId());
@@ -149,6 +157,8 @@ public class WhatsappUploadService implements IMessageAccessService {
 
     public Mono<FileHandle> resumeUploadFromStatus(UploadRequest uploadRequest, Mono<FilePart> filePartMono) {
 
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.messageConnectionService.getCoreDocument(
@@ -158,7 +168,7 @@ public class WhatsappUploadService implements IMessageAccessService {
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
                     return readFilePartBytes(filePartMono)
                             .flatMap(bytes -> api.resumeUploadFromStatus(uploadRequest.getUploadSessionId(), bytes));
@@ -166,9 +176,8 @@ public class WhatsappUploadService implements IMessageAccessService {
     }
 
     private Mono<byte[]> readFilePartBytes(Mono<FilePart> filePartMono) {
-        if (filePartMono == null) {
-            return this.throwMissingParam(PARAM_FILE);
-        }
+        if (filePartMono == null) return this.throwMissingParam(PARAM_FILE);
+
         return filePartMono
                 .switchIfEmpty(this.throwMissingParam(PARAM_FILE))
                 .flatMap(fp -> DataBufferUtils.join(fp.content()))

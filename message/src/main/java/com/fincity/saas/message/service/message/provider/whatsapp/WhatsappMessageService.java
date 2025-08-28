@@ -10,6 +10,7 @@ import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumbe
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.common.PhoneNumber;
@@ -118,9 +119,9 @@ public class WhatsappMessageService
     @Override
     public Mono<Message> sendMessage(MessageAccess access, MessageRequest messageRequest, Connection connection) {
 
-        if (!messageRequest.isValid()) return super.throwMissingParam("text");
+        if (!messageRequest.isValid()) return super.throwMissingParam(MessageRequest.Fields.text);
 
-        if (!messageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+        if (messageRequest.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         WhatsappMessage whatsappMessage = WhatsappMessage.ofOutbound(
                 MessageBuilder.builder()
@@ -135,7 +136,8 @@ public class WhatsappMessageService
 
         if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
 
-        if (!whatsappMessageRequest.hasConnection()) return super.throwMissingParam("connectionName");
+        if (whatsappMessageRequest.isConnectionNull())
+            return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
@@ -166,10 +168,12 @@ public class WhatsappMessageService
                         (vConn, businessAccountId, phoneNumberId, validated) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
                         (vConn, businessAccountId, phoneNumberId, validated, api) ->
-                                api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getOutMessage()),
+                                api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getMessage()),
                         (vConn, businessAccountId, phoneNumberId, validated, api, response) -> {
                             whatsappMessage.setWhatsappBusinessAccountId(businessAccountId);
                             whatsappMessage.setWhatsappPhoneNumberId(phoneNumberId.getId());
+                            whatsappMessage.setCustomerWaId(
+                                    response.getContacts().getFirst().getWaId());
                             whatsappMessage.setMessageId(
                                     response.getMessages().getFirst().getId());
                             whatsappMessage.setMessageResponse(response);
@@ -209,9 +213,15 @@ public class WhatsappMessageService
         if (whatsappPhoneNumberId != null && !whatsappPhoneNumberId.isNull())
             return whatsappPhoneNumberService
                     .readIdentityWithAccessEmpty(access, whatsappPhoneNumberId)
-                    .switchIfEmpty(whatsappPhoneNumberService.getByAccountId(access, businessAccountId));
+                    .switchIfEmpty(this.getAccountWhatsappPhoneNumber(access, businessAccountId));
 
-        return whatsappPhoneNumberService.getByAccountId(access, businessAccountId);
+        return this.getAccountWhatsappPhoneNumber(access, businessAccountId);
+    }
+
+    private Mono<WhatsappPhoneNumber> getAccountWhatsappPhoneNumber(MessageAccess access, String businessAccountId) {
+        return whatsappPhoneNumberService
+                .getByAccountId(access, businessAccountId)
+                .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
     public Mono<Void> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
@@ -241,7 +251,7 @@ public class WhatsappMessageService
                     .flatMap(message -> processIncomingMessage(appCode, clientCode, message, value.getMetadata()))
                     .then();
         } else if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
-            return processStatusUpdates(value.getStatuses());
+            return this.processStatusUpdates(value.getStatuses());
         }
 
         return Mono.empty();

@@ -12,7 +12,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UploadStatus extends BaseId implements Serializable {
+public class UploadStatus extends UploadSessionId implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 4749783671668822914L;
