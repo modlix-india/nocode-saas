@@ -25,8 +25,14 @@ public class UploadSessionId extends BaseId<UploadSessionId> {
     @JsonIgnore
     private String sig;
 
+    public UploadSessionId() {}
+
+    public UploadSessionId(String id) {
+        this.setId(id);
+    }
+
     public static UploadSessionId of(String id) {
-        return new UploadSessionId().setId(id);
+        return new UploadSessionId(id);
     }
 
     @Override
