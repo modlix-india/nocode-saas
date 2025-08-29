@@ -300,7 +300,7 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
 
     @Override
     public List<UniqueKey<MessageWhatsappTemplatesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
+        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
     }
 
     private transient MessageMessagesPath _messageMessages;

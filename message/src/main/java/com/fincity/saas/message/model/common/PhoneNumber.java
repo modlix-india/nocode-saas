@@ -35,6 +35,10 @@ public class PhoneNumber implements Serializable {
         return of(null, phoneNumber);
     }
 
+    public static PhoneNumber ofWhatsapp(String phoneNumber) {
+        return of(null, "+" + phoneNumber);
+    }
+
     public static class PhoneNumberDeserializer extends JsonDeserializer<PhoneNumber> {
         @Override
         public PhoneNumber deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {

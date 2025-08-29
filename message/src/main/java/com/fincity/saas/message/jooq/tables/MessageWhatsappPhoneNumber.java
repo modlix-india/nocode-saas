@@ -96,6 +96,13 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
 
     /**
      * The column
+     * <code>message.message_whatsapp_phone_number.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
+     * WhatsApp Business Account ID.
+     */
+    public final TableField<MessageWhatsappPhoneNumberRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
+
+    /**
+     * The column
      * <code>message.message_whatsapp_phone_number.DISPLAY_PHONE_NUMBER</code>.
      * Display phone number for WhatsApp Business.
      */
