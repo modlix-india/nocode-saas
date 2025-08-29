@@ -1,0 +1,39 @@
+package com.fincity.saas.message.oserver.files.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
+
+@Data
+@Accessors(chain = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class FileDetail implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1234567890123456789L;
+
+    private ULong id;
+    private String name;
+    private boolean isDirectory;
+    private long size;
+    private String filePath;
+    private String url;
+    private long createdDate;
+    private long lastModifiedTime;
+    private String type;
+    private String fileName;
+
+    @JsonProperty("isCompressedFile")
+    public boolean isCompressedFile() {
+
+        if (this.type == null) return false;
+
+        return this.type.endsWith(".zip") || this.type.endsWith(".gz");
+    }
+}
