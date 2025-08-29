@@ -50,7 +50,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
                         this::hasAccess,
 
-                        access -> this.productService.readIdentityInternal(campaignRequest.getProductId()),
+                        access -> this.productService.readIdentityWithAccess(campaignRequest.getProductId()),
 
                         (access, product) -> super.createInternal(
                                 access, Campaign.of(campaignRequest).setProductId(product.getId())))
