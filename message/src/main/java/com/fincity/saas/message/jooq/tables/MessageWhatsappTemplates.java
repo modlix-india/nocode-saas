@@ -15,6 +15,7 @@ import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -184,6 +185,13 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     public final TableField<MessageWhatsappTemplatesRecord, Integer> MONTHLY_EDIT_COUNT = createField(DSL.name("MONTHLY_EDIT_COUNT"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Count of edit done in this month.");
 
     /**
+     * The column
+     * <code>message.message_whatsapp_templates.HEADER_FILE_DETAIL</code>. File
+     * Details if header component has a media file
+     */
+    public final TableField<MessageWhatsappTemplatesRecord, FileDetail> HEADER_FILE_DETAIL = createField(DSL.name("HEADER_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if header component has a media file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
      * The column <code>message.message_whatsapp_templates.COMPONENTS</code>.
      * Template components in JSON format.
      */
@@ -300,7 +308,7 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
 
     @Override
     public List<UniqueKey<MessageWhatsappTemplatesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
+        return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
     }
 
     private transient MessageMessagesPath _messageMessages;

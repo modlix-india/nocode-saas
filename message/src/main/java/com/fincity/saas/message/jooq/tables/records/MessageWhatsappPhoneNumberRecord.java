@@ -115,11 +115,30 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
 
     /**
      * Setter for
+     * <code>message.message_whatsapp_phone_number.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
+     * WhatsApp Business Account ID.
+     */
+    public MessageWhatsappPhoneNumberRecord setWhatsappBusinessAccountId(String value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_phone_number.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
+     * WhatsApp Business Account ID.
+     */
+    public String getWhatsappBusinessAccountId() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for
      * <code>message.message_whatsapp_phone_number.DISPLAY_PHONE_NUMBER</code>.
      * Display phone number for WhatsApp Business.
      */
     public MessageWhatsappPhoneNumberRecord setDisplayPhoneNumber(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -129,7 +148,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Display phone number for WhatsApp Business.
      */
     public String getDisplayPhoneNumber() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -138,7 +157,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Quality rating of the phone number.
      */
     public MessageWhatsappPhoneNumberRecord setQualityRating(QualityRatingType value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -148,7 +167,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Quality rating of the phone number.
      */
     public QualityRatingType getQualityRating() {
-        return (QualityRatingType) get(6);
+        return (QualityRatingType) get(7);
     }
 
     /**
@@ -157,7 +176,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Verified name associated with the phone number.
      */
     public MessageWhatsappPhoneNumberRecord setVerifiedName(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -167,7 +186,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Verified name associated with the phone number.
      */
     public String getVerifiedName() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -176,7 +195,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * WhatsApp phone number ID from Meta.
      */
     public MessageWhatsappPhoneNumberRecord setPhoneNumberId(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -186,7 +205,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * WhatsApp phone number ID from Meta.
      */
     public String getPhoneNumberId() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -195,7 +214,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Status of code verification.
      */
     public MessageWhatsappPhoneNumberRecord setCodeVerificationStatus(CodeVerificationStatus value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -205,7 +224,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Status of code verification.
      */
     public CodeVerificationStatus getCodeVerificationStatus() {
-        return (CodeVerificationStatus) get(9);
+        return (CodeVerificationStatus) get(10);
     }
 
     /**
@@ -214,7 +233,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * the verified name.
      */
     public MessageWhatsappPhoneNumberRecord setNameStatus(NameStatusType value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -224,7 +243,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * the verified name.
      */
     public NameStatusType getNameStatus() {
-        return (NameStatusType) get(10);
+        return (NameStatusType) get(11);
     }
 
     /**
@@ -233,7 +252,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Platform type for WhatsApp Business.
      */
     public MessageWhatsappPhoneNumberRecord setPlatformType(PlatformType value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -243,7 +262,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Platform type for WhatsApp Business.
      */
     public PlatformType getPlatformType() {
-        return (PlatformType) get(11);
+        return (PlatformType) get(12);
     }
 
     /**
@@ -252,7 +271,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Throughput level for message sending.
      */
     public MessageWhatsappPhoneNumberRecord setThroughputLevelType(LevelType value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -262,7 +281,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Throughput level for message sending.
      */
     public LevelType getThroughputLevelType() {
-        return (LevelType) get(12);
+        return (LevelType) get(13);
     }
 
     /**
@@ -270,7 +289,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Flag to indicate if this is the default phone number.
      */
     public MessageWhatsappPhoneNumberRecord setIsDefault(Byte value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -279,7 +298,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Flag to indicate if this is the default phone number.
      */
     public Byte getIsDefault() {
-        return (Byte) get(13);
+        return (Byte) get(14);
     }
 
     /**
@@ -287,7 +306,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Flag to check if this phone number is active or not.
      */
     public MessageWhatsappPhoneNumberRecord setIsActive(Byte value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -296,7 +315,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Flag to check if this phone number is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(14);
+        return (Byte) get(15);
     }
 
     /**
@@ -304,7 +323,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * ID of the user who created this row.
      */
     public MessageWhatsappPhoneNumberRecord setCreatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -313,7 +332,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -321,7 +340,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Time when this record was created.
      */
     public MessageWhatsappPhoneNumberRecord setCreatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -330,7 +349,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Time when this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -338,7 +357,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * ID of the user who updated this row.
      */
     public MessageWhatsappPhoneNumberRecord setUpdatedBy(ULong value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -347,7 +366,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(18);
     }
 
     /**
@@ -355,7 +374,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Time when this record was last updated.
      */
     public MessageWhatsappPhoneNumberRecord setUpdatedAt(LocalDateTime value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -364,7 +383,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Time when this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -390,7 +409,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
     /**
      * Create a detached, initialised MessageWhatsappPhoneNumberRecord
      */
-    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Byte isDefault, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Byte isDefault, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER);
 
         setId(id);
@@ -398,6 +417,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
         setClientCode(clientCode);
         setUserId(userId);
         setCode(code);
+        setWhatsappBusinessAccountId(whatsappBusinessAccountId);
         setDisplayPhoneNumber(displayPhoneNumber);
         setQualityRating(qualityRating);
         setVerifiedName(verifiedName);

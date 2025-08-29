@@ -318,6 +318,13 @@
                                             <includeExpression>.*\.COMPONENTS</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.message.oserver.files.model.FileDetail</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.HEADER_FILE_DETAIL</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.call.CallStatus</userType>
                                             <includeExpression>.*\.CALL_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>

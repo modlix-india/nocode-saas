@@ -6,7 +6,9 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageTyp
 import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
+import com.fincity.saas.message.model.message.whatsapp.webhook.IContact;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
+import com.fincity.saas.message.model.message.whatsapp.webhook.IMetadata;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -36,6 +38,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();
     private String to;
 
+    private Integer customerDialCode = PhoneUtil.getDefaultCallingCode();
+    private String customerPhoneNumber;
     private String customerWaId;
 
     private MessageType messageType;
@@ -66,6 +70,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setFrom(from.getNumber())
                 .setToDialCode(to.getCountryCode())
                 .setTo(to.getNumber())
+                .setCustomerDialCode(to.getCountryCode())
+                .setCustomerPhoneNumber(to.getNumber())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.SENT)
                 .setSentTime(LocalDateTime.now())
@@ -74,21 +80,40 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     }
 
     public static WhatsappMessage ofInbound(
-            IMessage message, String whatsappBusinessAccountId, ULong whatsappPhoneNumberId) {
+            IMetadata metadata,
+            IContact contact,
+            IMessage message,
+            String whatsappBusinessAccountId,
+            ULong whatsappPhoneNumberId) {
 
-        PhoneNumber from = PhoneNumber.of(message.getFrom());
+        PhoneNumber from = PhoneNumber.ofWhatsapp(message.getFrom());
+        PhoneNumber to = PhoneNumber.ofWhatsapp(metadata.getDisplayPhoneNumber());
 
         return new WhatsappMessage()
                 .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
                 .setMessageId(message.getId())
-                .setCustomerWaId(message.getContacts().getFirst().getWaId())
                 .setWhatsappPhoneNumberId(whatsappPhoneNumberId)
                 .setFromDialCode(from.getCountryCode())
                 .setFrom(from.getNumber())
+                .setToDialCode(to.getCountryCode())
+                .setTo(to.getNumber())
+                .setCustomerDialCode(from.getCountryCode())
+                .setCustomerPhoneNumber(from.getNumber())
+                .setCustomerWaId(contact.getWaId())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.DELIVERED)
                 .setDeliveredTime(message.getTimestampAsDate())
                 .setOutbound(Boolean.FALSE)
                 .setInMessage(message);
+    }
+
+    public WhatsappMessage update(String businessAccountId, ULong whatsappPhoneNumberId, MessageResponse response) {
+        this.setWhatsappBusinessAccountId(businessAccountId);
+        this.setWhatsappPhoneNumberId(whatsappPhoneNumberId);
+        this.setCustomerWaId(response.getContacts().getFirst().getWaId());
+        this.setMessageId(response.getMessages().getFirst().getId());
+        this.setMessageResponse(response);
+
+        return this;
     }
 }

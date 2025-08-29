@@ -5,6 +5,8 @@ import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
+import com.fincity.saas.message.model.message.whatsapp.response.Response;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
 import org.springframework.http.ResponseEntity;
@@ -24,5 +26,10 @@ public class WhatsappMessageController
     public Mono<ResponseEntity<Message>> sendWhatsappMessage(
             @RequestBody WhatsappMessageRequest whatsappMessageRequest) {
         return this.service.sendMessage(whatsappMessageRequest).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/read")
+    public Mono<ResponseEntity<Response>> markMessageAsRead(@RequestBody WhatsappReadRequest request) {
+        return this.service.markMessageAsRead(request).map(ResponseEntity::ok);
     }
 }

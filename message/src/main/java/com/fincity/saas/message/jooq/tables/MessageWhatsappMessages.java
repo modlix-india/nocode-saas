@@ -139,7 +139,21 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * The column <code>message.message_whatsapp_messages.CUSTOMER_WA_ID</code>.
      * Customer Whatsapp ID
      */
-    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_WA_ID = createField(DSL.name("CUSTOMER_WA_ID"), SQLDataType.CHAR(20).nullable(false), this, "Customer Whatsapp ID");
+    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_WA_ID = createField(DSL.name("CUSTOMER_WA_ID"), SQLDataType.CHAR(20), this, "Customer Whatsapp ID");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.CUSTOMER_DIAL_CODE</code>. Dial
+     * code of the customer phone number.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, Short> CUSTOMER_DIAL_CODE = createField(DSL.name("CUSTOMER_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the customer phone number.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.CUSTOMER_PHONE_NUMBER</code>.
+     * Phone number of the customer.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_PHONE_NUMBER = createField(DSL.name("CUSTOMER_PHONE_NUMBER"), SQLDataType.CHAR(15), this, "Phone number of the customer.");
 
     /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
