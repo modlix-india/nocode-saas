@@ -315,6 +315,12 @@
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.entity.processor.enums.CampaignPlatform</userType>
+                                            <includeExpression>.*\.CAMPAIGN_PLATFORM</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
                                     </forcedTypes>
                                 </database>
                                 <generate>

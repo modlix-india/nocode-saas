@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -267,6 +268,19 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorProductTemplates = new EntityProcessorProductTemplatesPath(this, Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID, null);
 
         return _entityProcessorProductTemplates;
+    }
+
+    private transient EntityProcessorCampaignsPath _entityProcessorCampaigns;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_campaigns</code> table
+     */
+    public EntityProcessorCampaignsPath entityProcessorCampaigns() {
+        if (_entityProcessorCampaigns == null)
+            _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorCampaigns;
     }
 
     private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
