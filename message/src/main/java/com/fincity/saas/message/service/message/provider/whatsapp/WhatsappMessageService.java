@@ -139,7 +139,10 @@ public class WhatsappMessageService
 
     public Mono<Message> sendMessage(WhatsappMessageRequest whatsappMessageRequest) {
 
-        if (!whatsappMessageRequest.isValid()) return super.throwMissingParam("message");
+        if (whatsappMessageRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
+        if (!whatsappMessageRequest.isValid()) return super.throwMissingParam(WhatsappMessageRequest.Fields.message);
 
         if (whatsappMessageRequest.isConnectionNull())
             return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);

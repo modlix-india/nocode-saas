@@ -43,10 +43,13 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
     private Category previousCategory;
     private ComponentList components;
     private Integer monthlyEditCount = 0;
-    private FileDetail fileDetail;
+    private FileDetail headerFileDetail;
 
     public static WhatsappTemplate of(
-            String whatsappBusinessAccountId, MessageTemplate messageTemplate, Template template) {
+            String whatsappBusinessAccountId,
+            MessageTemplate messageTemplate,
+            Template template,
+            FileDetail fileDetail) {
         WhatsappTemplate whatsappTemplate =
                 new WhatsappTemplate().setWhatsappBusinessAccountId(whatsappBusinessAccountId);
 
@@ -77,6 +80,8 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
                 whatsappTemplate.setComponents(componentList);
             }
         }
+
+        whatsappTemplate.setHeaderFileDetail(fileDetail);
 
         return whatsappTemplate;
     }

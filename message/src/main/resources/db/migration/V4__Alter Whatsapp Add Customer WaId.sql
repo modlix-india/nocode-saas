@@ -17,3 +17,6 @@ ALTER TABLE `message`.`message_whatsapp_phone_number`
 
 ALTER TABLE `message`.`message_whatsapp_templates`
     ADD UNIQUE KEY `UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME` (`WHATSAPP_BUSINESS_ACCOUNT_ID`, `TEMPLATE_NAME`);
+
+ALTER TABLE `message`.`message_whatsapp_templates`
+    ADD COLUMN `HEADER_FILE_DETAIL` JSON NULL COMMENT 'File Details if header component has a media file' AFTER `MONTHLY_EDIT_COUNT`;
