@@ -28,7 +28,7 @@ public class WhatsappMessageController
         return this.service.sendMessage(whatsappMessageRequest).map(ResponseEntity::ok);
     }
 
-    @PostMapping("/markRead")
+    @PostMapping("/read")
     public Mono<ResponseEntity<Response>> markMessageAsRead(@RequestBody WhatsappMarkReadRequest request) {
         return this.service.markMessageAsRead(request).map(ResponseEntity::ok);
     }
