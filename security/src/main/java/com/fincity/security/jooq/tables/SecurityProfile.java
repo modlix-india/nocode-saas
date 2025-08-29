@@ -95,6 +95,11 @@ public class SecurityProfile extends TableImpl<SecurityProfileRecord> {
     public final TableField<SecurityProfileRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(256), this, "Name of the profile");
 
     /**
+     * The column <code>security.security_profile.Title</code>.
+     */
+    public final TableField<SecurityProfileRecord, String> TITLE = createField(DSL.name("Title"), SQLDataType.VARCHAR(512), this, "");
+
+    /**
      * The column <code>security.security_profile.APP_ID</code>.
      */
     public final TableField<SecurityProfileRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "");

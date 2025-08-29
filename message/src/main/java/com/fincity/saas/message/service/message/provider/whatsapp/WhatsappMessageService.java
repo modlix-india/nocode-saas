@@ -168,10 +168,12 @@ public class WhatsappMessageService
                         (vConn, businessAccountId, phoneNumberId, validated) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
                         (vConn, businessAccountId, phoneNumberId, validated, api) ->
-                                api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getOutMessage()),
+                                api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getMessage()),
                         (vConn, businessAccountId, phoneNumberId, validated, api, response) -> {
                             whatsappMessage.setWhatsappBusinessAccountId(businessAccountId);
                             whatsappMessage.setWhatsappPhoneNumberId(phoneNumberId.getId());
+                            whatsappMessage.setCustomerWaId(
+                                    response.getContacts().getFirst().getWaId());
                             whatsappMessage.setMessageId(
                                     response.getMessages().getFirst().getId());
                             whatsappMessage.setMessageResponse(response);
@@ -211,9 +213,15 @@ public class WhatsappMessageService
         if (whatsappPhoneNumberId != null && !whatsappPhoneNumberId.isNull())
             return whatsappPhoneNumberService
                     .readIdentityWithAccessEmpty(access, whatsappPhoneNumberId)
-                    .switchIfEmpty(whatsappPhoneNumberService.getByAccountId(access, businessAccountId));
+                    .switchIfEmpty(this.getAccountWhatsappPhoneNumber(access, businessAccountId));
 
-        return whatsappPhoneNumberService.getByAccountId(access, businessAccountId);
+        return this.getAccountWhatsappPhoneNumber(access, businessAccountId);
+    }
+
+    private Mono<WhatsappPhoneNumber> getAccountWhatsappPhoneNumber(MessageAccess access, String businessAccountId) {
+        return whatsappPhoneNumberService
+                .getByAccountId(access, businessAccountId)
+                .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
     public Mono<Void> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
@@ -243,7 +251,7 @@ public class WhatsappMessageService
                     .flatMap(message -> processIncomingMessage(appCode, clientCode, message, value.getMetadata()))
                     .then();
         } else if (value.getStatuses() != null && !value.getStatuses().isEmpty()) {
-            return processStatusUpdates(value.getStatuses());
+            return this.processStatusUpdates(value.getStatuses());
         }
 
         return Mono.empty();
