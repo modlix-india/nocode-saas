@@ -38,19 +38,11 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
     public Mono<Campaign> create(CampaignRequest campaignRequest) {
 
-        if (campaignRequest.getProductId() == null
-                || campaignRequest.getProductId().isNull()) {
-
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "Product information invalid or missing.");
-        }
-
         return FlatMapUtil.flatMapMono(
 
                         this::hasAccess,
 
-                        access -> this.productService.readIdentityWithAccess(campaignRequest.getProductId()),
+                        access -> this.productService.readIdentityWithAccess(access, campaignRequest.getProductId()),
 
                         (access, product) -> super.createInternal(
                                 access, Campaign.of(campaignRequest).setProductId(product.getId())))
