@@ -12,7 +12,7 @@ import lombok.experimental.FieldNameConstants;
 @Accessors(chain = true)
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
-public class WhatsappMarkReadRequest extends BaseMessageRequest {
+public class WhatsappReadRequest extends BaseMessageRequest {
 
     @Serial
     private static final long serialVersionUID = 8640647159744188312L;

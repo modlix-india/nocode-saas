@@ -27,7 +27,7 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IStatus;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMarkReadRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
@@ -381,7 +381,7 @@ public class WhatsappMessageService
                 .map(WhatsappCswService.CswStatus::canSendNonTemplateMessage);
     }
 
-    public Mono<Response> markMessageAsRead(WhatsappMarkReadRequest request) {
+    public Mono<Response> markMessageAsRead(WhatsappReadRequest request) {
 
         if (request.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
