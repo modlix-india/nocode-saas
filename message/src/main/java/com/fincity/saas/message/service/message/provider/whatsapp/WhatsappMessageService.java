@@ -351,15 +351,14 @@ public class WhatsappMessageService
         return customerServiceWindowService
                 .canSendMessage(access, whatsappPhoneNumber, customerPhone, isTemplateMessage)
                 .flatMap(canSend -> {
-                    if (Boolean.FALSE.equals(canSend)) {
+                    if (Boolean.FALSE.equals(canSend))
                         return Mono.error(
                                 new GenericException(
                                         HttpStatus.BAD_REQUEST,
                                         "Cannot send non-template message outside customer service window. "
                                                 + "Customer service window is open for 24 hours after receiving a message from the customer. "
                                                 + "Use template messages to initiate conversations or send messages outside the window."));
-                    }
-                    return Mono.just(true);
+                    return Mono.just(Boolean.TRUE);
                 });
     }
 
