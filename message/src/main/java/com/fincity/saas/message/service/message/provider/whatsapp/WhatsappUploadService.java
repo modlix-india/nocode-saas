@@ -3,8 +3,9 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.message.model.message.whatsapp.graph.BaseId;
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.message.whatsapp.graph.FileHandle;
+import com.fincity.saas.message.model.message.whatsapp.graph.UploadSessionId;
 import com.fincity.saas.message.model.message.whatsapp.graph.UploadStatus;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.graph.UploadSessionRequest;
@@ -17,7 +18,9 @@ import com.fincity.saas.message.service.message.MessageConnectionService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -26,7 +29,7 @@ public class WhatsappUploadService implements IMessageAccessService {
 
     private static final String KEY_META_APP_ID = "metaAppId";
     private static final String PARAM_UPLOAD_SESSION_ID = "uploadSessionId";
-    private static final String PARAM_FILE_CONTENT = "fileContent";
+    private static final String PARAM_FILE = "file";
 
     @Getter
     private MessageResourceService msgService;
@@ -83,11 +86,14 @@ public class WhatsappUploadService implements IMessageAccessService {
         return Mono.just(connection);
     }
 
-    public Mono<BaseId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
+    public Mono<UploadSessionId> startUploadSession(UploadSessionRequest uploadSessionRequest) {
+
+        if (uploadSessionRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), uploadSessionRequest.getConnectionName()),
                 (access, connection) -> this.isValidConnection(connection),
                 (access, connection, vConnection) ->
@@ -104,62 +110,82 @@ public class WhatsappUploadService implements IMessageAccessService {
                 });
     }
 
-    public Mono<FileHandle> startOrResumeUpload(UploadRequest uploadRequest) {
+    public Mono<FileHandle> startOrResumeUpload(UploadRequest uploadRequest, Mono<FilePart> filePartMono) {
+
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), uploadRequest.getConnectionName()),
                 (access, connection) -> this.isValidConnection(connection),
                 (access, connection, vConnection) ->
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
-                    if (uploadRequest.getFileContent() == null) return this.throwMissingParam(PARAM_FILE_CONTENT);
+                    if (filePartMono == null) return this.throwMissingParam(PARAM_FILE);
 
                     long offset = uploadRequest.getFileOffset() != null ? uploadRequest.getFileOffset() : 0L;
-                    return api.startOrResumeUpload(
-                            uploadRequest.getUploadSessionId(), offset, uploadRequest.getFileContent());
+
+                    return readFilePartBytes(filePartMono)
+                            .flatMap(bytes ->
+                                    api.startOrResumeUpload(uploadRequest.getUploadSessionId(), offset, bytes));
                 });
     }
 
     public Mono<UploadStatus> getUploadStatus(UploadRequest uploadRequest) {
 
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), uploadRequest.getConnectionName()),
                 (access, connection) -> this.isValidConnection(connection),
                 (access, connection, vConnection) ->
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
 
                     return api.getUploadStatus(uploadRequest.getUploadSessionId());
                 });
     }
 
-    public Mono<FileHandle> resumeUploadFromStatus(UploadRequest uploadRequest) {
+    public Mono<FileHandle> resumeUploadFromStatus(UploadRequest uploadRequest, Mono<FilePart> filePartMono) {
+
+        if (uploadRequest.isConnectionNull()) return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> this.messageConnectionService.getConnection(
+                access -> this.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), uploadRequest.getConnectionName()),
                 (access, connection) -> this.isValidConnection(connection),
                 (access, connection, vConnection) ->
                         whatsappApiFactory.newResumableUploadApiFromConnection(vConnection),
                 (access, connection, vConnection, api) -> {
                     if (uploadRequest.getUploadSessionId() == null
-                            || uploadRequest.getUploadSessionId().isEmpty())
+                            || uploadRequest.getUploadSessionId().isNull())
                         return this.throwMissingParam(PARAM_UPLOAD_SESSION_ID);
-                    if (uploadRequest.getFileContent() == null) return this.throwMissingParam(PARAM_FILE_CONTENT);
+                    return readFilePartBytes(filePartMono)
+                            .flatMap(bytes -> api.resumeUploadFromStatus(uploadRequest.getUploadSessionId(), bytes));
+                });
+    }
 
-                    return api.resumeUploadFromStatus(
-                            uploadRequest.getUploadSessionId(), uploadRequest.getFileContent());
+    private Mono<byte[]> readFilePartBytes(Mono<FilePart> filePartMono) {
+        if (filePartMono == null) return this.throwMissingParam(PARAM_FILE);
+
+        return filePartMono
+                .switchIfEmpty(this.throwMissingParam(PARAM_FILE))
+                .flatMap(fp -> DataBufferUtils.join(fp.content()))
+                .map(dataBuffer -> {
+                    byte[] bytes = new byte[dataBuffer.readableByteCount()];
+                    dataBuffer.read(bytes);
+                    DataBufferUtils.release(dataBuffer);
+                    return bytes;
                 });
     }
 }

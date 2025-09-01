@@ -8,6 +8,7 @@ import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
+import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
@@ -75,11 +76,18 @@ public class WhatsappTemplateService
 
     public Mono<WhatsappTemplate> createTemplate(WhatsappTemplateRequest whatsappTemplateRequest) {
 
+        if (whatsappTemplateRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
+        if (whatsappTemplateRequest.getMessageTemplate().hadHeaderMediaFile()
+                && whatsappTemplateRequest.getFileDetail() == null)
+            return super.throwMissingParam(WhatsappTemplateRequest.Fields.fileDetail);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, validationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, validationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -95,17 +103,21 @@ public class WhatsappTemplateService
                                         WhatsappTemplate.of(
                                                 businessAccountId,
                                                 whatsappTemplateRequest.getMessageTemplate(),
-                                                apiTemplate)))
+                                                apiTemplate,
+                                                whatsappTemplateRequest.getFileDetail())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappTemplateService.createTemplate"));
     }
 
     public Mono<WhatsappTemplate> updateTemplate(WhatsappTemplateRequest whatsappTemplateRequest) {
 
+        if (whatsappTemplateRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         messageAccess -> this.validateTemplateName(
                                 whatsappTemplateRequest.getMessageTemplate().getName()),
-                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getConnection(
+                        (messageAccess, nameValidationResult) -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
@@ -140,9 +152,13 @@ public class WhatsappTemplateService
     }
 
     public Mono<WhatsappTemplate> updateTemplateStatus(WhatsappTemplateRequest whatsappTemplateRequest) {
+
+        if (whatsappTemplateRequest.isConnectionNull())
+            return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        messageAccess -> super.messageConnectionService.getConnection(
+                        messageAccess -> super.messageConnectionService.getCoreDocument(
                                 messageAccess.getAppCode(),
                                 messageAccess.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),

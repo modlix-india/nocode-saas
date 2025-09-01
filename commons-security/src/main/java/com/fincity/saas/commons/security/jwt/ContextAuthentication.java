@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.security.jwt;
 
+import java.io.Serial;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -25,6 +26,7 @@ public class ContextAuthentication implements Authentication {
 
     public static final String CLIENT_TYPE_SYSTEM = "SYS";
 
+    @Serial
     private static final long serialVersionUID = 1127850908587759885L;
 
     private ContextUser user;
@@ -80,10 +82,5 @@ public class ContextAuthentication implements Authentication {
     public boolean isSystemClient() {
 
         return CLIENT_TYPE_SYSTEM.equals(this.clientTypeCode);
-    }
-
-    @JsonIgnore
-    public String getUrlClientCodeOrElse(boolean getUrl) {
-        return getUrl ? this.urlClientCode : this.clientCode;
     }
 }

@@ -22,6 +22,7 @@ public class Product extends BaseProcessorDto<Product> {
     private static final long serialVersionUID = 8028699089699178352L;
 
     private ULong productTemplateId;
+    private Boolean forPartner = Boolean.FALSE;
 
     public Product() {
         super();
@@ -31,10 +32,14 @@ public class Product extends BaseProcessorDto<Product> {
     public Product(Product product) {
         super(product);
         this.productTemplateId = product.productTemplateId;
+        this.forPartner = product.forPartner;
     }
 
     public static Product of(ProductRequest productRequest) {
-        return new Product().setName(productRequest.getName()).setDescription(productRequest.getDescription());
+        return new Product()
+                .setName(productRequest.getName())
+                .setDescription(productRequest.getDescription())
+                .setForPartner(productRequest.getForPartner());
     }
 
     @Override

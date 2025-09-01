@@ -4,11 +4,13 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -21,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class BaseContentService<
                 R extends UpdatableRecord<R>, D extends BaseContentDto<D>, O extends BaseContentDAO<R, D>>
@@ -137,6 +140,23 @@ public abstract class BaseContentService<
         return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
+    protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
+
+        if (request.getUserId() != null) return Mono.just(request);
+
+        Mono<Identity> ticketIdMono = request.getTicketId() != null
+                ? this.checkTicket(access, request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        Mono<Identity> ownerIdMono = request.getOwnerId() != null
+                ? this.checkOwner(access, request.getOwnerId(), request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        return Mono.zip(ticketIdMono, ownerIdMono)
+                .map(tuple3 -> request.setTicketId(tuple3.getT1()).setOwnerId(tuple3.getT2()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseContentService.updateIdentities"));
+    }
+
     protected Mono<Identity> checkTicket(ProcessorAccess access, Identity ticketId) {
         if (ticketId == null || ticketId.isNull())
             return this.msgService.throwMessage(
@@ -229,7 +249,7 @@ public abstract class BaseContentService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.ticketService.getEntityName(),
+                        "user",
                         content.getUserId()));
     }
 }

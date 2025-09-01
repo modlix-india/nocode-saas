@@ -6,6 +6,8 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.Category;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory;
+import com.fincity.saas.message.model.message.whatsapp.templates.type.ComponentType;
+import com.fincity.saas.message.model.message.whatsapp.templates.type.HeaderFormat;
 import com.fincity.saas.message.model.message.whatsapp.templates.type.LanguageType;
 import java.io.Serial;
 import java.io.Serializable;
@@ -73,5 +75,13 @@ public class MessageTemplate implements Serializable {
         }
 
         return this;
+    }
+
+    public boolean hadHeaderMediaFile() {
+        if (this.components == null || this.components.isEmpty()) return false;
+        return components.stream()
+                .anyMatch(c -> c.getType() == ComponentType.HEADER
+                        && c instanceof HeaderComponent h
+                        && h.getFormat() != HeaderFormat.TEXT);
     }
 }

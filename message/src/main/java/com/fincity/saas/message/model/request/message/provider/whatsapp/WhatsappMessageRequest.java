@@ -3,6 +3,7 @@ package com.fincity.saas.message.model.request.message.provider.whatsapp;
 import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,6 +21,7 @@ public class WhatsappMessageRequest extends BaseMessageRequest {
 
     private Identity whatsappPhoneNumberId;
     private Message message;
+    private FileDetail fileDetail;
 
     public boolean isValid() {
         return this.message != null && this.message.getTo() != null;

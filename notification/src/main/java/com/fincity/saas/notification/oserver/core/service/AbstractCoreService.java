@@ -18,6 +18,8 @@ public abstract class AbstractCoreService<T extends AbstractOverridableDTO<T>> {
 
     protected IFeignSecurityService securityService;
 
+    protected abstract String getObjectName();
+
     @Autowired
     private void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;

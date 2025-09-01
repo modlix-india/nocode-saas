@@ -7,7 +7,6 @@ import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
-import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -39,23 +38,10 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
     public Mono<Note> createInternal(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.updateIdentities(access, noteRequest),
+                        () -> super.updateBaseIdentities(access, noteRequest),
                         this::createContent,
                         (uRequest, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createInternal"));
-    }
-
-    private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
-        return FlatMapUtil.flatMapMono(
-                        () -> noteRequest.getTicketId() != null
-                                ? this.checkTicket(access, noteRequest.getTicketId())
-                                : Mono.just(Identity.ofNull()),
-                        ticketId -> noteRequest.getOwnerId() != null
-                                ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
-                                : Mono.just(Identity.ofNull()),
-                        (ticketId, ownerId) ->
-                                Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.updateIdentities"));
     }
 
     private Mono<Note> createContent(NoteRequest noteRequest) {
