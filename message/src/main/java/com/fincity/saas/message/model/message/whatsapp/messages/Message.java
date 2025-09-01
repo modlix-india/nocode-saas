@@ -71,6 +71,13 @@ public class Message implements Serializable {
         this.context = context;
     }
 
+    public boolean hasMediaFile() {
+        return this.audioMessage != null
+                || this.documentMessage != null
+                || this.imageMessage != null
+                || this.videoMessage != null;
+    }
+
     public static class MessageBuilder {
 
         private String to;
