@@ -14,6 +14,7 @@ import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -208,6 +209,13 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * Message object send by WhatsApp.
      */
     public final TableField<MessageWhatsappMessagesRecord, com.fincity.saas.message.model.message.whatsapp.messages.Message> MESSAGE = createField(DSL.name("MESSAGE"), SQLDataType.JSON, this, "Entire Message object send by WhatsApp.", new JSONtoClassConverter<JSON, com.fincity.saas.message.model.message.whatsapp.messages.Message>(JSON.class, com.fincity.saas.message.model.message.whatsapp.messages.Message.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.MEDIA_FILE_DETAIL</code>. File
+     * Details if message has a media file
+     */
+    public final TableField<MessageWhatsappMessagesRecord, FileDetail> MEDIA_FILE_DETAIL = createField(DSL.name("MEDIA_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if message has a media file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
 
     /**
      * The column <code>message.message_whatsapp_messages.IN_MESSAGE</code>.

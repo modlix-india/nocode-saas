@@ -27,8 +27,9 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IStatus;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
@@ -132,7 +133,8 @@ public class WhatsappMessageService
                 MessageBuilder.builder()
                         .setTo(messageRequest.getToNumber().getNumber())
                         .buildTextMessage(new TextMessage().setBody(messageRequest.getText())),
-                PhoneUtil.parse(access.getUser().getPhoneNumber()));
+                PhoneUtil.parse(access.getUser().getPhoneNumber()),
+                null);
 
         return this.sendMessageInternal(access, connection, null, whatsappMessage);
     }
@@ -147,6 +149,9 @@ public class WhatsappMessageService
         if (whatsappMessageRequest.isConnectionNull())
             return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
+        if (whatsappMessageRequest.getMessage().hasMediaFile() && whatsappMessageRequest.getFileDetail() == null)
+            return super.throwMissingParam(WhatsappTemplateRequest.Fields.fileDetail);
+
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.messageConnectionService.getCoreDocument(
@@ -157,7 +162,8 @@ public class WhatsappMessageService
                         whatsappMessageRequest.getWhatsappPhoneNumberId(),
                         WhatsappMessage.ofOutbound(
                                 whatsappMessageRequest.getMessage(),
-                                PhoneUtil.parse(access.getUser().getPhoneNumber()))));
+                                PhoneUtil.parse(access.getUser().getPhoneNumber()),
+                                whatsappMessageRequest.getFileDetail())));
     }
 
     private Mono<Message> sendMessageInternal(

@@ -9,6 +9,7 @@ import com.fincity.saas.message.model.message.whatsapp.messages.response.Message
 import com.fincity.saas.message.model.message.whatsapp.webhook.IContact;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMetadata;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
@@ -56,12 +57,13 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private Message message;
     private IMessage inMessage;
     private MessageResponse messageResponse;
+    private FileDetail mediaFileDetails;
 
     public WhatsappMessage() {
         super();
     }
 
-    public static WhatsappMessage ofOutbound(Message message, PhoneNumber from) {
+    public static WhatsappMessage ofOutbound(Message message, PhoneNumber from, FileDetail fileDetail) {
 
         PhoneNumber to = PhoneNumber.of(message.getTo());
 
@@ -76,7 +78,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setMessageStatus(MessageStatus.SENT)
                 .setSentTime(LocalDateTime.now())
                 .setOutbound(Boolean.TRUE)
-                .setMessage(message);
+                .setMessage(message)
+                .setMediaFileDetails(fileDetail);
     }
 
     public static WhatsappMessage ofInbound(
