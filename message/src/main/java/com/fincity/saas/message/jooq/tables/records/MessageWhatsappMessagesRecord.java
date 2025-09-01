@@ -10,6 +10,7 @@ import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 
@@ -424,11 +425,30 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     }
 
     /**
+     * Setter for
+     * <code>message.message_whatsapp_messages.MEDIA_FILE_DETAIL</code>. File
+     * Details if message has a media file
+     */
+    public MessageWhatsappMessagesRecord setMediaFileDetail(FileDetail value) {
+        set(23, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_messages.MEDIA_FILE_DETAIL</code>. File
+     * Details if message has a media file
+     */
+    public FileDetail getMediaFileDetail() {
+        return (FileDetail) get(23);
+    }
+
+    /**
      * Setter for <code>message.message_whatsapp_messages.IN_MESSAGE</code>.
      * Inbound message object
      */
     public MessageWhatsappMessagesRecord setInMessage(IMessage value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -437,7 +457,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Inbound message object
      */
     public IMessage getInMessage() {
-        return (IMessage) get(23);
+        return (IMessage) get(24);
     }
 
     /**
@@ -446,7 +466,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Message Response object send by WhatsApp.
      */
     public MessageWhatsappMessagesRecord setMessageResponse(MessageResponse value) {
-        set(24, value);
+        set(25, value);
         return this;
     }
 
@@ -456,7 +476,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Message Response object send by WhatsApp.
      */
     public MessageResponse getMessageResponse() {
-        return (MessageResponse) get(24);
+        return (MessageResponse) get(25);
     }
 
     /**
@@ -464,7 +484,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * to check if this message is active or not.
      */
     public MessageWhatsappMessagesRecord setIsActive(Byte value) {
-        set(25, value);
+        set(26, value);
         return this;
     }
 
@@ -473,7 +493,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * to check if this message is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(25);
+        return (Byte) get(26);
     }
 
     /**
@@ -481,7 +501,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * of the user who created this row.
      */
     public MessageWhatsappMessagesRecord setCreatedBy(ULong value) {
-        set(26, value);
+        set(27, value);
         return this;
     }
 
@@ -490,7 +510,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(26);
+        return (ULong) get(27);
     }
 
     /**
@@ -498,7 +518,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Time when this record was created.
      */
     public MessageWhatsappMessagesRecord setCreatedAt(LocalDateTime value) {
-        set(27, value);
+        set(28, value);
         return this;
     }
 
@@ -507,7 +527,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Time when this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(27);
+        return (LocalDateTime) get(28);
     }
 
     /**
@@ -515,7 +535,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * of the user who updated this row.
      */
     public MessageWhatsappMessagesRecord setUpdatedBy(ULong value) {
-        set(28, value);
+        set(29, value);
         return this;
     }
 
@@ -524,7 +544,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(28);
+        return (ULong) get(29);
     }
 
     /**
@@ -532,7 +552,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Time when this record was last updated.
      */
     public MessageWhatsappMessagesRecord setUpdatedAt(LocalDateTime value) {
-        set(29, value);
+        set(30, value);
         return this;
     }
 
@@ -541,7 +561,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Time when this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(29);
+        return (LocalDateTime) get(30);
     }
 
     // -------------------------------------------------------------------------
@@ -567,7 +587,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     /**
      * Create a detached, initialised MessageWhatsappMessagesRecord
      */
-    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, IMessage inMessage, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, FileDetail mediaFileDetail, IMessage inMessage, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES);
 
         setId(id);
@@ -593,6 +613,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
         setFailureReason(failureReason);
         setIsOutbound(isOutbound);
         setMessage(message);
+        setMediaFileDetail(mediaFileDetail);
         setInMessage(inMessage);
         setMessageResponse(messageResponse);
         setIsActive(isActive);
