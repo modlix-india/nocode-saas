@@ -23,4 +23,5 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
     }
+
 }

@@ -1,6 +1,12 @@
 package com.fincity.saas.entity.processor.enums;
 
+import java.util.Map;
+
+import org.jooq.EnumType;
+import org.jooq.Table;
+
 import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -15,6 +21,7 @@ import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -29,10 +36,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
-import java.util.Map;
+
 import lombok.Getter;
-import org.jooq.EnumType;
-import org.jooq.Table;
 
 @Getter
 public enum EntitySeries implements EnumType {
@@ -95,7 +100,8 @@ public enum EntitySeries implements EnumType {
             Map.entry(TASK, "Task"),
             Map.entry(TASK_TYPE, "TaskType"),
             Map.entry(NOTE, "Note"),
-            Map.entry(ACTIVITY, "activity"),
+            Map.entry(ACTIVITY, "Activity"),
+            Map.entry(CAMPAIGN, "Campaign"),
             Map.entry(PARTNER, "Partner"));
 
     private final String literal;
