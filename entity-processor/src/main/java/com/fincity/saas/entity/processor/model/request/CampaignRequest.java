@@ -2,12 +2,11 @@ package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
-
-import java.io.Serial;
-import java.io.Serializable;
 
 @Data
 @Accessors(chain = true)
@@ -23,4 +22,3 @@ public class CampaignRequest implements Serializable {
     private CampaignPlatform campaignPlatform;
     private Identity productId;
 }
-
