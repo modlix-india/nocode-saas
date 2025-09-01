@@ -15,7 +15,8 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/entity/processor/campaigns")
-public class CampaignController extends BaseUpdatableController<EntityProcessorCampaignsRecord, Campaign, CampaignDAO, CampaignService> {
+public class CampaignController
+        extends BaseUpdatableController<EntityProcessorCampaignsRecord, Campaign, CampaignDAO, CampaignService> {
 
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<Campaign>> createFromRequest(@RequestBody CampaignRequest campaignRequest) {
