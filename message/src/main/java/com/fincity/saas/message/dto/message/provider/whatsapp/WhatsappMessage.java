@@ -57,7 +57,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     private Message message;
     private IMessage inMessage;
     private MessageResponse messageResponse;
-    private FileDetail mediaFileDetails;
+    private FileDetail mediaFileDetail;
 
     public WhatsappMessage() {
         super();
@@ -79,7 +79,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setSentTime(LocalDateTime.now())
                 .setOutbound(Boolean.TRUE)
                 .setMessage(message)
-                .setMediaFileDetails(fileDetail);
+                .setMediaFileDetail(fileDetail);
     }
 
     public static WhatsappMessage ofInbound(

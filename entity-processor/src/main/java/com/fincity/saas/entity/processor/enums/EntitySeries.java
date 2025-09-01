@@ -8,7 +8,6 @@ import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.jooq.tables.*;
-
 import java.util.Map;
 import lombok.Getter;
 import org.jooq.EnumType;

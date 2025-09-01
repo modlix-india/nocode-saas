@@ -71,6 +71,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     protected Mono<Product> updatableEntity(Product entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
+                    existing.setForPartner(entity.getForPartner());
                     existing.setProductTemplateId(entity.getProductTemplateId());
 
                     return Mono.just(existing);
@@ -112,7 +113,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                                 .collectList(),
                         (access, products) -> Flux.fromIterable(products)
                                 .flatMap(product -> {
-                                    product.setForPartner(Boolean.TRUE.equals(request.getForPartner()));
+                                    product.setForPartner(request.getForPartner());
                                     return this.updateInternal(product);
                                 })
                                 .collectList()
