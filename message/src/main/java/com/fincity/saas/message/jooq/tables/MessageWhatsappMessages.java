@@ -13,6 +13,8 @@ import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
+import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -135,6 +137,26 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     public final TableField<MessageWhatsappMessagesRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
 
     /**
+     * The column <code>message.message_whatsapp_messages.CUSTOMER_WA_ID</code>.
+     * Customer Whatsapp ID
+     */
+    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_WA_ID = createField(DSL.name("CUSTOMER_WA_ID"), SQLDataType.CHAR(20), this, "Customer Whatsapp ID");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.CUSTOMER_DIAL_CODE</code>. Dial
+     * code of the customer phone number.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, Short> CUSTOMER_DIAL_CODE = createField(DSL.name("CUSTOMER_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the customer phone number.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.CUSTOMER_PHONE_NUMBER</code>.
+     * Phone number of the customer.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, String> CUSTOMER_PHONE_NUMBER = createField(DSL.name("CUSTOMER_PHONE_NUMBER"), SQLDataType.CHAR(15), this, "Phone number of the customer.");
+
+    /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_TYPE</code>.
      * Type of the message (TEXT, IMAGE, VIDEO, etc.).
      */
@@ -187,6 +209,19 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * Message object send by WhatsApp.
      */
     public final TableField<MessageWhatsappMessagesRecord, com.fincity.saas.message.model.message.whatsapp.messages.Message> MESSAGE = createField(DSL.name("MESSAGE"), SQLDataType.JSON, this, "Entire Message object send by WhatsApp.", new JSONtoClassConverter<JSON, com.fincity.saas.message.model.message.whatsapp.messages.Message>(JSON.class, com.fincity.saas.message.model.message.whatsapp.messages.Message.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.MEDIA_FILE_DETAIL</code>. File
+     * Details if message has a media file
+     */
+    public final TableField<MessageWhatsappMessagesRecord, FileDetail> MEDIA_FILE_DETAIL = createField(DSL.name("MEDIA_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if message has a media file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column <code>message.message_whatsapp_messages.IN_MESSAGE</code>.
+     * Inbound message object
+     */
+    public final TableField<MessageWhatsappMessagesRecord, IMessage> IN_MESSAGE = createField(DSL.name("IN_MESSAGE"), SQLDataType.JSON, this, "Inbound message object", new JSONtoClassConverter<JSON, IMessage>(JSON.class, IMessage.class));
 
     /**
      * The column

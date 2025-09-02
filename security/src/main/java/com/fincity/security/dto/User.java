@@ -56,6 +56,11 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
     private ULong designationId;
     private ULong reportingTo;
 
+    private List<Profile> profiles;
+    private Client client;
+    private Client managingClient;
+    private User createdByUser;
+
     public String getUserName() {
         return PLACEHOLDER.equals(this.userName) ? null : this.userName;
     }

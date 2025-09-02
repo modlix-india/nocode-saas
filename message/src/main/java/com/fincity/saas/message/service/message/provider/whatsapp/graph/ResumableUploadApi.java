@@ -10,6 +10,7 @@ import com.fincity.saas.message.service.message.provider.whatsapp.api.AbstractWh
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 public class ResumableUploadApi extends AbstractWhatsappApi {
@@ -78,12 +79,16 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         public Mono<FileHandle> startOrResumeUpload(
                 String apiVersion, UploadSessionId uploadSessionId, long fileOffset, byte[] fileContent) {
 
+            String uri = UriComponentsBuilder.newInstance()
+                    .path("/{api-version}/upload:{uploadSessionId}")
+                    .queryParam(UploadSessionId.Fields.sig, uploadSessionId.getSig())
+                    .build(Boolean.FALSE)
+                    .expand(apiVersion, uploadSessionId.getUpload())
+                    .toUriString();
+
             return webClient
                     .post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/{api-version}/upload:{uploadSessionId}")
-                            .queryParam("sig", uploadSessionId.getSig())
-                            .build(apiVersion, uploadSessionId.getUpload()))
+                    .uri(uri)
                     .header("file_offset", String.valueOf(fileOffset))
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .bodyValue(fileContent)
@@ -97,12 +102,16 @@ public class ResumableUploadApi extends AbstractWhatsappApi {
         @Override
         public Mono<UploadStatus> getUploadStatus(String apiVersion, UploadSessionId uploadSessionId) {
 
+            String uri = UriComponentsBuilder.newInstance()
+                    .path("/{api-version}/upload:{uploadSessionId}")
+                    .queryParam(UploadSessionId.Fields.sig, uploadSessionId.getSig())
+                    .build(Boolean.FALSE)
+                    .expand(apiVersion, uploadSessionId.getUpload())
+                    .toUriString();
+
             return webClient
                     .get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/{api-version}/upload:{uploadSessionId}")
-                            .queryParam("sig", uploadSessionId.getSig())
-                            .build(apiVersion, uploadSessionId.getUpload()))
+                    .uri(uri)
                     .retrieve()
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),

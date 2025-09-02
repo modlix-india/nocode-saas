@@ -8,22 +8,22 @@ import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
-import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.ProductPartnerUpdateRequest;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
-
-    private static final String CX_APP_CODE = "cxapp";
 
     private static final String PRODUCT_CACHE = "product";
 
@@ -71,6 +71,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     protected Mono<Product> updatableEntity(Product entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
+                    existing.setForPartner(entity.getForPartner());
                     existing.setProductTemplateId(entity.getProductTemplateId());
 
                     return Mono.just(existing);
@@ -103,8 +104,20 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
-    public Mono<BaseResponse> readForCxApp() {
-
-        return Mono.empty();
+    public Mono<Integer> updateForPartner(ProductPartnerUpdateRequest request) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> Flux.fromIterable(
+                                        request.getProductIds() == null ? List.of() : request.getProductIds())
+                                .flatMap(identity -> this.readIdentityWithAccess(access, identity))
+                                .collectList(),
+                        (access, products) -> Flux.fromIterable(products)
+                                .flatMap(product -> {
+                                    product.setForPartner(request.getForPartner());
+                                    return this.updateInternal(product);
+                                })
+                                .collectList()
+                                .map(List::size))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
     }
 }

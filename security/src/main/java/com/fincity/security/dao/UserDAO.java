@@ -15,6 +15,10 @@ import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.security.jooq.tables.*;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -25,8 +29,6 @@ import org.jooq.SelectLimitPercentStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -40,10 +42,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.jooq.tables.SecurityProfile;
-import com.fincity.security.jooq.tables.SecurityProfileUser;
-import com.fincity.security.jooq.tables.SecurityUser;
-import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
@@ -56,15 +54,13 @@ import reactor.util.context.Context;
 @Component
 public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
 
-    @Autowired
-    private PasswordEncoder encoder;
+    private final PasswordEncoder encoder;
+    private final ClientDAO clientDAO;
 
-    @Lazy
-    @Autowired
-    private ClientDAO clientDAO;
-
-    protected UserDAO() {
+    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao) {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
+        this.encoder = encoder;
+        this.clientDAO = clientDao;
     }
 
     @Override
@@ -283,32 +279,28 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private Mono<Integer> setPassword(ULong userId, ULong currentUserId, String encryptedPassword) {
 
-        Mono.from(this.dslContext
-                        .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
-                                SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
-                        .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId))
-                .subscribe();
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                .set(SECURITY_USER.PASSWORD, encryptedPassword)
-                .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
-                .set(SECURITY_USER.UPDATED_BY, currentUserId)
-                .where(SECURITY_USER.ID.eq(userId)));
+        return Mono.from(this.dslContext
+                .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
+                        SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
+                .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId)).flatMap(x ->
+                Mono.from(this.dslContext.update(SECURITY_USER)
+                        .set(SECURITY_USER.PASSWORD, encryptedPassword)
+                        .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
+                        .set(SECURITY_USER.UPDATED_BY, currentUserId)
+                        .where(SECURITY_USER.ID.eq(userId))));
     }
 
     private Mono<Integer> setPin(ULong userId, ULong currentUserId, String encryptedPin) {
 
-        Mono.from(this.dslContext
+        return Mono.from(this.dslContext
                         .insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
                                 SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
                         .values(userId, encryptedPin, ByteUtil.ONE, currentUserId))
-                .subscribe();
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                .set(SECURITY_USER.PIN, encryptedPin)
-                .set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
-                .set(SECURITY_USER.UPDATED_BY, currentUserId)
-                .where(SECURITY_USER.ID.eq(userId)));
+                .flatMap(x -> Mono.from(this.dslContext.update(SECURITY_USER)
+                        .set(SECURITY_USER.PIN, encryptedPin)
+                        .set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
+                        .set(SECURITY_USER.UPDATED_BY, currentUserId)
+                        .where(SECURITY_USER.ID.eq(userId))));
     }
 
     public Mono<User> readInternal(ULong id) {
@@ -625,5 +617,53 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .map(record -> record.into(User.class))
                 .distinct()
                 .collectList();
+    }
+
+    @Override
+    protected Condition filterConditionFilter(FilterCondition fc) {
+
+        if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
+            return super.filterConditionFilter(fc);
+
+        if (fc.getOperator() != FilterConditionOperator.EQUALS && fc.getOperator() != FilterConditionOperator.IN)
+            return DSL.trueCondition();
+
+        if (fc.getField().equals("appId")) {
+
+            Condition idCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                    SECURITY_PROFILE.APP_ID.eq(ULongUtil.valueOf(this.fieldValue(SECURITY_PROFILE.APP_ID, fc.getValue()))) :
+                    SECURITY_PROFILE.APP_ID.in(this.multiFieldValue(SECURITY_PROFILE.APP_ID, fc.getValue(), fc.getMultiValue()));
+
+            if (fc.isNegate())
+                idCondition = DSL.not(idCondition);
+
+            return DSL.exists(
+                    DSL.select(DSL.value(1))
+                            .from(SECURITY_PROFILE_USER)
+                            .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                            .where(DSL.and(
+                                    SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                    idCondition
+                            ))
+            );
+        }
+
+        Condition codeCondition = fc.getOperator() == FilterConditionOperator.EQUALS ?
+                SECURITY_APP.APP_CODE.eq(fc.getValue().toString()) :
+                SECURITY_APP.APP_CODE.in(this.multiFieldValue(SECURITY_APP.APP_CODE, fc.getValue(), fc.getMultiValue()));
+
+        if (fc.isNegate())
+            codeCondition = DSL.not(codeCondition);
+
+        return DSL.exists(
+                DSL.select(DSL.value(1))
+                        .from(SECURITY_PROFILE_USER)
+                        .join(SECURITY_PROFILE).on(SECURITY_PROFILE_USER.PROFILE_ID.eq(SECURITY_PROFILE.ID))
+                        .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
+                        .where(DSL.and(
+                                SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
+                                codeCondition
+                        ))
+        );
     }
 }

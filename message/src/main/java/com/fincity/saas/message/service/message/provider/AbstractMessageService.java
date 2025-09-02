@@ -3,6 +3,7 @@ package com.fincity.saas.message.service.message.provider;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
@@ -38,6 +39,14 @@ public abstract class AbstractMessageService<
     @Override
     public ConnectionType getConnectionType() {
         return ConnectionType.TEXT;
+    }
+
+    public Mono<D> updateInternalWithoutUser(MessageAccess publicAccess, D entity) {
+
+        entity.setAppCode(publicAccess.getAppCode());
+        entity.setClientCode(publicAccess.getClientCode());
+
+        return this.dao.update(entity);
     }
 
     protected Mono<Boolean> isValidConnection(Connection connection) {

@@ -11,6 +11,7 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.Templat
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 
@@ -348,11 +349,30 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     }
 
     /**
+     * Setter for
+     * <code>message.message_whatsapp_templates.HEADER_FILE_DETAIL</code>. File
+     * Details if header component has a media file
+     */
+    public MessageWhatsappTemplatesRecord setHeaderFileDetail(FileDetail value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_whatsapp_templates.HEADER_FILE_DETAIL</code>. File
+     * Details if header component has a media file
+     */
+    public FileDetail getHeaderFileDetail() {
+        return (FileDetail) get(18);
+    }
+
+    /**
      * Setter for <code>message.message_whatsapp_templates.COMPONENTS</code>.
      * Template components in JSON format.
      */
     public MessageWhatsappTemplatesRecord setComponents(ComponentList value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -361,7 +381,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Template components in JSON format.
      */
     public ComponentList getComponents() {
-        return (ComponentList) get(18);
+        return (ComponentList) get(19);
     }
 
     /**
@@ -369,7 +389,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who created this row.
      */
     public MessageWhatsappTemplatesRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -378,7 +398,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -386,7 +406,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is created.
      */
     public MessageWhatsappTemplatesRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -395,7 +415,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(21);
     }
 
     /**
@@ -403,7 +423,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who updated this row.
      */
     public MessageWhatsappTemplatesRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -412,7 +432,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(22);
     }
 
     /**
@@ -420,7 +440,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is updated.
      */
     public MessageWhatsappTemplatesRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -429,7 +449,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     /**
@@ -437,7 +457,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Indicates whether this row is active.
      */
     public MessageWhatsappTemplatesRecord setIsActive(Byte value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -446,7 +466,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Indicates whether this row is active.
      */
     public Byte getIsActive() {
-        return (Byte) get(23);
+        return (Byte) get(24);
     }
 
     // -------------------------------------------------------------------------
@@ -472,7 +492,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     /**
      * Create a detached, initialised MessageWhatsappTemplatesRecord
      */
-    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Byte allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Byte isActive) {
+    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Byte allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, FileDetail headerFileDetail, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Byte isActive) {
         super(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES);
 
         setId(id);
@@ -493,6 +513,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
         setRejectedReason(rejectedReason);
         setPreviousCategory(previousCategory);
         setMonthlyEditCount(monthlyEditCount);
+        setHeaderFileDetail(headerFileDetail);
         setComponents(components);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
