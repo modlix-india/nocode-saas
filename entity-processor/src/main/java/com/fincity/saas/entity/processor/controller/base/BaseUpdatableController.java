@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +30,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple4;
 
 public abstract class BaseUpdatableController<
                 R extends UpdatableRecord<R>,
@@ -147,22 +147,24 @@ public abstract class BaseUpdatableController<
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple2<AbstractCondition, List<String>> fieldParams =
-                EagerUtil.getFieldConditions(request.getQueryParams());
+        Tuple2<AbstractCondition, List<String>> fieldParams = EagerUtil.getFieldConditions(request.getQueryParams());
         return this.service
-                .readPageFilterEager(
-                        pageable, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
+                .readPageFilterEager(pageable, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
                 .map(ResponseEntity::ok);
     }
 
     @PostMapping(EAGER_PATH_QUERY)
-    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            @RequestBody Query query, ServerHttpRequest request) {
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
+        MultiValueMap<String, String> queryParams = request.getQueryParams();
+        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
+        for (String field : query.getEagerFields()) queryParams.add(EagerUtil.EAGER_FIELD, field);
+
         return this.service
-                .readPageFilterEager(
-                        pageable, query.getCondition(), query.getFields(), query.getEager(), query.getEagerFields())
+                .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
                 .map(ResponseEntity::ok);
     }
 }

@@ -29,7 +29,6 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.MultiValueMap;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -78,12 +77,12 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
-            ULong id, ProcessorAccess access, List<String> tableFields,        MultiValueMap<String, String> queryParams) {
+            ULong id, ProcessorAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
         return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, queryParams);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
-            String code, ProcessorAccess access, List<String> tableFields,        MultiValueMap<String, String> queryParams) {
+            String code, ProcessorAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
         return this.readSingleRecordByIdentityEager(codeField, code, access, tableFields, queryParams);
     }
 
@@ -97,8 +96,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             return this.readSingleRecordByIdentityEager(
                     idField, identity.getULongId(), access, tableFields, queryParams);
 
-        return this.readSingleRecordByIdentityEager(
-                codeField, identity.getCode(), access, tableFields, queryParams);
+        return this.readSingleRecordByIdentityEager(codeField, identity.getCode(), access, tableFields, queryParams);
     }
 
     public <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(

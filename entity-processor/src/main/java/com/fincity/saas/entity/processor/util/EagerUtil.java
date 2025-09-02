@@ -15,13 +15,12 @@ import org.jooq.Table;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple4;
 import reactor.util.function.Tuples;
 
 public class EagerUtil {
 
-    private static final String EAGER = "eager";
-    private static final String EAGER_FIELD = "eagerField";
+    public static final String EAGER = "eager";
+    public static final String EAGER_FIELD = "eagerField";
     private static final String FIELD = "field";
 
     private static final Map<String, String> fieldNameCache = new ConcurrentHashMap<>();
@@ -94,8 +93,7 @@ public class EagerUtil {
         return multiValueMap.containsKey(FIELD) ? multiValueMap.get(FIELD) : List.of();
     }
 
-    public static Tuple2<AbstractCondition, List<String>> getFieldConditions(
-            Map<String, List<String>> multiValueMap) {
+    public static Tuple2<AbstractCondition, List<String>> getFieldConditions(Map<String, List<String>> multiValueMap) {
 
         if (multiValueMap.isEmpty())
             return Tuples.of(new ComplexCondition().setConditions(List.of()), List.of(), Boolean.FALSE, List.of());

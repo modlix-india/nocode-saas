@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple4;
+import reactor.util.function.Tuple2;
 
 @RestController
 @RequestMapping("api/entity/processor/activities")
@@ -47,17 +47,11 @@ public class ActivityController
             Pageable pageable, @PathVariable(PATH_VARIABLE_ID) final Identity identity, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple4<AbstractCondition, List<String>, Boolean, List<String>> eagerParams =
-                EagerUtil.getEagerConditions(request.getQueryParams());
+        Tuple2<AbstractCondition, List<String>> fieldParams = EagerUtil.getFieldConditions(request.getQueryParams());
 
         return this.service
                 .readPageFilterEager(
-                        pageable,
-                        identity,
-                        eagerParams.getT1(),
-                        eagerParams.getT2(),
-                        eagerParams.getT3(),
-                        eagerParams.getT4())
+                        pageable, identity, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
                 .map(ResponseEntity::ok);
     }
 }

@@ -1,12 +1,9 @@
 package com.fincity.saas.entity.processor.constant;
 
-import java.util.Collection;
-
-import org.springframework.security.core.GrantedAuthority;
-
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
-
+import java.util.Collection;
 import lombok.experimental.UtilityClass;
+import org.springframework.security.core.GrantedAuthority;
 
 @UtilityClass
 public class BusinessPartnerConstant {

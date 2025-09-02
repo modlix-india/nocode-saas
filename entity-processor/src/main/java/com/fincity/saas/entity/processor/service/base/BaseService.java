@@ -21,6 +21,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
@@ -66,15 +67,13 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
             Pageable pageable,
             AbstractCondition condition,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
         return this.hasAccess()
                 .flatMap(access -> this.dao.readPageFilterEager(
                         pageable,
                         this.addAppCodeAndClientCodeToCondition(access, condition),
                         tableFields,
-                        eager,
-                        eagerFields));
+                        queryParams));
     }
 
     public AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
