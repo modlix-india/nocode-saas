@@ -17,6 +17,7 @@ CREATE TABLE `entity_processor`.`entity_processor_partners` (
         'REQUEST_CORRECTION',
         'REJECTED',
         'VERIFIED') NOT NULL COMMENT 'Partner verification status.',
+    `DNC` TINYINT NOT NULL DEFAULT 0 COMMENT 'Do Not Call flag for this partner.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this partner.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this partner is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',

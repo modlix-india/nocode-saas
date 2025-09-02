@@ -1,9 +1,13 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
@@ -11,8 +15,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -32,10 +35,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PARTNER;
+    }
+
+    @Override
     protected Mono<Partner> updatableEntity(Partner entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             existing.setManagerId(entity.getManagerId());
             existing.setPartnerVerificationStatus(entity.getPartnerVerificationStatus());
+            existing.setDnc(entity.getDnc());
             return Mono.just(existing);
         });
     }
@@ -68,4 +77,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 access -> super.readIdentityWithAccess(access, partnerId),
                 (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)));
     }
+
+    public Mono<Partner> toggleDnc(Identity partnerId, Boolean dnc) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> super.readIdentityWithAccess(access, partnerId),
+                (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)));
+    }
+
 }

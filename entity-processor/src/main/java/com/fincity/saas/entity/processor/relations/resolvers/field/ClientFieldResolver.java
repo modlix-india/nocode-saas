@@ -4,12 +4,14 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -30,7 +32,7 @@ public class ClientFieldResolver implements RelationResolver {
 
     @Override
     public Mono<Map<ULong, Map<String, Object>>> resolveBatch(
-            Set<ULong> idsToResolve, org.springframework.util.MultiValueMap<String, String> queryParams) {
+            Set<ULong> idsToResolve, MultiValueMap<String, String> queryParams) {
         if (idsToResolve == null || idsToResolve.isEmpty()) return Mono.just(Map.of());
 
         Boolean eager = EagerUtil.getIsEagerParams(queryParams);
@@ -45,18 +47,8 @@ public class ClientFieldResolver implements RelationResolver {
         return this.securityService
                 .getClientInternal(
                         idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
-                .map(list -> {
-                    java.util.HashMap<ULong, Map<String, Object>> res = new java.util.HashMap<>();
-                    for (int i = 0; i < list.size(); i++) {
-                        Map<String, Object> m = list.get(i);
-                        Object idObj = m.get("id");
-                        if (idObj instanceof java.math.BigInteger bi) {
-                            res.put(ULong.valueOf(bi.longValue()), m);
-                        } else if (idObj instanceof Number num) {
-                            res.put(ULong.valueOf(num.longValue()), m);
-                        }
-                    }
-                    return res;
-                });
+                .map(clientList -> clientList.stream()
+                        .collect(Collectors.toMap(client -> ULongUtil.valueOf(client.get("id")), Function.identity())))
+                .flatMap(clientMap -> this.applyEagerFiltering(clientMap, eager, eagerFields));
     }
 }
