@@ -231,7 +231,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Setter for
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
+     * to tell whether Partner has access to this product or not.
      */
     public EntityProcessorProductsRecord setForPartner(Byte value) {
         set(11, value);
@@ -241,7 +241,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Getter for
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
+     * to tell whether Partner has access to this product or not.
      */
     public Byte getForPartner() {
         return (Byte) get(11);
