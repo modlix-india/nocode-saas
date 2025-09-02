@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Mono;
 
 @Component
@@ -31,7 +33,7 @@ public class UserFieldResolver implements RelationResolver {
     }
 
     @Override
-    public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve) {
+    public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, MultiValueMap<String, String> queryParams) {
 
         if (idsToResolve == null || idsToResolve.isEmpty()) return Mono.just(Map.of());
 
@@ -47,8 +49,8 @@ public class UserFieldResolver implements RelationResolver {
                                 userResponse -> ULongUtil.valueOf(userResponse.getId()), IClassConvertor::toMap)));
     }
 
-    public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields) {
-        return this.resolveBatch(idsToResolve).map(resolvedMap -> {
+    public Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields, MultiValueMap<String, String> queryParams) {
+        return this.resolveBatch(idsToResolve, queryParams).map(resolvedMap -> {
             if (eagerFields == null || eagerFields.isEmpty()) return resolvedMap;
 
             Set<String> eagerFieldSet = new HashSet<>(eagerFields);

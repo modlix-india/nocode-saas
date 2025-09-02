@@ -31,6 +31,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -56,8 +58,8 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
     Mono<Condition> filter(AbstractCondition condition);
 
     default Mono<Map<String, Object>> readSingleRecordByIdentityEager(
-            AbstractCondition condition, List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        return getSelectJointStepEager(tableFields, eager, eagerFields).flatMap(tuple -> {
+            AbstractCondition condition, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
@@ -65,8 +67,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
                             selectJoinStepTuple.getT1().where(filterCondition))
                     .map(rec -> this.processRelatedData(rec.intoMap(), relations))
                     .flatMap(rec -> this.getRecordEnrichmentService() != null
-                            ? this.getRecordEnrichmentService()
-                                    .enrich(rec, this.getRelationResolverMap(), eager, eagerFields)
+                            ? this.getRecordEnrichmentService().enrich(rec, this.getRelationResolverMap(), queryParams)
                             : Mono.just(rec)));
         });
     }
@@ -76,9 +77,8 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             Pageable pageable,
             AbstractCondition condition,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
-        return getSelectJointStepEager(tableFields, eager, eagerFields).flatMap(tuple -> {
+            MultiValueMap<String, String> queryParams) {
+        return getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
@@ -87,7 +87,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
                         .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
                         .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                return this.listAsMap(pageable, filteredQueries, relations, eager, eagerFields);
+                return this.listAsMap(pageable, filteredQueries, relations, queryParams);
             });
         });
     }
@@ -96,11 +96,14 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
                     Tuple2<
                             Tuple2<SelectJoinStep<org.jooq.Record>, SelectJoinStep<Record1<Integer>>>,
                             Map<String, Tuple2<Table<?>, String>>>>
-            getSelectJointStepEager(List<String> tableFields, Boolean eager, List<String> eagerFields) {
+            getSelectJointStepEager(List<String> tableFields, MultiValueMap<String, String> queryParams) {
 
         DSLContext dslContext = this.getDslContext();
 
         Map<String, Tuple2<Table<?>, String>> relations = this.getRelationMap();
+
+        Boolean eager = EagerUtil.getIsEagerParams(queryParams);
+        List<String> eagerFields = EagerUtil.getEagerParams(queryParams);
 
         List<Field<?>> fields = this.getEagerFields(tableFields, eager, eagerFields, this.getTable(), relations);
 
@@ -237,8 +240,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             Pageable pageable,
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple,
             Map<String, Tuple2<Table<?>, String>> relations,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         List<SortField<?>> orderBy = new ArrayList<>();
 
@@ -258,8 +260,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
                 .map(rec -> this.processRelatedData(rec.intoMap(), relations))
                 .collectList()
                 .flatMap(recs -> this.getRecordEnrichmentService() != null
-                        ? this.getRecordEnrichmentService()
-                                .enrich(recs, this.getRelationResolverMap(), eager, eagerFields)
+                        ? this.getRecordEnrichmentService().enrich(recs, this.getRelationResolverMap(), queryParams)
                         : Mono.just(recs));
 
         return Mono.zip(recsList, recsCount)

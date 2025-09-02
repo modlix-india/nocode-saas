@@ -94,7 +94,7 @@ public class EagerUtil {
         return multiValueMap.containsKey(FIELD) ? multiValueMap.get(FIELD) : List.of();
     }
 
-    public static Tuple4<AbstractCondition, List<String>, Boolean, List<String>> getEagerConditions(
+    public static Tuple2<AbstractCondition, List<String>> getFieldConditions(
             Map<String, List<String>> multiValueMap) {
 
         if (multiValueMap.isEmpty())
@@ -105,16 +105,10 @@ public class EagerUtil {
         List<String> tableFields = getFieldParams(copyMap);
         copyMap.remove(FIELD);
 
-        Boolean eager = getIsEagerParams(copyMap);
-        copyMap.remove(EAGER);
-
-        List<String> eagerFields = Boolean.TRUE.equals(eager) ? getEagerParams(copyMap) : List.of();
-        copyMap.remove(EAGER_FIELD);
-
         AbstractCondition condition = ConditionUtil.parameterMapToMap(copyMap);
 
         if (condition == null) condition = new ComplexCondition().setConditions(List.of());
 
-        return Tuples.of(condition, tableFields, eager, eagerFields);
+        return Tuples.of(condition, tableFields);
     }
 }

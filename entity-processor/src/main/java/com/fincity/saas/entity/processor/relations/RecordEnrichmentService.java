@@ -2,6 +2,8 @@ package com.fincity.saas.entity.processor.relations;
 
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolverRegistry;
+import com.fincity.saas.entity.processor.util.EagerUtil;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -26,25 +30,26 @@ public class RecordEnrichmentService {
     public Mono<Map<String, Object>> enrich(
             Map<String, Object> rec,
             SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         if (rec == null || rec.isEmpty()) return Mono.empty();
+
+        Boolean eager = EagerUtil.getIsEagerParams(queryParams);
         if (eager == null || !eager) return Mono.just(rec);
 
-        return this.enrichInternal(List.of(rec), resolverFieldsMap, eagerFields).thenReturn(rec);
+        return this.enrichInternal(List.of(rec), resolverFieldsMap, queryParams).thenReturn(rec);
     }
 
     public Mono<List<Map<String, Object>>> enrich(
             List<Map<String, Object>> recs,
             SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         if (recs == null || recs.isEmpty()) return Mono.just(List.of());
+        Boolean eager = EagerUtil.getIsEagerParams(queryParams);
         if (eager == null || !eager) return Mono.just(recs);
 
-        return this.enrichInternal(recs, resolverFieldsMap, eagerFields).thenReturn(recs);
+        return this.enrichInternal(recs, resolverFieldsMap, queryParams).thenReturn(recs);
     }
 
     public Mono<Map<String, Object>> enrich(
@@ -66,18 +71,18 @@ public class RecordEnrichmentService {
     private Mono<Void> enrichInternal(
             List<Map<String, Object>> recs,
             SetValuedMap<Class<? extends RelationResolver>, String> resolverFieldsMap,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         SetValuedMap<RelationResolver, String> resolverFields = resolverRegistry.getResolverFields(resolverFieldsMap);
         if (resolverFields.isEmpty()) return Mono.empty();
 
-        return processEnrichment(recs, resolverFields, eagerFields);
+        return this.processEnrichment(recs, resolverFields, queryParams);
     }
 
     private Mono<Void> processEnrichment(
             List<Map<String, Object>> recs,
             SetValuedMap<RelationResolver, String> resolverFields,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         return Mono.just(resolverFields).flatMap(resolverMap -> {
             List<Mono<Void>> resolverOperations = resolverMap.asMap().entrySet().stream()
@@ -91,7 +96,7 @@ public class RecordEnrichmentService {
                         if (allIds.isEmpty()) return Mono.<Void>empty();
 
                         return resolverRegistry
-                                .resolveBatch(entry.getKey().getClass(), allIds, eagerFields)
+                                .resolveBatch(entry.getKey().getClass(), allIds, queryParams)
                                 .flatMap(resolvedData -> {
                                     this.enrichRecordsWithResolvedData(recs, fieldIdsMap, resolvedData);
                                     return Mono.<Void>empty();

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jooq.types.ULong;
+import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Mono;
 
 public interface RelationResolver {
@@ -17,7 +19,7 @@ public interface RelationResolver {
                 : getFields().contains(field);
     }
 
-    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve);
+    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, MultiValueMap<String, String> queryParams);
 
-    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields);
+    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields, MultiValueMap<String, String> queryParams);
 }

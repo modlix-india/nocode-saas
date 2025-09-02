@@ -208,7 +208,7 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
 
     @Override
     public List<UniqueKey<EntityProcessorPartnersRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PARTNERS_UK1_PARTNERS_CODE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PARTNERS_UK1_PARTNERS_CODE, Keys.KEY_ENTITY_PROCESSOR_PARTNERS_UK2_PARTNER_APP_CODE_CLIENT_CODE_CLIENT_ID);
     }
 
     @Override

@@ -1,12 +1,21 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+
+import reactor.core.publisher.Mono;
 
 @Service
 public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
@@ -24,4 +33,41 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return Boolean.FALSE;
     }
 
+    @Override
+    protected Mono<Partner> updatableEntity(Partner entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setManagerId(entity.getManagerId());
+            existing.setPartnerVerificationStatus(entity.getPartnerVerificationStatus());
+            return Mono.just(existing);
+        });
+    }
+
+    @Override
+    public Mono<ProcessorAccess> hasAccess() {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> {
+            if (!access.isHasBpAccess())
+                return super.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
+
+            return Mono.just(access);
+        });
+    }
+
+    public Mono<Partner> createPartner(PartnerRequest partnerRequest) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> super.createInternal(
+                        access,
+                        Partner.of(partnerRequest)
+                                .setManagerId(access.getUserId())
+                                .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT)));
+    }
+
+    public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> super.readIdentityWithAccess(access, partnerId),
+                (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)));
+    }
 }

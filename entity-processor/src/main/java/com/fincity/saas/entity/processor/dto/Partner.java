@@ -3,6 +3,8 @@ package com.fincity.saas.entity.processor.dto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
+import com.fincity.saas.entity.processor.model.request.PartnerRequest;
+
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -34,6 +36,13 @@ public class Partner extends BaseUpdatableDto<Partner> {
         this.clientId = partner.clientId;
         this.managerId = partner.managerId;
         this.partnerVerificationStatus = partner.partnerVerificationStatus;
+    }
+
+    public static Partner of(PartnerRequest partnerRequest) {
+        return new Partner()
+                .setName(partnerRequest.getName())
+                .setDescription(partnerRequest.getDescription())
+                .setClientId(partnerRequest.getClientId());
     }
 
     @Override

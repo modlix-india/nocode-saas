@@ -37,11 +37,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
-import com.fincity.saas.entity.processor.jooq.tables.*;
-import java.util.Map;
 import lombok.Getter;
-import org.jooq.EnumType;
-import org.jooq.Table;
 
 @Getter
 public enum EntitySeries implements EnumType {
