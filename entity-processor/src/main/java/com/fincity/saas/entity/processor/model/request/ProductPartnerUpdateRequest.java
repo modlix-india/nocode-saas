@@ -1,12 +1,10 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
-import com.fincity.saas.entity.processor.model.common.Identity;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
