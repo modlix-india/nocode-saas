@@ -2,11 +2,15 @@ package com.fincity.saas.entity.processor.service.content.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -19,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class BaseContentService<
                 R extends UpdatableRecord<R>, D extends BaseContentDto<D>, O extends BaseContentDAO<R, D>>
@@ -53,6 +58,11 @@ public abstract class BaseContentService<
 
     public Mono<D> createPublic(D entity) {
         return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
+    }
+
+    @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
     }
 
     @Override
@@ -110,7 +120,7 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.readById(access, id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
                         .then(Mono.just(deleted)));
@@ -128,6 +138,23 @@ public abstract class BaseContentService<
 
     public Mono<D> updateInternal(D entity) {
         return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
+    }
+
+    protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
+
+        if (request.getUserId() != null) return Mono.just(request);
+
+        Mono<Identity> ticketIdMono = request.getTicketId() != null
+                ? this.checkTicket(access, request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        Mono<Identity> ownerIdMono = request.getOwnerId() != null
+                ? this.checkOwner(access, request.getOwnerId(), request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        return Mono.zip(ticketIdMono, ownerIdMono)
+                .map(tuple3 -> request.setTicketId(tuple3.getT1()).setOwnerId(tuple3.getT2()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseContentService.updateIdentities"));
     }
 
     protected Mono<Identity> checkTicket(ProcessorAccess access, Identity ticketId) {
@@ -169,8 +196,17 @@ public abstract class BaseContentService<
                 });
     }
 
-    protected Mono<D> createTicketContent(ProcessorAccess access, D content) {
-        if (content.getTicketId() == null || content.isOwnerContent()) return Mono.empty();
+    protected Mono<D> createContent(ProcessorAccess access, D content) {
+        return switch (content.getContentEntitySeries()) {
+            case OWNER -> this.createOwnerContent(access, content);
+            case TICKET -> this.createTicketContent(access, content);
+            case USER -> this.createUserContent(access, content);
+        };
+    }
+
+    private Mono<D> createTicketContent(ProcessorAccess access, D content) {
+        if (content.getTicketId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.TICKET))
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
@@ -184,8 +220,9 @@ public abstract class BaseContentService<
                         content.getTicketId()));
     }
 
-    protected Mono<D> createOwnerContent(ProcessorAccess access, D content) {
-        if (content.getOwnerId() == null || content.isTicketContent()) return Mono.empty();
+    private Mono<D> createOwnerContent(ProcessorAccess access, D content) {
+        if (content.getOwnerId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.OWNER))
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ownerService.readById(content.getOwnerId()),
@@ -195,5 +232,24 @@ public abstract class BaseContentService<
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.ownerService.getEntityName(),
                         content.getTicketId()));
+    }
+
+    private Mono<D> createUserContent(ProcessorAccess access, D content) {
+        if (content.getUserId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.USER))
+            return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.securityService.getUserInternal(
+                                content.getUserId().toBigInteger()),
+                        user -> {
+                            content.setUserId(ULongUtil.valueOf(user.getId()));
+                            content.setClientId(ULongUtil.valueOf(user.getClientId()));
+                            return this.createInternal(access, content);
+                        })
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        "user",
+                        content.getUserId()));
     }
 }

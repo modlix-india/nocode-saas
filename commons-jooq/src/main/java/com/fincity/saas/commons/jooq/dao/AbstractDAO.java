@@ -235,7 +235,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         };
     }
 
-    private List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
+    protected List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
 
         if (values != null && !values.isEmpty())
             return values;
@@ -268,7 +268,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return obj;
     }
 
-    private Object fieldValue(Field<?> field, Object value) {
+    protected Object fieldValue(Field<?> field, Object value) {
 
         if (value == null) return null;
 

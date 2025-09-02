@@ -1,6 +1,16 @@
 package com.fincity.security.controller;
 
+
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.util.ConditionUtil;
+import com.fincity.security.dto.User;
+import java.util.List;
+
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -68,6 +78,16 @@ public class ClientController
                                                             @RequestParam String clientCode) {
 
         return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/managedClient")
+    public Mono<ResponseEntity<Client>> getManagedClientOfClientById(@RequestParam ULong clientId) {
+        return this.service.getManagedClientOfClientById(clientId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/clientHierarchy")
+    public Mono<ResponseEntity<List<ULong>>> getClientHierarchy(@RequestParam ULong clientId) {
+        return this.service.getClientHierarchy(clientId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/validateClientCode")
@@ -147,5 +167,30 @@ public class ClientController
         return this.clientRegistrationService
                 .registerApp(appCode, clientId, userId)
                 .map(ResponseEntity::ok);
-	}
+    }
+
+    @PostMapping("/noMapping")
+    @Override
+    public Mono<ResponseEntity<Page<Client>>> readPageFilter(Query query) {
+        return Mono.just(ResponseEntity.badRequest()
+                .build());
+    }
+
+    @GetMapping()
+    public Mono<ResponseEntity<Page<Client>>> readPageFilter(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
+        return this.service.readPageFilter(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
+                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(PATH_QUERY)
+    public Mono<ResponseEntity<Page<Client>>> readPageFilter(@RequestBody Query query, ServerHttpRequest request) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service.readPageFilter(pageable, query.getCondition())
+                .flatMap(page -> this.service.fillDetails(page.getContent(), request).thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
 }

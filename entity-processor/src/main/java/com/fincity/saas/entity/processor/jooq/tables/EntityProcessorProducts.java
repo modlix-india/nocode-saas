@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -130,6 +131,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * to check if this product is active or not.
      */
     public final TableField<EntityProcessorProductsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.CLIENT_ID</code>. Id of
+     * client who created this product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this product.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
+     * to tell weather Partner has access to this product or not.
+     */
+    public final TableField<EntityProcessorProductsRecord, Byte> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather Partner has access to this product or not.");
 
     /**
      * The column
@@ -260,6 +275,19 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorProductTemplates = new EntityProcessorProductTemplatesPath(this, Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID, null);
 
         return _entityProcessorProductTemplates;
+    }
+
+    private transient EntityProcessorCampaignsPath _entityProcessorCampaigns;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_campaigns</code> table
+     */
+    public EntityProcessorCampaignsPath entityProcessorCampaigns() {
+        if (_entityProcessorCampaigns == null)
+            _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorCampaigns;
     }
 
     private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;

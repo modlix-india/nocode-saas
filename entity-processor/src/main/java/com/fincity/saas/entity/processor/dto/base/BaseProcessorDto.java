@@ -1,7 +1,9 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import java.io.Serial;
+import java.math.BigInteger;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -23,6 +25,8 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     @Version
     private int version = 1;
 
+    private ULong clientId;
+
     protected BaseProcessorDto() {
         super();
     }
@@ -30,6 +34,12 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     protected BaseProcessorDto(BaseProcessorDto<T> baseProcessorDto) {
         super(baseProcessorDto);
         this.version = baseProcessorDto.version;
+        this.clientId = baseProcessorDto.clientId;
+    }
+
+    public T setClientId(BigInteger clientId) {
+        this.clientId = ULongUtil.valueOf(clientId);
+        return (T) this;
     }
 
     @JsonIgnore

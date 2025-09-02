@@ -21,6 +21,7 @@ files:
     accessKeyId: 2229a18802734bc30a8419a2e622187c
     secretAccessKey: e3176a3ebe9532faedf2853988b48722861a8ff859a2167c3df82311e205b8a9
     bucketPrefix: local
+
 multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
@@ -58,14 +59,36 @@ core:
       url: jdbc:mysql://localhost:3306/core
 
 entity-processor:
-  mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/entity-processor?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
     username: root
-    password: Vishwas123#
+    password: Kiran@123
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
+
+notification:
+  db:
+    url: r2dbc:mysql://localhost:3306/notification?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/notification
+
+message:
+  db:
+    url: r2dbc:mysql://localhost:3306/message?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/message
+
+entity-collector:
+  db:
+    url: r2dbc:mysql://localhost:3306/entity_collector?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/entity_collector
 
 spring:
   flyway:
@@ -100,6 +123,13 @@ smsService:
     2factor:
       api:
         key: ~
+
+app:
+  base-url: http://localhost:8080
+
+meta:
+  webhook:
+    verify-token: TEST_THE_API
 
 letsencrypt:
   login: https://acme-staging-v02.api.letsencrypt.org/acme/acct/114565594

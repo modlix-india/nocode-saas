@@ -7,7 +7,7 @@ import java.time.ZoneId;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 
 import reactor.core.publisher.Mono;
 

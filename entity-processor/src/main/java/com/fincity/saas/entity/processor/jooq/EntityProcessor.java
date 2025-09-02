@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
@@ -24,7 +25,6 @@ import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -45,6 +45,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_activities</code>.
      */
     public final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_campaigns</code>.
+     */
+    public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
 
     /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
@@ -119,7 +124,7 @@ public class EntityProcessor extends SchemaImpl {
      * No further instances allowed
      */
     private EntityProcessor() {
-        super(DSL.name("entity_processor"), null, DSL.comment(""));
+        super("entity_processor", null);
     }
 
 
@@ -132,6 +137,7 @@ public class EntityProcessor extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
+            EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,

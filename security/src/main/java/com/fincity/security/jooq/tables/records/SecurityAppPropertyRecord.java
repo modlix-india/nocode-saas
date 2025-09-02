@@ -207,6 +207,6 @@ public class SecurityAppPropertyRecord extends UpdatableRecordImpl<SecurityAppPr
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

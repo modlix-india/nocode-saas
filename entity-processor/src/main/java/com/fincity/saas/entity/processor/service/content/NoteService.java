@@ -7,7 +7,6 @@ import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
-import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -33,37 +32,16 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
     }
 
     public Mono<Note> create(NoteRequest noteRequest) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.updateIdentities(access, noteRequest),
-                        (access, uRequest) -> this.createContent(uRequest),
-                        (access, uRequest, content) -> content.isTicketContent()
-                                ? super.createTicketContent(access, content)
-                                : super.createOwnerContent(access, content))
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, noteRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create"));
     }
 
     public Mono<Note> createInternal(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.updateIdentities(access, noteRequest),
+                        () -> super.updateBaseIdentities(access, noteRequest),
                         this::createContent,
-                        (uRequest, content) -> content.isTicketContent()
-                                ? super.createTicketContent(access, content)
-                                : super.createOwnerContent(access, content))
+                        (uRequest, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createInternal"));
-    }
-
-    private Mono<NoteRequest> updateIdentities(ProcessorAccess access, NoteRequest noteRequest) {
-        return FlatMapUtil.flatMapMono(
-                        () -> noteRequest.getTicketId() != null
-                                ? this.checkTicket(access, noteRequest.getTicketId())
-                                : Mono.just(Identity.ofNull()),
-                        ticketId -> noteRequest.getOwnerId() != null
-                                ? this.checkOwner(access, noteRequest.getOwnerId(), ticketId)
-                                : Mono.just(Identity.ofNull()),
-                        (ticketId, ownerId) ->
-                                Mono.just(noteRequest.setTicketId(ticketId).setOwnerId(ownerId)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.updateIdentities"));
     }
 
     private Mono<Note> createContent(NoteRequest noteRequest) {

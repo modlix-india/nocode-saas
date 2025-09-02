@@ -1,7 +1,7 @@
 package com.fincity.saas.commons.core.document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
@@ -53,66 +53,57 @@ public class Template extends AbstractOverridableDTO<Template> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Template> applyOverride(Template base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
-                tempParts -> DifferenceApplicator.apply(this.resources, base.resources),
-                (tempParts, rsrc) -> {
-                    this.templateParts = (Map<String, Map<String, String>>) tempParts;
-                    this.resources = (Map<String, String>) rsrc;
+                        () -> DifferenceApplicator.apply(this.templateParts, base.templateParts),
+                        tempParts -> DifferenceApplicator.apply(this.resources, base.resources),
+                        (tempParts, rsrc) -> {
+                            this.templateParts = (Map<String, Map<String, String>>) tempParts;
+                            this.resources = (Map<String, String>) rsrc;
 
-                    if (this.templateType == null)
-                        this.templateType = base.templateType;
+                            if (this.templateType == null) this.templateType = base.templateType;
 
-                    if (this.defaultLanguage == null)
-                        this.defaultLanguage = base.defaultLanguage;
+                            if (this.defaultLanguage == null) this.defaultLanguage = base.defaultLanguage;
 
-                    if (this.toExpression == null)
-                        this.toExpression = base.toExpression;
+                            if (this.toExpression == null) this.toExpression = base.toExpression;
 
-                    if (this.fromExpression == null)
-                        this.fromExpression = base.fromExpression;
+                            if (this.fromExpression == null) this.fromExpression = base.fromExpression;
 
-                    if (this.languageExpression == null)
-                        this.languageExpression = base.languageExpression;
+                            if (this.languageExpression == null) this.languageExpression = base.languageExpression;
 
-                    return Mono.just(this);
-                })
+                            return Mono.just(this);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.applyOverride"));
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Template> makeOverride(Template base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMono(
-                () -> DifferenceExtractor.extract(this.templateParts, base.templateParts),
-                tempParts -> DifferenceExtractor.extract(this.resources, base.resources),
-                (temParts, rsrc) -> {
-                    this.templateParts = (Map<String, Map<String, String>>) temParts;
-                    this.resources = (Map<String, String>) rsrc;
+                        () -> DifferenceExtractor.extract(this.templateParts, base.templateParts),
+                        tempParts -> DifferenceExtractor.extract(this.resources, base.resources),
+                        (temParts, rsrc) -> {
+                            this.templateParts = (Map<String, Map<String, String>>) temParts;
+                            this.resources = (Map<String, String>) rsrc;
 
-                    if (StringUtil.safeEquals(this.templateType, base.templateType))
-                        this.templateType = null;
+                            if (StringUtil.safeEquals(this.templateType, base.templateType)) this.templateType = null;
 
-                    if (StringUtil.safeEquals(this.defaultLanguage, base.defaultLanguage))
-                        this.defaultLanguage = null;
+                            if (StringUtil.safeEquals(this.defaultLanguage, base.defaultLanguage))
+                                this.defaultLanguage = null;
 
-                    if (StringUtil.safeEquals(this.toExpression, base.toExpression))
-                        this.toExpression = null;
+                            if (StringUtil.safeEquals(this.toExpression, base.toExpression)) this.toExpression = null;
 
-                    if (StringUtil.safeEquals(this.fromExpression, base.fromExpression))
-                        this.fromExpression = null;
+                            if (StringUtil.safeEquals(this.fromExpression, base.fromExpression))
+                                this.fromExpression = null;
 
-                    if (StringUtil.safeEquals(this.languageExpression, base.languageExpression))
-                        this.languageExpression = null;
+                            if (StringUtil.safeEquals(this.languageExpression, base.languageExpression))
+                                this.languageExpression = null;
 
-                    return Mono.just(this);
-                })
+                            return Mono.just(this);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Template.makeOverride"));
     }
 }

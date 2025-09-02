@@ -2,6 +2,8 @@ package com.fincity.saas.commons.mongo.model;
 
 import java.util.List;
 
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

@@ -279,11 +279,30 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_owners.CLIENT_ID</code>. Id of
+     * client who created this owner.
+     */
+    public EntityProcessorOwnersRecord setClientId(ULong value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_owners.CLIENT_ID</code>. Id of
+     * client who created this owner.
+     */
+    public ULong getClientId() {
+        return (ULong) get(14);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_owners.CREATED_BY</code>. ID of
      * the user who created this row.
      */
     public EntityProcessorOwnersRecord setCreatedBy(ULong value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -293,7 +312,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(15);
     }
 
     /**
@@ -302,7 +321,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public EntityProcessorOwnersRecord setCreatedAt(LocalDateTime value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -312,7 +331,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -321,7 +340,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public EntityProcessorOwnersRecord setUpdatedBy(ULong value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -331,7 +350,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(16);
+        return (ULong) get(17);
     }
 
     /**
@@ -340,7 +359,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public EntityProcessorOwnersRecord setUpdatedAt(LocalDateTime value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -350,7 +369,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(17);
+        return (LocalDateTime) get(18);
     }
 
     // -------------------------------------------------------------------------
@@ -376,7 +395,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorOwnersRecord
      */
-    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS);
 
         setId(id);
@@ -393,10 +412,11 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
         setSubSource(subSource);
         setTempActive(tempActive);
         setIsActive(isActive);
+        setClientId(clientId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

@@ -39,6 +39,11 @@ public class ProductTemplateService
     }
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TEMPLATE;
     }
@@ -57,12 +62,7 @@ public class ProductTemplateService
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.checkExistsByName(access, productTemplate),
-                        (access, cEntity) -> {
-                            cEntity.setAppCode(access.getAppCode());
-                            cEntity.setClientCode(access.getClientCode());
-
-                            return super.create(cEntity);
-                        },
+                        super::createInternal,
                         (access, cEntity, created) -> (productTemplateRequest.getProductId() == null
                                         || productTemplateRequest.getProductId().isNull())
                                 ? Mono.just(created)

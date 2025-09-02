@@ -368,6 +368,6 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

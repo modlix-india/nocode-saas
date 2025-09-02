@@ -33,6 +33,18 @@ spring:
           uri: lb://entity-processor
           predicates:
             - Path=/api/entity/processor/**, /*/api/entity/processor/**, /*/*/api/entity/processor/**, /*/*/*/api/entity/processor/**, /*/*/*/*/api/entity/processor/**, /*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**, /*/*/*/*/*/*/*/*/api/entity/processor/**,
+        - id: notification
+          uri: lb://notification
+          predicates:
+            - Path=/api/notification/**, /*/api/notification/**, /*/*/api/notification/**, /*/*/*/api/notification/**, /*/*/*/*/api/notification/**, /*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**, /*/*/*/*/*/*/*/*/api/notification/**,
+        - id: message
+          uri: lb://message
+          predicates:
+            - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**,
+        - id: entity-collector
+          uri: lb://entity-collector
+          predicates:
+            - Path=/api/entity/collector/**, /*/api/entity/collector/**, /*/*/api/entity/collector/**, /*/*/*/api/entity/collector/**, /*/*/*/*/api/entity/collector/**, /*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**, /*/*/*/*/*/*/*/*/api/entity/collector/**,
         - id: ui
           uri: lb://ui
           predicates:

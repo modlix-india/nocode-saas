@@ -2,7 +2,7 @@ package com.fincity.saas.commons.core.document;
 
 import com.fincity.saas.commons.core.enums.ConnectionSubType;
 import com.fincity.saas.commons.core.enums.ConnectionType;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import java.io.Serial;
 import java.util.Map;
@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 @EqualsAndHashCode(callSuper = true)
 @Document
 @CompoundIndex(def = "{'appCode': 1, 'name': 1, 'clientCode': 1}", name = "connectionFilteringIndex")
+@CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'connectionType': 1}", name = "connectionFilteringIndex")
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)

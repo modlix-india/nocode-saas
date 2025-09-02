@@ -327,7 +327,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     }
 
     public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
-        return this.dao.hasReadAccess(appCode, clientCode);
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
+                () -> this.dao.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
     }
 
     public Mono<Boolean> hasWriteAccess(String appCode, String clientCode) {
@@ -391,7 +392,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                         () -> this.read(appId),
 
-                        app -> this.clientService.getClientTypeNCode(clientId),
+                        app -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
 
                         (app, typNCode) -> cacheService.evict(CACHE_NAME_APP_WRITE_ACCESS, app.getAppCode(), ":",
                                 typNCode.getT2()),
@@ -522,23 +523,30 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.getAppByCode(urlAppCode),
+                        () -> this.getAppByCode(urlAppCode),
 
-                app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+                        app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
 
-                (app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(app.getId(),
-                        app.getClientId(), urlClientId, client.getTypeCode(), levelType, client.getBusinessType()),
+                        (app, levelType) -> this.appRegistrationDao.getAppIdsForRegistration(
+                                app.getId(),
+                                app.getClientId(),
+                                urlClientId,
+                                client.getTypeCode(),
+                                levelType,
+                                client.getBusinessType()),
 
-                (app, levelType, appAccessTuples) -> {
+                        (app, levelType, appAccessTuples) -> {
 
-                    Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
-                            .flatMap(tup -> this.dao.addClientAccess(tup.getT1(), client.getId(), tup.getT2()))
-                            .collectList();
+                            Mono<List<Boolean>> mons = Flux.fromIterable(appAccessTuples)
+                                    .flatMap(tup -> this.dao
+                                            .addClientAccess(tup.getT1(), client.getId(), tup.getT2())
+                                            .flatMap(result -> this.evict(app.getId(), client.getId())
+                                                    .map(evictResult -> result)))
+                                    .collectList();
 
-                    return mons.map(e -> true);
-                }
-
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
+                            return mons.map(e -> true);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.addClientAccessAfterRegistration"));
     }
 
     public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(ULong clientId, ULong appId, String appCode,
@@ -895,5 +903,30 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     @Override
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return this.hasWriteAccess(id, clientId);
+    }
+
+    public Mono<Map<String, Boolean>> hasReadAccess(String[] appCodes) {
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> Flux.fromArray(appCodes).flatMap(code -> this.hasReadAccess(code, ca.getClientCode())
+                                .map(e -> Tuples.of(code, e)))
+                        .collectMap(Tuple2::getT1, Tuple2::getT2)
+
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"));
+    }
+
+    public Mono<List<Client>> fillApps(Map<ULong, Client> clients) {
+        return this.dao.getAppsIDsPerClient(clients.keySet())
+                .flatMap(map -> Flux.fromStream(map.values().stream().flatMap(List::stream)).distinct()
+                        .flatMap(this::getAppById).collectMap(App::getId)
+                        .map(appMap -> clients.values().stream()
+                                .map(c ->
+                                        map.get(c.getId()) != null ?
+                                                c.setApps(map.get(c.getId()).stream().map(appMap::get).collect(Collectors.toList())) : c
+                                )
+                                .toList())
+                );
     }
 }

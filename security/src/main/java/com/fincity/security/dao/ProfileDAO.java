@@ -160,6 +160,9 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                                         if (!safeIsBlank(profile.getDescription()))
                                             base.setDescription(profile.getDescription());
 
+                                        if (!safeIsBlank(profile.getTitle()))
+                                            base.setTitle(profile.getTitle());
+
                                         return DifferenceApplicator.apply(profile.getArrangement(), base.getArrangement())
                                                 .map(x -> base.setArrangement((Map<String, Object>) x));
                                     }).collectList().map(x -> base);
@@ -210,6 +213,9 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                             if (safeEquals(profile.getName(), rootProfile.getName()))
                                 profile.setName(null);
+
+                            if (safeEquals(profile.getTitle(), rootProfile.getTitle()))
+                                profile.setTitle(null);
 
                             if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
                                 profile.setDescription(null);
@@ -318,13 +324,11 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                             () -> Mono.from(this.dslContext.update(SECURITY_PROFILE)
                                     .set(SECURITY_PROFILE.NAME, profile.getName())
-                                    .set(SECURITY_PROFILE.DESCRIPTION,
-                                            profile.getDescription())
-                                    .set(SECURITY_PROFILE.ARRANGEMENT,
-                                            profile.getArrangement())
+                                    .set(SECURITY_PROFILE.TITLE, profile.getTitle())
+                                    .set(SECURITY_PROFILE.DESCRIPTION, profile.getDescription())
+                                    .set(SECURITY_PROFILE.ARRANGEMENT, profile.getArrangement())
                                     .set(SECURITY_PROFILE.DEFAULT_PROFILE, profile.isDefaultProfile() ? ByteUtil.ONE : ByteUtil.ZERO)
-                                    .where(SECURITY_PROFILE.ID
-                                            .eq(profile.getId()))),
+                                    .where(SECURITY_PROFILE.ID.eq(profile.getId()))),
 
                             updated -> this
                                     .createRoleRelations(profile.getId(),
@@ -347,6 +351,9 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
 
                             if (safeEquals(profile.getDescription(), rootProfile.getDescription()))
                                 profile.setDescription(null);
+
+                            if (safeEquals(profile.getTitle(), rootProfile.getTitle()))
+                                profile.setTitle(null);
 
                             return DifferenceExtractor.extract(profile.getArrangement(),
                                     rootProfile.getArrangement());
@@ -568,7 +575,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         appCode == null || appCode.equals("nothing") ? DSL.trueCondition() :
                                 SECURITY_APP.APP_CODE.eq(appCode)));
 
-        // If no profiles are assigned to the user in an app we shall search for default profiles.
+        // If no profiles are assigned to the user in an app, we shall search for default profiles.
         return Flux.from(query).map(Record1::value1)
                 .collect(Collectors.toSet())
                 .flatMap(e -> {
@@ -605,7 +612,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                 .map(Record1::value1).map(count -> count > 0);
     }
 
-    public Mono<List<String>>  getProfileAuthorities(ULong profileId, ClientHierarchy clientHierarchy) {
+    public Mono<List<String>> getProfileAuthorities(ULong profileId, ClientHierarchy clientHierarchy) {
 
         return FlatMapUtil.flatMapMono(() -> Flux.from(this.dslContext.select(SECURITY_PROFILE.ID,
                                         SECURITY_PROFILE.NAME, SECURITY_APP.APP_CODE)
@@ -802,12 +809,18 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
     }
 
     public Flux<ULong> getAssignedProfileIds(ULong userId, ULong appId) {
+
+        Condition appCondition;
+
+        if (appId == null) appCondition = DSL.trueCondition();
+        else appCondition = SECURITY_PROFILE.APP_ID.eq(appId);
+
         return Flux.from(this.dslContext.select(SECURITY_PROFILE_USER.PROFILE_ID)
                 .from(SECURITY_PROFILE_USER)
                 .leftJoin(SECURITY_PROFILE).on(SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                 .where(DSL.and(
                         SECURITY_PROFILE_USER.USER_ID.eq(userId),
-                        SECURITY_PROFILE.APP_ID.eq(appId)
+                        appCondition
                 ))).map(Record1::value1);
     }
 
@@ -835,7 +848,7 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                         .on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                         .where(SECURITY_PROFILE_USER.USER_ID.eq(userId))
                         .orderBy(
-                                // Prioritize profiles with Owner role
+                                // Prioritize profiles with an Owner role
                                 DSL.case_()
                                         .when(SECURITY_V2_ROLE.NAME.eq("Owner"), 1)
                                         .otherwise(2),

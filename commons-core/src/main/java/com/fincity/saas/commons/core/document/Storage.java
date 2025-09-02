@@ -3,7 +3,7 @@ package com.fincity.saas.commons.core.document;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.enums.StorageTriggerType;
 import com.fincity.saas.commons.core.model.StorageRelation;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
@@ -80,122 +80,102 @@ public class Storage extends AbstractOverridableDTO<Storage> {
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Storage> applyOverride(Storage base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> DifferenceApplicator.apply(this.schema, base.schema),
-                s -> DifferenceApplicator.apply(this.relations, base.relations),
-                (s, r) -> DifferenceApplicator.apply(this.triggers, base.triggers),
-                (s, r, t) -> DifferenceApplicator.apply(this.fieldDefinitionMap, base.fieldDefinitionMap),
-                (s, r, t, f) -> DifferenceApplicator.apply(this.indexes, base.indexes),
-                (s, r, t, f, i) -> DifferenceApplicator.apply(this.textIndexFields, base.textIndexFields),
-                (s, r, t, f, i, tif) -> {
-                    this.schema = (Map<String, Object>) s;
-                    this.relations = (Map<String, StorageRelation>) r;
-                    this.triggers = (Map<StorageTriggerType, List<String>>) t;
-                    this.fieldDefinitionMap = (Map<String, Object>) f;
-                    this.indexes = (Map<String, StorageIndex>) i;
-                    this.textIndexFields = (List<String>) tif;
+                        () -> DifferenceApplicator.apply(this.schema, base.schema),
+                        s -> DifferenceApplicator.apply(this.relations, base.relations),
+                        (s, r) -> DifferenceApplicator.apply(this.triggers, base.triggers),
+                        (s, r, t) -> DifferenceApplicator.apply(this.fieldDefinitionMap, base.fieldDefinitionMap),
+                        (s, r, t, f) -> DifferenceApplicator.apply(this.indexes, base.indexes),
+                        (s, r, t, f, i) -> DifferenceApplicator.apply(this.textIndexFields, base.textIndexFields),
+                        (s, r, t, f, i, tif) -> {
+                            this.schema = (Map<String, Object>) s;
+                            this.relations = (Map<String, StorageRelation>) r;
+                            this.triggers = (Map<StorageTriggerType, List<String>>) t;
+                            this.fieldDefinitionMap = (Map<String, Object>) f;
+                            this.indexes = (Map<String, StorageIndex>) i;
+                            this.textIndexFields = (List<String>) tif;
 
-                    this.subApplyOverride(base);
+                            this.subApplyOverride(base);
 
-                    return Mono.just(this);
-                })
+                            return Mono.just(this);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.applyOverride"));
     }
 
     private void subApplyOverride(Storage base) {
-        if (this.isAudited == null)
-            this.isAudited = base.isAudited;
+        if (this.isAudited == null) this.isAudited = base.isAudited;
 
-        if (this.isVersioned == null)
-            this.isVersioned = base.isVersioned;
+        if (this.isVersioned == null) this.isVersioned = base.isVersioned;
 
-        if (this.createAuth == null)
-            this.createAuth = base.createAuth;
+        if (this.createAuth == null) this.createAuth = base.createAuth;
 
-        if (this.readAuth == null)
-            this.readAuth = base.readAuth;
+        if (this.readAuth == null) this.readAuth = base.readAuth;
 
-        if (this.updateAuth == null)
-            this.updateAuth = base.updateAuth;
+        if (this.updateAuth == null) this.updateAuth = base.updateAuth;
 
-        if (this.deleteAuth == null)
-            this.deleteAuth = base.deleteAuth;
+        if (this.deleteAuth == null) this.deleteAuth = base.deleteAuth;
 
-        if (this.uniqueName == null)
-            this.uniqueName = base.uniqueName;
+        if (this.uniqueName == null) this.uniqueName = base.uniqueName;
 
-        if (this.isAppLevel == null)
-            this.isAppLevel = base.isAppLevel;
+        if (this.isAppLevel == null) this.isAppLevel = base.isAppLevel;
 
-        if (this.onlyThruKIRun == null)
-            this.onlyThruKIRun = base.onlyThruKIRun;
+        if (this.onlyThruKIRun == null) this.onlyThruKIRun = base.onlyThruKIRun;
 
-        if (this.generateEvents == null)
-            this.generateEvents = base.generateEvents;
+        if (this.generateEvents == null) this.generateEvents = base.generateEvents;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Mono<Storage> makeOverride(Storage base) {
-        if (base == null)
-            return Mono.just(this);
+        if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
-                () -> Mono.just(this),
-                obj -> DifferenceExtractor.extract(obj.schema, base.schema),
-                (obj, sch) -> DifferenceExtractor.extract(obj.relations, base.relations),
-                (obj, sch, rel) -> DifferenceExtractor.extract(obj.triggers, base.triggers),
-                (obj, sch, rel, t) -> DifferenceExtractor.extract(obj.fieldDefinitionMap, base.fieldDefinitionMap),
-                (obj, sch, rel, t, f) -> DifferenceExtractor.extract(obj.indexes, base.indexes),
-                (obj, sch, rel, t, f, i) -> DifferenceExtractor.extract(obj.textIndexFields, base.textIndexFields),
-                (obj, sch, rel, t, f, i, tif) -> {
-                    obj.setSchema((Map<String, Object>) sch);
-                    obj.setRelations((Map<String, StorageRelation>) rel);
-                    obj.setTriggers((Map<StorageTriggerType, List<String>>) t);
-                    obj.setFieldDefinitionMap((Map<String, Object>) f);
-                    obj.setIndexes((Map<String, StorageIndex>) i);
-                    obj.setTextIndexFields((List<String>) tif);
+                        () -> Mono.just(this),
+                        obj -> DifferenceExtractor.extract(obj.schema, base.schema),
+                        (obj, sch) -> DifferenceExtractor.extract(obj.relations, base.relations),
+                        (obj, sch, rel) -> DifferenceExtractor.extract(obj.triggers, base.triggers),
+                        (obj, sch, rel, t) ->
+                                DifferenceExtractor.extract(obj.fieldDefinitionMap, base.fieldDefinitionMap),
+                        (obj, sch, rel, t, f) -> DifferenceExtractor.extract(obj.indexes, base.indexes),
+                        (obj, sch, rel, t, f, i) ->
+                                DifferenceExtractor.extract(obj.textIndexFields, base.textIndexFields),
+                        (obj, sch, rel, t, f, i, tif) -> {
+                            obj.setSchema((Map<String, Object>) sch);
+                            obj.setRelations((Map<String, StorageRelation>) rel);
+                            obj.setTriggers((Map<StorageTriggerType, List<String>>) t);
+                            obj.setFieldDefinitionMap((Map<String, Object>) f);
+                            obj.setIndexes((Map<String, StorageIndex>) i);
+                            obj.setTextIndexFields((List<String>) tif);
 
-                    this.subMakeOverride(base, obj);
+                            this.subMakeOverride(base, obj);
 
-                    return Mono.just(obj);
-                })
+                            return Mono.just(obj);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "Storage.makeOverride"));
     }
 
     private void subMakeOverride(Storage base, Storage obj) {
-        if (CommonsUtil.safeEquals(obj.isAudited, base.isAudited))
-            obj.isAudited = null;
+        if (CommonsUtil.safeEquals(obj.isAudited, base.isAudited)) obj.isAudited = null;
 
-        if (CommonsUtil.safeEquals(obj.isVersioned, base.isVersioned))
-            obj.isVersioned = null;
+        if (CommonsUtil.safeEquals(obj.isVersioned, base.isVersioned)) obj.isVersioned = null;
 
-        if (CommonsUtil.safeEquals(obj.createAuth, base.createAuth))
-            obj.createAuth = null;
+        if (CommonsUtil.safeEquals(obj.createAuth, base.createAuth)) obj.createAuth = null;
 
-        if (CommonsUtil.safeEquals(obj.readAuth, base.readAuth))
-            obj.readAuth = null;
+        if (CommonsUtil.safeEquals(obj.readAuth, base.readAuth)) obj.readAuth = null;
 
-        if (CommonsUtil.safeEquals(obj.updateAuth, base.updateAuth))
-            obj.updateAuth = null;
+        if (CommonsUtil.safeEquals(obj.updateAuth, base.updateAuth)) obj.updateAuth = null;
 
-        if (CommonsUtil.safeEquals(obj.deleteAuth, base.deleteAuth))
-            obj.deleteAuth = null;
+        if (CommonsUtil.safeEquals(obj.deleteAuth, base.deleteAuth)) obj.deleteAuth = null;
 
-        if (CommonsUtil.safeEquals(obj.uniqueName, base.uniqueName))
-            obj.uniqueName = null;
+        if (CommonsUtil.safeEquals(obj.uniqueName, base.uniqueName)) obj.uniqueName = null;
 
-        if (CommonsUtil.safeEquals(obj.isAppLevel, base.isAppLevel))
-            obj.isAppLevel = null;
+        if (CommonsUtil.safeEquals(obj.isAppLevel, base.isAppLevel)) obj.isAppLevel = null;
 
-        if (CommonsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun))
-            obj.onlyThruKIRun = null;
+        if (CommonsUtil.safeEquals(obj.onlyThruKIRun, base.onlyThruKIRun)) obj.onlyThruKIRun = null;
 
-        if (CommonsUtil.safeEquals(obj.generateEvents, base.generateEvents))
-            obj.generateEvents = null;
+        if (CommonsUtil.safeEquals(obj.generateEvents, base.generateEvents)) obj.generateEvents = null;
     }
 
     @Data
