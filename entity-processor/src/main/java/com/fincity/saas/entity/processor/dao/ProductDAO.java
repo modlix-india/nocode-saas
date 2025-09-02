@@ -29,6 +29,6 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
     }
 
     private AbstractCondition getPartnerCondition() {
-        return FilterCondition.make(Product.Fields.forPartner, Boolean.TRUE);
+        return FilterCondition.make(Product.Fields.forPartner, 1);
     }
 }
