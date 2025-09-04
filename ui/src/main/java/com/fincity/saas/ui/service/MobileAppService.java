@@ -57,6 +57,9 @@ public class MobileAppService {
                         e.setErrorMessage(request.getErrorMessage());
                     } else {
                         e.setStatus(request.getStatus());
+                        if (request.getStatus() == MobileApp.Status.SUCCESS) {
+                            e.setErrorMessage(null);
+                        }
                     }
                     e.setAndroidAppURL(request.getAndroidAppURL());
                     e.setIosAppURL(request.getIosAppURL());
