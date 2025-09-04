@@ -75,4 +75,6 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String CONNECTION_NOT_AVAILABLE = "connection_not_available";
 
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
+
+    public static final String UNABLE_TO_EXECUTE = "unable_to_execute";
 }
