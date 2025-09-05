@@ -5,6 +5,8 @@ import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.CampaignRequest;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
@@ -39,5 +41,10 @@ public class TicketController
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
             @RequestBody TicketReassignRequest ticketReassignRequest) {
         return this.service.reassignTicket(identity, ticketReassignRequest).map(ResponseEntity::ok);
+    }
+
+    @PostMapping(REQ_PATH + "/campaigns")
+    public Mono<ResponseEntity<Ticket>> createFromCampaigns(@RequestBody CampaignTicketRequest campaignTicketRequest) {
+        return this.service.createForCampaign(campaignTicketRequest).map(ResponseEntity::ok);
     }
 }

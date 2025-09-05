@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
@@ -36,6 +37,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong status;
     private String source;
     private String subSource;
+    private ULong campaignId;
 
     public Ticket() {
         super();
@@ -44,6 +46,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsMap.put(Fields.stage, EntitySeries.STAGE.getTable());
         this.relationsMap.put(Fields.status, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
+        this.relationsMap.put(Fields.campaignId, EntitySeries.CAMPAIGN.getTable());
     }
 
     public Ticket(Ticket ticket) {
@@ -58,6 +61,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.status = ticket.status;
         this.source = ticket.source;
         this.subSource = ticket.subSource;
+        this.campaignId = ticket.campaignId;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
@@ -78,6 +82,22 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                 .setSubSource(ticketRequest.getSubSource() != null ? ticketRequest.getSubSource() : null)
                 .setName(ticketRequest.getName())
                 .setDescription(ticketRequest.getDescription());
+    }
+
+    public static Ticket of(CampaignTicketRequest campaignTicketRequest) {
+        return new Ticket()
+                .setPhoneNumber(
+                        campaignTicketRequest.getLeadDetails().getPhone() != null
+                                ? campaignTicketRequest.getLeadDetails().getPhone()
+                                : null)
+                .setEmail(
+                        campaignTicketRequest.getLeadDetails().getEmail() != null
+                                ? campaignTicketRequest.getLeadDetails().getEmail()
+                                : null)
+                .setSource(campaignTicketRequest.getLeadDetails().getSource())
+                .setSubSource(campaignTicketRequest.getLeadDetails().getSubSource() != null ? campaignTicketRequest.getLeadDetails().getSubSource() : null)
+                .setName(campaignTicketRequest.getLeadDetails().getFullName() != null ? campaignTicketRequest.getLeadDetails().getFullName() :
+                        campaignTicketRequest.getLeadDetails().getFirstName() + " " + campaignTicketRequest.getLeadDetails().getLastName());
     }
 
     @Override

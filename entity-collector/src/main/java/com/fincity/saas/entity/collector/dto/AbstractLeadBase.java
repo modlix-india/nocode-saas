@@ -37,8 +37,6 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
     private String state;
     private String city;
     private String whatsappNumber;
-    private String clientCode;
-    private String appCode;
     private String platform;
     private LeadSubSource subSource;
     private LeadSource source;
@@ -74,8 +72,6 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
         this.setSource(LeadSource.lookupLiteral(String.valueOf(details.getSource())));
         this.setSubSource(LeadSubSource.lookupLiteral(String.valueOf(details.getSubSource())));
 
-        this.setClientCode(integration.getClientCode());
-        this.setAppCode(integration.getAppCode());
 
         if ("FACEBOOK".equalsIgnoreCase(details.getUtmSource())) {
             this.setPlatform("FACEBOOK");

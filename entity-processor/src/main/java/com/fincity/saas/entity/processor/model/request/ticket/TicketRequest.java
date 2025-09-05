@@ -4,13 +4,17 @@ import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import java.io.Serial;
+import java.math.BigInteger;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -28,6 +32,25 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private String subSource;
     private NoteRequest noteRequest;
     private String comment;
+    private Identity campaignId;
+
+    public static TicketRequest of(CampaignTicketRequest campaignTicketRequest, ULong productId, ULong campaignId) {
+        TicketRequest ticketRequest = new TicketRequest()
+                .setProductId(new Identity().setId(productId.toBigInteger()))
+                .setCampaignId(new Identity().setId(campaignId.toBigInteger()))
+                .setSource(campaignTicketRequest.getLeadDetails().getSource())
+                .setPhoneNumber(new PhoneNumber()
+                        .setNumber(campaignTicketRequest.getLeadDetails().getPhone()));
+
+        if (campaignTicketRequest.getLeadDetails().getEmail() != null)
+            ticketRequest.setEmail(new Email()
+                    .setAddress(campaignTicketRequest.getLeadDetails().getEmail()));
+
+        if (campaignTicketRequest.getLeadDetails().getSubSource() != null)
+            ticketRequest.setSubSource(campaignTicketRequest.getLeadDetails().getSubSource());
+
+        return ticketRequest;
+    }
 
     public boolean hasIdentifyInfo() {
         return this.getPhoneNumber() != null || this.getEmail() != null;

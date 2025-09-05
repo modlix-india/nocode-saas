@@ -45,6 +45,7 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 this.objectMapper,
                 "/api/entity/processor/core/function/**",
                 "/api/entity/processor/core/functions/repositoryFilter",
-                "/api/entity/processor/core/functions/repositoryFind");
+                "/api/entity/processor/core/functions/repositoryFind",
+                "/api/entity/processor/tickets/req/campaigns");
     }
 }

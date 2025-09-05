@@ -20,7 +20,7 @@ public final class EntityUtil {
 
     private static final WebClient webClient = WebClient.create();
 
-    public static final String CONNECTION_NAME = "meta_facebook_connection";
+    public static final String CONNECTION_NAME = "META_API";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
     private static final String FORWARDED_FOR = "X-Forwarded-For";
@@ -63,12 +63,9 @@ public final class EntityUtil {
 
     public static void populateStaticFields(
             LeadDetails lead,
-            EntityIntegration integration,
             String platform,
             LeadSource source,
             LeadSubSource subSource) {
-        lead.setClientCode(integration.getClientCode());
-        lead.setAppCode(integration.getAppCode());
         lead.setPlatform(platform);
         lead.setSource(source);
         lead.setSubSource(subSource);

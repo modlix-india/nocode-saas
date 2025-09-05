@@ -10,6 +10,8 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.CampaignRequest;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
@@ -40,6 +42,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ActivityService activityService;
     private final TaskService taskService;
     private final NoteService noteService;
+    private final CampaignService campaignService;
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -48,7 +51,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ProductStageRuleService productStageRuleService,
             ActivityService activityService,
             @Lazy TaskService taskService,
-            @Lazy NoteService noteService) {
+            @Lazy NoteService noteService,
+            @Lazy CampaignService campaignService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -56,6 +60,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
+        this.campaignService = campaignService;
     }
 
     @Override
@@ -385,5 +390,39 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (userId != null && !userId.equals(ULong.valueOf(0))) ticket.setAssignedUserId(userId);
 
         return Mono.just(ticket);
+    }
+
+    public Mono<Ticket> createForCampaign(CampaignTicketRequest campaignTicketRequest) {
+
+        ProcessorAccess access = ProcessorAccess.of(
+                campaignTicketRequest.getAppCode(), campaignTicketRequest.getClientCode(), true, null, null);
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.campaignService.readByCampaignId(
+                        access, campaignTicketRequest.getCampaignDetails().getCampaignId()),
+
+                (campaign) -> this.productService.readById(campaign.getProductId()),
+
+                (campaign, product) ->
+                        Mono.just(Ticket.of(campaignTicketRequest).setCampaignId(campaign.getId())),
+
+                (campaign, product, ticket) ->
+                        Mono.just(TicketRequest.of(campaignTicketRequest, campaign.getId(), product.getId())),
+
+                (campaign, product, ticket, ticketRequest) -> this.checkDuplicate(access, ticketRequest),
+
+                (campaign, product, ticket, ticketRequest, isDuplicate) ->
+                        Mono.just(ticket.setProductId(product.getId())),
+
+                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket) ->
+                        super.createInternal(access, pTicket),
+
+                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created) ->
+                        this.createNote(access, ticketRequest, created),
+
+                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created, noteCreated) ->
+                        this.activityService.acCreate(created).thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[CampaignTicketRequest]"));
     }
 }
