@@ -5,9 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -79,10 +76,4 @@ public final class IMessage implements Serializable {
 
     @JsonProperty("document")
     private IDocument document;
-
-    public LocalDateTime getTimestampAsDate() {
-        return this.timestamp != null
-                ? LocalDateTime.ofInstant(Instant.ofEpochSecond(Long.parseLong(timestamp)), ZoneOffset.UTC)
-                : LocalDateTime.now();
-    }
 }

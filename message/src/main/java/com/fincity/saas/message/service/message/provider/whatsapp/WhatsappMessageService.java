@@ -30,6 +30,7 @@ import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
+import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
@@ -188,13 +189,15 @@ public class WhatsappMessageService
                         (vConn, businessAccountId, phoneNumberId, validated, api, response, created) ->
                                 this.toMessage(created).map(msg -> msg.setConnectionName(connection.getName())),
                         (vConn, businessAccountId, phoneNumberId, validated, api, response, created, msg) ->
-                                this.messageEventService
-                                        .sendMessageEvent(
-                                                access.getAppCode(),
-                                                access.getClientCode(),
-                                                access.getUserId(),
-                                                created)
-                                        .thenReturn(msg))
+                                super.messageService
+                                        .createInternal(access, msg)
+                                        .flatMap(msgCreated -> this.messageEventService
+                                                .sendMessageEvent(
+                                                        access.getAppCode(),
+                                                        access.getClientCode(),
+                                                        access.getUserId(),
+                                                        created)
+                                                .thenReturn(msgCreated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
 
@@ -230,29 +233,43 @@ public class WhatsappMessageService
                 .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
     }
 
-    public Mono<Void> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
+    public Mono<MessageResponse> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
         if (event == null || event.getEntry() == null) return Mono.empty();
 
-        return Flux.fromIterable(event.getEntry())
-                .flatMap(entry -> processEntry(appCode, clientCode, entry))
-                .then()
+        MessageAccess access = MessageAccess.of(appCode, clientCode, true);
+
+        return super.messageWebhookService
+                .createWhatsappWebhookEvent(access, event)
+                .flatMap(wEvent -> Flux.fromIterable(event.getEntry())
+                        .flatMap(entry -> this.processEntry(access, entry))
+                        .then()
+                        .then(super.messageWebhookService.processed(wEvent))
+                        .onErrorResume(error -> {
+                            logger.error(
+                                    "Error processing Whatsapp webhook event for app: {}, client: {}",
+                                    appCode,
+                                    clientCode,
+                                    error);
+                            return Mono.just(MessageResponse.ofBadRequest(
+                                    wEvent.getCode(),
+                                    super.messageWebhookService.getMessageSeries(),
+                                    error.getMessage()));
+                        }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.processWebhookEvent"));
     }
 
-    private Mono<Void> processEntry(String appCode, String clientCode, IEntry entry) {
+    private Mono<Void> processEntry(MessageAccess access, IEntry entry) {
         if (entry.getChanges() == null) return Mono.empty();
 
         return Flux.fromIterable(entry.getChanges())
-                .flatMap(change -> processChange(appCode, clientCode, change))
+                .flatMap(change -> this.processChange(access, change))
                 .then();
     }
 
-    private Mono<Void> processChange(String appCode, String clientCode, IChange change) {
+    private Mono<Void> processChange(MessageAccess access, IChange change) {
         if (change.getValue() == null) return Mono.empty();
 
         IValue value = change.getValue();
-
-        MessageAccess access = MessageAccess.of(appCode, clientCode, true);
 
         if (value.getMessages() != null && !value.getMessages().isEmpty()) {
             return Flux.fromIterable(value.getMessages())

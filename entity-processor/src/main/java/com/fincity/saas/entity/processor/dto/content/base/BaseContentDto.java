@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.dto.content.base;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
-import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
+import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

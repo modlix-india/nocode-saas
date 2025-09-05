@@ -28,6 +28,7 @@ import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -76,28 +77,26 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
-            ULong id, ProcessorAccess access, List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, eager, eagerFields);
+            ULong id, ProcessorAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, queryParams);
     }
 
     public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
-            String code, ProcessorAccess access, List<String> tableFields, Boolean eager, List<String> eagerFields) {
-        return this.readSingleRecordByIdentityEager(codeField, code, access, tableFields, eager, eagerFields);
+            String code, ProcessorAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.readSingleRecordByIdentityEager(codeField, code, access, tableFields, queryParams);
     }
 
     public Mono<Map<String, Object>> readByIdentityAndAppCodeAndClientCodeEager(
             Identity identity,
             ProcessorAccess access,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         if (identity.isId())
             return this.readSingleRecordByIdentityEager(
-                    idField, identity.getULongId(), access, tableFields, eager, eagerFields);
+                    idField, identity.getULongId(), access, tableFields, queryParams);
 
-        return this.readSingleRecordByIdentityEager(
-                codeField, identity.getCode(), access, tableFields, eager, eagerFields);
+        return this.readSingleRecordByIdentityEager(codeField, identity.getCode(), access, tableFields, queryParams);
     }
 
     public <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
@@ -105,8 +104,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             V identity,
             ProcessorAccess access,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
 
         return FlatMapUtil.flatMapMono(
                 () -> this.processorAccessCondition(
@@ -117,7 +115,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                                         identity)
                                 .setOperator(FilterConditionOperator.EQUALS),
                         access),
-                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, eager, eagerFields));
+                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, queryParams));
     }
 
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {

@@ -20,17 +20,17 @@ public class FileDetail implements Serializable {
 
     private ULong id;
     private String name;
-    private boolean isDirectory;
-    private long size;
+    private Boolean isDirectory;
+    private Long size;
     private String filePath;
     private String url;
-    private long createdDate;
-    private long lastModifiedTime;
+    private Long createdDate;
+    private Long lastModifiedTime;
     private String type;
     private String fileName;
 
     @JsonProperty("isCompressedFile")
-    public boolean isCompressedFile() {
+    public Boolean isCompressedFile() {
 
         if (this.type == null) return false;
 

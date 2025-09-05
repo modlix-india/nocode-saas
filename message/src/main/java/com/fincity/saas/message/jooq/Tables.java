@@ -6,6 +6,7 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
+import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
@@ -27,6 +28,11 @@ public class Tables {
      * The table <code>message.message_exotel_calls</code>.
      */
     public static final MessageExotelCalls MESSAGE_EXOTEL_CALLS = MessageExotelCalls.MESSAGE_EXOTEL_CALLS;
+
+    /**
+     * The table <code>message.message_message_webhooks</code>.
+     */
+    public static final MessageMessageWebhooks MESSAGE_MESSAGE_WEBHOOKS = MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS;
 
     /**
      * The table <code>message.message_messages</code>.

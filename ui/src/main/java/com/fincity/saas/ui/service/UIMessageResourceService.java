@@ -17,8 +17,6 @@ public class UIMessageResourceService extends AbstractMongoMessageResourceServic
 
     public static final String URI_INVALID_METHOD = "uri_invalid_method";
 
-    public static final String MULTIPLE_GEN_STATUS = "multiple_gen_status";
-
     public static final String INTERNAL_ONLY = "internal_only";
 
     public static final String MOBILE_APP_BAD_REQUEST = "mobile_app_bad_request";
