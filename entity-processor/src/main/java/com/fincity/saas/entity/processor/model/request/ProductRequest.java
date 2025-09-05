@@ -2,6 +2,8 @@ package com.fincity.saas.entity.processor.model.request;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
+
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -19,4 +21,6 @@ public class ProductRequest extends BaseRequest<ProductRequest> {
 
     private Identity productTemplateId;
     private Boolean forPartner = Boolean.FALSE;
+    private FileDetail logoFileDetail;
+    private FileDetail bannerFileDetail;
 }

@@ -44,6 +44,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -116,8 +117,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             Identity ticket,
             AbstractCondition condition,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.ticketService.checkAndUpdateIdentityWithAccess(access, ticket),
@@ -125,8 +125,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 pageable,
                                 addTicketToCondition(access, condition, uTicket.getULongId()),
                                 tableFields,
-                                eager,
-                                eagerFields))
+                                queryParams))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.readPageFilterEager"));
     }
 

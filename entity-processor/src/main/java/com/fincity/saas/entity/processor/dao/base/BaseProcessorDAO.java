@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.util.EagerUtil;
@@ -50,9 +51,29 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
+
+        if (!hasAccessAssignment()) return Mono.just(condition);
+
+        if (access.isOutsideUser()) {
+            if (this.isEmptyCondition(condition))
+                return Mono.just(FilterCondition.make(
+                        BaseProcessorDto.Fields.clientId, access.getUser().getClientId()));
+            return Mono.just(ComplexCondition.and(
+                    condition,
+                    FilterCondition.make(
+                            BaseProcessorDto.Fields.clientId, access.getUser().getClientId())));
+        }
+
         if (!access.isHasBpAccess()) {
-            if (this.isEmptyCondition(condition)) return Mono.empty();
-            return condition.removeConditionWithField(BaseProcessorDto.Fields.clientId);
+            if (this.isEmptyCondition(condition))
+                return Mono.just(new FilterCondition()
+                        .setOperator(FilterConditionOperator.IS_NULL)
+                        .setField(BaseProcessorDto.Fields.clientId));
+            return Mono.just(ComplexCondition.and(
+                    condition,
+                    new FilterCondition()
+                            .setOperator(FilterConditionOperator.IS_NULL)
+                            .setField(BaseProcessorDto.Fields.clientId)));
         }
 
         if (this.isEmptyCondition(condition))
@@ -72,6 +93,16 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
         if (!hasAccessAssignment()) return Mono.just(condition);
+
+        if (access.isOutsideUser()) {
+            if (this.isEmptyCondition(condition))
+                return Mono.just(FilterCondition.make(
+                        AbstractDTO.Fields.createdBy, access.getUser().getId()));
+            return Mono.just(ComplexCondition.and(
+                    condition,
+                    FilterCondition.make(
+                            AbstractDTO.Fields.createdBy, access.getUser().getId())));
+        }
 
         if (isEmptyCondition(condition))
             return this.buildInCondition(

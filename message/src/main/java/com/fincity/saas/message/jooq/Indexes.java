@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq;
 
 
+import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
@@ -24,6 +25,7 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
+    public static final Index MESSAGE_MESSAGE_WEBHOOKS_IDX1_MESSAGE_WEBHOOKS_PROVIDER = Internal.createIndex(DSL.name("IDX1_MESSAGE_WEBHOOKS_PROVIDER"), MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS, new OrderField[] { MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.APP_CODE, MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.CLIENT_CODE, MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.PROVIDER }, false);
     public static final Index MESSAGE_MESSAGES_IDX1_MESSAGES_FROM = Internal.createIndex(DSL.name("IDX1_MESSAGES_FROM"), MessageMessages.MESSAGE_MESSAGES, new OrderField[] { MessageMessages.MESSAGE_MESSAGES.FROM_DIAL_CODE, MessageMessages.MESSAGE_MESSAGES.FROM }, false);
     public static final Index MESSAGE_WHATSAPP_MESSAGES_IDX1_WHATSAPP_MESSAGES_MESSAGE_ID = Internal.createIndex(DSL.name("IDX1_WHATSAPP_MESSAGES_MESSAGE_ID"), MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, new OrderField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.MESSAGE_ID }, false);
     public static final Index MESSAGE_MESSAGES_IDX2_MESSAGES_TO = Internal.createIndex(DSL.name("IDX2_MESSAGES_TO"), MessageMessages.MESSAGE_MESSAGES, new OrderField[] { MessageMessages.MESSAGE_MESSAGES.TO_DIAL_CODE, MessageMessages.MESSAGE_MESSAGES.TO }, false);
