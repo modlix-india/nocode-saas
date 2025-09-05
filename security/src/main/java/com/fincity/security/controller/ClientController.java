@@ -178,13 +178,13 @@ public class ClientController
 
     @GetMapping("/internal" + PATH_ID)
     public Mono<ResponseEntity<Client>> getClientInternal(
-            @PathVariable ULong id, MultiValueMap<String, String> queryParams) {
+            @PathVariable ULong id, @RequestParam MultiValueMap<String, String> queryParams) {
         return this.service.readById(id, queryParams).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal")
     public Mono<ResponseEntity<List<Client>>> getClientsInternal(
-            @RequestParam List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+            @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
         return this.service.readByIds(clientIds, queryParams).map(ResponseEntity::ok);
     }
 
