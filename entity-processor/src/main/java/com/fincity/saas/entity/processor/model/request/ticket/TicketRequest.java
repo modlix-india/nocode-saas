@@ -1,12 +1,14 @@
 package com.fincity.saas.entity.processor.model.request.ticket;
 
+import java.io.Serial;
+
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -26,6 +28,7 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private Email email;
     private String source;
     private String subSource;
+    private Boolean dnc;
     private NoteRequest noteRequest;
     private String comment;
 

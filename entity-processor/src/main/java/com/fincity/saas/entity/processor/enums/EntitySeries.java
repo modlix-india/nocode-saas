@@ -1,13 +1,36 @@
 package com.fincity.saas.entity.processor.enums;
 
-import com.fincity.saas.entity.processor.dto.*;
+import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.dto.Product;
+import com.fincity.saas.entity.processor.dto.ProductStageRule;
+import com.fincity.saas.entity.processor.dto.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
+import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
-import com.fincity.saas.entity.processor.jooq.tables.*;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import java.util.Map;
 import lombok.Getter;
 import org.jooq.EnumType;
@@ -56,7 +79,8 @@ public enum EntitySeries implements EnumType {
     TASK_TYPE("TASK_TYPE", "TaskType", 22, "TaskType", EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES),
     NOTE("NOTE", "Note", 23, "Note", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES),
     ACTIVITY("ACTIVITY", "Activity", 24, "Activity", null),
-    CAMPAIGN("CAMPAIGN", "Campaign", 25, "Campaign", EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS);
+    CAMPAIGN("CAMPAIGN", "Campaign", 25, "Campaign", EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS),
+    PARTNER("PARTNER", "Partner", 26, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -72,7 +96,10 @@ public enum EntitySeries implements EnumType {
             Map.entry(PRODUCT_TEMPLATE_RULE, "ProjectTemplateRule"),
             Map.entry(TASK, "Task"),
             Map.entry(TASK_TYPE, "TaskType"),
-            Map.entry(NOTE, "Note"));
+            Map.entry(NOTE, "Note"),
+            Map.entry(ACTIVITY, "Activity"),
+            Map.entry(CAMPAIGN, "Campaign"),
+            Map.entry(PARTNER, "Partner"));
 
     private final String literal;
     private final String displayName;
@@ -120,6 +147,7 @@ public enum EntitySeries implements EnumType {
             case NOTE -> Note.class;
             case ACTIVITY -> Activity.class;
             case CAMPAIGN -> Campaign.class;
+            case PARTNER -> Partner.class;
         };
     }
 

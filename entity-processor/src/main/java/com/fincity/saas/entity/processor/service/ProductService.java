@@ -74,6 +74,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .flatMap(existing -> {
                     existing.setForPartner(entity.getForPartner());
                     existing.setProductTemplateId(entity.getProductTemplateId());
+                    existing.setLogoFileDetail(entity.getLogoFileDetail());
+                    existing.setBannerFileDetail(entity.getBannerFileDetail());
 
                     return Mono.just(existing);
                 })

@@ -2,15 +2,18 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.Condition;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
+
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.util.ArrayList;
-import java.util.List;
-import org.jooq.Condition;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Component;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -23,6 +26,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS,
                 ENTITY_PROCESSOR_TICKETS.ID,
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
+    }
+
+    public Flux<Ticket> getAllClientTicketsByDnc(ULong clientId, Boolean dnc) {
+        return Flux.from(dslContext
+                        .selectFrom(table)
+                        .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.eq((byte) (Boolean.TRUE.equals(dnc) ? 1 : 0))))
+                .map(rec -> rec.into(this.pojoClass));
     }
 
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {

@@ -1,5 +1,6 @@
 package com.fincity.saas.message.model.message.whatsapp.messages;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
@@ -71,6 +72,7 @@ public class Message implements Serializable {
         this.context = context;
     }
 
+    @JsonIgnore
     public boolean hasMediaFile() {
         return this.audioMessage != null
                 || this.documentMessage != null

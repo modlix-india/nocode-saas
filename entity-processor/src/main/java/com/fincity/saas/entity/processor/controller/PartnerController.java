@@ -1,0 +1,46 @@
+package com.fincity.saas.entity.processor.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
+import com.fincity.saas.entity.processor.dao.PartnerDAO;
+import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.PartnerRequest;
+import com.fincity.saas.entity.processor.service.PartnerService;
+
+import reactor.core.publisher.Mono;
+
+@RestController
+@RequestMapping("api/entity/processor/partners")
+public class PartnerController
+        extends BaseUpdatableController<EntityProcessorPartnersRecord, Partner, PartnerDAO, PartnerService> {
+
+    @PostMapping(REQ_PATH)
+    public Mono<ResponseEntity<Partner>> createFromRequest(@RequestBody PartnerRequest partnerRequest) {
+        return this.service.createPartner(partnerRequest).map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/verification-status")
+    public Mono<ResponseEntity<Partner>> updateVerificationStatus(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity,
+            @RequestParam("status") PartnerVerificationStatus status) {
+        return this.service.updatePartnerVerificationStatus(identity, status).map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/dnc")
+    public Mono<ResponseEntity<Partner>> toggleDnc(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestParam(value = "dnc", defaultValue = "false") Boolean dnc) {
+        return this.service.toggleDnc(identity, dnc).map(ResponseEntity::ok);
+    }
+
+}

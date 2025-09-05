@@ -5,6 +5,7 @@ import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.model.UserResponse;
 
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -163,11 +164,19 @@ public interface IFeignSecurityService {
             @RequestHeader(name = "appCode", required = false) String headerAppCode,
             @RequestHeader("X-Real-IP") String ipAddress);
 
-    @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
+    @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal/{id}}")
     Mono<UserResponse> getUserInternal(@PathVariable("id") BigInteger id);
 
-    @GetMapping(value = "${security.feign.getUser:/api/security/users/internal}")
+    @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal}")
     Mono<List<UserResponse>> getUserInternal(@RequestParam List<BigInteger> userIds);
+
+    @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal/{id}}")
+    Mono<Map<String, Object>> getClientInternal(
+            @PathVariable("id") BigInteger id, @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal}")
+    Mono<List<Map<String, Object>>> getClientInternal(
+            @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(
@@ -178,7 +187,7 @@ public interface IFeignSecurityService {
             @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
 
     @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
-    Mono<Map<String,Object>> getUserAdminEmailsInternal(
+    Mono<Map<String, Object>> getUserAdminEmailsInternal(
             @RequestHeader(name = "clientCode") String clientCode,
             @RequestHeader(name = "appCode") String headerAppCode);
 }
