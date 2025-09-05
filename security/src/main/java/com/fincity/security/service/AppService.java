@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.http.protocol.HTTP;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -928,5 +929,48 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 )
                                 .toList())
                 );
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    public Mono<List<App>> listSSO(ULong id) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.hasWriteAccess(id, ULongUtil.valueOf(ca.getUser().getClientId())).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess) -> this.dao.listSSO(id)
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"))
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS)));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    public Mono<List<App>> addSSO(ULong appId, ULong toAppId) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.hasWriteAccess(appId, ULongUtil.valueOf(ca.getUser().getClientId())).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess) -> this.hasWriteAccess(toAppId, ULongUtil.valueOf(ca.getUser().getClientId())).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess, hasAccess2) -> this.dao.addSSO(appId, toAppId, ULongUtil.valueOf(ca.getUser().getClientId()))
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"))
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS)));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
+    public Mono<List<App>> removeSSO(ULong appId, ULong toAppId) {
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.hasWriteAccess(appId, ULongUtil.valueOf(ca.getUser().getClientId())).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess) -> this.hasWriteAccess(toAppId, ULongUtil.valueOf(ca.getUser().getClientId())).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess, hasAccess2) -> this.dao.removeSSO(appId, toAppId)
+                ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.hasReadAccess"))
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS)));
     }
 }

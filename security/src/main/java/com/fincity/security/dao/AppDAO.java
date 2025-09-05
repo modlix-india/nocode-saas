@@ -43,6 +43,7 @@ import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_AC
 import static com.fincity.security.jooq.tables.SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityAppSso.SECURITY_APP_SSO;
 
 @Service
 public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> {
@@ -598,5 +599,36 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                                 this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID, SECURITY_APP_ACCESS.APP_ID).from(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.CLIENT_ID.in(clientIds))
                         ))
                         .collect(Collectors.groupingBy(Record2::value1, Collectors.mapping(Record2::value2, Collectors.toList())));
+    }
+
+    public Mono<List<App>> listSSO(ULong appId) {
+        return Flux.from(this.dslContext.selectFrom(SECURITY_APP)
+                        .where(SECURITY_APP.ID.in(
+                                this.dslContext.select(SECURITY_APP_SSO.APP_ID).from(SecurityAppSso.SECURITY_APP_SSO)
+                                        .where(SECURITY_APP_SSO.APP_ID.eq(appId))))
+                )
+                .map(e -> e.into(App.class))
+                .collectList();
+    }
+
+    public Mono<List<App>> addSSO(ULong appId, ULong toAppId, ULong userId) {
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.from(this.dslContext.insertInto(SECURITY_APP_SSO)
+                        .set(SECURITY_APP_SSO.APP_ID, appId)
+                        .set(SECURITY_APP_SSO.TO_APP_ID, toAppId)
+                        .set(SECURITY_APP_SSO.CREATED_BY, userId).onDuplicateKeyIgnore().returning()),
+
+                rec -> this.listSSO(appId)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.addSSO"));
+    }
+
+    public Mono<List<App>> removeSSO(ULong appId, ULong toAppId) {
+        return FlatMapUtil.flatMapMono(
+
+                () -> Mono.from(this.dslContext.deleteFrom(SecurityAppSso.SECURITY_APP_SSO)
+                        .where(SECURITY_APP_SSO.APP_ID.eq(appId).and(SECURITY_APP_SSO.TO_APP_ID.eq(toAppId)))),
+
+                rec -> this.listSSO(appId)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.addSSO"));
     }
 }
