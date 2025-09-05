@@ -1,11 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -24,6 +27,14 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         implements IEntitySeries {
 
     private static final String PARTNER_CACHE = "Partner";
+
+    private TicketService ticketService;
+
+    @Lazy
+    @Autowired
+    private void setTicketService(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
 
     @Override
     protected String getCacheName() {
@@ -103,10 +114,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), clientId));
     }
 
-    public Mono<Boolean> getPartnerDnc(ProcessorAccess access, ULong clientId) {
+    public Mono<Boolean> getPartnerDnc(ProcessorAccess access) {
 
         if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
 
-        return this.getPartnerByClientId(access, clientId).map(partner -> partner.getDnc() != null && partner.getDnc());
+        return this.getPartnerByClientId(
+                        access, ULongUtil.valueOf(access.getUser().getClientId()))
+                .map(partner -> partner.getDnc() != null && partner.getDnc());
     }
 }

@@ -43,14 +43,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final PartnerService partnerService;
 
     public TicketService(
-		    @Lazy OwnerService ownerService,
-		    ProductService productService,
-		    StageService stageService,
-		    ProductStageRuleService productStageRuleService,
-		    ActivityService activityService,
-		    @Lazy TaskService taskService,
-		    @Lazy NoteService noteService,
-            PartnerService partnerService) {
+            @Lazy OwnerService ownerService,
+            ProductService productService,
+            StageService stageService,
+            ProductStageRuleService productStageRuleService,
+            ActivityService activityService,
+            @Lazy TaskService taskService,
+            @Lazy NoteService noteService,
+            @Lazy PartnerService partnerService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -58,7 +58,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
-	    this.partnerService = partnerService;
+        this.partnerService = partnerService;
     }
 
     @Override
@@ -102,6 +102,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return this.dao
                 .updateAll(ticketsFlux)
+                .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
@@ -117,16 +118,25 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
-                        access -> this.productService.updateIdentity(ticketRequest.getProductId()),
-                        (access, productIdentity) -> Mono.just(ticket.setProductId(productIdentity.getULongId())),
-                        (access, productIdentity, pTicket) -> super.createInternal(access, pTicket),
-                        (access, productIdentity, pTicket, created) -> this.createNote(access, ticketRequest, created),
-                        (access, productIdentity, pTicket, created, noteCreated) -> this.activityService
+                        access -> Mono.zip(
+                                this.productService.updateIdentity(ticketRequest.getProductId()), this.getDnc(access)),
+                        (access, productIdentityDnc) -> Mono.just(
+                                ticket.setProductId(productIdentityDnc.getT1().getULongId())
+                                        .setDnc(productIdentityDnc.getT2())),
+                        (access, productIdentityDnc, pTicket) -> super.createInternal(access, pTicket),
+                        (access, productIdentityDnc, pTicket, created) ->
+                                this.createNote(access, ticketRequest, created),
+                        (access, productIdentityDnc, pTicket, created, noteCreated) -> this.activityService
                                 .acCreate(created)
                                 .thenReturn(created)
                                 .thenReturn(created))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
+    }
+
+    public Mono<Boolean> getDnc(ProcessorAccess access) {
+        if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
+        return this.partnerService.getPartnerDnc(access);
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {

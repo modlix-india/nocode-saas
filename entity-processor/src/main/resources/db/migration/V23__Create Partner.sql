@@ -32,3 +32,6 @@ CREATE TABLE `entity_processor`.`entity_processor_partners` (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
+
+ALTER TABLE `entity_processor`.`entity_processor_tickets`
+    ADD `DNC` TINYINT NOT NULL DEFAULT 0 COMMENT 'Do Not Call flag for this ticket.' AFTER `SUB_SOURCE`;
