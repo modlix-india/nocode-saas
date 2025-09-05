@@ -141,7 +141,9 @@ public abstract class BaseUpdatableService<
         if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
 
         entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
+
+        entity.setClientCode(
+                access.isOutsideUser() ? access.getUserInherit().getManagedClientCode() : access.getClientCode());
 
         return super.create(entity);
     }

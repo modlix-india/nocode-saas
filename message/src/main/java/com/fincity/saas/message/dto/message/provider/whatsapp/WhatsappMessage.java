@@ -12,7 +12,9 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IMetadata;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -105,7 +107,11 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setCustomerWaId(contact.getWaId())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.DELIVERED)
-                .setDeliveredTime(message.getTimestampAsDate())
+                .setDeliveredTime(
+                        message.getTimestamp() != null
+                                ? LocalDateTime.ofInstant(
+                                        Instant.ofEpochSecond(Long.parseLong(message.getTimestamp())), ZoneOffset.UTC)
+                                : LocalDateTime.now())
                 .setOutbound(Boolean.FALSE)
                 .setInMessage(message);
     }

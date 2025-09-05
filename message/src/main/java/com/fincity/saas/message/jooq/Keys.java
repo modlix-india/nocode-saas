@@ -6,12 +6,14 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
+import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageMessageWebhooksRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
@@ -40,6 +42,8 @@ public class Keys {
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_PRIMARY = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_PRIMARY"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.ID }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK1_EXOTEL_CALLS_CODE = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK1_EXOTEL_CALLS_CODE"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.CODE }, true);
     public static final UniqueKey<MessageExotelCallsRecord> KEY_MESSAGE_EXOTEL_CALLS_UK2_EXOTEL_CALLS_SID = Internal.createUniqueKey(MessageExotelCalls.MESSAGE_EXOTEL_CALLS, DSL.name("KEY_message_exotel_calls_UK2_EXOTEL_CALLS_SID"), new TableField[] { MessageExotelCalls.MESSAGE_EXOTEL_CALLS.SID }, true);
+    public static final UniqueKey<MessageMessageWebhooksRecord> KEY_MESSAGE_MESSAGE_WEBHOOKS_PRIMARY = Internal.createUniqueKey(MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS, DSL.name("KEY_message_message_webhooks_PRIMARY"), new TableField[] { MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.ID }, true);
+    public static final UniqueKey<MessageMessageWebhooksRecord> KEY_MESSAGE_MESSAGE_WEBHOOKS_UK1_MESSAGES_CODE = Internal.createUniqueKey(MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS, DSL.name("KEY_message_message_webhooks_UK1_MESSAGES_CODE"), new TableField[] { MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS.CODE }, true);
     public static final UniqueKey<MessageMessagesRecord> KEY_MESSAGE_MESSAGES_PRIMARY = Internal.createUniqueKey(MessageMessages.MESSAGE_MESSAGES, DSL.name("KEY_message_messages_PRIMARY"), new TableField[] { MessageMessages.MESSAGE_MESSAGES.ID }, true);
     public static final UniqueKey<MessageMessagesRecord> KEY_MESSAGE_MESSAGES_UK1_MESSAGES_CODE = Internal.createUniqueKey(MessageMessages.MESSAGE_MESSAGES, DSL.name("KEY_message_messages_UK1_MESSAGES_CODE"), new TableField[] { MessageMessages.MESSAGE_MESSAGES.CODE }, true);
     public static final UniqueKey<MessageWhatsappMessagesRecord> KEY_MESSAGE_WHATSAPP_MESSAGES_PRIMARY = Internal.createUniqueKey(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES, DSL.name("KEY_message_whatsapp_messages_PRIMARY"), new TableField[] { MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES.ID }, true);

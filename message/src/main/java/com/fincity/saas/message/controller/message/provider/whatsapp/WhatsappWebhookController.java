@@ -3,6 +3,7 @@ package com.fincity.saas.message.controller.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHook;
+import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ public class WhatsappWebhookController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<String>> receiveWebhook(
+    public Mono<ResponseEntity<MessageResponse>> receiveWebhook(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestBody String payload) {

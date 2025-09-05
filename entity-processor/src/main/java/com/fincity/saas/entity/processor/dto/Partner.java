@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
-
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

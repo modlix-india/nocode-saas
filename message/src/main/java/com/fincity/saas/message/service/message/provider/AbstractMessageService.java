@@ -10,6 +10,8 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.message.IMessageService;
 import com.fincity.saas.message.service.message.MessageConnectionService;
+import com.fincity.saas.message.service.message.MessageService;
+import com.fincity.saas.message.service.message.MessageWebhookService;
 import com.fincity.saas.message.service.message.event.MessageEventService;
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,8 @@ public abstract class AbstractMessageService<
 
     protected MessageConnectionService messageConnectionService;
     protected MessageEventService messageEventService;
+    protected MessageService messageService;
+    protected MessageWebhookService messageWebhookService;
 
     @Lazy
     @Autowired
@@ -34,6 +38,18 @@ public abstract class AbstractMessageService<
     @Autowired
     private void setMessageEventService(MessageEventService messageEventService) {
         this.messageEventService = messageEventService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setMessageService(MessageService messageService) {
+        this.messageService = messageService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setMessageWebhookService(MessageWebhookService messageWebhookService) {
+        this.messageWebhookService = messageWebhookService;
     }
 
     @Override

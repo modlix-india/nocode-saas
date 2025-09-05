@@ -128,7 +128,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
 
-        if (!ticketRequest.hasIdentifyInfo() && !ticketRequest.hasSourceInfo()) return this.identityMissingError();
+        if (!ticketRequest.hasIdentifyInfo())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
+                    this.getEntityName());
+
+        if (!ticketRequest.hasSourceInfo())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "Source");
 
         Ticket ticket = Ticket.of(ticketRequest);
 

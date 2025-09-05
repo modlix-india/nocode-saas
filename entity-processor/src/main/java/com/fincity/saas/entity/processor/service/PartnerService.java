@@ -1,8 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
@@ -15,7 +12,8 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -84,5 +82,4 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 access -> super.readIdentityWithAccess(access, partnerId),
                 (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)));
     }
-
 }

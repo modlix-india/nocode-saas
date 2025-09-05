@@ -1,26 +1,24 @@
 package com.fincity.saas.entity.processor.relations.resolvers.field;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Component;
-import org.springframework.util.MultiValueMap;
-
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.EagerUtil;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Component
 public class UserFieldResolver implements RelationResolver {
 
-    private static final Set<String> SUPPORTED_FIELDS = Set.of("actorId", "assignedUserId", "managerId", "createdBy", "updatedBy");
+    private static final Set<String> SUPPORTED_FIELDS =
+            Set.of("actorId", "assignedUserId", "managerId", "createdBy", "updatedBy");
 
     private final IFeignSecurityService securityService;
 
