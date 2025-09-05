@@ -134,7 +134,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
 
-    public Mono<Boolean> getDnc(ProcessorAccess access) {
+    private Mono<Boolean> getDnc(ProcessorAccess access) {
         if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
         return this.partnerService.getPartnerDnc(access);
     }
@@ -408,5 +408,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (userId != null && !userId.equals(ULong.valueOf(0))) ticket.setAssignedUserId(userId);
 
         return Mono.just(ticket);
+    }
+
+    public Flux<Ticket> updateTicketDncByClientId(ULong clientId, Boolean dnc) {
+        Flux<Ticket> tickets =
+                this.dao.getAllClientTicketsByDnc(clientId, !dnc).flatMap(ticket -> Mono.just(ticket.setDnc(dnc)));
+
+        return this.dao
+                .updateAll(tickets)
+                .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 }

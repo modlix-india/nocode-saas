@@ -104,7 +104,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> super.readIdentityWithAccess(access, partnerId),
-                (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)));
+                (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)),
+                (access, partner, updated) -> this.ticketService
+                        .updateTicketDncByClientId(partner.getClientId(), dnc)
+                        .then(Mono.just(updated)));
     }
 
     public Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
