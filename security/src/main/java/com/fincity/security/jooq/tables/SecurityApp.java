@@ -21,6 +21,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
+import com.fincity.security.jooq.tables.SecurityAppSso.SecurityAppSsoPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
@@ -302,6 +303,34 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityAppRegIntegration = new SecurityAppRegIntegrationPath(this, null, Keys.FK1_APP_REG_INTEGRATION_APP_ID.getInverseKey());
 
         return _securityAppRegIntegration;
+    }
+
+    private transient SecurityAppSsoPath _fk1AppSsoAppId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_sso</code> table, via the
+     * <code>FK1_APP_SSO_APP_ID</code> key
+     */
+    public SecurityAppSsoPath fk1AppSsoAppId() {
+        if (_fk1AppSsoAppId == null)
+            _fk1AppSsoAppId = new SecurityAppSsoPath(this, null, Keys.FK1_APP_SSO_APP_ID.getInverseKey());
+
+        return _fk1AppSsoAppId;
+    }
+
+    private transient SecurityAppSsoPath _fk1AppSsoToAppId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_sso</code> table, via the
+     * <code>FK1_APP_SSO_TO_APP_ID</code> key
+     */
+    public SecurityAppSsoPath fk1AppSsoToAppId() {
+        if (_fk1AppSsoToAppId == null)
+            _fk1AppSsoToAppId = new SecurityAppSsoPath(this, null, Keys.FK1_APP_SSO_TO_APP_ID.getInverseKey());
+
+        return _fk1AppSsoToAppId;
     }
 
     private transient SecurityClientUrlPath _securityClientUrl;
