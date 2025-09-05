@@ -40,15 +40,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ActivityService activityService;
     private final TaskService taskService;
     private final NoteService noteService;
+    private final PartnerService partnerService;
 
     public TicketService(
-            @Lazy OwnerService ownerService,
-            ProductService productService,
-            StageService stageService,
-            ProductStageRuleService productStageRuleService,
-            ActivityService activityService,
-            @Lazy TaskService taskService,
-            @Lazy NoteService noteService) {
+		    @Lazy OwnerService ownerService,
+		    ProductService productService,
+		    StageService stageService,
+		    ProductStageRuleService productStageRuleService,
+		    ActivityService activityService,
+		    @Lazy TaskService taskService,
+		    @Lazy NoteService noteService,
+            PartnerService partnerService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -56,6 +58,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
+	    this.partnerService = partnerService;
     }
 
     @Override

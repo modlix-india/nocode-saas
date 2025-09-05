@@ -118,6 +118,12 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
     public final TableField<EntityProcessorPartnersRecord, PartnerVerificationStatus> PARTNER_VERIFICATION_STATUS = createField(DSL.name("PARTNER_VERIFICATION_STATUS"), SQLDataType.VARCHAR(18).nullable(false), this, "Partner verification status.", new EnumConverter<String, PartnerVerificationStatus>(String.class, PartnerVerificationStatus.class));
 
     /**
+     * The column <code>entity_processor.entity_processor_partners.DNC</code>.
+     * Do Not Call flag for this partner.
+     */
+    public final TableField<EntityProcessorPartnersRecord, Byte> DNC = createField(DSL.name("DNC"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Do Not Call flag for this partner.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_partners.TEMP_ACTIVE</code>.
      * Temporary active flag for this partner.

@@ -1,5 +1,9 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
@@ -12,8 +16,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -30,6 +33,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(Partner entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getClientId())),
+                (baseEvicted, cIdEvicted) -> baseEvicted && cIdEvicted);
     }
 
     @Override
@@ -81,5 +94,19 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 this::hasAccess,
                 access -> super.readIdentityWithAccess(access, partnerId),
                 (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)));
+    }
+
+    public Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getPartnerByClientId(access, clientId),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), clientId));
+    }
+
+    public Mono<Boolean> getPartnerDnc(ProcessorAccess access, ULong clientId) {
+
+        if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
+
+        return this.getPartnerByClientId(access, clientId).map(partner -> partner.getDnc() != null && partner.getDnc());
     }
 }

@@ -188,12 +188,29 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
     }
 
     /**
+     * Setter for <code>entity_processor.entity_processor_partners.DNC</code>.
+     * Do Not Call flag for this partner.
+     */
+    public EntityProcessorPartnersRecord setDnc(Byte value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_partners.DNC</code>.
+     * Do Not Call flag for this partner.
+     */
+    public Byte getDnc() {
+        return (Byte) get(9);
+    }
+
+    /**
      * Setter for
      * <code>entity_processor.entity_processor_partners.TEMP_ACTIVE</code>.
      * Temporary active flag for this partner.
      */
     public EntityProcessorPartnersRecord setTempActive(Byte value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -203,7 +220,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this partner.
      */
     public Byte getTempActive() {
-        return (Byte) get(9);
+        return (Byte) get(10);
     }
 
     /**
@@ -212,7 +229,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * to check if this partner is active or not.
      */
     public EntityProcessorPartnersRecord setIsActive(Byte value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -222,7 +239,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * to check if this partner is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(10);
+        return (Byte) get(11);
     }
 
     /**
@@ -231,7 +248,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorPartnersRecord setCreatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -241,7 +258,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -250,7 +267,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorPartnersRecord setCreatedAt(LocalDateTime value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -260,7 +277,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(13);
     }
 
     /**
@@ -269,7 +286,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorPartnersRecord setUpdatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -279,7 +296,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -288,7 +305,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorPartnersRecord setUpdatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -298,7 +315,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -324,7 +341,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorPartnersRecord
      */
-    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Byte dnc, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
         setId(id);
@@ -336,6 +353,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
         setClientId(clientId);
         setManagerId(managerId);
         setPartnerVerificationStatus(partnerVerificationStatus);
+        setDnc(dnc);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

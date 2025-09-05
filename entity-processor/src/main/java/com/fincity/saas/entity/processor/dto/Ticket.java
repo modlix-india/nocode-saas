@@ -36,6 +36,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong status;
     private String source;
     private String subSource;
+    private Boolean dnc = Boolean.FALSE;
 
     public Ticket() {
         super();
@@ -58,6 +59,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.status = ticket.status;
         this.source = ticket.source;
         this.subSource = ticket.subSource;
+        this.dnc = ticket.dnc;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
