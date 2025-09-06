@@ -1,6 +1,11 @@
+use security;
+
 DROP TABLE IF EXISTS `security`.`security_app_sso`;
 
+DROP TABLE IF EXISTS `security`.`security_app_sso_token`;
+DROP TABLE IF EXISTS `security`.`security_bundled_app`;
 DROP TABLE IF EXISTS `security`.`security_app_sso_bundle`;
+
 CREATE TABLE `security`.`security_app_sso_bundle`
 (
     `ID`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
@@ -18,25 +23,26 @@ CREATE TABLE `security`.`security_app_sso_bundle`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `security`.`security_bundled_app`;
 CREATE TABLE `security`.`security_bundled_app`
 (
     ID         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     BUNDLE_ID  bigint unsigned NOT NULL COMMENT 'Bundle ID',
     APP_CODE   char(64)        NOT NULL COMMENT 'Application Code',
+    APP_URL_ID bigint unsigned NOT NULL COMMENT 'Application URL ID',
     CREATED_BY bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
     CREATED_AT timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_APP_BUNDLE_APP` (`BUNDLE_ID`, `APP_CODE`),
+    KEY `FK1_BUNDLED_APP_URL_ID` (`APP_URL_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_URL_ID` FOREIGN KEY (`APP_URL_ID`) REFERENCES `security_client_url` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
     KEY `FK1_BUNDLED_APP_BUNDLE_ID` (`BUNDLE_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_BUNDLE_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
     KEY `FK1_BUNDLED_APP_APP_CODE` (`APP_CODE`),
-    CONSTRAINT `FK1_BUNDLED_APP_BUNDLE_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT `FK1_BUNDLED_APP_APP_CODE` FOREIGN KEY (`APP_CODE`) REFERENCES `security_app` (`APP_CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `security`.`security_app_sso_token`;
 CREATE TABLE `security`.`security_app_sso_token`
 (
     `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',

@@ -71,11 +71,28 @@ public class SecurityBundledAppRecord extends UpdatableRecordImpl<SecurityBundle
     }
 
     /**
+     * Setter for <code>security.security_bundled_app.APP_URL_ID</code>.
+     * Application URL ID
+     */
+    public SecurityBundledAppRecord setAppUrlId(ULong value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_bundled_app.APP_URL_ID</code>.
+     * Application URL ID
+     */
+    public ULong getAppUrlId() {
+        return (ULong) get(3);
+    }
+
+    /**
      * Setter for <code>security.security_bundled_app.CREATED_BY</code>. ID of
      * the user who created this row
      */
     public SecurityBundledAppRecord setCreatedBy(ULong value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -84,7 +101,7 @@ public class SecurityBundledAppRecord extends UpdatableRecordImpl<SecurityBundle
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(3);
+        return (ULong) get(4);
     }
 
     /**
@@ -92,7 +109,7 @@ public class SecurityBundledAppRecord extends UpdatableRecordImpl<SecurityBundle
      * when this row is created
      */
     public SecurityBundledAppRecord setCreatedAt(LocalDateTime value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -101,7 +118,7 @@ public class SecurityBundledAppRecord extends UpdatableRecordImpl<SecurityBundle
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(5);
     }
 
     // -------------------------------------------------------------------------
@@ -127,12 +144,13 @@ public class SecurityBundledAppRecord extends UpdatableRecordImpl<SecurityBundle
     /**
      * Create a detached, initialised SecurityBundledAppRecord
      */
-    public SecurityBundledAppRecord(ULong id, ULong bundleId, String appCode, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityBundledAppRecord(ULong id, ULong bundleId, String appCode, ULong appUrlId, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityBundledApp.SECURITY_BUNDLED_APP);
 
         setId(id);
         setBundleId(bundleId);
         setAppCode(appCode);
+        setAppUrlId(appUrlId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();

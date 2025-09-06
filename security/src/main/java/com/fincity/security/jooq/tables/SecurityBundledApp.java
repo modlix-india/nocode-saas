@@ -8,6 +8,7 @@ import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityAppSsoBundle.SecurityAppSsoBundlePath;
+import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.records.SecurityBundledAppRecord;
 
 import java.time.LocalDateTime;
@@ -76,6 +77,12 @@ public class SecurityBundledApp extends TableImpl<SecurityBundledAppRecord> {
      * Application Code
      */
     public final TableField<SecurityBundledAppRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "Application Code");
+
+    /**
+     * The column <code>security.security_bundled_app.APP_URL_ID</code>.
+     * Application URL ID
+     */
+    public final TableField<SecurityBundledAppRecord, ULong> APP_URL_ID = createField(DSL.name("APP_URL_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Application URL ID");
 
     /**
      * The column <code>security.security_bundled_app.CREATED_BY</code>. ID of
@@ -175,7 +182,7 @@ public class SecurityBundledApp extends TableImpl<SecurityBundledAppRecord> {
 
     @Override
     public List<ForeignKey<SecurityBundledAppRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_BUNDLED_APP_APP_CODE, Keys.FK1_BUNDLED_APP_BUNDLE_ID);
+        return Arrays.asList(Keys.FK1_BUNDLED_APP_APP_CODE, Keys.FK1_BUNDLED_APP_BUNDLE_ID, Keys.FK1_BUNDLED_APP_URL_ID);
     }
 
     private transient SecurityAppPath _securityApp;
@@ -202,6 +209,19 @@ public class SecurityBundledApp extends TableImpl<SecurityBundledAppRecord> {
             _securityAppSsoBundle = new SecurityAppSsoBundlePath(this, Keys.FK1_BUNDLED_APP_BUNDLE_ID, null);
 
         return _securityAppSsoBundle;
+    }
+
+    private transient SecurityClientUrlPath _securityClientUrl;
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_client_url</code> table.
+     */
+    public SecurityClientUrlPath securityClientUrl() {
+        if (_securityClientUrl == null)
+            _securityClientUrl = new SecurityClientUrlPath(this, Keys.FK1_BUNDLED_APP_URL_ID, null);
+
+        return _securityClientUrl;
     }
 
     @Override
