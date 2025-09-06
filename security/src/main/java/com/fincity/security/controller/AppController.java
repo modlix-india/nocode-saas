@@ -243,19 +243,4 @@ public class AppController
         return this.service.hasReadAccess(appCodes)
                 .map(ResponseEntity::ok);
     }
-
-    @GetMapping("/{id}/sso")
-    public Mono<ResponseEntity<List<App>>> listSSO(@PathVariable(AbstractJOOQDataController.PATH_VARIABLE_ID) final ULong id) {
-        return this.service.listSSO(id).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/{id}/sso")
-    public Mono<ResponseEntity<List<App>>> addSSO(@PathVariable(AbstractJOOQDataController.PATH_VARIABLE_ID) final ULong id, @RequestParam ULong toAppId) {
-        return this.service.addSSO(id, toAppId).map(ResponseEntity::ok);
-    }
-
-    @DeleteMapping("/{id}/sso")
-    public Mono<ResponseEntity<List<App>>> removeSSO(@PathVariable(AbstractJOOQDataController.PATH_VARIABLE_ID) final ULong id, @RequestParam ULong toAppId) {
-        return this.service.removeSSO(id, toAppId).map(ResponseEntity::ok);
-    }
 }
