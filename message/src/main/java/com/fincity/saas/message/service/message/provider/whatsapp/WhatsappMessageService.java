@@ -15,6 +15,8 @@ import com.fincity.saas.message.model.base.BaseMessageRequest;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.common.PhoneNumber;
+import com.fincity.saas.message.model.message.whatsapp.media.Media;
+import com.fincity.saas.message.model.message.whatsapp.media.MediaFile;
 import com.fincity.saas.message.model.message.whatsapp.messages.Message.MessageBuilder;
 import com.fincity.saas.message.model.message.whatsapp.messages.ReadMessage;
 import com.fincity.saas.message.model.message.whatsapp.messages.TextMessage;
@@ -28,6 +30,7 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IStatus;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
@@ -468,5 +471,40 @@ public class WhatsappMessageService
                 message.getCustomerDialCode(),
                 readTime,
                 message.getCreatedAt());
+    }
+
+    public Mono<Media> retrieveMediaUrl(WhatsappMediaRequest request) {
+
+        if (request.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
+        if (request.getMediaId() == null || request.getMediaId().isBlank())
+            return super.throwMissingParam(WhatsappMediaRequest.Fields.mediaId);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.messageConnectionService.getCoreDocument(
+                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
+                        (access, connection) -> this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
+                        (access, connection, api) -> api.retrieveMediaUrl(request.getMediaId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.retrieveMediaUrl"));
+    }
+
+    public Mono<MediaFile> downloadMediaFile(WhatsappMediaRequest request) {
+
+        if (request.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
+
+        if (request.getMediaId() == null || request.getMediaId().isBlank())
+            return super.throwMissingParam(WhatsappMediaRequest.Fields.mediaId);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.messageConnectionService.getCoreDocument(
+                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
+                        (access, connection) -> this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
+                        (access, connection, api) -> request.getMediaUrl() != null
+                                ? Mono.just(request.getMediaUrl())
+                                : api.retrieveMediaUrl(request.getMediaId()).map(Media::getUrl),
+                        (access, connection, api, mediaUrl) -> api.downloadMediaFile(mediaUrl))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.downloadMediaFile"));
     }
 }
