@@ -16,7 +16,6 @@ CREATE TABLE `security`.`security_app_sso_bundle`
     `UPDATED_BY`  bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who updated this row',
     `UPDATED_AT`  timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_APP_SSO_BUNDLE_CLIENT` (`CLIENT_CODE`, `BUNDLE_NAME`),
     KEY `FK1_APP_SSO_BUNDLE_CLIENT_CODE` (`CLIENT_CODE`),
     CONSTRAINT `FK1_APP_SSO_BUNDLE_CLIENT_CODE` FOREIGN KEY (`CLIENT_CODE`) REFERENCES `security_client` (`CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB
@@ -28,7 +27,7 @@ CREATE TABLE `security`.`security_bundled_app`
     ID         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     BUNDLE_ID  bigint unsigned NOT NULL COMMENT 'Bundle ID',
     APP_CODE   char(64)        NOT NULL COMMENT 'Application Code',
-    APP_URL_ID bigint unsigned NOT NULL COMMENT 'Application URL ID',
+    APP_URL_ID bigint unsigned          DEFAULT NULL COMMENT 'Application URL ID',
     CREATED_BY bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
     CREATED_AT timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
     PRIMARY KEY (`ID`),
