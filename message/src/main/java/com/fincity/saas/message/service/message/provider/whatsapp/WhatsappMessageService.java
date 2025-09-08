@@ -31,6 +31,7 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IValue;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.request.message.MessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
+import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageFileDetailsRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
@@ -84,6 +85,25 @@ public class WhatsappMessageService
     @Override
     protected String getCacheName() {
         return WHATSAPP_MESSAGE_CACHE;
+    }
+
+    @Override
+    protected Mono<WhatsappMessage> updatableEntity(WhatsappMessage entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setMessageStatus(entity.getMessageStatus());
+            existing.setSentTime(entity.getSentTime());
+            existing.setDeliveredTime(entity.getDeliveredTime());
+            existing.setReadTime(entity.getReadTime());
+            existing.setFailedTime(entity.getFailedTime());
+            existing.setFailureReason(entity.getFailureReason());
+
+            existing.setMessage(entity.getMessage());
+            existing.setInMessage(entity.getInMessage());
+            existing.setMessageResponse(entity.getMessageResponse());
+            existing.setMediaFileDetail(entity.getMediaFileDetail());
+
+            return Mono.just(existing);
+        });
     }
 
     @Override
@@ -343,6 +363,15 @@ public class WhatsappMessageService
                                         : LocalDateTime.now())
                         .setOutbound(Boolean.FALSE)
                         .setInMessage(message));
+    }
+
+    public Mono<WhatsappMessage> updateFileDetails(WhatsappMessageFileDetailsRequest fileDetailsRequest) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.readIdentityWithAccess(access, fileDetailsRequest.getWhatsappMessageId()),
+                        (access, whatsappMessage) -> this.updateInternal(
+                                whatsappMessage.setMediaFileDetail(fileDetailsRequest.getFileDetail())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.updateFileDetails"));
     }
 
     private Mono<Void> processStatusUpdates(MessageAccess access, List<IStatus> statuses) {
