@@ -1,17 +1,14 @@
 package com.fincity.saas.message.oserver.files.model;
 
-import java.io.Serial;
-import java.io.Serializable;
-
-import org.jooq.types.ULong;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

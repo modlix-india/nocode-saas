@@ -1,13 +1,5 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Set;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -25,7 +17,12 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
-
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -83,7 +80,8 @@ public class WhatsappTemplateService
             return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         if (whatsappTemplateRequest.getMessageTemplate().hadHeaderMediaFile()
-                && (whatsappTemplateRequest.getFileDetail() == null || whatsappTemplateRequest.getFileDetail().idEmpty()))
+                && (whatsappTemplateRequest.getFileDetail() == null
+                        || whatsappTemplateRequest.getFileDetail().idEmpty()))
             return super.throwMissingParam(WhatsappTemplateRequest.Fields.fileDetail);
 
         return FlatMapUtil.flatMapMono(

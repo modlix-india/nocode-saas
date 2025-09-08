@@ -1,11 +1,9 @@
 package com.fincity.saas.message.model.request.message.provider.whatsapp;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
-
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
