@@ -62,7 +62,12 @@ public abstract class AbstractMessageService<
         entity.setAppCode(publicAccess.getAppCode());
         entity.setClientCode(publicAccess.getClientCode());
 
-        return this.dao.update(entity);
+        return this.dao.update(entity).flatMap(updated -> this.evictCache(entity)
+                .map(evicted -> updated));
+    }
+
+    public Mono<D> updateInternal(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
     protected Mono<Boolean> isValidConnection(Connection connection) {

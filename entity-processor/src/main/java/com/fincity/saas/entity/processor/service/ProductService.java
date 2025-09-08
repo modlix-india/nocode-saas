@@ -59,6 +59,19 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.NAME_MISSING);
 
+        if (product.getBannerFileDetail() != null
+                && product.getBannerFileDetail().idEmpty())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    Product.Fields.bannerFileDetail);
+
+        if (product.getLogoFileDetail() != null && product.getLogoFileDetail().idEmpty())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    Product.Fields.logoFileDetail);
+
         return super.checkExistsByName(access, product)
                 .flatMap(exists -> product.getProductTemplateId() != null
                         ? productTemplateService

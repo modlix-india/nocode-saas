@@ -4,7 +4,6 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
-
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
