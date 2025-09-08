@@ -51,6 +51,8 @@ public class ClientUrlService
 
     private final AppService appService;
 
+    private final SSOBundleService ssoBundleService;
+
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
@@ -64,12 +66,13 @@ public class ClientUrlService
     private static final String SLASH = "/";
 
     public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
-                            ClientService clientService, AppService appService) {
+                            ClientService clientService, AppService appService, SSOBundleService ssoBundleService) {
 
         this.cacheService = cacheService;
         this.msgService = msgService;
         this.clientService = clientService;
         this.appService = appService;
+        this.ssoBundleService = ssoBundleService;
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -141,7 +144,9 @@ public class ClientUrlService
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+                .flatMap(clientUrl -> this.clientService.getClientInfoById(clientUrl.getClientId())
+                        .flatMap(c -> this.ssoBundleService.evictCache(c.getCode(), clientUrl.getAppCode())).thenReturn(clientUrl));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -154,7 +159,9 @@ public class ClientUrlService
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+                .flatMap(clientUrl -> this.clientService.getClientInfoById(clientUrl.getClientId())
+                        .flatMap(c -> this.ssoBundleService.evictCache(c.getCode(), clientUrl.getAppCode())).thenReturn(clientUrl));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
@@ -167,14 +174,19 @@ public class ClientUrlService
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE))
-                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT));
+                .flatMap(cacheService.evictAllFunction(SSLCertificateService.CACHE_NAME_CERTIFICATE_LAST_UPDATED_AT))
+                .flatMap(clientUrl -> this.clientService.getClientInfoById(clientUrl.getClientId())
+                        .flatMap(c -> this.ssoBundleService.evictCache(c.getCode(), clientUrl.getAppCode())).thenReturn(clientUrl));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     @Override
     public Mono<Integer> delete(ULong id) {
 
-        return this.read(id).flatMap(e -> super.delete(id))
+        return this.read(id)
+                .flatMap(clientUrl -> this.clientService.getClientInfoById(clientUrl.getClientId())
+                        .flatMap(c -> this.ssoBundleService.evictCache(c.getCode(), clientUrl.getAppCode())).thenReturn(clientUrl))
+                .flatMap(e -> super.delete(id))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -321,5 +333,19 @@ public class ClientUrlService
         String nStr = trimBackSlash(url);
 
         return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
+    }
+
+    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.appService.hasReadAccess(appCode, ca.getClientCode()).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess) -> this.clientService.isBeingManagedBy(ca.getClientCode(), clientCode).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode)
+                ).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getClientUrls"));
     }
 }

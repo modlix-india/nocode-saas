@@ -453,14 +453,14 @@ public class ClientService
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
     }
 
-    public Mono<Client> readById(ULong clientId,  MultiValueMap<String, String> queryParams) {
+    public Mono<Client> readById(ULong clientId, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readInternal(clientId),
                 client -> this.fillDetails(List.of(client), queryParams).map(List::getFirst)
         );
     }
 
-    public Mono<List<Client>> readByIds(List<ULong> clientIds,  MultiValueMap<String, String> queryParams) {
+    public Mono<List<Client>> readByIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readAllFilter(new FilterCondition()
                                 .setField("id")
@@ -515,5 +515,9 @@ public class ClientService
                     );
 
         return clientsMono;
+    }
+
+    public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {
+        return this.dao.readClientURLs(clientCode, urlIds);
     }
 }
