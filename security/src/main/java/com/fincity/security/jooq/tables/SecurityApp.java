@@ -21,7 +21,8 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
-import com.fincity.security.jooq.tables.SecurityAppSso.SecurityAppSsoPath;
+import com.fincity.security.jooq.tables.SecurityAppSsoBundle.SecurityAppSsoBundlePath;
+import com.fincity.security.jooq.tables.SecurityBundledApp.SecurityBundledAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy.SecurityClientPasswordPolicyPath;
@@ -305,32 +306,17 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityAppRegIntegration;
     }
 
-    private transient SecurityAppSsoPath _fk1AppSsoAppId;
+    private transient SecurityBundledAppPath _securityBundledApp;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_app_sso</code> table, via the
-     * <code>FK1_APP_SSO_APP_ID</code> key
+     * <code>security.security_bundled_app</code> table
      */
-    public SecurityAppSsoPath fk1AppSsoAppId() {
-        if (_fk1AppSsoAppId == null)
-            _fk1AppSsoAppId = new SecurityAppSsoPath(this, null, Keys.FK1_APP_SSO_APP_ID.getInverseKey());
+    public SecurityBundledAppPath securityBundledApp() {
+        if (_securityBundledApp == null)
+            _securityBundledApp = new SecurityBundledAppPath(this, null, Keys.FK1_BUNDLED_APP_APP_CODE.getInverseKey());
 
-        return _fk1AppSsoAppId;
-    }
-
-    private transient SecurityAppSsoPath _fk1AppSsoToAppId;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_sso</code> table, via the
-     * <code>FK1_APP_SSO_TO_APP_ID</code> key
-     */
-    public SecurityAppSsoPath fk1AppSsoToAppId() {
-        if (_fk1AppSsoToAppId == null)
-            _fk1AppSsoToAppId = new SecurityAppSsoPath(this, null, Keys.FK1_APP_SSO_TO_APP_ID.getInverseKey());
-
-        return _fk1AppSsoToAppId;
+        return _securityBundledApp;
     }
 
     private transient SecurityClientUrlPath _securityClientUrl;
@@ -590,6 +576,14 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      */
     public SecurityClientPath fk1AppAccessClientId() {
         return securityAppAccess().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_app_sso_bundle</code> table
+     */
+    public SecurityAppSsoBundlePath securityAppSsoBundle() {
+        return securityBundledApp().securityAppSsoBundle();
     }
 
     /**
