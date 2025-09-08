@@ -7,11 +7,13 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.SSOBundle;
 import com.fincity.security.jooq.tables.records.SecurityAppSsoBundleRecord;
 import org.jooq.types.ULong;
+
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.function.Function;
 
 import static com.fincity.security.jooq.tables.SecurityAppSsoBundle.SECURITY_APP_SSO_BUNDLE;
 import static com.fincity.security.jooq.tables.SecurityBundledApp.SECURITY_BUNDLED_APP;
+import static com.fincity.security.jooq.tables.SecurityAppSsoToken.SECURITY_APP_SSO_TOKEN;
 
 @Component
 public class SSOBundleDAO extends AbstractUpdatableDAO<SecurityAppSsoBundleRecord, ULong, SSOBundle> {
@@ -112,5 +115,23 @@ public class SSOBundleDAO extends AbstractUpdatableDAO<SecurityAppSsoBundleRecor
                             return new ArrayList<>(bundles.values());
                         })
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "SSOBundleDAO.readByClientCodeAppcode"));
+    }
+
+    public Mono<Boolean> makeToken(String ipAddress, String token, ULong userId, LocalDateTime accessTokenExpiryAt) {
+        return Mono.from(this.dslContext.insertInto(SECURITY_APP_SSO_TOKEN, SECURITY_APP_SSO_TOKEN.IP_ADDRESS, SECURITY_APP_SSO_TOKEN.TOKEN, SECURITY_APP_SSO_TOKEN.USER_ID, SECURITY_APP_SSO_TOKEN.EXPIRES_AT)
+                .values(ipAddress, token, userId, accessTokenExpiryAt)).map(e -> e > 0);
+    }
+
+    public Mono<Boolean> updateExpiry(String token, String newToken, LocalDateTime accessTokenExpiryAt) {
+
+        return Mono.from(this.dslContext.update(SECURITY_APP_SSO_TOKEN)
+                .set(SECURITY_APP_SSO_TOKEN.EXPIRES_AT, accessTokenExpiryAt)
+                .set(SECURITY_APP_SSO_TOKEN.TOKEN, newToken)
+                .where(SECURITY_APP_SSO_TOKEN.TOKEN.eq(token))).map(e -> e > 0);
+    }
+
+    public Mono<Boolean> deleteToken(String token) {
+
+        return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_SSO_TOKEN).where(SECURITY_APP_SSO_TOKEN.TOKEN.eq(token))).map(e -> e > 0);
     }
 }

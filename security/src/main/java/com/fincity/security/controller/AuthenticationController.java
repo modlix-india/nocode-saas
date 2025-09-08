@@ -3,8 +3,6 @@ package com.fincity.security.controller;
 import com.fincity.security.dto.UserAccess;
 import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
 import com.fincity.security.model.UserAppAccessRequest;
-import jakarta.ws.rs.PathParam;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -66,9 +64,9 @@ public class AuthenticationController {
     }
 
     @GetMapping(value = "refreshToken")
-    public Mono<ResponseEntity<AuthenticationResponse>> refreshToken(ServerHttpRequest request) {
+    public Mono<ResponseEntity<AuthenticationResponse>> refreshToken(ServerHttpRequest request, ServerHttpResponse response) {
 
-        return this.service.refreshToken(request).map(ResponseEntity::ok);
+        return this.service.refreshToken(request, response).map(ResponseEntity::ok);
     }
 
     @GetMapping(value = "verifyToken")
@@ -97,19 +95,16 @@ public class AuthenticationController {
 
                         (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
 
-                        (ca, ca2, client) -> {
-
-                            return this.clientService.getManagedClientOfClientById(client.getId())
-                                    .map(mc -> new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
-                                            .setVerifiedAppCode(ca.getVerifiedAppCode())
-                                            .setLoggedInClientCode(ca.getLoggedInFromClientCode())
-                                            .setLoggedInClientId(ca.getLoggedInFromClientId())
-                                            .setAccessToken(ca.getAccessToken())
-                                            .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
-                                            .setManagedClientCode(mc.getCode())
-                                            .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
-                                    );
-                        },
+                        (ca, ca2, client) -> this.clientService.getManagedClientOfClientById(client.getId())
+                                .map(mc -> new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
+                                        .setVerifiedAppCode(ca.getVerifiedAppCode())
+                                        .setLoggedInClientCode(ca.getLoggedInFromClientCode())
+                                        .setLoggedInClientId(ca.getLoggedInFromClientId())
+                                        .setAccessToken(ca.getAccessToken())
+                                        .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
+                                        .setManagedClientCode(mc.getCode())
+                                        .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
+                                ),
 
                         (ca, ca2, client, vr) -> Mono.just(ResponseEntity.ok(vr)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
