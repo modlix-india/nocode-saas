@@ -119,7 +119,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
                         access -> Mono.zip(
-                                this.productService.updateIdentity(ticketRequest.getProductId()), this.getDnc(access)),
+                                this.productService.updateIdentity(ticketRequest.getProductId()),
+                                this.getDnc(access, ticketRequest)),
                         (access, productIdentityDnc) -> Mono.just(
                                 ticket.setProductId(productIdentityDnc.getT1().getULongId())
                                         .setDnc(productIdentityDnc.getT2())),
@@ -134,9 +135,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
 
-    private Mono<Boolean> getDnc(ProcessorAccess access) {
+    private Mono<Boolean> getDnc(ProcessorAccess access, TicketRequest ticketRequest) {
         if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
-        return this.partnerService.getPartnerDnc(access);
+
+        return ticketRequest.getDnc() != null
+                ? Mono.just(ticketRequest.getDnc())
+                : this.partnerService.getPartnerDnc(access);
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
