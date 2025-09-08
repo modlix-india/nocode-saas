@@ -1,5 +1,6 @@
 package com.fincity.saas.message.dto.message;
 
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.util.NameUtil;
 import java.io.Serial;
@@ -23,6 +24,17 @@ public class MessageWebhook extends BaseUpdatableDto<MessageWebhook> {
     private String provider;
     private boolean isProcessed = Boolean.FALSE;
     private Map<String, Object> event;
+
+    public MessageWebhook() {
+        super();
+    }
+
+    public MessageWebhook(MessageWebhook messageWebhook) {
+        super(messageWebhook);
+        this.provider = messageWebhook.provider;
+        this.isProcessed = messageWebhook.isProcessed;
+        this.event = CloneUtil.cloneMapObject(messageWebhook.event);
+    }
 
     public MessageWebhook setProvider(String provider) {
         this.provider = NameUtil.normalizeToUpper(provider);

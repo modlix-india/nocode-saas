@@ -65,6 +65,32 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         super();
     }
 
+    public WhatsappMessage(WhatsappMessage whatsappMessage) {
+        super(whatsappMessage);
+        this.whatsappBusinessAccountId = whatsappMessage.whatsappBusinessAccountId;
+        this.messageId = whatsappMessage.messageId;
+        this.whatsappPhoneNumberId = whatsappMessage.whatsappPhoneNumberId;
+        this.fromDialCode = whatsappMessage.fromDialCode;
+        this.from = whatsappMessage.from;
+        this.toDialCode = whatsappMessage.toDialCode;
+        this.to = whatsappMessage.to;
+        this.customerDialCode = whatsappMessage.customerDialCode;
+        this.customerPhoneNumber = whatsappMessage.customerPhoneNumber;
+        this.customerWaId = whatsappMessage.customerWaId;
+        this.messageType = whatsappMessage.messageType;
+        this.messageStatus = whatsappMessage.messageStatus;
+        this.sentTime = whatsappMessage.sentTime;
+        this.deliveredTime = whatsappMessage.deliveredTime;
+        this.readTime = whatsappMessage.readTime;
+        this.failedTime = whatsappMessage.failedTime;
+        this.failureReason = whatsappMessage.failureReason;
+        this.isOutbound = whatsappMessage.isOutbound;
+        this.message = whatsappMessage.message;
+        this.inMessage = whatsappMessage.inMessage;
+        this.messageResponse = whatsappMessage.messageResponse;
+        this.mediaFileDetail = whatsappMessage.mediaFileDetail;
+    }
+
     public static WhatsappMessage ofOutbound(Message message, PhoneNumber from, FileDetail fileDetail) {
 
         PhoneNumber to = PhoneNumber.of(message.getTo());
