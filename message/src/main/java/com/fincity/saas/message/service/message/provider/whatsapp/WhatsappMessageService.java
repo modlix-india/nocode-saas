@@ -367,9 +367,8 @@ public class WhatsappMessageService
 
     public Mono<WhatsappMessage> updateFileDetails(WhatsappMessageFileDetailsRequest fileDetailsRequest) {
         return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.readIdentityWithAccess(access, fileDetailsRequest.getWhatsappMessageId()),
-                        (access, whatsappMessage) -> this.updateInternal(
+                        () -> this.readIdentityWithAccess(fileDetailsRequest.getWhatsappMessageId()),
+                        whatsappMessage -> this.updateInternal(
                                 whatsappMessage.setMediaFileDetail(fileDetailsRequest.getFileDetail())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.updateFileDetails"));
     }
