@@ -162,7 +162,7 @@ public class WhatsappMessageService
 
         if (whatsappMessageRequest.getMessage().hasMediaFile()
                 && (whatsappMessageRequest.getFileDetail() == null
-                        || !whatsappMessageRequest.getFileDetail().hasId()))
+                        || whatsappMessageRequest.getFileDetail().idEmpty()))
             return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
 
         return FlatMapUtil.flatMapMono(
@@ -379,7 +379,7 @@ public class WhatsappMessageService
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         MessageResourceService.INVALID_MESSAGE_TYPE_MEDIA);
 
-                            if (!fileDetailsRequest.getFileDetail().hasId())
+                            if (fileDetailsRequest.getFileDetail().idEmpty())
                                 return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
 
                             return this.updateInternal(
