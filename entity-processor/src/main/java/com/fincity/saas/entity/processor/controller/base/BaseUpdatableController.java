@@ -8,7 +8,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;

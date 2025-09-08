@@ -1,10 +1,9 @@
-package com.fincity.saas.entity.processor.dao.base;
+package com.fincity.saas.entity.processor.eager;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
-import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
-import com.fincity.saas.entity.processor.util.EagerDAOCache;
-import com.fincity.saas.entity.processor.util.EagerUtil;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;

@@ -1,11 +1,13 @@
-package com.fincity.saas.entity.processor.util;
+package com.fincity.saas.entity.processor.eager;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.saas.entity.processor.relations.IRelationMap;
-import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.IRelationMap;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.util.ReflectionUtil;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
