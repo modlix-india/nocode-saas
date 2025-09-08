@@ -2,9 +2,6 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PARTNERS;
 
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Component;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
@@ -12,7 +9,8 @@ import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
