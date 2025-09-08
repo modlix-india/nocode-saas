@@ -1,5 +1,16 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -34,22 +45,14 @@ import com.fincity.saas.message.model.request.message.provider.whatsapp.Whatsapp
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageFileDetailsRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.business.WhatsappTemplateRequest;
 import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -157,8 +160,10 @@ public class WhatsappMessageService
         if (whatsappMessageRequest.isConnectionNull())
             return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
-        if (whatsappMessageRequest.getMessage().hasMediaFile() && whatsappMessageRequest.getFileDetail() == null)
-            return super.throwMissingParam(WhatsappTemplateRequest.Fields.fileDetail);
+        if (whatsappMessageRequest.getMessage().hasMediaFile()
+                && (whatsappMessageRequest.getFileDetail() == null
+                        || !whatsappMessageRequest.getFileDetail().hasId()))
+            return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
@@ -368,8 +373,18 @@ public class WhatsappMessageService
     public Mono<WhatsappMessage> updateFileDetails(WhatsappMessageFileDetailsRequest fileDetailsRequest) {
         return FlatMapUtil.flatMapMono(
                         () -> this.readIdentityWithAccess(fileDetailsRequest.getWhatsappMessageId()),
-                        whatsappMessage -> this.updateInternal(
-                                whatsappMessage.setMediaFileDetail(fileDetailsRequest.getFileDetail())))
+                        whatsappMessage -> {
+                            if (!whatsappMessage.getMessage().hasMediaFile())
+                                return super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        MessageResourceService.INVALID_MESSAGE_TYPE_MEDIA);
+
+                            if (!fileDetailsRequest.getFileDetail().hasId())
+                                return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
+
+                            return this.updateInternal(
+                                    whatsappMessage.setMediaFileDetail(fileDetailsRequest.getFileDetail()));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.updateFileDetails"));
     }
 

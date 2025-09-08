@@ -6,6 +6,7 @@ import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.message.IMessageService;

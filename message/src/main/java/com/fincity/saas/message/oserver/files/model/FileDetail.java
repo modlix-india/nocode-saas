@@ -42,4 +42,8 @@ public class FileDetail implements Serializable {
 
         return this.type.endsWith(".zip") || this.type.endsWith(".gz");
     }
+
+    public Boolean hasId() {
+        return this.id != null;
+    }
 }
