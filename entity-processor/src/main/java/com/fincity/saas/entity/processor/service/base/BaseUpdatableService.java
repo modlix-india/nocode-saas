@@ -222,7 +222,7 @@ public abstract class BaseUpdatableService<
     }
 
     protected Mono<D> checkExistsByName(ProcessorAccess access, D entity) {
-        return this.existsByName(access, entity.getName())
+        return this.existsByName(access, entity.getId(), entity.getName())
                 .flatMap(exists -> Boolean.TRUE.equals(exists)
                         ? msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
@@ -232,8 +232,8 @@ public abstract class BaseUpdatableService<
                         : Mono.just(entity));
     }
 
-    private Mono<Boolean> existsByName(ProcessorAccess access, String name) {
-        return this.dao.existsByName(access.getAppCode(), access.getClientCode(), name);
+    private Mono<Boolean> existsByName(ProcessorAccess access, ULong neEntityId, String name) {
+        return this.dao.existsByName(access.getAppCode(), access.getClientCode(), neEntityId, name);
     }
 
     @Override

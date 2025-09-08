@@ -8,6 +8,7 @@ import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.base.BaseMessageRequest;
@@ -40,6 +41,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -99,27 +101,9 @@ public class WhatsappMessageService
     public Mono<Message> toMessage(WhatsappMessage providerObject) {
         return Mono.just(new Message()
                         .setUserId(providerObject.getUserId())
-                        .setFromDialCode(providerObject.getFromDialCode())
-                        .setFrom(providerObject.getFrom())
-                        .setToDialCode(providerObject.getToDialCode())
-                        .setTo(providerObject.getTo())
                         .setMessageProvider(this.getConnectionSubType().getProvider())
                         .setIsOutbound(providerObject.isOutbound())
-                        .setMessageStatus(providerObject.getMessageStatus())
-                        .setSentTime(
-                                providerObject.getSentTime() != null
-                                        ? providerObject.getSentTime().toString()
-                                        : null)
-                        .setDeliveredTime(
-                                providerObject.getDeliveredTime() != null
-                                        ? providerObject.getDeliveredTime().toString()
-                                        : null)
-                        .setReadTime(
-                                providerObject.getReadTime() != null
-                                        ? providerObject.getReadTime().toString()
-                                        : null)
-                        .setWhatsappMessageId(providerObject.getId() != null ? providerObject.getId() : null)
-                        .setMetadata(providerObject.toMap()))
+                        .setWhatsappMessageId(providerObject.getId() != null ? providerObject.getId() : null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.toMessage"));
     }
 
@@ -192,11 +176,7 @@ public class WhatsappMessageService
                                 super.messageService
                                         .createInternal(access, msg)
                                         .flatMap(msgCreated -> this.messageEventService
-                                                .sendMessageEvent(
-                                                        access.getAppCode(),
-                                                        access.getClientCode(),
-                                                        access.getUserId(),
-                                                        created)
+                                                .sendMessageEvent(access, created)
                                                 .thenReturn(msgCreated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.sendMessageInternal"));
     }
@@ -286,27 +266,80 @@ public class WhatsappMessageService
         return Mono.empty();
     }
 
-    private Mono<WhatsappMessage> processIncomingMessage(
-            MessageAccess access, IMessage message, IMetadata metadata, IContact contact) {
+    private Mono<Message> processIncomingMessage(
+            MessageAccess access, IMessage iMessage, IMetadata metadata, IContact contact) {
 
-        logger.info("Processing incoming message: {} from {}", message.getId(), message.getFrom());
+        logger.info("Processing incoming message: {} from {}", iMessage.getId(), iMessage.getFrom());
 
         String phoneNumberId = metadata != null ? metadata.getPhoneNumberId() : null;
         if (phoneNumberId == null) {
-            logger.error("Phone number ID is null for incoming message: {}", message.getId());
+            logger.error("Phone number ID is null for incoming message: {}", iMessage.getId());
             return Mono.empty();
         }
 
-        return this.whatsappPhoneNumberService
-                .getByPhoneNumberId(access, phoneNumberId)
-                .flatMap(whatsappPhoneNumber -> this.createInternal(
-                        access.setUserId(whatsappPhoneNumber.getUserId()),
-                        WhatsappMessage.ofInbound(
-                                metadata,
-                                contact,
-                                message,
-                                whatsappPhoneNumber.getWhatsappBusinessAccountId(),
-                                whatsappPhoneNumber.getId())));
+        return FlatMapUtil.flatMapMono(
+                        () -> this.whatsappPhoneNumberService.getByPhoneNumberId(access, phoneNumberId),
+                        whatsappPhoneNumber -> this.dao
+                                .findByUniqueField(iMessage.getId())
+                                .flatMap(existing -> this.updateExistingMessage(
+                                        access.setUserId(whatsappPhoneNumber.getUserId()),
+                                        existing,
+                                        metadata,
+                                        contact,
+                                        iMessage,
+                                        whatsappPhoneNumber.getWhatsappBusinessAccountId(),
+                                        whatsappPhoneNumber.getId()))
+                                .switchIfEmpty(this.createInternal(
+                                        access.setUserId(whatsappPhoneNumber.getUserId()),
+                                        WhatsappMessage.ofInbound(
+                                                metadata,
+                                                contact,
+                                                iMessage,
+                                                whatsappPhoneNumber.getWhatsappBusinessAccountId(),
+                                                whatsappPhoneNumber.getId()))),
+                        (whatsappPhoneNumber, whatsappMessage) -> this.toMessage(whatsappMessage),
+                        (whatsappPhoneNumber, whatsappMessage, message) -> this.messageService
+                                .createInternal(access, message)
+                                .flatMap(msgCreated -> this.messageEventService
+                                        .sendIncomingMessageEvent(access, whatsappMessage)
+                                        .thenReturn(msgCreated)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.processIncomingMessage"));
+    }
+
+    private Mono<WhatsappMessage> updateExistingMessage(
+            MessageAccess access,
+            WhatsappMessage existing,
+            IMetadata metadata,
+            IContact contact,
+            IMessage message,
+            String whatsappBusinessAccountId,
+            ULong whatsappPhoneNumberId) {
+
+        PhoneNumber from = PhoneNumber.ofWhatsapp(message.getFrom());
+        PhoneNumber to = PhoneNumber.ofWhatsapp(metadata.getDisplayPhoneNumber());
+
+        return super.updateInternalWithoutUser(
+                access,
+                existing.setWhatsappBusinessAccountId(whatsappBusinessAccountId)
+                        .setMessageId(message.getId())
+                        .setWhatsappPhoneNumberId(whatsappPhoneNumberId)
+                        .setFromDialCode(from.getCountryCode())
+                        .setFrom(from.getNumber())
+                        .setToDialCode(to.getCountryCode())
+                        .setTo(to.getNumber())
+                        .setCustomerDialCode(from.getCountryCode())
+                        .setCustomerPhoneNumber(from.getNumber())
+                        .setCustomerWaId(contact.getWaId())
+                        .setMessageType(message.getType())
+                        .setMessageStatus(MessageStatus.DELIVERED)
+                        .setDeliveredTime(
+                                message.getTimestamp() != null
+                                        ? LocalDateTime.ofInstant(
+                                                Instant.ofEpochSecond(Long.parseLong(message.getTimestamp())),
+                                                ZoneOffset.UTC)
+                                        : LocalDateTime.now())
+                        .setOutbound(Boolean.FALSE)
+                        .setInMessage(message));
     }
 
     private Mono<Void> processStatusUpdates(MessageAccess access, List<IStatus> statuses) {

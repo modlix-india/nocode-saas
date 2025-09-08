@@ -1,7 +1,5 @@
 package com.fincity.saas.message.service.message;
 
-import org.springframework.stereotype.Service;
-
 import com.fincity.saas.message.dao.message.MessageWebhookDAO;
 import com.fincity.saas.message.dto.message.MessageWebhook;
 import com.fincity.saas.message.enums.MessageSeries;
@@ -10,7 +8,7 @@ import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IWebHookEvent;
 import com.fincity.saas.message.model.response.MessageResponse;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
-
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -38,14 +36,12 @@ public class MessageWebhookService
     }
 
     public Mono<MessageResponse> processed(MessageWebhook messageWebhook) {
-        return super.update(messageWebhook.setProcessed(Boolean.TRUE)).map(response ->
-            MessageResponse.ofSuccess(response.getCode(), this.getMessageSeries())
-        );
+        return super.update(messageWebhook.setProcessed(Boolean.TRUE))
+                .map(response -> MessageResponse.ofSuccess(response.getCode(), this.getMessageSeries()));
     }
 
     public Mono<MessageWebhook> createWhatsappWebhookEvent(MessageAccess access, IWebHookEvent event) {
         return this.createInternal(
                 access, new MessageWebhook().setEvent(event.toMap()).setProvider("whatsapp"));
     }
-
 }

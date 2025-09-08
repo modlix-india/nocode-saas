@@ -7,9 +7,6 @@ import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_MESSAGES;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBER;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_TEMPLATES;
 
-import org.jooq.EnumType;
-import org.jooq.Table;
-
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.dto.message.Message;
@@ -17,8 +14,9 @@ import com.fincity.saas.message.dto.message.MessageWebhook;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
-
 import lombok.Getter;
+import org.jooq.EnumType;
+import org.jooq.Table;
 
 @Getter
 public enum MessageSeries implements EnumType {
@@ -70,8 +68,8 @@ public enum MessageSeries implements EnumType {
             case CALL -> Call.class;
             case EXOTEL_CALL -> ExotelCall.class;
             case MESSAGE -> Message.class;
-	        case MESSAGE_WEBHOOKS -> MessageWebhook.class;
-	        case WHATSAPP_MESSAGE -> WhatsappMessage.class;
+            case MESSAGE_WEBHOOKS -> MessageWebhook.class;
+            case WHATSAPP_MESSAGE -> WhatsappMessage.class;
             case WHATSAPP_PHONE_NUMBER -> WhatsappPhoneNumber.class;
             case WHATSAPP_TEMPLATE -> WhatsappTemplate.class;
         };

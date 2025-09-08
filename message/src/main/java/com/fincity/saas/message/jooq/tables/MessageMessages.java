@@ -4,28 +4,21 @@
 package com.fincity.saas.message.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
-import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
-import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages.MessageWhatsappMessagesPath;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates.MessageWhatsappTemplatesPath;
 import com.fincity.saas.message.jooq.tables.records.MessageMessagesRecord;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
-import org.jooq.Index;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -40,7 +33,6 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -97,30 +89,6 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     public final TableField<MessageMessagesRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
-     * The column <code>message.message_messages.FROM_DIAL_CODE</code>. Dial
-     * code of the sender's phone number.
-     */
-    public final TableField<MessageMessagesRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the sender's phone number.");
-
-    /**
-     * The column <code>message.message_messages.FROM</code>. Phone number of
-     * the sender.
-     */
-    public final TableField<MessageMessagesRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15), this, "Phone number of the sender.");
-
-    /**
-     * The column <code>message.message_messages.TO_DIAL_CODE</code>. Dial code
-     * of the recipient's phone number.
-     */
-    public final TableField<MessageMessagesRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the recipient's phone number.");
-
-    /**
-     * The column <code>message.message_messages.TO</code>. Phone number of the
-     * recipient.
-     */
-    public final TableField<MessageMessagesRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15), this, "Phone number of the recipient.");
-
-    /**
      * The column <code>message.message_messages.CONNECTION_NAME</code>. Name of
      * the connection used for the message.
      */
@@ -139,46 +107,10 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     public final TableField<MessageMessagesRecord, Byte> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Indicates whether the message is outbound.");
 
     /**
-     * The column <code>message.message_messages.MESSAGE_STATUS</code>. Status
-     * of the message.
-     */
-    public final TableField<MessageMessagesRecord, MessageStatus> MESSAGE_STATUS = createField(DSL.name("MESSAGE_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("SENT", SQLDataType.VARCHAR)), this, "Status of the message.", new EnumConverter<String, MessageStatus>(String.class, MessageStatus.class));
-
-    /**
-     * The column <code>message.message_messages.SENT_TIME</code>. Timestamp
-     * when the message was sent.
-     */
-    public final TableField<MessageMessagesRecord, LocalDateTime> SENT_TIME = createField(DSL.name("SENT_TIME"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the message was sent.");
-
-    /**
-     * The column <code>message.message_messages.DELIVERED_TIME</code>.
-     * Timestamp when the message was delivered.
-     */
-    public final TableField<MessageMessagesRecord, LocalDateTime> DELIVERED_TIME = createField(DSL.name("DELIVERED_TIME"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the message was delivered.");
-
-    /**
-     * The column <code>message.message_messages.READ_TIME</code>. Timestamp
-     * when the message was read.
-     */
-    public final TableField<MessageMessagesRecord, LocalDateTime> READ_TIME = createField(DSL.name("READ_TIME"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the message was read.");
-
-    /**
      * The column <code>message.message_messages.WHATSAPP_MESSAGE_ID</code>. ID
      * of the associated WhatsApp message.
      */
     public final TableField<MessageMessagesRecord, ULong> WHATSAPP_MESSAGE_ID = createField(DSL.name("WHATSAPP_MESSAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the associated WhatsApp message.");
-
-    /**
-     * The column <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
-     * of the associated WhatsApp template.
-     */
-    public final TableField<MessageMessagesRecord, ULong> WHATSAPP_TEMPLATE_ID = createField(DSL.name("WHATSAPP_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the associated WhatsApp template.");
-
-    /**
-     * The column <code>message.message_messages.METADATA</code>. Additional
-     * metadata related to the message.
-     */
-    public final TableField<MessageMessagesRecord, Map> METADATA = createField(DSL.name("METADATA"), SQLDataType.JSON, this, "Additional metadata related to the message.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column <code>message.message_messages.IS_ACTIVE</code>. Flag to check
@@ -278,11 +210,6 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
     }
 
     @Override
-    public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.MESSAGE_MESSAGES_IDX1_MESSAGES_FROM, Indexes.MESSAGE_MESSAGES_IDX2_MESSAGES_TO, Indexes.MESSAGE_MESSAGES_IDX3_WHATSAPP_MESSAGES_MESSAGE_STATUS);
-    }
-
-    @Override
     public Identity<MessageMessagesRecord, ULong> getIdentity() {
         return (Identity<MessageMessagesRecord, ULong>) super.getIdentity();
     }
@@ -299,7 +226,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
 
     @Override
     public List<ForeignKey<MessageMessagesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID, Keys.FK2_MESSAGES_WHATSAPP_TEMPLATES_ID);
+        return Arrays.asList(Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID);
     }
 
     private transient MessageWhatsappMessagesPath _messageWhatsappMessages;
@@ -313,19 +240,6 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
             _messageWhatsappMessages = new MessageWhatsappMessagesPath(this, Keys.FK1_MESSAGES_WHATSAPP_MESSAGES_ID, null);
 
         return _messageWhatsappMessages;
-    }
-
-    private transient MessageWhatsappTemplatesPath _messageWhatsappTemplates;
-
-    /**
-     * Get the implicit join path to the
-     * <code>message.message_whatsapp_templates</code> table.
-     */
-    public MessageWhatsappTemplatesPath messageWhatsappTemplates() {
-        if (_messageWhatsappTemplates == null)
-            _messageWhatsappTemplates = new MessageWhatsappTemplatesPath(this, Keys.FK2_MESSAGES_WHATSAPP_TEMPLATES_ID, null);
-
-        return _messageWhatsappTemplates;
     }
 
     @Override

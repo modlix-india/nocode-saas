@@ -11,8 +11,16 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.eager.EagerUtil;
+import com.fincity.saas.message.eager.IEagerDAO;
+import com.fincity.saas.message.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.message.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
+import java.util.List;
+import java.util.Map;
 import lombok.Getter;
+import org.apache.commons.collections4.SetValuedMap;
 import org.jooq.Condition;
 import org.jooq.DeleteQuery;
 import org.jooq.Field;
@@ -20,12 +28,15 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @Getter
 public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>>
-        extends AbstractUpdatableDAO<R, ULong, D> {
+        extends AbstractUpdatableDAO<R, ULong, D> implements IEagerDAO<R> {
 
     private static final String APP_CODE = "APP_CODE";
     private static final String CLIENT_CODE = "CLIENT_CODE";
@@ -37,12 +48,20 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     protected final Field<String> codeField;
     protected final Field<Boolean> isActiveField;
 
+    private final Map<String, Tuple2<Table<?>, String>> relationMap;
+    private final SetValuedMap<Class<? extends RelationResolver>, String> relationResolverMap;
+
+    private RecordEnrichmentService recordEnrichmentService;
+
     protected BaseUpdatableDAO(Class<D> pojoClass, Table<R> table, Field<ULong> idField) {
         super(pojoClass, table, idField);
         this.appCodeField = table.field(APP_CODE, String.class);
         this.clientCodeField = table.field(CLIENT_CODE, String.class);
         this.codeField = table.field(CODE, String.class);
         this.isActiveField = table.field(IS_ACTIVE, Boolean.class);
+
+        this.relationMap = EagerUtil.getRelationMap(this.pojoClass);
+        this.relationResolverMap = EagerUtil.getRelationResolverMap(this.pojoClass);
     }
 
     private static AbstractCondition idCondition(ULong id) {
@@ -53,10 +72,57 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return FilterCondition.make(BaseUpdatableDto.Fields.code, code).setOperator(FilterConditionOperator.EQUALS);
     }
 
+    @Autowired
+    private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
+        this.recordEnrichmentService = recordEnrichmentService;
+    }
+
     protected <T, V> Mono<T> objectNotFoundError(V value) {
         return messageResourceService
                 .getMessage(AbstractMessageService.OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), value)
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)));
+    }
+
+    public Mono<Map<String, Object>> readByIdAndAppCodeAndClientCodeEager(
+            ULong id, MessageAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.readSingleRecordByIdentityEager(idField, id, access, tableFields, queryParams);
+    }
+
+    public Mono<Map<String, Object>> readByCodeAndAppCodeAndClientCodeEager(
+            String code, MessageAccess access, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.readSingleRecordByIdentityEager(codeField, code, access, tableFields, queryParams);
+    }
+
+    public Mono<Map<String, Object>> readByIdentityAndAppCodeAndClientCodeEager(
+            Identity identity,
+            MessageAccess access,
+            List<String> tableFields,
+            MultiValueMap<String, String> queryParams) {
+
+        if (identity.isId())
+            return this.readSingleRecordByIdentityEager(
+                    idField, identity.getULongId(), access, tableFields, queryParams);
+
+        return this.readSingleRecordByIdentityEager(codeField, identity.getCode(), access, tableFields, queryParams);
+    }
+
+    public <V> Mono<Map<String, Object>> readSingleRecordByIdentityEager(
+            Field<V> identityField,
+            V identity,
+            MessageAccess access,
+            List<String> tableFields,
+            MultiValueMap<String, String> queryParams) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.messageAccessCondition(
+                        FilterCondition.make(
+                                        identityField == codeField
+                                                ? BaseUpdatableDto.Fields.code
+                                                : AbstractDTO.Fields.id,
+                                        identity)
+                                .setOperator(FilterConditionOperator.EQUALS),
+                        access),
+                pCondition -> this.readSingleRecordByIdentityEager(pCondition, tableFields, queryParams));
     }
 
     public Mono<AbstractCondition> messageAccessCondition(AbstractCondition condition, MessageAccess access) {
