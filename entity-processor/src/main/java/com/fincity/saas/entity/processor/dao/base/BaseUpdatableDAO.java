@@ -179,7 +179,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<Boolean> existsByName(String appCode, String clientCode, String name) {
+    public Mono<Boolean> existsByName(String appCode, String clientCode, ULong id, String name) {
 
         if (StringUtil.safeIsBlank(name)) return Mono.just(Boolean.FALSE);
 
@@ -187,6 +187,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         baseConditions.add(super.appCodeField.eq(appCode));
         baseConditions.add(super.clientCodeField.eq(clientCode));
         baseConditions.add(this.nameField.eq(name));
+
+        if (id != null) baseConditions.add(this.idField.ne(id));
 
         return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
                 .map(rec -> Boolean.TRUE)

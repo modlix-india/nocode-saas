@@ -4,11 +4,9 @@
 package com.fincity.saas.message.jooq.tables.records;
 
 
-import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -107,79 +105,11 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     }
 
     /**
-     * Setter for <code>message.message_messages.FROM_DIAL_CODE</code>. Dial
-     * code of the sender's phone number.
-     */
-    public MessageMessagesRecord setFromDialCode(Short value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.FROM_DIAL_CODE</code>. Dial
-     * code of the sender's phone number.
-     */
-    public Short getFromDialCode() {
-        return (Short) get(5);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.FROM</code>. Phone number of
-     * the sender.
-     */
-    public MessageMessagesRecord setFrom(String value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.FROM</code>. Phone number of
-     * the sender.
-     */
-    public String getFrom() {
-        return (String) get(6);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.TO_DIAL_CODE</code>. Dial code
-     * of the recipient's phone number.
-     */
-    public MessageMessagesRecord setToDialCode(Short value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.TO_DIAL_CODE</code>. Dial code
-     * of the recipient's phone number.
-     */
-    public Short getToDialCode() {
-        return (Short) get(7);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.TO</code>. Phone number of the
-     * recipient.
-     */
-    public MessageMessagesRecord setTo(String value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.TO</code>. Phone number of the
-     * recipient.
-     */
-    public String getTo() {
-        return (String) get(8);
-    }
-
-    /**
      * Setter for <code>message.message_messages.CONNECTION_NAME</code>. Name of
      * the connection used for the message.
      */
     public MessageMessagesRecord setConnectionName(String value) {
-        set(9, value);
+        set(5, value);
         return this;
     }
 
@@ -188,7 +118,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * the connection used for the message.
      */
     public String getConnectionName() {
-        return (String) get(9);
+        return (String) get(5);
     }
 
     /**
@@ -196,7 +126,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * of the message provider (e.g., WhatsApp or similar).
      */
     public MessageMessagesRecord setMessageProvider(String value) {
-        set(10, value);
+        set(6, value);
         return this;
     }
 
@@ -205,7 +135,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * of the message provider (e.g., WhatsApp or similar).
      */
     public String getMessageProvider() {
-        return (String) get(10);
+        return (String) get(6);
     }
 
     /**
@@ -213,7 +143,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * whether the message is outbound.
      */
     public MessageMessagesRecord setIsOutbound(Byte value) {
-        set(11, value);
+        set(7, value);
         return this;
     }
 
@@ -222,75 +152,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * whether the message is outbound.
      */
     public Byte getIsOutbound() {
-        return (Byte) get(11);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.MESSAGE_STATUS</code>. Status
-     * of the message.
-     */
-    public MessageMessagesRecord setMessageStatus(MessageStatus value) {
-        set(12, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.MESSAGE_STATUS</code>. Status
-     * of the message.
-     */
-    public MessageStatus getMessageStatus() {
-        return (MessageStatus) get(12);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.SENT_TIME</code>. Timestamp
-     * when the message was sent.
-     */
-    public MessageMessagesRecord setSentTime(LocalDateTime value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.SENT_TIME</code>. Timestamp
-     * when the message was sent.
-     */
-    public LocalDateTime getSentTime() {
-        return (LocalDateTime) get(13);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.DELIVERED_TIME</code>.
-     * Timestamp when the message was delivered.
-     */
-    public MessageMessagesRecord setDeliveredTime(LocalDateTime value) {
-        set(14, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.DELIVERED_TIME</code>.
-     * Timestamp when the message was delivered.
-     */
-    public LocalDateTime getDeliveredTime() {
-        return (LocalDateTime) get(14);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.READ_TIME</code>. Timestamp
-     * when the message was read.
-     */
-    public MessageMessagesRecord setReadTime(LocalDateTime value) {
-        set(15, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.READ_TIME</code>. Timestamp
-     * when the message was read.
-     */
-    public LocalDateTime getReadTime() {
-        return (LocalDateTime) get(15);
+        return (Byte) get(7);
     }
 
     /**
@@ -298,7 +160,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * of the associated WhatsApp message.
      */
     public MessageMessagesRecord setWhatsappMessageId(ULong value) {
-        set(16, value);
+        set(8, value);
         return this;
     }
 
@@ -307,41 +169,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * of the associated WhatsApp message.
      */
     public ULong getWhatsappMessageId() {
-        return (ULong) get(16);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
-     * of the associated WhatsApp template.
-     */
-    public MessageMessagesRecord setWhatsappTemplateId(ULong value) {
-        set(17, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.WHATSAPP_TEMPLATE_ID</code>. ID
-     * of the associated WhatsApp template.
-     */
-    public ULong getWhatsappTemplateId() {
-        return (ULong) get(17);
-    }
-
-    /**
-     * Setter for <code>message.message_messages.METADATA</code>. Additional
-     * metadata related to the message.
-     */
-    public MessageMessagesRecord setMetadata(Map value) {
-        set(18, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_messages.METADATA</code>. Additional
-     * metadata related to the message.
-     */
-    public Map getMetadata() {
-        return (Map) get(18);
+        return (ULong) get(8);
     }
 
     /**
@@ -349,7 +177,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * if this message is active or not.
      */
     public MessageMessagesRecord setIsActive(Byte value) {
-        set(19, value);
+        set(9, value);
         return this;
     }
 
@@ -358,7 +186,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * if this message is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(19);
+        return (Byte) get(9);
     }
 
     /**
@@ -366,7 +194,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who created this row.
      */
     public MessageMessagesRecord setCreatedBy(ULong value) {
-        set(20, value);
+        set(10, value);
         return this;
     }
 
@@ -375,7 +203,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(20);
+        return (ULong) get(10);
     }
 
     /**
@@ -383,7 +211,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was created.
      */
     public MessageMessagesRecord setCreatedAt(LocalDateTime value) {
-        set(21, value);
+        set(11, value);
         return this;
     }
 
@@ -392,7 +220,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -400,7 +228,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who updated this row.
      */
     public MessageMessagesRecord setUpdatedBy(ULong value) {
-        set(22, value);
+        set(12, value);
         return this;
     }
 
@@ -409,7 +237,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(22);
+        return (ULong) get(12);
     }
 
     /**
@@ -417,7 +245,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was last updated.
      */
     public MessageMessagesRecord setUpdatedAt(LocalDateTime value) {
-        set(23, value);
+        set(13, value);
         return this;
     }
 
@@ -426,7 +254,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(23);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -452,7 +280,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     /**
      * Create a detached, initialised MessageMessagesRecord
      */
-    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String from, Short toDialCode, String to, String connectionName, String messageProvider, Byte isOutbound, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, ULong whatsappMessageId, ULong whatsappTemplateId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String messageProvider, Byte isOutbound, ULong whatsappMessageId, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageMessages.MESSAGE_MESSAGES);
 
         setId(id);
@@ -460,20 +288,10 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
         setClientCode(clientCode);
         setUserId(userId);
         setCode(code);
-        setFromDialCode(fromDialCode);
-        setFrom(from);
-        setToDialCode(toDialCode);
-        setTo(to);
         setConnectionName(connectionName);
         setMessageProvider(messageProvider);
         setIsOutbound(isOutbound);
-        setMessageStatus(messageStatus);
-        setSentTime(sentTime);
-        setDeliveredTime(deliveredTime);
-        setReadTime(readTime);
         setWhatsappMessageId(whatsappMessageId);
-        setWhatsappTemplateId(whatsappTemplateId);
-        setMetadata(metadata);
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
