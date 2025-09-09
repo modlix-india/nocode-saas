@@ -50,22 +50,22 @@ public enum StringEncoder {
 
 	public String encode(byte[] bytes) {
 		return switch (this) {
-			case BASE64 -> encodeBase64(bytes, false);
+			case BASE64 -> encodeBase64(bytes, false, false);
 			case HEX -> encodeHex(bytes);
 		};
 	}
 
 	public String encode(byte[] bytes, boolean urlSafe) {
 		return switch (this) {
-			case BASE64 -> encodeBase64(bytes, urlSafe);
+			case BASE64 -> encodeBase64(bytes, urlSafe, false);
 			case HEX -> encodeHex(bytes);
 		};
 	}
 
-	public byte[] decode(String str, boolean urlSafe) {
+	public String encode(byte[] bytes, boolean urlSafe, boolean withPadding) {
 		return switch (this) {
-			case BASE64 -> decodeBase64(str, urlSafe);
-			case HEX -> decodeHex(str);
+			case BASE64 -> encodeBase64(bytes, urlSafe, withPadding);
+			case HEX -> encodeHex(bytes);
 		};
 	}
 
@@ -76,8 +76,30 @@ public enum StringEncoder {
 		};
 	}
 
-	private String encodeBase64(byte[] bytes, boolean urlSafe) {
-		return urlSafe ? Base64.getUrlEncoder().encodeToString(bytes) : Base64.getEncoder().encodeToString(bytes);
+	public byte[] decode(String str, boolean urlSafe) {
+		return switch (this) {
+			case BASE64 -> decodeBase64(str, urlSafe);
+			case HEX -> decodeHex(str);
+		};
+	}
+
+	public byte[] decode(String str, boolean urlSafe, boolean withPadding) {
+		return switch (this) {
+			case BASE64 -> decodeBase64(str, urlSafe, withPadding);
+			case HEX -> decodeHex(str);
+		};
+	}
+
+	private String encodeBase64(byte[] bytes, boolean urlSafe, boolean withPadding) {
+		if (urlSafe) {
+			return withPadding
+					? Base64.getUrlEncoder().encodeToString(bytes)
+					: Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+		} else {
+			return withPadding
+					? Base64.getEncoder().encodeToString(bytes)
+					: Base64.getEncoder().withoutPadding().encodeToString(bytes);
+		}
 	}
 
 	private String encodeHex(byte[] bytes) {
@@ -85,7 +107,29 @@ public enum StringEncoder {
 	}
 
 	private byte[] decodeBase64(String str, boolean urlSafe) {
-		return urlSafe ? Base64.getUrlDecoder().decode(str) : Base64.getDecoder().decode(str);
+		return urlSafe
+				? Base64.getUrlDecoder().decode(str)
+				: Base64.getDecoder().decode(str);
+	}
+
+	private byte[] decodeBase64(String str, boolean urlSafe, boolean withPadding) {
+		if (urlSafe) {
+			return withPadding
+					? Base64.getUrlDecoder().decode(str)
+					: Base64.getUrlDecoder().decode(addPaddingIfNeeded(str));
+		} else {
+			return withPadding
+					? Base64.getDecoder().decode(str)
+					: Base64.getDecoder().decode(addPaddingIfNeeded(str));
+		}
+	}
+
+	private String addPaddingIfNeeded(String base64String) {
+		int missingPadding = (4 - (base64String.length() % 4)) % 4;
+		if (missingPadding > 0)
+			return base64String + "=".repeat(missingPadding);
+
+		return base64String;
 	}
 
 	private byte[] decodeHex(String str) {
