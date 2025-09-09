@@ -1,6 +1,7 @@
 package com.fincity.saas.message.model.request.message.provider.whatsapp;
 
 import com.fincity.saas.message.model.base.BaseMessageRequest;
+import com.fincity.saas.message.model.common.Identity;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,6 +17,5 @@ public class WhatsappMediaRequest extends BaseMessageRequest {
     @Serial
     private static final long serialVersionUID = 9075133442134460355L;
 
-    private String mediaId;
-    private String mediaUrl;
+    private Identity whatsappMessageId;
 }

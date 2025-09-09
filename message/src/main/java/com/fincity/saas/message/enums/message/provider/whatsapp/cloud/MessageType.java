@@ -49,4 +49,12 @@ public enum MessageType implements EnumType {
     public String getName() {
         return value;
     }
+
+    public boolean isMediaFile() {
+        return this.equals(AUDIO)
+                || this.equals(DOCUMENT)
+                || this.equals(IMAGE)
+                || this.equals(STICKER)
+                || this.equals(VIDEO);
+    }
 }

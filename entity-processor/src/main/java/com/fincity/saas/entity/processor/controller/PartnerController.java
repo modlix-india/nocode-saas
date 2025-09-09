@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.PartnerService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,17 @@ public class PartnerController
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<Partner>> createFromRequest(@RequestBody PartnerRequest partnerRequest) {
         return this.service.createPartner(partnerRequest).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/me")
+    public Mono<ResponseEntity<Partner>> getLoggedInPartner() {
+        return this.service.getLoggedInPartner().map(ResponseEntity::ok);
+    }
+
+    @PatchMapping("/me/verification-status")
+    public Mono<ResponseEntity<Partner>> updateLoggedInPartnerVerificationStatus(
+            @RequestParam("status") PartnerVerificationStatus status) {
+        return this.service.updateLoggedInPartnerVerificationStatus(status).map(ResponseEntity::ok);
     }
 
     @PatchMapping(REQ_PATH_ID + "/verification-status")

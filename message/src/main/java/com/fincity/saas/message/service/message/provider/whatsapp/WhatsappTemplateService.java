@@ -80,8 +80,7 @@ public class WhatsappTemplateService
             return this.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         if (whatsappTemplateRequest.getMessageTemplate().hadHeaderMediaFile()
-                && (whatsappTemplateRequest.getFileDetail() == null
-                        || whatsappTemplateRequest.getFileDetail().idEmpty()))
+                && (whatsappTemplateRequest.getFileDetail() == null))
             return super.throwMissingParam(WhatsappTemplateRequest.Fields.fileDetail);
 
         return FlatMapUtil.flatMapMono(
