@@ -506,7 +506,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         },
                         (clientId, clientType, userExists) ->
                                 Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(key, fields),
-                        (clientId, clientType, userExists, updated) -> this.evictTokensAndOwnerCache(
+                        (clientId, clientType, userExists, updated) -> this.evictCache(
                                         updated.getId(), updated.getClientId())
                                 .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
@@ -539,25 +539,29 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         },
                         (clientType, userExists) ->
                                 Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
-                        (clientType, userExists, updated) -> this.evictTokensAndOwnerCache(
+                        (clientType, userExists, updated) -> this.evictCache(
                                         updated.getId(), updated.getClientId())
                                 .map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
 
-    private Mono<Integer> evictTokensAndOwnerCache(ULong userId, ULong clientId) {
-        return Mono.zip(
-                this.evictTokens(userId),
-                this.evictOwnerCache(clientId, userId),
-                (tEvicted, oEvicted) -> tEvicted == 1 && oEvicted == 1 ? 1 : 0);
+    private Mono<Integer> evictCache(ULong userId, ULong clientId) {
+        return Mono.zip(this.evictTokens(userId), this.evictOwnerCache(clientId, userId), this.evictUserCache(userId))
+                .map(evicted -> evicted.getT1() == 1 && evicted.getT2() == 1 && evicted.getT3() == 1 ? 1 : 0);
     }
 
-    private Mono<Integer> evictTokens(ULong id) {
-        return this.tokenService.evictTokensOfUser(id);
+    private Mono<Integer> evictTokens(ULong userId) {
+        return this.tokenService.evictTokensOfUser(userId);
+    }
+
+    private Mono<Integer> evictUserCache(ULong userId) {
+        return this.cacheService.evict(CACHE_NAME_USER, userId).map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
     }
 
     private Mono<Integer> evictOwnerCache(ULong clientId, ULong userId) {
-        return this.userSubOrgService.evictOwnerCache(clientId, userId).map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
+        return this.userSubOrgService
+                .evictOwnerCache(clientId, userId)
+                .map(evicted -> Boolean.TRUE.equals(evicted) ? 1 : 0);
     }
 
     @Override
@@ -586,7 +590,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     return e;
                 })
                 .flatMap(this::update)
-                .flatMap(e -> this.evictTokensAndOwnerCache(e.getId(), e.getClientId())
+                .flatMap(e -> this.evictCache(e.getId(), e.getClientId())
                         .map(x -> 1));
     }
 
@@ -613,7 +617,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                                     return removed;
                                 }),
-                        (ca, user, isManaged, removed) -> this.evictTokensAndOwnerCache(userId, user.getClientId())
+                        (ca, user, isManaged, removed) -> this.evictCache(userId, user.getClientId())
                                 .map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
                 .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
@@ -647,7 +651,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                                         return e;
                                     }),
-                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this.evictTokensAndOwnerCache(
+                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this.evictCache(
                                             userId, user.getClientId())
                                     .map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
@@ -670,7 +674,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged, profileAccess) ->
                                 this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictTokensAndOwnerCache(
+                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictCache(
                                         userId, user.getClientId())
                                 .map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
@@ -690,7 +694,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .filter(BooleanUtil::safeValueOf),
                         (ca, user, sysManaged) ->
                                 this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileRemoved) -> this.evictTokensAndOwnerCache(
+                        (ca, user, sysManaged, profileRemoved) -> this.evictCache(
                                         userId, user.getClientId())
                                 .map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
@@ -1309,7 +1313,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                         : Mono.just(user)),
                         (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
-                        (ca, user, sysOrManaged, validUser, updated) -> this.evictTokensAndOwnerCache(
+                        (ca, user, sysOrManaged, validUser, updated) -> this.evictCache(
                                         updated.getId(), updated.getClientId())
                                 .map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
