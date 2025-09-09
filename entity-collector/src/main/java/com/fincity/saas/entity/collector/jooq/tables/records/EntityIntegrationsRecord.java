@@ -57,20 +57,39 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
-     * Setter for <code>entity_collector.entity_integrations.APP_CODE</code>.
-     * App Code
+     * Setter for <code>entity_collector.entity_integrations.IN_APP_CODE</code>.
+     * in-app code
      */
-    public EntityIntegrationsRecord setAppCode(String value) {
+    public EntityIntegrationsRecord setInAppCode(String value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>entity_collector.entity_integrations.APP_CODE</code>.
-     * App Code
+     * Getter for <code>entity_collector.entity_integrations.IN_APP_CODE</code>.
+     * in-app code
      */
-    public String getAppCode() {
+    public String getInAppCode() {
         return (String) get(2);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_collector.entity_integrations.OUT_APP_CODE</code>. out-app
+     * Code
+     */
+    public EntityIntegrationsRecord setOutAppCode(String value) {
+        set(3, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_collector.entity_integrations.OUT_APP_CODE</code>. out-app
+     * Code
+     */
+    public String getOutAppCode() {
+        return (String) get(3);
     }
 
     /**
@@ -79,7 +98,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * target to forwarded entity
      */
     public EntityIntegrationsRecord setPrimaryTarget(String value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -89,7 +108,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * target to forwarded entity
      */
     public String getPrimaryTarget() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
@@ -98,7 +117,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Secondary target to forwarded entity
      */
     public EntityIntegrationsRecord setSecondaryTarget(String value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -108,7 +127,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Secondary target to forwarded entity
      */
     public String getSecondaryTarget() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
@@ -116,7 +135,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Source
      */
     public EntityIntegrationsRecord setInSource(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -125,7 +144,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Source
      */
     public String getInSource() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -134,7 +153,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * source that integration is generated
      */
     public EntityIntegrationsRecord setInSourceType(EntityIntegrationsInSourceType value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -144,7 +163,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * source that integration is generated
      */
     public EntityIntegrationsInSourceType getInSourceType() {
-        return (EntityIntegrationsInSourceType) get(6);
+        return (EntityIntegrationsInSourceType) get(7);
     }
 
     /**
@@ -153,7 +172,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Primary verification token is verify the primary target
      */
     public EntityIntegrationsRecord setPrimaryVerifyToken(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -163,7 +182,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Primary verification token is verify the primary target
      */
     public String getPrimaryVerifyToken() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -172,7 +191,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Secondary verification token is to verify the secondary target
      */
     public EntityIntegrationsRecord setSecondaryVerifyToken(String value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -182,7 +201,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Secondary verification token is to verify the secondary target
      */
     public String getSecondaryVerifyToken() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
@@ -190,7 +209,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who created this row
      */
     public EntityIntegrationsRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -199,7 +218,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -207,7 +226,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is created
      */
     public EntityIntegrationsRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -216,7 +235,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -224,7 +243,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who updated this row
      */
     public EntityIntegrationsRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -233,7 +252,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -241,7 +260,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is updated
      */
     public EntityIntegrationsRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -250,7 +269,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -276,12 +295,13 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     /**
      * Create a detached, initialised EntityIntegrationsRecord
      */
-    public EntityIntegrationsRecord(ULong id, String clientCode, String appCode, String primaryTarget, String secondaryTarget, String inSource, EntityIntegrationsInSourceType inSourceType, String primaryVerifyToken, String secondaryVerifyToken, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityIntegrationsRecord(ULong id, String clientCode, String inAppCode, String outAppCode, String primaryTarget, String secondaryTarget, String inSource, EntityIntegrationsInSourceType inSourceType, String primaryVerifyToken, String secondaryVerifyToken, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityIntegrations.ENTITY_INTEGRATIONS);
 
         setId(id);
         setClientCode(clientCode);
-        setAppCode(appCode);
+        setInAppCode(inAppCode);
+        setOutAppCode(outAppCode);
         setPrimaryTarget(primaryTarget);
         setSecondaryTarget(secondaryTarget);
         setInSource(inSource);

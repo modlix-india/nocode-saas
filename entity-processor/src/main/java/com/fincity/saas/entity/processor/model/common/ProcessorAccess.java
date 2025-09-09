@@ -63,7 +63,10 @@ public final class ProcessorAccess implements Serializable {
     }
 
     public boolean isOutsideUser() {
-        return BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP.equals(this.userInherit.clientLevelType);
+        if (userInherit != null)
+            return BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP.equals(this.userInherit.clientLevelType);
+
+        return false;
     }
 
     public String getEffectiveClientCode() {

@@ -398,31 +398,32 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 campaignTicketRequest.getAppCode(), campaignTicketRequest.getClientCode(), true, null, null);
 
         return FlatMapUtil.flatMapMono(
+                        () -> this.campaignService.readByCampaignId(
+                                access, campaignTicketRequest.getCampaignDetails().getCampaignId()),
 
-                () -> this.campaignService.readByCampaignId(
-                        access, campaignTicketRequest.getCampaignDetails().getCampaignId()),
+                        (campaign) -> this.productService.readById(campaign.getProductId()),
 
-                (campaign) -> this.productService.readById(campaign.getProductId()),
+                        (campaign, product) ->
+                                Mono.just(Ticket.of(campaignTicketRequest).setCampaignId(campaign.getId())),
 
-                (campaign, product) ->
-                        Mono.just(Ticket.of(campaignTicketRequest).setCampaignId(campaign.getId())),
+                        (campaign, product, ticket) ->
+                                Mono.just(TicketRequest.of(campaignTicketRequest, campaign.getId(), product.getId())),
 
-                (campaign, product, ticket) ->
-                        Mono.just(TicketRequest.of(campaignTicketRequest, campaign.getId(), product.getId())),
+                        (campaign, product, ticket, ticketRequest) -> this.checkDuplicate(access, ticketRequest),
 
-                (campaign, product, ticket, ticketRequest) -> this.checkDuplicate(access, ticketRequest),
+                        (campaign, product, ticket, ticketRequest, isDuplicate) -> {
+                            return Mono.just(ticket.setProductId(product.getId()));
+                        },
 
-                (campaign, product, ticket, ticketRequest, isDuplicate) ->
-                        Mono.just(ticket.setProductId(product.getId())),
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket) ->
+                                super.createInternal(access, pTicket),
 
-                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket) ->
-                        super.createInternal(access, pTicket),
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created) ->
+                                this.createNote(access, ticketRequest, created),
 
-                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created) ->
-                        this.createNote(access, ticketRequest, created),
-
-                (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created, noteCreated) ->
-                        this.activityService.acCreate(created).thenReturn(created))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[CampaignTicketRequest]"));
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created, noteCreated) ->
+                                this.activityService.acCreate(created, null, access).thenReturn(created))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[CampaignTicketRequest]"));
     }
 }

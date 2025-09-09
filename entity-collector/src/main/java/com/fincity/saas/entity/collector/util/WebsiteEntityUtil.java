@@ -43,7 +43,7 @@ public final class WebsiteEntityUtil {
         }
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> fetchOAuthToken(coreService, integration.getClientCode(), integration.getAppCode()),
+                        () -> fetchOAuthToken(coreService, integration.getClientCode(), integration.getInAppCode()),
                         token -> buildCampaignDetails(adId, token),
                         (token, campaignDetails) -> {
                             response.setCampaignDetails(campaignDetails);

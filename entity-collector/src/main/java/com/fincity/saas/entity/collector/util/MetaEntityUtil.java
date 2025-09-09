@@ -101,7 +101,7 @@ public final class MetaEntityUtil {
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
         response.setCampaignDetails(campaignDetails);
-        response.setAppCode(integration.getAppCode());
+        response.setAppCode(integration.getOutAppCode());
         response.setClientCode(integration.getClientCode());
         return response;
     }

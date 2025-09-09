@@ -14,10 +14,11 @@ import org.jooq.types.ULong;
 public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
 
     @Serial
-    private static final long serialVersionUID = -1238829417326110024L;
+    private static final long serialVersionUID = 774068654647877436L;
 
     private String clientCode;
-    private String appCode;
+    private String inAppCode;
+    private String outAppCode;
     private String primaryTarget;
     private String secondaryTarget;
     private String inSource;

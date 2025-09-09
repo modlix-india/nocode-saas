@@ -50,7 +50,7 @@ public class EntityCollectorService {
                                 (extractPayload, integration, logId) -> fetchOAuthToken(
                                         coreService,
                                         integration.getClientCode(),
-                                        integration.getAppCode(),
+                                        integration.getInAppCode(),
                                         entityCollectorMessageResponseService,
                                         entityCollectorLogService,
                                         logId),
