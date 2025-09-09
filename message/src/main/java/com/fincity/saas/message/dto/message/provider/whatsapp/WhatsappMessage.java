@@ -1,5 +1,6 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
+import com.fincity.saas.commons.enums.StringEncoder;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
@@ -150,5 +151,9 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.setMessageResponse(response);
 
         return this;
+    }
+
+    public String getBase64CustomerPhoneNumber() {
+        return StringEncoder.BASE64.encode(this.getCustomerPhoneNumber().getBytes(), true, false);
     }
 }

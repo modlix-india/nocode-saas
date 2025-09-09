@@ -14,53 +14,66 @@ import lombok.Getter;
 
 @Getter
 public enum StringEncoder {
+    BASE64("base64"),
+    HEX("Hex");
 
-	BASE64("base64"),
-	HEX("Hex");
+    private static final Map<String, StringEncoder> BY_NAME = new HashMap<>();
 
-	private static final Map<String, StringEncoder> BY_NAME = new HashMap<>();
+    static {
+        for (StringEncoder encoder : values()) {
+            BY_NAME.put(encoder.name.toLowerCase(), encoder);
+        }
+    }
 
-	static {
-		for (StringEncoder encoder : values()) {
-			BY_NAME.put(encoder.name.toLowerCase(), encoder);
-		}
-	}
+    private final String name;
 
-	private final String name;
+    StringEncoder(String name) {
+        this.name = name;
+    }
 
-	StringEncoder(String name) {
-		this.name = name;
-	}
+    public static StringEncoder getByName(String name) {
+        return BY_NAME.get(name.toLowerCase());
+    }
 
-	public static StringEncoder getByName(String name) {
-		return BY_NAME.get(name.toLowerCase());
-	}
+    public static List<JsonElement> getAvailableEncoder(StringEncoder... encoder) {
 
-	public static List<JsonElement> getAvailableEncoder(StringEncoder... encoder) {
+        List<StringEncoder> selected =
+                (encoder == null || encoder.length == 0) ? List.of(StringEncoder.values()) : List.of(encoder);
 
-		List<StringEncoder> selected = (encoder == null || encoder.length == 0) ? List.of(StringEncoder.values())
-				: List.of(encoder);
+        return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
+    }
 
-		return selected.stream().map(algo -> new JsonPrimitive(algo.getName())).collect(Collectors.toList());
-	}
+    public JsonPrimitive encodeToJson(byte[] bytes) {
+        return new JsonPrimitive(encode(bytes));
+    }
 
-	public JsonPrimitive encodeToJson(byte[] bytes) {
-		return new JsonPrimitive(encode(bytes));
-	}
+    public String encode(byte[] bytes) {
+        return switch (this) {
+            case BASE64 -> encodeBase64(bytes, false, false);
+            case HEX -> encodeHex(bytes);
+        };
+    }
 
-	public String encode(byte[] bytes) {
+    public String encode(byte[] bytes, boolean urlSafe) {
+        return switch (this) {
+            case BASE64 -> encodeBase64(bytes, urlSafe, false);
+            case HEX -> encodeHex(bytes);
+        };
+    }
+
+	public String encode(byte[] bytes, boolean urlSafe, boolean withPadding) {
 		return switch (this) {
-			case BASE64 -> encodeBase64(bytes, false);
+			case BASE64 -> encodeBase64(bytes, urlSafe, withPadding);
 			case HEX -> encodeHex(bytes);
 		};
 	}
 
-	public String encode(byte[] bytes, boolean urlSafe) {
-		return switch (this) {
-			case BASE64 -> encodeBase64(bytes, urlSafe);
-			case HEX -> encodeHex(bytes);
-		};
-	}
+    public byte[] decode(String str) {
+        return switch (this) {
+            case BASE64 -> decodeBase64(str, false);
+            case HEX -> decodeHex(str);
+        };
+    }
 
 	public byte[] decode(String str, boolean urlSafe) {
 		return switch (this) {
@@ -69,26 +82,55 @@ public enum StringEncoder {
 		};
 	}
 
-	public byte[] decode(String str) {
+	public byte[] decode(String str, boolean urlSafe, boolean withPadding) {
 		return switch (this) {
-			case BASE64 -> decodeBase64(str, false);
+			case BASE64 -> decodeBase64(str, urlSafe, withPadding);
 			case HEX -> decodeHex(str);
 		};
 	}
 
-	private String encodeBase64(byte[] bytes, boolean urlSafe) {
-		return urlSafe ? Base64.getUrlEncoder().encodeToString(bytes) : Base64.getEncoder().encodeToString(bytes);
-	}
+    private String encodeBase64(byte[] bytes, boolean urlSafe, boolean withPadding) {
+        if (urlSafe) {
+            return withPadding
+                    ? Base64.getUrlEncoder().encodeToString(bytes)
+                    : Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        } else {
+            return withPadding
+                    ? Base64.getEncoder().encodeToString(bytes)
+                    : Base64.getEncoder().withoutPadding().encodeToString(bytes);
+        }
+    }
 
-	private String encodeHex(byte[] bytes) {
-		return HexFormat.of().formatHex(bytes);
-	}
+    private String encodeHex(byte[] bytes) {
+        return HexFormat.of().formatHex(bytes);
+    }
 
-	private byte[] decodeBase64(String str, boolean urlSafe) {
-		return urlSafe ? Base64.getUrlDecoder().decode(str) : Base64.getDecoder().decode(str);
-	}
+    private byte[] decodeBase64(String str, boolean urlSafe) {
+        return urlSafe
+                ? Base64.getUrlDecoder().decode(str)
+                : Base64.getDecoder().decode(str);
+    }
 
-	private byte[] decodeHex(String str) {
-		return HexFormat.of().parseHex(str);
-	}
+    private byte[] decodeBase64(String str, boolean urlSafe, boolean withPadding) {
+        if (urlSafe) {
+            return withPadding
+                    ? Base64.getUrlDecoder().decode(str)
+                    : Base64.getUrlDecoder().decode(addPaddingIfNeeded(str));
+        } else {
+            return withPadding
+                    ? Base64.getDecoder().decode(str)
+                    : Base64.getDecoder().decode(addPaddingIfNeeded(str));
+        }
+    }
+
+    private String addPaddingIfNeeded(String base64String) {
+        int missingPadding = (4 - (base64String.length() % 4)) % 4;
+        if (missingPadding > 0) return base64String + "=".repeat(missingPadding);
+
+        return base64String;
+    }
+
+    private byte[] decodeHex(String str) {
+        return HexFormat.of().parseHex(str);
+    }
 }

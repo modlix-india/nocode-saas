@@ -4530,6 +4530,308 @@ CREATE TABLE `security`.`security_user_request`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
+-- V49__Add Notification Permission and roles.sql (security)
+
+START TRANSACTION;
+
+-- Adding Notification package, role and permissions
+SELECT `ID`
+  FROM `security_client`
+ WHERE `CODE` = 'SYSTEM'
+ LIMIT 1
+  INTO @`v_client_system`;
+
+INSERT IGNORE INTO `security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification CREATE', 'Notification create'),
+       (@`v_client_system`, 'Notification READ', 'Notification read'),
+       (@`v_client_system`, 'Notification UPDATE', 'Notification update'),
+       (@`v_client_system`, 'Notification DELETE', 'Notification delete');
+
+INSERT IGNORE INTO `security_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification Manager', 'Role to hold Notification operations permissions');
+
+SELECT `ID`
+  FROM `security_role`
+ WHERE `NAME` = 'Notification Manager'
+ LIMIT 1
+  INTO @`v_role_notification`;
+
+INSERT IGNORE INTO `security_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification CREATE' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification READ' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification UPDATE' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification DELETE' LIMIT 1));
+
+INSERT IGNORE INTO `security_package` (`CLIENT_ID`, `CODE`, `NAME`, `DESCRIPTION`, `BASE`)
+VALUES (@`v_client_system`, 'NOTI', 'Notifications Management',
+        'Notifications management roles and permissions will be part of this package', FALSE);
+
+SELECT `ID`
+  FROM `security_package`
+ WHERE `CODE` = 'NOTI'
+ LIMIT 1
+  INTO @`v_package_notification`;
+
+INSERT IGNORE INTO `security_package_role` (`ROLE_ID`, `PACKAGE_ID`)
+VALUES (@`v_role_notification`, @`v_package_notification`);
+
+COMMIT;
+
+-- Adding Notification package and role to the system client and system user
+START TRANSACTION;
+
+INSERT IGNORE INTO `security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+VALUES (@`v_client_system`, @`v_package_notification`);
+
+SELECT `ID`
+  FROM `security`.`security_user`
+ WHERE `USER_NAME` = 'sysadmin'
+ LIMIT 1
+  INTO @`v_user_sysadmin`;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`)
+VALUES (@`v_user_sysadmin`, @`v_role_notification`);
+
+COMMIT;
+
+-- V50__ClientLevel Addition.sql (security)
+
+use `security`;
+
+ALTER TABLE `security`.`security_client`
+    ADD COLUMN `LEVEL_TYPE` ENUM ('SYSTEM', 'CLIENT', 'CUSTOMER', 'CONSUMER') NOT NULL DEFAULT 'CLIENT' AFTER `TYPE_CODE`;
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE security.security_client AS c
+    LEFT JOIN security.security_client_hierarchy AS h ON h.CLIENT_ID = c.ID
+   SET c.LEVEL_TYPE = CASE
+                          WHEN h.MANAGE_CLIENT_LEVEL_0 IS NULL THEN 'SYSTEM'
+                          WHEN h.MANAGE_CLIENT_LEVEL_1 IS NULL THEN 'CLIENT'
+                          WHEN h.MANAGE_CLIENT_LEVEL_2 IS NULL THEN 'CUSTOMER'
+                          WHEN h.MANAGE_CLIENT_LEVEL_3 IS NULL THEN 'CONSUMER'
+                          ELSE c.LEVEL_TYPE
+       END
+ WHERE c.LEVEL_TYPE <> CASE
+                           WHEN h.MANAGE_CLIENT_LEVEL_0 IS NULL THEN 'SYSTEM'
+                           WHEN h.MANAGE_CLIENT_LEVEL_1 IS NULL THEN 'CLIENT'
+                           WHEN h.MANAGE_CLIENT_LEVEL_2 IS NULL THEN 'CUSTOMER'
+                           WHEN h.MANAGE_CLIENT_LEVEL_3 IS NULL THEN 'CONSUMER'
+                           ELSE c.LEVEL_TYPE
+     END;
+SET SQL_SAFE_UPDATES = 1;
+
+-- V51__Designation Department app registration independence.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_app_reg_designation`
+    DROP FOREIGN KEY `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID`;
+ALTER TABLE `security`.`security_app_reg_designation`
+    CHANGE COLUMN `DEPARTMENT_ID` `DEPARTMENT_ID` BIGINT UNSIGNED NULL COMMENT 'Department ID for which this designation belongs to';
+ALTER TABLE `security`.`security_app_reg_designation`
+    ADD CONSTRAINT `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID`
+        FOREIGN KEY (`DEPARTMENT_ID`)
+            REFERENCES `security`.`security_app_reg_department` (`ID`)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE;
+
+-- V52__Mobile Application Role.sql (security)
+
+use security;
+
+select id
+  from security.security_client
+ where CODE = 'SYSTEM'
+  into @v_system_client_id;
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@v_system_client_id, 'MobileApp CREATE', 'Create', 'Mobile Application create');
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@v_system_client_id, 'MobileApp UPLOADER', 'Uploader', 'Mobile Application file uploader');
+
+-- V53__Profile Title.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_profile`
+    ADD COLUMN `Title` VARCHAR(512) NULL DEFAULT NULL AFTER `NAME`;
+
+-- V54__Add Partner Manager Role.sql (security)
+
+SELECT `ID`
+  FROM `security`.`security_client`
+ WHERE `CODE` = 'SYSTEM'
+  INTO @`v_system_client_id`;
+
+SELECT `ID`
+  FROM `security`.`security_app`
+ WHERE `APP_CODE` = 'leadzump'
+  INTO @`v_leadzump_app_id`;
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`, `APP_ID`)
+VALUES (@`v_system_client_id`, 'Partner Manager', 'Partner Manager', 'Role for Managing Partners in Leadzump.',
+        @`v_leadzump_app_id`);
+
+-- V55__SSO APP Security.sql (security)
+
+DROP TABLE IF EXISTS `security`.`security_app_sso`;
+
+CREATE TABLE `security`.`security_app_sso`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`  bigint unsigned NOT NULL COMMENT 'Client ID',
+    `APP_ID`     bigint unsigned NOT NULL COMMENT 'Application ID',
+    `TO_APP_ID`  bigint unsigned NOT NULL COMMENT 'TO Application ID',
+    `CREATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_APP_SSO_CLIENT` (`CLIENT_ID`, `APP_ID`, `TO_APP_ID`),
+    KEY `FK1_APP_SSO_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK1_APP_SSO_ACCESS_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_SSO_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK1_APP_SSO_TO_APP_ID` FOREIGN KEY (`TO_APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK1_APP_SSO_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- V56__SSO APP token Security.sql (security)
+
+use security;
+
+DROP TABLE IF EXISTS `security`.`security_app_sso`;
+
+DROP TABLE IF EXISTS `security`.`security_app_sso_token`;
+DROP TABLE IF EXISTS `security`.`security_bundled_app`;
+DROP TABLE IF EXISTS `security`.`security_app_sso_bundle`;
+
+CREATE TABLE `security`.`security_app_sso_bundle`
+(
+    `ID`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_CODE` char(8)         NOT NULL COMMENT 'Client Code',
+    `BUNDLE_NAME` varchar(255)    NOT NULL COMMENT 'SSO Bundle Name',
+    `CREATED_BY`  bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`  timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`  bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`  timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    PRIMARY KEY (`ID`),
+    KEY `FK1_APP_SSO_BUNDLE_CLIENT_CODE` (`CLIENT_CODE`),
+    CONSTRAINT `FK1_APP_SSO_BUNDLE_CLIENT_CODE` FOREIGN KEY (`CLIENT_CODE`) REFERENCES `security_client` (`CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security`.`security_bundled_app`
+(
+    ID         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    BUNDLE_ID  bigint unsigned NOT NULL COMMENT 'Bundle ID',
+    APP_CODE   char(64)        NOT NULL COMMENT 'Application Code',
+    APP_URL_ID bigint unsigned          DEFAULT NULL COMMENT 'Application URL ID',
+    CREATED_BY bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    CREATED_AT timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_APP_BUNDLE_APP` (`BUNDLE_ID`, `APP_CODE`),
+    KEY `FK1_BUNDLED_APP_URL_ID` (`APP_URL_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_URL_ID` FOREIGN KEY (`APP_URL_ID`) REFERENCES `security_client_url` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    KEY `FK1_BUNDLED_APP_BUNDLE_ID` (`BUNDLE_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_BUNDLE_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    KEY `FK1_BUNDLED_APP_APP_CODE` (`APP_CODE`),
+    CONSTRAINT `FK1_BUNDLED_APP_APP_CODE` FOREIGN KEY (`APP_CODE`) REFERENCES `security_app` (`APP_CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security`.`security_app_sso_token`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `BUNDLE_ID`  bigint unsigned NOT NULL COMMENT 'Bundle ID',
+    `USER_ID`    bigint unsigned NOT NULL COMMENT 'User id',
+    `TOKEN`      char(36)        NOT NULL COMMENT 'UUID Token',
+    `EXPIRES_AT` timestamp       NOT NULL DEFAULT '2022-01-01 01:01:01' COMMENT 'When the token expires',
+    `IP_ADDRESS` varchar(50)     NOT NULL COMMENT 'User IP from where he logged in',
+    `CREATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `TOKEN` (`TOKEN`),
+    KEY `FK1_APP_SSO_TOKEN_USER_ID` (`USER_ID`),
+    CONSTRAINT `FK1_APP_SSO_TOKEN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    KEY `FK1_APP_SSO_TOKEN_BUNDLE_ID` (`BUNDLE_ID`),
+    CONSTRAINT `FK1_APP_SSO_BUNDLE_USER_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- V57__Add Notification Role to V2 Roles.sql
+
+SELECT `ID`
+  FROM `security`.`security_client`
+ WHERE `CODE` = 'SYSTEM'
+ LIMIT 1
+  INTO @`v_client_system`;
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification Manager', 'Role to hold Notification operations permissions');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification CREATE', 'Create', 'Notification create'),
+       (@`v_client_system`, 'Notification READ', 'Read', 'Notification read'),
+       (@`v_client_system`, 'Notification UPDATE', 'Update', 'Notification update'),
+       (@`v_client_system`, 'Notification DELETE', 'Delete', 'Notification delete');
+
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification Manager'
+  INTO @`v_v2_role_notification_manager`;
+
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification CREATE'
+  INTO @`v_v2_role_notification_create`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification READ'
+  INTO @`v_v2_role_notification_read`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification UPDATE'
+  INTO @`v_v2_role_notification_update`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification DELETE'
+  INTO @`v_v2_role_notification_delete`;
+
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification CREATE'
+  INTO @`v_permission_notification_create`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification READ'
+  INTO @`v_permission_notification_read`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification UPDATE'
+  INTO @`v_permission_notification_update`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification DELETE'
+  INTO @`v_permission_notification_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_notification_manager`, @`v_v2_role_notification_create`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_read`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_update`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_notification_manager`, @`v_permission_notification_create`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_read`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_update`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_delete`);
+
 -- Add scripts from the project above this line and seed data below this line.
 
 -- Seed data....
