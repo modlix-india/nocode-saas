@@ -7,12 +7,9 @@ import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.PhoneNumber;
-import com.fincity.saas.message.model.message.whatsapp.media.Media;
-import com.fincity.saas.message.model.message.whatsapp.media.MediaFile;
 import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMediaRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageCswRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageFileDetailsRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappMessageRequest;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.WhatsappReadRequest;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappCswService;
@@ -20,7 +17,6 @@ import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappMessag
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -53,19 +49,8 @@ public class WhatsappMessageController
         return this.service.markMessageAsRead(request).map(ResponseEntity::ok);
     }
 
-    @PutMapping("/file")
-    public Mono<ResponseEntity<WhatsappMessage>> updateFileDetails(
-            @RequestBody WhatsappMessageFileDetailsRequest request) {
-        return this.service.updateFileDetails(request).map(ResponseEntity::ok);
-    }
-
-    @PostMapping("/media/retrieveUrl")
-    public Mono<ResponseEntity<Media>> retrieveMediaUrl(@RequestBody WhatsappMediaRequest request) {
-        return this.service.retrieveMediaUrl(request).map(ResponseEntity::ok);
-    }
-
     @PostMapping("/media/download")
-    public Mono<ResponseEntity<MediaFile>> downloadMediaFile(@RequestBody WhatsappMediaRequest request) {
+    public Mono<ResponseEntity<WhatsappMessage>> downloadMediaFile(@RequestBody WhatsappMediaRequest request) {
         return this.service.downloadMediaFile(request).map(ResponseEntity::ok);
     }
 }
