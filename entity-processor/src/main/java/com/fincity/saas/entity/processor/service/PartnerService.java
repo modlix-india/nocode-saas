@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -84,11 +85,33 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> createPartner(PartnerRequest partnerRequest) {
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
-                access -> super.createInternal(
-                        access,
-                        Partner.of(partnerRequest)
-                                .setManagerId(access.getUserId())
-                                .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT)));
+                access -> super.securityService.getClientById(
+                        partnerRequest.getClientId().toBigInteger()),
+                (access, client) -> {
+                    if (!client.getClientLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP))
+                        return super.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
+                                client.getClientLevelType(),
+                                this.getEntityName(),
+                                BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
+
+                    return super.createInternal(
+                            access,
+                            Partner.of(partnerRequest)
+                                    .setManagerId(access.getUserId())
+                                    .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT));
+                });
+    }
+
+    public Mono<Partner> getLoggedInPartner() {
+        return this.hasAccess()
+                .flatMap(access -> this.getPartnerByClientId(
+                        access, ULongUtil.valueOf(access.getUser().getClientId())));
+    }
+
+    public Mono<Partner> updateLoggedInPartnerVerificationStatus(PartnerVerificationStatus status) {
+        return this.getLoggedInPartner().flatMap(partner -> super.update(partner.setPartnerVerificationStatus(status)));
     }
 
     public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {

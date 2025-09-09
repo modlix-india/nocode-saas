@@ -46,6 +46,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String TASK_ALREADY_CANCELLED = "task_already_cancelled";
     public static final String OUTSIDE_USER_ACCESS = "outside_user_access";
     public static final String PARTNER_ACCESS_DENIED = "partner_access_denied";
+    public static final String INVALID_CLIENT_TYPE = "invalid_client_type";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

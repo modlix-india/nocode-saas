@@ -3,6 +3,7 @@ package com.fincity.saas.message.service.message.provider;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.feign.IFeignFileService;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
@@ -27,6 +28,7 @@ public abstract class AbstractMessageService<
     protected MessageEventService messageEventService;
     protected MessageService messageService;
     protected MessageWebhookService messageWebhookService;
+    protected IFeignFileService fileService;
 
     @Lazy
     @Autowired
@@ -50,6 +52,12 @@ public abstract class AbstractMessageService<
     @Autowired
     private void setMessageWebhookService(MessageWebhookService messageWebhookService) {
         this.messageWebhookService = messageWebhookService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setFileService(IFeignFileService fileService) {
+        this.fileService = fileService;
     }
 
     @Override
