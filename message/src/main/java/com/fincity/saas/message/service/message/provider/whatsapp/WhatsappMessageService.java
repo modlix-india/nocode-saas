@@ -1,16 +1,5 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -53,7 +42,15 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
-
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -373,19 +370,16 @@ public class WhatsappMessageService
 
     public Mono<WhatsappMessage> updateFileDetails(WhatsappMessageFileDetailsRequest request) {
 
-        if (request.getFileDetail().idEmpty())
-            return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
+        if (request.getFileDetail().idEmpty()) return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.readIdentityWithAccess(request.getWhatsappMessageId()),
-                        whatsappMessage -> {
+                        () -> this.readIdentityWithAccess(request.getWhatsappMessageId()), whatsappMessage -> {
                             if (!whatsappMessage.getMessage().hasMediaFile())
                                 return super.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         MessageResourceService.INVALID_MESSAGE_TYPE_MEDIA);
 
-                            return this.updateInternal(
-                                    whatsappMessage.setMediaFileDetail(request.getFileDetail()));
+                            return this.updateInternal(whatsappMessage.setMediaFileDetail(request.getFileDetail()));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.updateFileDetails"));
     }
@@ -463,25 +457,26 @@ public class WhatsappMessageService
                                                 + "Customer service window is open for 24 hours after receiving a message from the customer. "
                                                 + "Use template messages to initiate conversations or send messages outside the window."));
                     return Mono.just(Boolean.TRUE);
-                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.validateCustomerServiceWindow"));
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.validateCustomerServiceWindow"));
     }
 
-    public Mono<Boolean> canSendNonTemplateMessage(WhatsappMessageCswRequest request) {
+    public Mono<WhatsappCswService.CswStatus> getCswStatus(WhatsappMessageCswRequest request) {
 
         if (request.isConnectionNull()) return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.messageConnectionService.getCoreDocument(
-                        access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                (access, connection) -> super.isValidConnection(connection),
-                (access, connection, vConn) -> this.getWhatsappBusinessAccountId(connection),
-                (access, connection, vConn, businessAccountId) ->
-                        this.getWhatsappPhoneNumber(request.getWhatsappPhoneNumberId(), access, businessAccountId),
-                (access, connection, vConn, businessAccountId, phoneNumber) -> this.customerServiceWindowService
-                        .getCustomerServiceWindowStatus(access, phoneNumber, request.getCustomerNumber())
-                        .map(WhatsappCswService.CswStatus::canSendNonTemplateMessage))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.canSendNonTemplateMessage"));
+                        super::hasAccess,
+                        access -> this.messageConnectionService.getCoreDocument(
+                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
+                        (access, connection) -> super.isValidConnection(connection),
+                        (access, connection, vConn) -> this.getWhatsappBusinessAccountId(connection),
+                        (access, connection, vConn, businessAccountId) -> this.getWhatsappPhoneNumber(
+                                request.getWhatsappPhoneNumberId(), access, businessAccountId),
+                        (access, connection, vConn, businessAccountId, phoneNumber) ->
+                                this.customerServiceWindowService.getCustomerServiceWindowStatus(
+                                        access, phoneNumber, request.getCustomerNumber()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.getCswStatus"));
     }
 
     public Mono<Response> markMessageAsRead(WhatsappReadRequest request) {
