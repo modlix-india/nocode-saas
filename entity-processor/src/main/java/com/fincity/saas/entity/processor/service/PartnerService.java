@@ -111,7 +111,20 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     public Mono<Partner> updateLoggedInPartnerVerificationStatus(PartnerVerificationStatus status) {
-        return this.getLoggedInPartner().flatMap(partner -> super.update(partner.setPartnerVerificationStatus(status)));
+        return FlatMapUtil.flatMapMono(
+                this::getLoggedInPartner,
+                partner -> super.update(partner.setPartnerVerificationStatus(status)),
+                (partner, uPartner) -> super.evictCache(partner).map(evicted -> uPartner));
+    }
+
+    public Mono<Partner> toggleLoggedInPartnerDnc() {
+        return FlatMapUtil.flatMapMono(
+                this::getLoggedInPartner,
+                partner -> super.update(partner.setDnc(!partner.getDnc())),
+                (partner, uPartner) -> super.evictCache(partner),
+                (partner, uPartner, evicted) -> this.ticketService
+                        .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
+                        .then(Mono.just(uPartner)));
     }
 
     public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {
@@ -121,13 +134,13 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)));
     }
 
-    public Mono<Partner> toggleDnc(Identity partnerId, Boolean dnc) {
+    public Mono<Partner> togglePartnerDnc(Identity partnerId) {
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> super.readIdentityWithAccess(access, partnerId),
-                (access, partner) -> super.updateInternal(access, partner.setDnc(dnc)),
+                (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
                 (access, partner, updated) -> this.ticketService
-                        .updateTicketDncByClientId(partner.getClientId(), dnc)
+                        .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
                         .then(Mono.just(updated)));
     }
 
