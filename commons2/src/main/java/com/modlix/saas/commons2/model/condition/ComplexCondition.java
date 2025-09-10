@@ -60,7 +60,7 @@ public class ComplexCondition extends AbstractCondition {
 
         List<AbstractCondition> updatedCond = this.conditions.stream()
                 .map(cond -> cond.removeConditionWithField(fieldName))
-                .filter(cond -> cond != null)
+                .filter(Objects::nonNull)
                 .toList();
 
         if (updatedCond.isEmpty())

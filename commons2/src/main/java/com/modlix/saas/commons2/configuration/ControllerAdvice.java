@@ -59,7 +59,7 @@ public class ControllerAdvice {
 
     private ResponseEntity<Object> handleOtherExceptionsInternal(Exception ex) {
         String eId = GenericException.uniqueId();
-        String msg = resourceService.getMessageSync(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
+        String msg = resourceService.getMessage(AbstractMessageService.UNKNOWN_ERROR_WITH_ID, eId);
 
         logger.error("Error : {}", eId, ex);
 
@@ -83,11 +83,11 @@ public class ControllerAdvice {
                 try {
                     Map<String, Object> map = this.objectMapper.readValue(byteBuffer.get()
                             .array(), new TypeReference<Map<String, Object>>() {
-                    });
+                            });
                     GenericException g = new GenericException(HttpStatus.valueOf(fe.status()),
                             map.get("message") == null ? ""
                                     : map.get("message")
-                                    .toString(),
+                                            .toString(),
                             fe);
                     return ResponseEntity.status(g.getStatusCode())
                             .body(g.toExceptionData());

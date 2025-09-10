@@ -27,19 +27,25 @@ public class AbstractMessageService {
         this.bundleMap = new ConcurrentHashMap<>(bundle);
     }
 
-    public String getMessageSync(final String messageId) {
+    public String getMessage(final String messageId) {
         ResourceBundle defaultBundle = this.bundleMap.get(Locale.ENGLISH);
         return defaultBundle.getString(defaultBundle.containsKey(messageId) ? messageId : UKNOWN_ERROR);
     }
 
-    public String getMessageSync(String messageId, Object... params) {
-        return StringFormatter.format(this.getMessageSync(messageId), params);
+    public String getMessage(String messageId, Object... params) {
+        return StringFormatter.format(this.getMessage(messageId), params);
     }
 
     public GenericException nonReactiveMessage(Function<String, GenericException> genericExceptionFunction,
             String messageId, Object... params) {
 
         return genericExceptionFunction.apply(this.getDefaultLocaleMessage(messageId, params));
+    }
+
+    public <T> T throwMessage(Function<String, GenericException> genericExceptionFunction, String messageId,
+            Object... params) {
+
+        throw genericExceptionFunction.apply(this.getMessage(messageId, params));
     }
 
     public String getDefaultLocaleMessage(String messageId) {
