@@ -114,14 +114,14 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                 this::getLoggedInPartner,
                 partner -> super.update(partner.setPartnerVerificationStatus(status)),
-                (partner, uPartner) -> super.evictCache(partner).map(evicted -> uPartner));
+                (partner, uPartner) -> this.evictCache(partner).map(evicted -> uPartner));
     }
 
     public Mono<Partner> toggleLoggedInPartnerDnc() {
         return FlatMapUtil.flatMapMono(
                 this::getLoggedInPartner,
                 partner -> super.update(partner.setDnc(!partner.getDnc())),
-                (partner, uPartner) -> super.evictCache(partner),
+                (partner, uPartner) -> this.evictCache(partner),
                 (partner, uPartner, evicted) -> this.ticketService
                         .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
                         .then(Mono.just(uPartner)));
