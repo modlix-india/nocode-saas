@@ -31,7 +31,7 @@ public final class WebsiteEntityUtil {
             EntityCollectorLogService logService,
             ULong logId) {
 
-        LeadDetails lead = new LeadDetails().createLead(websiteDetails, integration);
+        LeadDetails lead = new LeadDetails().createLead(websiteDetails);
 
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);

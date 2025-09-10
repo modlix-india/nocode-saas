@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.collector.dao.EntityIntegrationDAO;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
@@ -26,16 +27,24 @@ public class EntityIntegrationService
     private static final String HUB_VERIFY_TOKEN = "hub.verify_token";
     private static final String SUBSCRIBE = "subscribe";
     private static final String HUB_CHALLENGE = "hub.challenge";
+    private static final String CACHE_NAME_ENTITY_INTEGRATIONS = "EntityIntegrations";
 
+
+    protected final CacheService cacheService;
     protected final EntityCollectorMessageResourceService entityCollectorMessageResourceService;
 
-    public EntityIntegrationService(EntityCollectorMessageResourceService entityCollectorMessageResourceService) {
+    public EntityIntegrationService(EntityCollectorMessageResourceService entityCollectorMessageResourceService, CacheService cacheService) {
         this.entityCollectorMessageResourceService = entityCollectorMessageResourceService;
+        this.cacheService = cacheService;
     }
 
     public Mono<EntityIntegration> findByInSourceAndType(String inSource, EntityIntegrationsInSourceType inSourceType) {
-        return this.dao
-                .findByInSourceAndInSourceType(inSource, inSourceType)
+
+        return this.cacheService
+                .cacheValueOrGet(
+                        CACHE_NAME_ENTITY_INTEGRATIONS,
+                        () -> this.dao.findByInSourceAndInSourceType(inSource, inSourceType),
+                        getCacheKeys(inSource, inSourceType))
                 .switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         EntityCollectorMessageResourceService.INTEGRATION_NOT_FOUND));
@@ -49,9 +58,18 @@ public class EntityIntegrationService
 
     @Override
     public Mono<EntityIntegration> update(EntityIntegration entity) {
-        return this.read(entity.getId())
-                .flatMap(existingEntity -> SecurityContextUtil.getUsersContextAuthentication()
-                        .flatMap(ca -> verifyTargetUrl(entity).then(super.update(entity))))
+
+        return FlatMapUtil.flatMapMono(
+
+                        () -> this.read(entity.getId()),
+
+                        existingEntity -> verifyTargetUrl(entity),
+
+                        (existingEntity, verified) -> this.cacheService.evict(
+                                CACHE_NAME_ENTITY_INTEGRATIONS,
+                                getCacheKeys(entity.getInSource(), entity.getInSourceType())),
+
+                        (existingEntity, verified, evicted) -> super.update(entity))
                 .switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         EntityCollectorMessageResourceService.OBJECT_NOT_FOUND));
@@ -76,6 +94,7 @@ public class EntityIntegrationService
     }
 
     private Mono<Boolean> sendVerificationRequest(String targetUrl, String verifyToken, int challenge) {
+
         URI targetUri = URI.create(targetUrl);
 
         WebClient webClient = WebClient.builder().build();
@@ -108,6 +127,7 @@ public class EntityIntegrationService
     }
 
     private Mono<Void> verifyTargetUrl(EntityIntegration entity) {
+
         int challenge = UniqueUtil.shortUUID().hashCode();
 
         return FlatMapUtil.flatMapMono(
@@ -120,5 +140,9 @@ public class EntityIntegrationService
                                     entity.getSecondaryTarget(), entity.getSecondaryVerifyToken(), challenge)
                             .then();
                 });
+    }
+
+    private Object[] getCacheKeys(String inSource, EntityIntegrationsInSourceType inSourceType) {
+        return new Object[] {inSourceType.toString(), ":", inSource};
     }
 }

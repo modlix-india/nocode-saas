@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.collector.service;
 
-import static com.fincity.saas.entity.collector.util.EntityUtil.fetchOAuthToken;
 import static com.fincity.saas.entity.collector.util.EntityUtil.getClientIpAddress;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.extractMetaPayload;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.fetchMetaData;
@@ -13,11 +12,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.entity.collector.dto.WebsiteDetails;
-import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.collector.util.EntityUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
@@ -26,51 +24,69 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class EntityCollectorService {
+public class EntityCollectorService extends AbstractConnectionService {
 
     private final EntityIntegrationService entityIntegrationService;
     private final EntityCollectorLogService entityCollectorLogService;
-    private final EntityCollectorMessageResourceService entityCollectorMessageResponseService;
     private final ObjectMapper mapper;
-    private final IFeignCoreService coreService;
+
+    public EntityCollectorService(
+            EntityIntegrationService entityIntegrationService,
+            EntityCollectorLogService entityCollectorLogService,
+            ObjectMapper mapper) {
+        this.entityIntegrationService = entityIntegrationService;
+        this.entityCollectorLogService = entityCollectorLogService;
+        this.mapper = new ObjectMapper();
+    }
 
     public Mono<Void> processMetaFormEntity(JsonNode responseBody) {
+
         return FlatMapUtil.flatMapMonoWithNull(
+
                 () -> extractMetaPayload(responseBody),
+
                 extractList -> Flux.fromIterable(extractList)
                         .flatMap(extract -> FlatMapUtil.flatMapMonoWithNull(
+
                                 () -> Mono.just(extract),
+
                                 extractPayload -> entityIntegrationService.findByInSourceAndType(
                                         extractPayload.formId(), EntityIntegrationsInSourceType.FACEBOOK_FORM),
+
                                 (extractPayload, integration) -> entityCollectorLogService.create(
-                                        integration.getId(),
-                                        mapper.convertValue(responseBody, new TypeReference<>() {}),
-                                        null),
-                                (extractPayload, integration, logId) -> fetchOAuthToken(
-                                        coreService,
-                                        integration.getClientCode(),
-                                        integration.getInAppCode(),
-                                        entityCollectorMessageResponseService,
-                                        entityCollectorLogService,
-                                        logId),
+                                        integration.getId(), mapper.convertValue(responseBody, new TypeReference<>() {}), null),
+
+                                (extractPayload, integration, logId) -> this.getConnectionOAuth2Token(
+                                                 integration.getInAppCode(), integration.getClientCode())
+                                        // Treat blank token as empty to stop the chain
+                                        .filter(token -> token != null && !token.isBlank())
+                                        // If empty/blank, log and STOP further processing for this item
+                                        .switchIfEmpty(entityCollectorLogService
+                                                .updateOnError(logId, "OAuth token fetch returned empty/blank")
+                                                .then(Mono.empty()))
+                                        // If token retrieval errors, log and STOP
+                                        .onErrorResume(ex -> entityCollectorLogService
+                                                .updateOnError(logId, "OAuth token fetch failed: " + ex.getMessage())
+                                                .then(Mono.empty())),
+
                                 (extractPayload, integration, logId, token) -> fetchMetaData(
                                         extractPayload.leadGenId(),
                                         extractPayload.formId(),
                                         token,
                                         entityCollectorLogService,
                                         logId),
+
                                 (extractPayload, integration, logId, token, metaData) -> Mono.just(normalizeMetaEntity(
                                         metaData.getT1(),
                                         metaData.getT2(),
                                         extractPayload.adId(),
                                         token,
                                         integration,
-                                        entityCollectorMessageResponseService,
+                                        msgService,
                                         entityCollectorLogService,
                                         logId)),
                                 (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
-                                        normalizedEntity.flatMap(response -> entityCollectorMessageResponseService
+                                        normalizedEntity.flatMap(response -> msgService
                                                 .getMessage(
                                                         EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
                                                 .flatMap(successMessage -> EntityUtil.sendEntityToTarget(
@@ -94,13 +110,8 @@ public class EntityCollectorService {
                         mapper.convertValue(websiteBody, new TypeReference<>() {}),
                         getClientIpAddress(request)),
                 (host, integration, logId) -> normalizeWebsiteEntity(
-                                websiteBody,
-                                integration,
-                                coreService,
-                                entityCollectorMessageResponseService,
-                                entityCollectorLogService,
-                                logId)
-                        .flatMap(response -> entityCollectorMessageResponseService
+                                websiteBody, integration, coreService, msgService, entityCollectorLogService, logId)
+                        .flatMap(response -> msgService
                                 .getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
                                 .flatMap(successMessage -> EntityUtil.sendEntityToTarget(integration, response)
                                         .then(entityCollectorLogService.update(

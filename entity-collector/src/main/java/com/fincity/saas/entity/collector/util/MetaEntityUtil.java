@@ -89,9 +89,12 @@ public final class MetaEntityUtil {
             String leadGenId, String formId, String token, EntityCollectorLogService logService, ULong logId) {
 
         return FlatMapUtil.flatMapMono(
+
                         () -> fetchMetaGraphData(META_VERSION + leadGenId, Map.of(ACCESS_TOKEN, token)),
+
                         leadData -> fetchMetaGraphData(
                                 META_VERSION + formId, Map.of(ACCESS_TOKEN, token, META_FIELD, META_QUESTION)),
+
                         (leadData, formData) -> Mono.just(Tuples.of(leadData, formData)))
                 .onErrorResume(error ->
                         logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
@@ -107,9 +110,13 @@ public final class MetaEntityUtil {
     }
 
     public static Mono<List<ExtractPayload>> extractMetaPayload(JsonNode payload) {
+
         return FlatMapUtil.flatMapMono(
+
                         () -> Mono.justOrEmpty(payload).filter(p -> p.has(ENTRY)),
+
                         validPayload -> {
+
                             List<ExtractPayload> resultList = new ArrayList<>();
 
                             validPayload.get(ENTRY).forEach(entry -> entry.path(CHANGES)
@@ -170,10 +177,12 @@ public final class MetaEntityUtil {
                 });
     }
 
-    public static Mono<LeadDetails> buildLeadDetails(
-            JsonNode incomingLead, JsonNode formDetails) {
+    public static Mono<LeadDetails> buildLeadDetails(JsonNode incomingLead, JsonNode formDetails) {
+
         return FlatMapUtil.flatMapMonoWithNull(
+
                 () -> Mono.just(new ObjectMapper()),
+
                 mapper -> {
                     ObjectNode leadNode = JsonNodeFactory.instance.objectNode();
                     ObjectNode customFieldsNode = JsonNodeFactory.instance.objectNode();

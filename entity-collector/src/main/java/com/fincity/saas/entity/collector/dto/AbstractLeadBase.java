@@ -42,7 +42,7 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
     private LeadSource source;
     private Map<String, Object> customFields;
 
-    public T createLead(WebsiteDetails details, EntityIntegration integration) {
+    public T createLead(WebsiteDetails details) {
 
         this.email = details.getEmail();
         this.setEmail(details.getEmail());

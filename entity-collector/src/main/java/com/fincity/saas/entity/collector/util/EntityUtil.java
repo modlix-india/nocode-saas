@@ -25,6 +25,7 @@ public final class EntityUtil {
     private static final String APPLICATION_JSON = "application/json";
     private static final String FORWARDED_FOR = "X-Forwarded-For";
     private static final String UNKNOWN = "UNKNOWN";
+    private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
 
     public static Mono<Void> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
         return FlatMapUtil.flatMapMono(() -> sendToUrl(integration.getPrimaryTarget(), leadData), result -> {
@@ -55,6 +56,7 @@ public final class EntityUtil {
             EntityCollectorMessageResourceService messageService,
             EntityCollectorLogService logService,
             ULong logId) {
+
         return coreService
                 .getConnectionOAuth2Token( clientCode, appCode, CONNECTION_NAME)
                 .onErrorResume(error ->
