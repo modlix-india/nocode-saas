@@ -2,6 +2,7 @@ package com.modlix.saas.commons2.model.condition;
 
 import java.io.Serial;
 import java.util.List;
+import java.util.Objects;
 
 import com.modlix.saas.commons2.util.StringUtil;
 

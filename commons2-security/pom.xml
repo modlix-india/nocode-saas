@@ -14,7 +14,7 @@
     <artifactId>commons2-security</artifactId>
     <version>2.0.0</version>
     <name>Commons2 Security</name>
-    <description>Common to all SAAS Security related api - Imperative Programming Style</description>
+    <description>Common to all SAAS Security related api</description>
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.2</spring-cloud.version>
