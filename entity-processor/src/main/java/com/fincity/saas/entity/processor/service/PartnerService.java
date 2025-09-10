@@ -88,11 +88,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 access -> super.securityService.getClientById(
                         partnerRequest.getClientId().toBigInteger()),
                 (access, client) -> {
-                    if (!client.getClientLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP))
+                    if (!client.getLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP))
                         return super.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
-                                client.getClientLevelType(),
+                                client.getLevelType(),
                                 this.getEntityName(),
                                 BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
 

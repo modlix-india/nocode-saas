@@ -25,7 +25,7 @@ public enum ActivityAction implements EnumType {
             keys("entity", Ticket.Fields.source)),
     RE_INQUIRY(
             "RE_INQUIRY",
-            "$entity re-inquired from $%s for $user.".formatted(Ticket.Fields.source),
+            "$entity re-inquired from $%s by $user.".formatted(Ticket.Fields.source),
             keys("entity", Ticket.Fields.source)),
     QUALIFY("QUALIFY", "$entity qualified by $user.", keys("entity")),
     DISQUALIFY("DISQUALIFY", "$entity marked as disqualified by $user.", keys("entity")),
