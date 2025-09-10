@@ -14,6 +14,8 @@ import jakarta.annotation.PostConstruct;
 @Service
 public class EventCreationService {
 
+    private static final Logger logger = LogManager.getLogger(EventCreationService.class);
+
     @Value("${events.mq.exchange:events}")
     private String exchange;
 
@@ -33,16 +35,11 @@ public class EventCreationService {
     public boolean createEvent(EventQueObject queObj) {
         this.nextRoutingKey = nextRoutingKey.getNext();
 
-        // Set debug information if available in context
-        // Note: In imperative programming, we don't have reactive context
-        // This would need to be handled differently, perhaps through ThreadLocal or
-        // request context
-
         try {
             amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), queObj);
             return true;
         } catch (Exception e) {
-            // Log error and return false
+            logger.error("Failed to send event to MQ", e);
             return false;
         }
     }
