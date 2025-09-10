@@ -18,4 +18,5 @@ public class PartnerRequest extends BaseRequest<PartnerRequest> {
     private static final long serialVersionUID = 8432447203359141912L;
 
     private ULong clientId;
+    private Boolean dnc = Boolean.FALSE;
 }

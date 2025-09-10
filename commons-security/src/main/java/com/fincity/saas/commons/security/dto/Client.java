@@ -20,5 +20,5 @@ public class Client implements Serializable {
     private String businessType;
     private String businessSize;
     private String industry;
-    private String clientLevelType;
+    private String levelType;
 }

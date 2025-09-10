@@ -1,5 +1,9 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -12,9 +16,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwne
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -120,12 +122,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                                 : null)
                 .flatMap(existing -> {
                     if (existing.getId() != null)
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                this.getEntityPrefix(access.getAppCode()),
-                                existing.getId(),
-                                this.getEntityPrefix(access.getAppCode()));
+                        return super.throwDuplicateError(access, existing);
 
                     return Mono.just(Boolean.FALSE);
                 })
