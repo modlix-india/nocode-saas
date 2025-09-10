@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
-import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -118,7 +117,7 @@ public abstract class BaseProcessorService<
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
-    protected  <T> Mono<T> throwDuplicateError(ProcessorAccess access, D existing) {
+    protected <T> Mono<T> throwDuplicateError(ProcessorAccess access, D existing) {
 
         if (access.isOutsideUser())
             return this.msgService.throwMessage(
