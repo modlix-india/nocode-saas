@@ -7,8 +7,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import com.modlix.saas.commons2.util.Tuples.Tuple2;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
@@ -106,7 +106,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         }
 
         List<D> recordsList = dslContext.fetch(
-                selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
+                        selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(e -> e.into(this.pojoClass));
 
         return PageableExecutionUtils.getPage(recordsList, pageable, () -> recordsCount);
@@ -125,8 +125,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     public D readById(I id) {
-        Record record = getRecordById(id);
-        return record.into(this.pojoClass);
+        return getRecordById(id).into(this.pojoClass);
     }
 
     protected String convertToJOOQFieldName(String fieldName) {
@@ -175,7 +174,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return condition.isNegate() ? result.not() : result;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected Condition filterConditionFilter(FilterCondition fc) { // NOSONAR
         // Just 16 beyond the limit.
 
@@ -339,24 +338,5 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     public Class<D> getPojoClass() {
         return this.pojoClass;
-    }
-
-    // Simple Tuple2 implementation for internal use
-    public static class Tuple2<T1, T2> {
-        private final T1 t1;
-        private final T2 t2;
-
-        public Tuple2(T1 t1, T2 t2) {
-            this.t1 = t1;
-            this.t2 = t2;
-        }
-
-        public T1 getT1() {
-            return t1;
-        }
-
-        public T2 getT2() {
-            return t2;
-        }
     }
 }
