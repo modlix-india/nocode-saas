@@ -154,6 +154,8 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     }
 
     public String getBase64CustomerPhoneNumber() {
-        return StringEncoder.BASE64.encode(this.getCustomerPhoneNumber().getBytes(), true, false);
+        return this.getCustomerPhoneNumber() != null
+                ? StringEncoder.BASE64.encode(this.getCustomerPhoneNumber().getBytes(), true, false)
+                : null;
     }
 }

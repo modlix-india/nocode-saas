@@ -31,12 +31,4 @@ public class FileDetail implements Serializable {
     private Long lastModifiedTime;
     private String type;
     private String fileName;
-
-    @JsonProperty("isCompressedFile")
-    public Boolean isCompressedFile() {
-
-        if (this.type == null) return false;
-
-        return this.type.endsWith(".zip") || this.type.endsWith(".gz");
-    }
 }
