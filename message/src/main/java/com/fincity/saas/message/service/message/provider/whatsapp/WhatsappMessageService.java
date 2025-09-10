@@ -159,7 +159,8 @@ public class WhatsappMessageService
             return super.throwMissingParam(BaseMessageRequest.Fields.connectionName);
 
         if (whatsappMessageRequest.getMessage().getType().isMediaFile()
-                && (whatsappMessageRequest.getFileDetail() == null))
+                && (whatsappMessageRequest.getFileDetail() == null
+                        || whatsappMessageRequest.getFileDetail().isEmpty()))
             return super.throwMissingParam(WhatsappMessage.Fields.mediaFileDetail);
 
         return FlatMapUtil.flatMapMono(
@@ -511,8 +512,6 @@ public class WhatsappMessageService
                         (access, connection, cValid, api) ->
                                 this.readIdentityWithAccess(access, request.getWhatsappMessageId()),
                         (access, connection, cValid, api, whatsappMessage) -> {
-                            if (whatsappMessage.getMediaFileDetail() != null) return Mono.just(whatsappMessage);
-
                             boolean hasMedia = whatsappMessage.isOutbound()
                                     ? whatsappMessage.getMessage().getType().isMediaFile()
                                     : whatsappMessage.getInMessage().getType().isMediaFile();
@@ -522,20 +521,25 @@ public class WhatsappMessageService
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         MessageResourceService.INVALID_MESSAGE_TYPE_MEDIA);
 
+                            if (whatsappMessage.getMediaFileDetail() != null
+                                    && !whatsappMessage.getMediaFileDetail().isEmpty())
+                                return Mono.just(whatsappMessage);
+
                             String mediaId = whatsappMessage.isOutbound()
                                     ? whatsappMessage.getMessage().getMediaId()
                                     : whatsappMessage.getInMessage().getMediaId();
 
                             if (mediaId == null || mediaId.isBlank()) return Mono.just(whatsappMessage);
 
-                            return api.retrieveMediaUrl(mediaId)
-                                    .flatMap(media -> api.downloadMediaFile(media.getUrl()))
-                                    .flatMap(file -> this.makeFileInFiles(
+                            return FlatMapUtil.flatMapMono(
+                                    () -> api.retrieveMediaUrl(mediaId),
+                                    media -> api.downloadMediaFile(media.getUrl()),
+                                    (media, mediaFile) -> this.makeFileInFiles(
                                             access.getClientCode(),
-                                            file.getFileName(),
+                                            mediaFile.getFileName(),
                                             this.createImagePath(whatsappMessage),
-                                            file.getContent()))
-                                    .flatMap(fileDetails ->
+                                            mediaFile.getContent()),
+                                    (media, mediaFile, fileDetails) ->
                                             this.updateInternal(whatsappMessage.setMediaFileDetail(fileDetails)));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.downloadMediaFile"));
@@ -546,8 +550,7 @@ public class WhatsappMessageService
         return Paths.get(
                         WHATSAPP_CLOUD_MESSAGE_LOCATION,
                         direction,
-                        StringEncoder.BASE64.encode(
-                                whatsappMessage.getCustomerPhoneNumber().getBytes(), true, false),
+                        whatsappMessage.getBase64CustomerPhoneNumber(),
                         whatsappMessage.getCode())
                 .toString();
     }
