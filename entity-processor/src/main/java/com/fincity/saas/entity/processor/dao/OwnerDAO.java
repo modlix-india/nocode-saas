@@ -2,17 +2,14 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_OWNERS;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.jooq.Condition;
-import org.springframework.stereotype.Component;
-
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-
+import java.util.ArrayList;
+import java.util.List;
+import org.jooq.Condition;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
