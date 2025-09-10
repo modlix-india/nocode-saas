@@ -40,6 +40,11 @@ public class PartnerController
         return this.service.updateLoggedInPartnerVerificationStatus(status).map(ResponseEntity::ok);
     }
 
+    @PatchMapping("/me/dnc")
+    public Mono<ResponseEntity<Partner>> toggleLoggedInPartnerDnc() {
+        return this.service.toggleLoggedInPartnerDnc().map(ResponseEntity::ok);
+    }
+
     @PatchMapping(REQ_PATH_ID + "/verification-status")
     public Mono<ResponseEntity<Partner>> updateVerificationStatus(
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
@@ -48,9 +53,7 @@ public class PartnerController
     }
 
     @PatchMapping(REQ_PATH_ID + "/dnc")
-    public Mono<ResponseEntity<Partner>> toggleDnc(
-            @PathVariable(PATH_VARIABLE_ID) Identity identity,
-            @RequestParam(value = "dnc", defaultValue = "false") Boolean dnc) {
-        return this.service.toggleDnc(identity, dnc).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Partner>> toggleDnc(@PathVariable(PATH_VARIABLE_ID) Identity identity) {
+        return this.service.togglePartnerDnc(identity).map(ResponseEntity::ok);
     }
 }
