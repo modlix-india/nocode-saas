@@ -1,5 +1,6 @@
 package com.fincity.saas.message.oserver.files.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,11 +31,8 @@ public class FileDetail implements Serializable {
     private String type;
     private String fileName;
 
-    @JsonProperty("isCompressedFile")
-    public Boolean isCompressedFile() {
-
-        if (this.type == null) return false;
-
-        return this.type.endsWith(".zip") || this.type.endsWith(".gz");
+    @JsonIgnore
+    public boolean isEmpty() {
+        return (this.name == null || this.name.isEmpty()) && (this.filePath == null || this.filePath.isEmpty());
     }
 }
