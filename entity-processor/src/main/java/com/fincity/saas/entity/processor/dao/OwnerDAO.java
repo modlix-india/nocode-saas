@@ -2,14 +2,17 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_OWNERS;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.Condition;
+import org.springframework.stereotype.Component;
+
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.util.ArrayList;
-import java.util.List;
-import org.jooq.Condition;
-import org.springframework.stereotype.Component;
+
 import reactor.core.publisher.Mono;
 
 @Component
@@ -34,9 +37,7 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
         List<Condition> conditions = new ArrayList<>();
 
         conditions.add(this.appCodeField.eq(access.getAppCode()));
-        conditions.add(this.clientCodeField.eq(access.getClientCode()));
-
-        if (access.isOutsideUser()) conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
+        conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 
