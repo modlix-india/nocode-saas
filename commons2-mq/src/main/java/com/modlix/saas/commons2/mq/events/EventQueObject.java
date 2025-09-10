@@ -3,7 +3,7 @@ package com.modlix.saas.commons2.mq.events;
 import java.io.Serializable;
 import java.util.Map;
 
-import com.modlix.saas.commons2.mq.events.ContextAuthentication;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 
 import lombok.Data;
 import lombok.experimental.Accessors;

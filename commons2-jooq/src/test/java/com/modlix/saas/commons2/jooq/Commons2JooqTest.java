@@ -6,6 +6,7 @@ import org.jooq.types.UInteger;
 import org.jooq.types.UShort;
 
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
+import com.modlix.saas.commons2.util.Tuples;
 import com.modlix.saas.commons2.jooq.dao.AbstractDAO;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,7 +57,7 @@ public class Commons2JooqTest {
     @Test
     public void testTuple2Creation() {
         // Test the internal Tuple2 class
-        AbstractDAO.Tuple2<String, Integer> tuple = new AbstractDAO.Tuple2<>("test", 123);
+        Tuples.Tuple2<String, Integer> tuple = new Tuples.Tuple2<>("test", 123);
         assertEquals("test", tuple.getT1());
         assertEquals(123, tuple.getT2());
     }

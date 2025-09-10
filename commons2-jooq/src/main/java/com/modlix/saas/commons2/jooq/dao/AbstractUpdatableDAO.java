@@ -10,6 +10,7 @@ import org.jooq.UpdatableRecord;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.modlix.saas.commons2.model.dto.AbstractUpdatableDTO;
+import com.modlix.saas.commons2.util.Tuples.Tuple2;
 
 @Transactional
 public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>>
