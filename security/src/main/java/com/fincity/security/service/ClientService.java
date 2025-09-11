@@ -156,6 +156,10 @@ public class ClientService
         return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
     }
 
+    public Mono<List<ULong>> getManagingClientIds(ULong clientId) {
+        return this.clientHierarchyService.getManagingClientIds(clientId);
+    }
+
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()
@@ -246,6 +250,10 @@ public class ClientService
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
     @Override
     public Mono<Page<Client>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
+    public Mono<Page<Client>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
         return super.readPageFilter(pageable, condition);
     }
 
@@ -508,7 +516,7 @@ public class ClientService
             clientsMono = clientsMono.flatMap(cs -> this.dao.getOwnersPerClient(map, appCode, appId))
                     .flatMap(idsMap ->
                             Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
-                                    .distinct().flatMap(this.userService::readByIdWithCache)
+                                    .distinct().flatMap(this.userService::readInternal)
                                     .collectMap(User::getId)
                                     .map(userMap -> map.values().stream()
                                             .map(client -> idsMap.get(client.getId()) == null ? client : client.setOwners(idsMap.get(client.getId()).stream().map(userMap::get).toList())).toList())

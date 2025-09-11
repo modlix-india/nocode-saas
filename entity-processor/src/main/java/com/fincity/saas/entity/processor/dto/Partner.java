@@ -31,8 +31,8 @@ public class Partner extends BaseUpdatableDto<Partner> {
 
     public Partner() {
         super();
-        this.relationsResolverMap.put(ClientFieldResolver.class, Partner.Fields.clientId);
-        this.relationsResolverMap.put(UserFieldResolver.class, Partner.Fields.managerId);
+        this.relationsResolverMap.put(ClientFieldResolver.class, Fields.clientId);
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.managerId);
     }
 
     public Partner(Partner partner) {

@@ -3,6 +3,8 @@ package com.fincity.security.dao;
 import static com.fincity.security.jooq.tables.SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
 import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 
+import java.util.List;
+
 import com.fincity.saas.commons.exeception.GenericException;
 import org.jooq.Condition;
 import org.jooq.TableField;
@@ -15,6 +17,7 @@ import com.fincity.saas.commons.jooq.dao.AbstractDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.records.SecurityClientHierarchyRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -40,6 +43,15 @@ public class ClientHierarchyDAO extends AbstractDAO<SecurityClientHierarchyRecor
                                 .where(
                                         SECURITY_USER.ID.eq(userId)))
                 .map(e -> e.into(ClientHierarchy.class));
+    }
+
+    public Mono<List<ULong>> getManagingClientIds(ULong clientId) {
+        return Flux.from(
+                        this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
+                                .from(SECURITY_CLIENT_HIERARCHY)
+                                .where(getManageClientCondition(clientId)))
+                .map(e -> e.into(ULong.class))
+                .collectList();
     }
 
     public static Condition getManageClientCondition(ULong clientId) {

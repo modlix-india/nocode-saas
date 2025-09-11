@@ -4,11 +4,16 @@ import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +25,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -44,6 +50,12 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientHierarchy;
+import com.fincity.security.dto.Profile;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -54,7 +66,6 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RequestUpdatePassword;
-import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 
@@ -447,13 +458,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         Mono.defer(() -> this.forbiddenError(AbstractMessageService.OBJECT_NOT_FOUND, "User", id)));
     }
 
-    public Mono<UserResponse> readById(ULong userId) {
-        return this.readByIdWithCache(userId).flatMap(this::toUserResponse);
-    }
-
-    public Mono<User> readByIdWithCache(ULong userId) {
+    public Mono<User> readInternal(ULong userId) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_USER, () -> this.dao.readInternal(userId), userId);
     }
+
 
     public Mono<List<UserResponse>> readByIds(List<ULong> userIds) {
         return this.readAllFilter(new FilterCondition()
@@ -463,18 +471,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .flatMap(this::toUserResponse)
                 .collectList();
     }
+  
+    public Mono<User> readById(ULong userId, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readInternal(userId),
+                user -> this.fillDetails(List.of(user), queryParams).map(List::getFirst));
+    }
 
-    private Mono<UserResponse> toUserResponse(User user) {
-        return Mono.just(new UserResponse()
-                .setId(user.getId().toBigInteger())
-                .setClientId(user.getClientId().toBigInteger())
-                .setUserName(user.getUserName())
-                .setEmailId(user.getEmailId())
-                .setPhoneNumber(user.getPhoneNumber())
-                .setFirstName(user.getFirstName())
-                .setLastName(user.getLastName())
-                .setMiddleName(user.getMiddleName())
-                .setLocaleCode(user.getLocaleCode()));
+    public Mono<List<User>> readByIds(List<ULong> userIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                                .setField("id")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(userIds))
+                        .collectList(),
+                users -> this.fillDetails(users, queryParams));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
@@ -593,10 +604,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 })
                 .flatMap(this::update)
                 .flatMap(e -> this.evictCache(e.getId(), e.getClientId()).map(x -> 1));
-    }
-
-    public Mono<User> readInternal(ULong id) {
-        return this.dao.readInternal(id);
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_UPDATE') and hasAuthority('Authorities.Role_READ')")
@@ -1368,10 +1375,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .defaultIfEmpty(Map.of("emails", List.of(), "addApp", Boolean.FALSE));
     }
 
-    public Mono<List<User>> fetchDetails(List<User> users, ServerHttpRequest request) {
+    public Mono<List<User>> fillDetails(List<User> users, MultiValueMap<String, String> queryParams) {
 
-        String appCode = request.getQueryParams().getFirst("appCode");
-        String appId = request.getQueryParams().getFirst("appId");
+        String appCode = queryParams.getFirst("appCode");
+        String appId = queryParams.getFirst("appId");
 
         boolean fetchProfiles = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_PROFILES));
         boolean fetchClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_CLIENT));
@@ -1393,8 +1400,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     .map(user::setManagingClient));
 
         if (fetchCreatedBy)
-            userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
-                    .flatMap(user -> this.dao.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+            userFlux = userFlux.filter(user ->
+                            user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
+                    .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
         return userFlux.collectList();
     }

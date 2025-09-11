@@ -121,7 +121,7 @@ public abstract class AbstractCallProviderService<
 
     protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
         return this.securityService
-                .getUserInternal(userId.toBigInteger())
+                .getUserInternal(userId.toBigInteger(), null)
                 .map(userResponse -> IdAndValue.of(
                         ULongUtil.valueOf(userResponse.getId()), PhoneUtil.parse(userResponse.getPhoneNumber())));
     }
