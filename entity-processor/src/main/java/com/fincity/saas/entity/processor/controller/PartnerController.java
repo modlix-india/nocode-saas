@@ -49,6 +49,14 @@ public class PartnerController
         return this.service.toggleLoggedInPartnerDnc().map(ResponseEntity::ok);
     }
 
+    @PostMapping("/me/teammates")
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readLoggedInPartnerTeammates(
+            @RequestBody Query query, ServerHttpRequest request) {
+        return this.service
+                .readLoggedInPartnerTeammates(query, request.getQueryParams())
+                .map(ResponseEntity::ok);
+    }
+
     @PatchMapping(REQ_PATH_ID + "/verification-status")
     public Mono<ResponseEntity<Partner>> updateVerificationStatus(
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
@@ -65,5 +73,13 @@ public class PartnerController
     public Mono<ResponseEntity<Page<Map<String, Object>>>> createClient(
             @RequestBody Query query, ServerHttpRequest request) {
         return this.service.readPartnerClient(query, request.getQueryParams()).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/clients/teammates")
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPartnerTeammates(
+            @RequestParam("partnerId") Identity partnerId, @RequestBody Query query, ServerHttpRequest request) {
+        return this.service
+                .readPartnerTeammates(partnerId, query, request.getQueryParams())
+                .map(ResponseEntity::ok);
     }
 }

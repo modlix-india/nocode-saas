@@ -202,4 +202,8 @@ public interface IFeignSecurityService {
     @PostMapping(value = "${security.feign.readClientPageFilterInternal:/api/security/clients/internal/query}")
     Mono<Page<Client>> readClientPageFilterInternal(
             @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
+
+    @PostMapping(value = "${security.feign.readUserPageFilterInternal:/api/security/users/internal/query}")
+    Mono<Page<User>> readUserPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
 }

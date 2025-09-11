@@ -27,6 +27,7 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -280,6 +281,19 @@ public class UserController
                 .flatMap(page -> this.service
                         .fillDetails(page.getContent(), request.getQueryParams())
                         .thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<User>>> readPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service
+                .readPageFilterInternal(pageable, query.getCondition())
+                .flatMap(page ->
+                        this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
                 .map(ResponseEntity::ok);
     }
 }
