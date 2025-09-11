@@ -11,7 +11,7 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class UserResponse implements Serializable, IClassConvertor {
+public class User implements Serializable, IClassConvertor {
 
     @Serial
     private static final long serialVersionUID = 5600650589811219972L;

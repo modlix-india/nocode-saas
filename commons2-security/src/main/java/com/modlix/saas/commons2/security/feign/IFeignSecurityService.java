@@ -1,11 +1,13 @@
 package com.modlix.saas.commons2.security.feign;
 
+import com.modlix.saas.commons2.model.Query;
 import com.modlix.saas.commons2.security.dto.App;
 import com.modlix.saas.commons2.security.dto.Client;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
-import com.modlix.saas.commons2.security.model.UserResponse;
+import com.modlix.saas.commons2.security.model.User;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,6 +53,9 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
     List<BigInteger> getClientHierarchy(@RequestParam BigInteger clientId);
 
+    @GetMapping("${security.feign.getManagingClientIds:/api/security/clients/internal/managingClientIds}")
+    List<BigInteger> getManagingClientIds(@RequestParam BigInteger clientId);
+
     @GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
     Boolean hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
 
@@ -62,7 +67,8 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.hasWriteAccess:/api/security/applications/internal/appInheritance}")
     List<String> appInheritance(
-            @RequestParam String appCode, @RequestParam String urlClientCode, @RequestParam String clientCode);
+            @RequestParam String appCode, @RequestParam String urlClientCode,
+            @RequestParam String clientCode);
 
     @GetMapping("${security.feign.token:/api/security/ssl/token/{token}}")
     String token(@PathVariable("token") String token);
@@ -161,10 +167,11 @@ public interface IFeignSecurityService {
             @RequestHeader("X-Real-IP") String ipAddress);
 
     @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal/{id}}")
-    UserResponse getUserInternal(@PathVariable("id") BigInteger id);
+    User getUserInternal(@PathVariable("id") BigInteger id);
 
     @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal}")
-    List<UserResponse> getUserInternal(@RequestParam List<BigInteger> userIds);
+    List<User> getUserInternal(@RequestParam List<BigInteger> userIds,
+            @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal/{id}}")
     Map<String, Object> getClientInternal(
@@ -180,10 +187,15 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getUserSubOrgInternal:/api/security/users/internal/{userId}/sub-org}")
     List<BigInteger> getUserSubOrgInternal(
-            @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
+            @PathVariable BigInteger userId, @RequestParam String appCode,
+            @RequestParam BigInteger clientId);
 
     @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
     Map<String, Object> getUserAdminEmailsInternal(
             @RequestHeader(name = "clientCode") String clientCode,
             @RequestHeader(name = "appCode") String headerAppCode);
+
+    @PostMapping(value = "${security.feign.readClientPageFilterInternal:/api/security/clients/internal/query}")
+    Page<Client> readClientPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
 }

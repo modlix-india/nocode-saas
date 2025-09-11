@@ -3,10 +3,12 @@ package com.modlix.saas.commons2.security.dto;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+import com.modlix.saas.commons2.util.IClassConvertor;
+
 import lombok.Data;
 
 @Data
-public class Client implements Serializable {
+public class Client implements Serializable, IClassConvertor {
 
     private BigInteger id;
     private BigInteger createdBy;
