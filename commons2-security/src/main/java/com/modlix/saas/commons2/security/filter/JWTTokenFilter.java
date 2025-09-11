@@ -1,7 +1,17 @@
 package com.modlix.saas.commons2.security.filter;
 
 import java.io.IOException;
-import java.util.List;
+
+import org.slf4j.MDC;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.service.IAuthenticationService;
+import com.modlix.saas.commons2.security.util.LogUtil;
+import com.modlix.saas.commons2.security.util.ServerHttpRequestUtil;
+import com.modlix.saas.commons2.util.Tuples;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -9,19 +19,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
-import com.modlix.saas.commons2.security.service.IAuthenticationService;
-import com.modlix.saas.commons2.security.util.ServerHttpRequestUtil;
-import com.modlix.saas.commons2.security.util.LogUtil;
-
 import lombok.RequiredArgsConstructor;
-import com.modlix.saas.commons2.util.Tuples;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
 
 @RequiredArgsConstructor
 public class JWTTokenFilter implements Filter {
@@ -45,17 +43,27 @@ public class JWTTokenFilter implements Filter {
         final String ac = appCode == null || appCode.isEmpty() ? null : appCode;
 
         final String debugCode = httpRequest.getHeader(LogUtil.DEBUG_KEY);
-
-        Authentication auth = this.authService.getAuthentication(isBasic, bearerToken, cc, ac, httpRequest);
-
-        if (auth != null) {
-            ContextAuthentication newCA = mapper.convertValue(auth, ContextAuthentication.class)
-                    .setUrlAppCode(ac)
-                    .setUrlClientCode(cc);
-
-            SecurityContextHolder.getContext().setAuthentication(newCA);
+        if (debugCode != null) {
+            MDC.put(LogUtil.DEBUG_KEY, debugCode);
         }
 
-        chain.doFilter(request, response);
+        try {
+            Authentication auth = this.authService.getAuthentication(isBasic, bearerToken, cc, ac, httpRequest);
+
+            if (auth != null) {
+                ContextAuthentication newCA = mapper.convertValue(auth, ContextAuthentication.class)
+                        .setUrlAppCode(ac)
+                        .setUrlClientCode(cc);
+
+                SecurityContextHolder.getContext().setAuthentication(newCA);
+            }
+
+            chain.doFilter(request, response);
+        } finally {
+            // Clean up MDC to prevent memory leaks and data bleeding
+            if (debugCode != null) {
+                MDC.remove(LogUtil.DEBUG_KEY);
+            }
+        }
     }
 }
