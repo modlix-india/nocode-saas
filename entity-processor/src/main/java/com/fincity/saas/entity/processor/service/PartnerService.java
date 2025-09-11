@@ -137,9 +137,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     public Mono<Partner> getLoggedInPartner() {
-        return this.hasAccess()
-                .flatMap(access -> this.getPartnerByClientId(
-                        access, ULongUtil.valueOf(access.getUser().getClientId())));
+        return this.hasAccess().flatMap(this::getLoggedInPartner);
+    }
+
+    private Mono<Partner> getLoggedInPartner(ProcessorAccess access) {
+        return this.getPartnerByClientId(
+                access, ULongUtil.valueOf(access.getUser().getClientId()));
     }
 
     public Mono<Partner> updateLoggedInPartnerVerificationStatus(PartnerVerificationStatus status) {
@@ -210,6 +213,17 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.readIdentityWithAccess(access, partnerId),
+                (access, partner) -> this.addClientIds(partner, query.getCondition()),
+                (access, partner, pCondition) -> super.securityService
+                        .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
+                        .map(page -> page.map(IClassConvertor::toMap)));
+    }
+
+    public Mono<Page<Map<String, Object>>> readLoggedInPartnerTeammates(
+            Query query, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                this::getLoggedInPartner,
                 (access, partner) -> this.addClientIds(partner, query.getCondition()),
                 (access, partner, pCondition) -> super.securityService
                         .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
