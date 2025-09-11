@@ -6,8 +6,9 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.security.dto.App;
 import com.fincity.security.dto.User;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -56,18 +58,15 @@ import reactor.util.function.Tuple3;
 public class ClientService
         extends AbstractSecurityUpdatableDataService<SecurityClientRecord, ULong, Client, ClientDAO> {
 
+    public static final String CACHE_CLIENT_URL_LIST = "list";
+    public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
+    public static final String CACHE_NAME_CLIENT_URI = "uri";
+    public static final String CC = "clientCode";
     private static final String FETCH_USER_COUNT = "fetchUserCounts";
     private static final String FETCH_OWNERS = "fetchOwners";
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
     private static final String FETCH_APPS = "fetchApps";
     private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
-
-
-    public static final String CACHE_CLIENT_URL_LIST = "list";
-    public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
-    public static final String CACHE_NAME_CLIENT_URI = "uri";
-    public static final String CC = "clientCode";
-
     private static final String CACHE_NAME_CLIENT_TYPE_CODE_LEVEL = "clientTypeCodeLevel";
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
@@ -155,6 +154,10 @@ public class ClientService
 
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
         return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
+    }
+
+    public Mono<List<ULong>> getManagingClientIds(ULong clientId) {
+        return this.clientHierarchyService.getManagingClientIds(clientId);
     }
 
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
@@ -247,6 +250,10 @@ public class ClientService
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
     @Override
     public Mono<Page<Client>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
+    public Mono<Page<Client>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
         return super.readPageFilter(pageable, condition);
     }
 
@@ -454,22 +461,34 @@ public class ClientService
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
     }
 
-//    private static final String FETCH_USER_COUNT = "fetchUserCounts";
-//    private static final String FETCH_OWNERS = "fetchOwners";
-//    private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
-//    private static final String FETCH_APPS = "fetchApps";
-//    private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
+    public Mono<Client> readById(ULong clientId, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readInternal(clientId),
+                client -> this.fillDetails(List.of(client), queryParams).map(List::getFirst)
+        );
+    }
 
-    public Mono<List<Client>> fillDetails(List<Client> clients, ServerHttpRequest request) {
+    public Mono<List<Client>> readByIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                                .setField("id")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))
+                        .collectList(),
+                clients -> this.fillDetails(clients, queryParams)
+        );
+    }
 
-        String appCode = request.getQueryParams().getFirst("appCode");
-        String appId = request.getQueryParams().getFirst("appId");
+    public Mono<List<Client>> fillDetails(List<Client> clients, MultiValueMap<String, String> queryParams) {
 
-        boolean fetchUserCounts = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_USER_COUNT));
-        boolean fetchOwners = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_OWNERS));
-        boolean fetchManagingClient = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_MANAGING_CLIENT));
-        boolean fetchApps = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_APPS));
-        boolean fetchCreatedByUser = BooleanUtil.safeValueOf(request.getQueryParams().getFirst(FETCH_CREATED_BY_USER));
+        String appCode = queryParams.getFirst("appCode");
+        String appId = queryParams.getFirst("appId");
+
+        boolean fetchUserCounts = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_COUNT));
+        boolean fetchOwners = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_OWNERS));
+        boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
+        boolean fetchApps = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_APPS));
+        boolean fetchCreatedByUser = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY_USER));
 
         Map<ULong, Client> map = clients.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
 
@@ -492,18 +511,21 @@ public class ClientService
 
         if (fetchUserCounts)
             clientsMono = clientsMono.flatMap(c -> this.dao.fillUserCounts(map, appCode, appId));
-        ;
 
         if (fetchOwners)
             clientsMono = clientsMono.flatMap(cs -> this.dao.getOwnersPerClient(map, appCode, appId))
                     .flatMap(idsMap ->
                             Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
-                                    .distinct().flatMap(this.userService::readByIdWithCache)
+                                    .distinct().flatMap(this.userService::readInternal)
                                     .collectMap(User::getId)
                                     .map(userMap -> map.values().stream()
                                             .map(client -> idsMap.get(client.getId()) == null ? client : client.setOwners(idsMap.get(client.getId()).stream().map(userMap::get).toList())).toList())
                     );
 
         return clientsMono;
+    }
+
+    public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {
+        return this.dao.readClientURLs(clientCode, urlIds);
     }
 }

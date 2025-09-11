@@ -15,6 +15,8 @@ import com.fincity.saas.message.model.base.BaseResponse;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.service.MessageResourceService;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -24,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -146,6 +149,26 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByCode(access, code));
     }
 
+    public Mono<Map<String, Object>> readEager(
+            ULong id, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.readByIdAndAppCodeAndClientCodeEager(id, access, tableFields, queryParams));
+    }
+
+    public Mono<Map<String, Object>> readEager(
+            String code, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.hasAccess()
+                .flatMap(access ->
+                        this.dao.readByCodeAndAppCodeAndClientCodeEager(code, access, tableFields, queryParams));
+    }
+
+    public Mono<Map<String, Object>> readEager(
+            Identity identity, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.hasAccess()
+                .flatMap(access -> this.dao.readByIdentityAndAppCodeAndClientCodeEager(
+                        identity, access, tableFields, queryParams));
+    }
+
     public Mono<D> readById(ULong id) {
         return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
     }
@@ -174,6 +197,18 @@ public abstract class BaseUpdatableService<
                 this::hasAccess,
                 access -> this.dao.messageAccessCondition(condition, access),
                 (access, pCondition) -> super.readPageFilter(pageable, pCondition));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> tableFields,
+            MultiValueMap<String, String> queryParams) {
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.dao.messageAccessCondition(condition, access),
+                (access, pCondition) -> this.dao.readPageFilterEager(pageable, pCondition, tableFields, queryParams));
     }
 
     @Override

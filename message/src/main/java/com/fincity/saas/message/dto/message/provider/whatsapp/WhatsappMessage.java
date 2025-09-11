@@ -1,5 +1,6 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
+import com.fincity.saas.commons.enums.StringEncoder;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
@@ -12,7 +13,9 @@ import com.fincity.saas.message.model.message.whatsapp.webhook.IMetadata;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.io.Serial;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -63,6 +66,32 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         super();
     }
 
+    public WhatsappMessage(WhatsappMessage whatsappMessage) {
+        super(whatsappMessage);
+        this.whatsappBusinessAccountId = whatsappMessage.whatsappBusinessAccountId;
+        this.messageId = whatsappMessage.messageId;
+        this.whatsappPhoneNumberId = whatsappMessage.whatsappPhoneNumberId;
+        this.fromDialCode = whatsappMessage.fromDialCode;
+        this.from = whatsappMessage.from;
+        this.toDialCode = whatsappMessage.toDialCode;
+        this.to = whatsappMessage.to;
+        this.customerDialCode = whatsappMessage.customerDialCode;
+        this.customerPhoneNumber = whatsappMessage.customerPhoneNumber;
+        this.customerWaId = whatsappMessage.customerWaId;
+        this.messageType = whatsappMessage.messageType;
+        this.messageStatus = whatsappMessage.messageStatus;
+        this.sentTime = whatsappMessage.sentTime;
+        this.deliveredTime = whatsappMessage.deliveredTime;
+        this.readTime = whatsappMessage.readTime;
+        this.failedTime = whatsappMessage.failedTime;
+        this.failureReason = whatsappMessage.failureReason;
+        this.isOutbound = whatsappMessage.isOutbound;
+        this.message = whatsappMessage.message;
+        this.inMessage = whatsappMessage.inMessage;
+        this.messageResponse = whatsappMessage.messageResponse;
+        this.mediaFileDetail = whatsappMessage.mediaFileDetail;
+    }
+
     public static WhatsappMessage ofOutbound(Message message, PhoneNumber from, FileDetail fileDetail) {
 
         PhoneNumber to = PhoneNumber.of(message.getTo());
@@ -105,7 +134,11 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setCustomerWaId(contact.getWaId())
                 .setMessageType(message.getType())
                 .setMessageStatus(MessageStatus.DELIVERED)
-                .setDeliveredTime(message.getTimestampAsDate())
+                .setDeliveredTime(
+                        message.getTimestamp() != null
+                                ? LocalDateTime.ofInstant(
+                                        Instant.ofEpochSecond(Long.parseLong(message.getTimestamp())), ZoneOffset.UTC)
+                                : LocalDateTime.now())
                 .setOutbound(Boolean.FALSE)
                 .setInMessage(message);
     }
@@ -118,5 +151,11 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
         this.setMessageResponse(response);
 
         return this;
+    }
+
+    public String getBase64CustomerPhoneNumber() {
+        return this.getCustomerPhoneNumber() != null
+                ? StringEncoder.BASE64.encode(this.getCustomerPhoneNumber().getBytes(), true, false)
+                : null;
     }
 }

@@ -25,7 +25,7 @@ public class ProductController
     }
 
     @PostMapping("/for-partner")
-    public Mono<ResponseEntity<Integer>> updateForPartner(@RequestBody ProductPartnerUpdateRequest request) {
+    public Mono<ResponseEntity<Long>> updateForPartner(@RequestBody ProductPartnerUpdateRequest request) {
         return this.service.updateForPartner(request).map(ResponseEntity::ok);
     }
 }

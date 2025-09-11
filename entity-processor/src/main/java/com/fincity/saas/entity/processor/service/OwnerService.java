@@ -119,13 +119,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                                 ? ownerRequest.getEmail().getAddress()
                                 : null)
                 .flatMap(existing -> {
-                    if (existing.getId() != null)
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                this.getEntityPrefix(access.getAppCode()),
-                                existing.getId(),
-                                this.getEntityPrefix(access.getAppCode()));
+                    if (existing.getId() != null) return super.throwDuplicateError(access, existing);
 
                     return Mono.just(Boolean.FALSE);
                 })

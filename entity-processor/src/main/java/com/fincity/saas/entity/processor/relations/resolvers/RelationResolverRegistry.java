@@ -9,6 +9,7 @@ import org.apache.commons.collections4.SetValuedMap;
 import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -68,11 +69,13 @@ public class RelationResolverRegistry {
     }
 
     public Mono<Map<ULong, Map<String, Object>>> resolveBatch(
-            Class<? extends RelationResolver> relationResolver, Set<ULong> idsToResolve, List<String> eagerFields) {
+            Class<? extends RelationResolver> relationResolver,
+            Set<ULong> idsToResolve,
+            MultiValueMap<String, String> queryParams) {
         RelationResolver resolver = resolverClassMap.get(relationResolver);
         if (resolver == null) return Mono.empty();
 
-        return resolver.resolveBatch(idsToResolve, eagerFields);
+        return resolver.resolveBatch(idsToResolve, queryParams);
     }
 
     public RelationResolver getResolverForField(String field) {

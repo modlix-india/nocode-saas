@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductPartnerUpdateRequest;
@@ -73,6 +74,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .flatMap(existing -> {
                     existing.setForPartner(entity.getForPartner());
                     existing.setProductTemplateId(entity.getProductTemplateId());
+                    existing.setLogoFileDetail(entity.getLogoFileDetail());
+                    existing.setBannerFileDetail(entity.getBannerFileDetail());
 
                     return Mono.just(existing);
                 })
@@ -104,20 +107,23 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
-    public Mono<Integer> updateForPartner(ProductPartnerUpdateRequest request) {
-        return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> Flux.fromIterable(
-                                        request.getProductIds() == null ? List.of() : request.getProductIds())
-                                .flatMap(identity -> this.readIdentityWithAccess(access, identity))
-                                .collectList(),
-                        (access, products) -> Flux.fromIterable(products)
-                                .flatMap(product -> {
-                                    product.setForPartner(request.getForPartner());
-                                    return this.updateInternal(product);
-                                })
-                                .collectList()
-                                .map(List::size))
+    public Mono<Long> updateForPartner(ProductPartnerUpdateRequest request) {
+        if (request.getProductPartnerActive() == null
+                || request.getProductPartnerActive().isEmpty())
+            return Mono.just(0L).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
+
+        return this.hasAccess()
+                .flatMap(access -> {
+                    List<IdAndValue<Identity, Boolean>> entries = request.getProductPartnerActive();
+
+                    return Flux.fromIterable(entries)
+                            .flatMap(entry -> this.readIdentityWithAccess(access, entry.getId())
+                                    .map(product -> product.setForPartner(entry.getValue())))
+                            .collectList()
+                            .flatMapMany(validatedProducts ->
+                                    Flux.fromIterable(validatedProducts).flatMap(this::updateInternal))
+                            .count();
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
     }
 }

@@ -19,6 +19,9 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
+import com.fincity.security.jooq.tables.SecurityAppSsoBundle;
+import com.fincity.security.jooq.tables.SecurityAppSsoToken;
+import com.fincity.security.jooq.tables.SecurityBundledApp;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
@@ -148,6 +151,21 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_app_reg_user_role_v2</code>.
      */
     public final SecurityAppRegUserRoleV2 SECURITY_APP_REG_USER_ROLE_V2 = SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2;
+
+    /**
+     * The table <code>security.security_app_sso_bundle</code>.
+     */
+    public final SecurityAppSsoBundle SECURITY_APP_SSO_BUNDLE = SecurityAppSsoBundle.SECURITY_APP_SSO_BUNDLE;
+
+    /**
+     * The table <code>security.security_app_sso_token</code>.
+     */
+    public final SecurityAppSsoToken SECURITY_APP_SSO_TOKEN = SecurityAppSsoToken.SECURITY_APP_SSO_TOKEN;
+
+    /**
+     * The table <code>security.security_bundled_app</code>.
+     */
+    public final SecurityBundledApp SECURITY_BUNDLED_APP = SecurityBundledApp.SECURITY_BUNDLED_APP;
 
     /**
      * The table <code>security.security_client</code>.
@@ -340,6 +358,9 @@ public class Security extends SchemaImpl {
             SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION,
             SecurityAppRegUserProfile.SECURITY_APP_REG_USER_PROFILE,
             SecurityAppRegUserRoleV2.SECURITY_APP_REG_USER_ROLE_V2,
+            SecurityAppSsoBundle.SECURITY_APP_SSO_BUNDLE,
+            SecurityAppSsoToken.SECURITY_APP_SSO_TOKEN,
+            SecurityBundledApp.SECURITY_BUNDLED_APP,
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,

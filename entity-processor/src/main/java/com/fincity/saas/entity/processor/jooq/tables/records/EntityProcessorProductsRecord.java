@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 
@@ -173,11 +174,49 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public EntityProcessorProductsRecord setLogoFileDetail(FileDetail value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public FileDetail getLogoFileDetail() {
+        return (FileDetail) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public EntityProcessorProductsRecord setBannerFileDetail(FileDetail value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public FileDetail getBannerFileDetail() {
+        return (FileDetail) get(9);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
     public EntityProcessorProductsRecord setTempActive(Byte value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -187,7 +226,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(8);
+        return (Byte) get(10);
     }
 
     /**
@@ -196,7 +235,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public EntityProcessorProductsRecord setIsActive(Byte value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -206,7 +245,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * to check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(9);
+        return (Byte) get(11);
     }
 
     /**
@@ -215,7 +254,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * client who created this product.
      */
     public EntityProcessorProductsRecord setClientId(ULong value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -225,26 +264,26 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * client who created this product.
      */
     public ULong getClientId() {
-        return (ULong) get(10);
+        return (ULong) get(12);
     }
 
     /**
      * Setter for
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
+     * to tell whether Partner has access to this product or not.
      */
     public EntityProcessorProductsRecord setForPartner(Byte value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
     /**
      * Getter for
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
+     * to tell whether Partner has access to this product or not.
      */
     public Byte getForPartner() {
-        return (Byte) get(11);
+        return (Byte) get(13);
     }
 
     /**
@@ -253,7 +292,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorProductsRecord setCreatedBy(ULong value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -263,7 +302,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(14);
     }
 
     /**
@@ -272,7 +311,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -282,7 +321,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -291,7 +330,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -301,7 +340,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(14);
+        return (ULong) get(16);
     }
 
     /**
@@ -310,7 +349,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -320,7 +359,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -346,7 +385,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, Byte tempActive, Byte isActive, ULong clientId, Byte forPartner, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Byte tempActive, Byte isActive, ULong clientId, Byte forPartner, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -357,6 +396,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setDescription(description);
         setVersion(version);
         setProductTemplateId(productTemplateId);
+        setLogoFileDetail(logoFileDetail);
+        setBannerFileDetail(bannerFileDetail);
         setTempActive(tempActive);
         setIsActive(isActive);
         setClientId(clientId);

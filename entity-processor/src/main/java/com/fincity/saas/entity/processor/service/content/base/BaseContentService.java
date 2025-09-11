@@ -240,7 +240,7 @@ public abstract class BaseContentService<
 
         return FlatMapUtil.flatMapMono(
                         () -> this.securityService.getUserInternal(
-                                content.getUserId().toBigInteger()),
+                                content.getUserId().toBigInteger(), null),
                         user -> {
                             content.setUserId(ULongUtil.valueOf(user.getId()));
                             content.setClientId(ULongUtil.valueOf(user.getClientId()));

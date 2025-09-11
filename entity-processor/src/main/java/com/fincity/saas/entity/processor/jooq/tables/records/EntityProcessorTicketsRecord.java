@@ -335,12 +335,29 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     }
 
     /**
+     * Setter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public EntityProcessorTicketsRecord setDnc(Byte value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public Byte getDnc() {
+        return (Byte) get(17);
+    }
+
+    /**
      * Setter for
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
     public EntityProcessorTicketsRecord setTempActive(Byte value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -350,7 +367,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Temporary active flag for this product.
      */
     public Byte getTempActive() {
-        return (Byte) get(17);
+        return (Byte) get(18);
     }
 
     /**
@@ -359,7 +376,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public EntityProcessorTicketsRecord setIsActive(Byte value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -369,7 +386,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * check if this product is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(18);
+        return (Byte) get(19);
     }
 
     /**
@@ -378,7 +395,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public EntityProcessorTicketsRecord setClientId(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -388,7 +405,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * client who created this ticket.
      */
     public ULong getClientId() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -397,7 +414,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -407,7 +424,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(20);
+        return (ULong) get(21);
     }
 
     /**
@@ -416,7 +433,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -426,7 +443,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(21);
+        return (LocalDateTime) get(22);
     }
 
     /**
@@ -435,7 +452,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -445,7 +462,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(22);
+        return (ULong) get(23);
     }
 
     /**
@@ -454,7 +471,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(23, value);
+        set(24, value);
         return this;
     }
 
@@ -464,7 +481,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(23);
+        return (LocalDateTime) get(24);
     }
 
     // -------------------------------------------------------------------------
@@ -490,7 +507,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, Byte dnc, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -510,6 +527,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setStatus(status);
         setSource(source);
         setSubSource(subSource);
+        setDnc(dnc);
         setTempActive(tempActive);
         setIsActive(isActive);
         setClientId(clientId);

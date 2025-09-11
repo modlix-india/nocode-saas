@@ -25,6 +25,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
     }
 
+    public Flux<Ticket> getAllClientTicketsByDnc(ULong clientId, Boolean dnc) {
+        return Flux.from(dslContext
+                        .selectFrom(table)
+                        .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.eq((byte) (Boolean.TRUE.equals(dnc) ? 1 : 0))))
+                .map(rec -> rec.into(this.pojoClass));
+    }
+
     public Flux<Ticket> getAllOwnerTickets(ULong ownerId) {
         return Flux.from(dslContext.selectFrom(table).where(ENTITY_PROCESSOR_TICKETS.OWNER_ID.eq(ownerId)))
                 .map(rec -> rec.into(this.pojoClass));
@@ -46,9 +54,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         List<Condition> conditions = new ArrayList<>();
 
         conditions.add(this.appCodeField.eq(access.getAppCode()));
-        conditions.add(this.clientCodeField.eq(access.getClientCode()));
-
-        if (access.isOutsideUser()) conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
+        conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 

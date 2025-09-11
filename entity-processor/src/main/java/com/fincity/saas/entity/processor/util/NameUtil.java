@@ -48,4 +48,9 @@ public class NameUtil {
                 .filter(NameUtil::safeIsNotBlank)
                 .collect(Collectors.joining(" "));
     }
+
+    public static String decapitalize(String str) {
+        if (str == null || str.isEmpty()) return str;
+        return str.substring(0, 1).toLowerCase(Locale.ROOT) + str.substring(1);
+    }
 }
