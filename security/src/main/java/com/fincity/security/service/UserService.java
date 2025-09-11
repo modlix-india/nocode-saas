@@ -484,6 +484,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return super.readPageFilter(pageable, condition);
     }
 
+    public Mono<Page<User>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
     @Override
     public Mono<User> update(ULong key, Map<String, Object> fields) {
 
