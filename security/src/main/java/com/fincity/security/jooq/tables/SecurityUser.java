@@ -8,6 +8,7 @@ import com.fincity.security.jooq.Indexes;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.SecurityAppSsoToken.SecurityAppSsoTokenPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken.SecurityOneTimeTokenPath;
@@ -378,6 +379,19 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
             _securityUser = new SecurityUserPath(this, Keys.FK2_USER_REPORTING_TO_ID, null);
 
         return _securityUser;
+    }
+
+    private transient SecurityAppSsoTokenPath _securityAppSsoToken;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_app_sso_token</code> table
+     */
+    public SecurityAppSsoTokenPath securityAppSsoToken() {
+        if (_securityAppSsoToken == null)
+            _securityAppSsoToken = new SecurityAppSsoTokenPath(this, null, Keys.FK1_APP_SSO_TOKEN_USER_ID.getInverseKey());
+
+        return _securityAppSsoToken;
     }
 
     private transient SecurityPastPasswordsPath _securityPastPasswords;

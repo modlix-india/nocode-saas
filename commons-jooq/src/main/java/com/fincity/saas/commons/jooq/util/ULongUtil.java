@@ -6,6 +6,9 @@ import org.jooq.types.ULong;
 
 public class ULongUtil {
 
+    private ULongUtil() {
+    }
+
     public static ULong valueOf(Object o) {
 
         if (o == null)
@@ -23,6 +26,20 @@ public class ULongUtil {
         return ULong.valueOf(o.toString());
     }
 
-    private ULongUtil() {
+    public static ULong valueOfDouble(Object o) {
+
+        if (o == null)
+            return null;
+
+        if (o instanceof ULong v)
+            return v;
+
+        if (o instanceof Double n)
+            return ULong.valueOf(n.longValue());
+
+        if (o instanceof Float n)
+            return ULong.valueOf(n.longValue());
+
+        return ULong.valueOf(o.toString().split("\\.")[0]);
     }
 }

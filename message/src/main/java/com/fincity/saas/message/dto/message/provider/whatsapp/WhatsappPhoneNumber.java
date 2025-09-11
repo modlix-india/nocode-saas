@@ -31,6 +31,24 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private Throughput throughput;
     private Boolean isDefault = Boolean.FALSE;
 
+    public WhatsappPhoneNumber() {
+        super();
+    }
+
+    public WhatsappPhoneNumber(WhatsappPhoneNumber whatsappPhoneNumber) {
+        super(whatsappPhoneNumber);
+        this.whatsappBusinessAccountId = whatsappPhoneNumber.whatsappBusinessAccountId;
+        this.displayPhoneNumber = whatsappPhoneNumber.displayPhoneNumber;
+        this.qualityRating = whatsappPhoneNumber.qualityRating;
+        this.verifiedName = whatsappPhoneNumber.verifiedName;
+        this.phoneNumberId = whatsappPhoneNumber.phoneNumberId;
+        this.codeVerificationStatus = whatsappPhoneNumber.codeVerificationStatus;
+        this.nameStatus = whatsappPhoneNumber.nameStatus;
+        this.platformType = whatsappPhoneNumber.platformType;
+        this.throughput = whatsappPhoneNumber.throughput;
+        this.isDefault = whatsappPhoneNumber.isDefault;
+    }
+
     public static WhatsappPhoneNumber of(String whatsappBusinessAccountId, PhoneNumber phoneNumber) {
         return new WhatsappPhoneNumber()
                 .setWhatsappBusinessAccountId(whatsappBusinessAccountId)

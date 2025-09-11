@@ -146,6 +146,10 @@ public abstract class AbstractFilesResourceService {
         this.uriPartImport = GENERIC_URI_PART + type + GENERIC_URI_PART_IMPORT;
     }
 
+    protected Mono<Boolean> subClientListAccess(String resourcePath, String clientCode) {
+        return Mono.just(false);
+    }
+
     public Mono<Page<FileDetail>> list(String clientCode, String uri, FileType[] fileType, String filter,
                                        Pageable page) {
 
@@ -155,7 +159,8 @@ public abstract class AbstractFilesResourceService {
         return FlatMapUtil.flatMapMono(
 
                         () -> this.fileAccessService.hasReadAccess(resourcePath, clientCode,
-                                FilesAccessPathResourceType.valueOf(this.getResourceType())),
+                                        FilesAccessPathResourceType.valueOf(this.getResourceType()))
+                                .flatMap(hasAccess -> hasAccess ? Mono.just(true) : this.subClientListAccess(resourcePath, clientCode)),
 
                         hasPermission -> {
 

@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
@@ -11,6 +12,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStage
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -22,6 +24,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -120,6 +123,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> LOGO_FILE_DETAIL = createField(DSL.name("LOGO_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a logo file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> BANNER_FILE_DETAIL = createField(DSL.name("BANNER_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a banner file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
@@ -142,9 +159,9 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     /**
      * The column
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
-     * to tell weather Partner has access to this product or not.
+     * to tell whether Partner has access to this product or not.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather Partner has access to this product or not.");
+    public final TableField<EntityProcessorProductsRecord, Byte> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell whether Partner has access to this product or not.");
 
     /**
      * The column

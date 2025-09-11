@@ -180,6 +180,12 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this ticket.");
 
     /**
+     * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Byte> DNC = createField(DSL.name("DNC"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Do Not Call flag for this ticket.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
