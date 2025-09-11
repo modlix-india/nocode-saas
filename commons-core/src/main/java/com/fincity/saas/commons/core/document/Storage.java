@@ -9,10 +9,12 @@ import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -128,7 +130,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Mono<Storage> makeOverride(Storage base) {
+    public Mono<Storage> extractDifference(Storage base) {
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
