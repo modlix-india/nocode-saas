@@ -1,9 +1,10 @@
-package com.fincity.saas.commons.core.model.notification;
+package com.fincity.saas.commons.core.model;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
