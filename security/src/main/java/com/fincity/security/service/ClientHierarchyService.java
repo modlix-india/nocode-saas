@@ -74,6 +74,10 @@ public class ClientHierarchyService
                         SecurityMessageResourceService.FORBIDDEN_CREATE, "ClientHierarchy"));
     }
 
+    public Mono<List<ULong>> getManagingClientIds(ULong clientId) {
+        return this.dao.getManagingClientIds(clientId);
+    }
+
     public Mono<ClientHierarchy> getClientHierarchy(ULong clientId) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_HIERARCHY,
                 () -> this.dao.getClientHierarchy(clientId), clientId);
