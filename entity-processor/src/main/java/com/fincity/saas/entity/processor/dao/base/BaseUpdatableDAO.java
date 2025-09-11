@@ -146,11 +146,11 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         if (access.isOutsideUser())
             return ComplexCondition.or(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
-                            .setOperator(FilterConditionOperator.IN),
+                            .setOperator(FilterConditionOperator.EQUALS),
                     FilterCondition.make(
                                     AbstractFlowUpdatableDTO.Fields.clientCode,
                                     access.getUserInherit().getManagedClientCode())
-                            .setOperator(FilterConditionOperator.IN));
+                            .setOperator(FilterConditionOperator.EQUALS));
 
         return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode());
     }

@@ -9,8 +9,10 @@ import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -30,5 +32,20 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                 (pCondition, jCondition) -> Mono.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass)));
+    }
+
+    public Mono<List<Partner>> getPartnerByClientIds(ProcessorAccess access, List<ULong> clientIds) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        new FilterCondition()
+                                .setField(Partner.Fields.clientId)
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds),
+                        access),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(this.pojoClass))
+                        .collectList());
     }
 }
