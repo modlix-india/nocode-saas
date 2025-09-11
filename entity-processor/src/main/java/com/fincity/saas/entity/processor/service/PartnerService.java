@@ -205,6 +205,17 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         .thenReturn(clientPage));
     }
 
+    public Mono<Page<Map<String, Object>>> readPartnerTeammates(
+            Identity partnerId, Query query, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.readIdentityWithAccess(access, partnerId),
+                (access, partner) -> this.addClientIds(partner, query.getCondition()),
+                (access, partner, pCondition) -> super.securityService
+                        .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
+                        .map(page -> page.map(IClassConvertor::toMap)));
+    }
+
     private Mono<List<Map<String, Object>>> fillDetails(
             ProcessorAccess access, List<Map<String, Object>> clients, MultiValueMap<String, String> queryParams) {
 
@@ -245,6 +256,18 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return query.setCondition(ComplexCondition.and(query.getCondition(), condition));
     }
 
+    public Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
+
+        if (condition == null || condition.isEmpty())
+            return Mono.just(FilterCondition.make(AbstractDTO.Fields.id, partner.getClientId())
+                    .setMatchOperator(FilterConditionOperator.EQUALS));
+
+        return Mono.just(ComplexCondition.and(
+                condition,
+                FilterCondition.make(AbstractDTO.Fields.id, partner.getClientId())
+                        .setMatchOperator(FilterConditionOperator.EQUALS)));
+    }
+
     public Mono<AbstractCondition> addManagingClientIds(ProcessorAccess access, AbstractCondition condition) {
 
         return FlatMapUtil.flatMapMono(
@@ -258,6 +281,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                 .setField(AbstractDTO.Fields.id)
                                 .setOperator(FilterConditionOperator.IN)
                                 .setMultiValue(clientIds));
+
                     return Mono.just(ComplexCondition.and(
                             condition,
                             new FilterCondition()

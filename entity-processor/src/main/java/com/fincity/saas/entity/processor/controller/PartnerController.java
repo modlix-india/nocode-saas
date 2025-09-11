@@ -1,15 +1,7 @@
 package com.fincity.saas.entity.processor.controller;
 
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
-import com.fincity.saas.entity.processor.dao.PartnerDAO;
-import com.fincity.saas.entity.processor.dto.Partner;
-import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
-import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.model.request.PartnerRequest;
-import com.fincity.saas.entity.processor.service.PartnerService;
 import java.util.Map;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -21,6 +13,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
+import com.fincity.saas.entity.processor.dao.PartnerDAO;
+import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.PartnerRequest;
+import com.fincity.saas.entity.processor.service.PartnerService;
+
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -65,5 +68,11 @@ public class PartnerController
     public Mono<ResponseEntity<Page<Map<String, Object>>>> createClient(
             @RequestBody Query query, ServerHttpRequest request) {
         return this.service.readPartnerClient(query, request.getQueryParams()).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/clients/teammates")
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPartnerTeammates(@RequestParam("partnerId") Identity partnerId,
+            @RequestBody Query query, ServerHttpRequest request) {
+        return this.service.readPartnerTeammates(partnerId, query, request.getQueryParams()).map(ResponseEntity::ok);
     }
 }
