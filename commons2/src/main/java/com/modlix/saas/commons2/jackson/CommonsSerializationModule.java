@@ -1,0 +1,52 @@
+package com.modlix.saas.commons2.jackson;
+
+import java.io.IOException;
+import java.io.Serial;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.modlix.saas.commons2.model.condition.AbstractCondition;
+
+public class CommonsSerializationModule extends SimpleModule {
+
+    @Serial
+    private static final long serialVersionUID = 6242981337057158018L;
+
+    public CommonsSerializationModule() {
+
+        super();
+
+        this.addDeserializer(LocalDateTime.class, new StdDeserializer<>(LocalDateTime.class) {
+
+            @Serial
+            private static final long serialVersionUID = 4146504589335966256L;
+
+            @Override
+            public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+                    return LocalDateTime.ofEpochSecond(p.getLongValue(), 0, ZoneOffset.UTC);
+      }
+        });
+
+        this.addSerializer(LocalDateTime.class, new StdSerializer<>(LocalDateTime.class) {
+
+            @Serial
+            private static final long serialVersionUID = -3480737241961681306L;
+
+            @Override
+            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
+
+                gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
+            }
+        });
+
+        this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
+    }
+}

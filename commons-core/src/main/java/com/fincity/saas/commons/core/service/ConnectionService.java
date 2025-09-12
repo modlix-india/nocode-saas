@@ -39,7 +39,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     public Mono<Connection> read(String id) {
         return super.read(id)
                 .flatMap(e -> FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> {
-                    if (ca.getClientCode().equals(e.getClientCode())) return Mono.just(e);
+                    if (ca.getClientCode().equals(e.getClientCode()))
+                        return Mono.just(e);
 
                     return this.messageResourceService.throwMessage(
                             msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -55,10 +56,11 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         return FlatMapUtil.flatMapMono(
                 () -> super.update(entity),
                 updated -> {
-                    if (pubAsyncCommand == null) return Mono.just(updated);
+                    if (pubAsyncCommand == null)
+                        return Mono.just(updated);
 
                     return Mono.fromCompletionStage(
-                                    pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
+                            pubAsyncCommand.publish(this.channel, "Connection : " + entity.getId()))
                             .map(x -> updated);
                 },
                 (updated, published) -> this.cacheService
@@ -73,7 +75,8 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                 () -> super.read(id),
                 connection -> super.delete(id),
                 (connection, deleted) -> {
-                    if (pubAsyncCommand == null) return Mono.just(deleted);
+                    if (pubAsyncCommand == null)
+                        return Mono.just(deleted);
 
                     return Mono.fromCompletionStage(pubAsyncCommand.publish(this.channel, "Connection : " + id))
                             .map(x -> deleted);
@@ -86,39 +89,39 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
     @Override
     protected Mono<Connection> updatableEntity(Connection entity) {
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
-                    if (existing.getVersion() != entity.getVersion())
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+            if (existing.getVersion() != entity.getVersion())
+                return this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                        AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-                    existing.setConnectionSubType(entity.getConnectionSubType());
-                    existing.setConnectionDetails(entity.getConnectionDetails());
-                    existing.setVersion(existing.getVersion() + 1);
-                    existing.setIsAppLevel(entity.getIsAppLevel());
-                    existing.setOnlyThruKIRun(entity.getOnlyThruKIRun());
+            existing.setConnectionSubType(entity.getConnectionSubType());
+            existing.setConnectionDetails(entity.getConnectionDetails());
+            existing.setVersion(existing.getVersion() + 1);
+            existing.setIsAppLevel(entity.getIsAppLevel());
+            existing.setOnlyThruKIRun(entity.getOnlyThruKIRun());
 
-                    return Mono.just(existing);
-                })
+            return Mono.just(existing);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.updatableEntity"));
     }
 
     public Mono<Connection> read(String name, String appCode, String clientCode, ConnectionType type) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
-                        conn -> Mono.justOrEmpty(conn.getConnectionType() == type ? conn : null),
-                        (conn, typedConn) -> Mono.justOrEmpty(
-                                typedConn.getClientCode().equals(clientCode)
-                                                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
+                () -> this.read(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
+                conn -> Mono.<Connection>justOrEmpty(conn.getConnectionType() == type ? conn : null),
+                (conn, typedConn) -> Mono.<Connection>justOrEmpty(
+                        typedConn.getClientCode().equals(clientCode)
+                                || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())
                                         ? typedConn
                                         : null),
-                        (conn, typedConn, clientCheckedConn) -> {
-                            if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
-                                return Mono.just(clientCheckedConn);
+                (conn, typedConn, clientCheckedConn) -> {
+                    if (!BooleanUtil.safeValueOf(clientCheckedConn.getOnlyThruKIRun()))
+                        return Mono.just(clientCheckedConn);
 
-                            return Mono.deferContextual(cv -> "true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))
-                                    ? Mono.just(clientCheckedConn)
-                                    : Mono.empty());
-                        })
+                    return Mono.deferContextual(cv -> "true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))
+                            ? Mono.just(clientCheckedConn)
+                            : Mono.empty());
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
     }
 
@@ -134,12 +137,14 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         return FlatMapUtil.flatMapMono(
                 () -> super.readInternal(name, appCode, clientCode).map(ObjectWithUniqueID::getObject),
                 conn -> {
-                    if (conn.getConnectionType() == type) return Mono.justOrEmpty(conn);
+                    if (conn.getConnectionType() == type)
+                        return Mono.<Connection>justOrEmpty(conn);
                     return Mono.empty();
                 },
                 (conn, typedConn) -> {
                     if (typedConn.getClientCode().equals(clientCode)
-                            || BooleanUtil.safeValueOf(typedConn.getIsAppLevel())) return Mono.justOrEmpty(typedConn);
+                            || BooleanUtil.safeValueOf(typedConn.getIsAppLevel()))
+                        return Mono.<Connection>justOrEmpty(typedConn);
                     return Mono.empty();
                 });
     }

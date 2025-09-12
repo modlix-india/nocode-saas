@@ -213,8 +213,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     List<String> appAuths = map.get(appCode);
                                     List<String> defaultAuths = map.getOrDefault("", new ArrayList<>());
 
-                                    if (appAuths == null || appAuths.isEmpty()) return defaultAuths;
-                                    if (defaultAuths.isEmpty()) return new ArrayList<>(appAuths);
+                                    if (appAuths == null || appAuths.isEmpty())
+                                        return defaultAuths;
+                                    if (defaultAuths.isEmpty())
+                                        return new ArrayList<>(appAuths);
                                     return Stream.of(appAuths.stream(), defaultAuths.stream())
                                             .flatMap(e -> e)
                                             .collect(Collectors.toCollection(ArrayList::new));
@@ -237,16 +239,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<Boolean> checkUserAndClient(Tuple3<Client, Client, User> userNClient, String clientCode) {
 
-        if (clientCode == null) return Mono.just(Boolean.FALSE);
+        if (clientCode == null)
+            return Mono.just(Boolean.FALSE);
 
         return Mono.just(
                 ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(
-                                        userNClient.getT1().getTypeCode())
-                                || clientCode.equals(userNClient.getT1().getCode())
-                                || userNClient
-                                        .getT1()
-                                        .getId()
-                                        .equals(userNClient.getT2().getId())
+                        userNClient.getT1().getTypeCode())
+                        || clientCode.equals(userNClient.getT1().getCode())
+                        || userNClient
+                        .getT1()
+                        .getId()
+                        .equals(userNClient.getT2().getId())
                         ? Boolean.TRUE
                         : Boolean.FALSE);
     }
@@ -283,11 +286,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     public SecurityUserStatusCode[] getNonDeletedUserStatusCodes() {
-        return new SecurityUserStatusCode[] {
-            SecurityUserStatusCode.ACTIVE,
-            SecurityUserStatusCode.INACTIVE,
-            SecurityUserStatusCode.LOCKED,
-            SecurityUserStatusCode.PASSWORD_EXPIRED
+        return new SecurityUserStatusCode[]{
+                SecurityUserStatusCode.ACTIVE,
+                SecurityUserStatusCode.INACTIVE,
+                SecurityUserStatusCode.LOCKED,
+                SecurityUserStatusCode.PASSWORD_EXPIRED
         };
     }
 
@@ -356,18 +359,21 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         },
                         (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) -> this.evictOwnerCache(
                                         passSet.getClientId(), passSet.getId())
-                                .map(evicted -> passSet))
+                                .<User>map(evicted -> passSet))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
     }
 
     private void updateUserIdentificationKeys(User entity) {
 
-        if (StringUtil.safeIsBlank(entity.getUserName())) entity.setUserName(User.PLACEHOLDER);
+        if (StringUtil.safeIsBlank(entity.getUserName()))
+            entity.setUserName(User.PLACEHOLDER);
 
-        if (StringUtil.safeIsBlank(entity.getEmailId())) entity.setEmailId(User.PLACEHOLDER);
+        if (StringUtil.safeIsBlank(entity.getEmailId()))
+            entity.setEmailId(User.PLACEHOLDER);
 
-        if (StringUtil.safeIsBlank(entity.getPhoneNumber())) entity.setPhoneNumber(User.PLACEHOLDER);
+        if (StringUtil.safeIsBlank(entity.getPhoneNumber()))
+            entity.setPhoneNumber(User.PLACEHOLDER);
     }
 
     private Mono<Boolean> checkUserIdentificationKeys(User entity) {
@@ -417,10 +423,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                 () -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
-                clientTypeNCode ->
-                        clientTypeNCode.getT1().equals("INDV") ? Mono.empty() : Mono.just(clientTypeNCode.getT1()),
-                (clientTypeNCode, clientType) ->
-                        this.dao.checkUserExists(clientId, "BUS", userName, emailId, phoneNumber));
+                clientTypeNCode -> clientTypeNCode.getT1().equals("INDV") ? Mono.empty()
+                        : Mono.just(clientTypeNCode.getT1()),
+                (clientTypeNCode, clientType) -> this.dao.checkUserExists(clientId, "BUS", userName, emailId,
+                        phoneNumber));
     }
 
     private Mono<User> setPasswordEntities(User user, Map<AuthenticationPasswordType, String> passEntities) {
@@ -439,7 +445,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return super.read(id)
                 .flatMap(
                         e -> SecurityContextUtil.getUsersContextAuthentication().flatMap(ca -> {
-                            if (id.equals(ULong.valueOf(ca.getUser().getId()))) return Mono.just(e);
+                            if (id.equals(ULong.valueOf(ca.getUser().getId())))
+                                return Mono.just(e);
 
                             if (!SecurityContextUtil.hasAuthority("Authorities.User_READ", ca.getAuthorities()))
                                 return Mono.defer(() -> this.forbiddenError(
@@ -484,13 +491,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     @Override
     public Mono<User> update(ULong key, Map<String, Object> fields) {
 
-        String userName =
-                fields.containsKey("userName") ? fields.get("userName").toString() : null;
+        String userName = fields.containsKey("userName") ? fields.get("userName").toString() : null;
 
         String emailId = fields.containsKey("emailId") ? fields.get("emailId").toString() : null;
 
-        String phoneNumber =
-                fields.containsKey("phoneNumber") ? fields.get("phoneNumber").toString() : null;
+        String phoneNumber = fields.containsKey("phoneNumber") ? fields.get("phoneNumber").toString() : null;
 
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.getUserClientId(key),
@@ -498,16 +503,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .getClientTypeNCodeNClientLevel(clientId)
                                 .map(Tuple2::getT1),
                         (clientId, clientType) -> switch (clientType) {
-                            case "INDV" ->
-                                this.clientHierarchyService
-                                        .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
-                                        .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
-                                                managingClientId, userName, emailId, phoneNumber, "INDV", key));
+                            case "INDV" -> this.clientHierarchyService
+                                    .getManagingClient(clientId, ClientHierarchy.Level.ZERO)
+                                    .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
+                                            managingClientId, userName, emailId, phoneNumber, "INDV", key));
                             case "BUS" -> this.dao.checkUserExists(clientId, userName, emailId, phoneNumber, null);
                             default -> Mono.empty();
                         },
-                        (clientId, clientType, userExists) ->
-                                Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(key, fields),
+                        (clientId, clientType, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty()
+                                : super.update(key, fields),
                         (clientId, clientType, userExists, updated) -> this.evictCache(
                                         updated.getId(), updated.getClientId())
                                 .<User>map(evicted -> updated))
@@ -522,29 +526,26 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .getClientTypeNCodeNClientLevel(entity.getClientId())
                                 .map(Tuple2::getT1),
                         clientType -> switch (clientType) {
-                            case "INDV" ->
-                                this.clientHierarchyService
-                                        .getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
-                                        .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
-                                                managingClientId,
-                                                entity.getUserName(),
-                                                entity.getEmailId(),
-                                                entity.getPhoneNumber(),
-                                                "INDV",
-                                                entity.getId()));
-                            case "BUS" ->
-                                this.dao.checkUserExists(
-                                        entity.getClientId(),
-                                        entity.getUserName(),
-                                        entity.getEmailId(),
-                                        entity.getPhoneNumber(),
-                                        null);
+                            case "INDV" -> this.clientHierarchyService
+                                    .getManagingClient(entity.getClientId(), ClientHierarchy.Level.ZERO)
+                                    .flatMap(managingClientId -> this.dao.checkUserExistsExclude(
+                                            managingClientId,
+                                            entity.getUserName(),
+                                            entity.getEmailId(),
+                                            entity.getPhoneNumber(),
+                                            "INDV",
+                                            entity.getId()));
+                            case "BUS" -> this.dao.checkUserExists(
+                                    entity.getClientId(),
+                                    entity.getUserName(),
+                                    entity.getEmailId(),
+                                    entity.getPhoneNumber(),
+                                    null);
                             default -> Mono.empty();
                         },
-                        (clientType, userExists) ->
-                                Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
+                        (clientType, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
                         (clientType, userExists, updated) -> this.evictCache(updated.getId(), updated.getClientId())
-                                .map(evicted -> updated))
+                                .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
 
@@ -604,19 +605,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, user) -> ca.isSystemClient()
                                 ? Mono.just(true)
                                 : clientService
-                                        .isBeingManagedBy(
-                                                ULong.valueOf(ca.getUser().getClientId()), user.getClientId())
-                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                .isBeingManagedBy(
+                                        ULong.valueOf(ca.getUser().getClientId()), user.getClientId())
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
                         (ca, user, isManaged) -> this.dao
                                 .removeRoleForUser(userId, roleId)
                                 .map(val -> {
                                     boolean removed = val > 0;
-                                    if (removed) super.unAssignLog(userId, UNASSIGNED_ROLE);
+                                    if (removed)
+                                        super.unAssignLog(userId, UNASSIGNED_ROLE);
 
                                     return removed;
                                 }),
-                        (ca, user, isManaged, removed) ->
-                                this.evictCache(userId, user.getClientId()).map(evicted -> removed))
+                        (ca, user, isManaged, removed) -> this.evictCache(userId, user.getClientId())
+                                .<Boolean>map(evicted -> removed))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.removeRoleFromUser"))
                 .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ROLE_REMOVE_ERROR, roleId, userId));
@@ -626,7 +628,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> assignRoleToUser(ULong userId, ULong roleId) {
 
         return this.dao.checkRoleAssignedForUser(userId, roleId).flatMap(result -> {
-            if (Boolean.TRUE.equals(result)) return Mono.just(true);
+            if (Boolean.TRUE.equals(result))
+                return Mono.just(true);
 
             return FlatMapUtil.flatMapMono(
                             SecurityContextUtil::getUsersContextAuthentication,
@@ -634,23 +637,24 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             (ca, user) -> ca.isSystemClient()
                                     ? Mono.just(true)
                                     : clientService
-                                            .isBeingManagedBy(
-                                                    ULongUtil.valueOf(
-                                                            ca.getUser().getClientId()),
-                                                    user.getClientId())
-                                            .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                    .isBeingManagedBy(
+                                            ULongUtil.valueOf(
+                                                    ca.getUser().getClientId()),
+                                            user.getClientId())
+                                    .flatMap(BooleanUtil::safeValueOfWithEmpty),
                             (ca, user, sysOrManaged) -> this.profileService
                                     .hasAccessToRoles(user.getClientId(), Set.of(roleId))
                                     .flatMap(BooleanUtil::safeValueOfWithEmpty),
                             (ca, user, sysOrManaged, roleApplicable) -> this.dao
                                     .addRoleToUser(userId, roleId)
                                     .map(e -> {
-                                        if (Boolean.TRUE.equals(e)) super.assignLog(userId, ASSIGNED_ROLE + roleId);
+                                        if (Boolean.TRUE.equals(e))
+                                            super.assignLog(userId, ASSIGNED_ROLE + roleId);
 
                                         return e;
                                     }),
-                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) ->
-                                    this.evictCache(userId, user.getClientId()).map(evicted -> roleAssigned))
+                            (ca, user, sysOrManaged, roleApplicable, roleAssigned) -> this
+                                    .evictCache(userId, user.getClientId()).<Boolean>map(evicted -> roleAssigned))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.assignRoleToUser"))
                     .flatMap(this.cacheService.evictFunction(CACHE_NAME_USER_ROLE, userId))
                     .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ROLE_FORBIDDEN, roleId, userId));
@@ -669,10 +673,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, user, sysManaged) -> profileService
                                 .hasAccessToProfiles(user.getClientId(), Set.of(profileId))
                                 .filter(BooleanUtil::safeValueOf),
-                        (ca, user, sysManaged, profileAccess) ->
-                                this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileAccess, profileAssigned) ->
-                                this.evictCache(userId, user.getClientId()).map(evicted -> profileAssigned))
+                        (ca, user, sysManaged, profileAccess) -> this.dao.addProfileToUser(userId, profileId).map(e -> e != 0),
+                        (ca, user, sysManaged, profileAccess, profileAssigned) -> this.evictCache(userId, user.getClientId())
+                                .<Boolean>map(evicted -> profileAssigned))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
                 .switchIfEmpty(
@@ -688,10 +691,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, user) -> clientService
                                 .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
                                 .filter(BooleanUtil::safeValueOf),
-                        (ca, user, sysManaged) ->
-                                this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
-                        (ca, user, sysManaged, profileRemoved) ->
-                                this.evictCache(userId, user.getClientId()).map(evicted -> profileRemoved))
+                        (ca, user, sysManaged) -> this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
+                        (ca, user, sysManaged, profileRemoved) -> this.evictCache(userId, user.getClientId())
+                                .<Boolean>map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
                 .switchIfEmpty(
@@ -751,7 +753,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         ULong loggedInUserClientId = ULong.valueOf(ca.getUser().getClientId());
 
-        if (ca.isSystemClient() || user.getClientId().equals(loggedInUserClientId)) return Mono.just(Boolean.TRUE);
+        if (ca.isSystemClient() || user.getClientId().equals(loggedInUserClientId))
+            return Mono.just(Boolean.TRUE);
 
         return Mono.zip(
                         SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"),
@@ -861,8 +864,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         (userClientCheck, userStatusCheck) -> userClientCheck && userStatusCheck)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty)
                                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.USER_NOT_ACTIVE)),
-                        (ca, userTup, userCheck) ->
-                                this.isPasswordUpdatable(ca, userTup.getT3(), reqPassword, Boolean.FALSE),
+                        (ca, userTup, userCheck) -> this.isPasswordUpdatable(ca, userTup.getT3(), reqPassword, Boolean.FALSE),
                         (ca, userTup, userCheck, isUpdatable) -> this.otpService
                                 .verifyOtpInternal(ca.getUrlAppCode(), userTup.getT3(), otpVerificationRequest)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty)
@@ -928,18 +930,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Boolean> checkPassword(
             User user, String password, AuthenticationPasswordType passType, boolean matchExpected) {
 
-        boolean matches =
-                switch (passType) {
-                    case PASSWORD ->
-                        user.isPasswordHashed()
-                                ? passwordEncoder.matches(user.getId() + password, user.getPassword())
-                                : StringUtil.safeEquals(password, user.getPassword());
-                    case PIN ->
-                        user.isPinHashed()
-                                ? passwordEncoder.matches(user.getId() + password, user.getPin())
-                                : StringUtil.safeEquals(password, user.getPin());
-                    default -> false;
-                };
+        boolean matches = switch (passType) {
+            case PASSWORD -> user.isPasswordHashed()
+                    ? passwordEncoder.matches(user.getId() + password, user.getPassword())
+                    : StringUtil.safeEquals(password, user.getPassword());
+            case PIN -> user.isPinHashed()
+                    ? passwordEncoder.matches(user.getId() + password, user.getPin())
+                    : StringUtil.safeEquals(password, user.getPin());
+            default -> false;
+        };
 
         return Mono.just(matchExpected == matches);
     }
@@ -966,9 +965,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     .setEventName(
                                             isReset
                                                     ? EventNames.getEventName(
-                                                            EventNames.USER_PASSWORD_RESET_DONE, passType)
+                                                    EventNames.USER_PASSWORD_RESET_DONE, passType)
                                                     : EventNames.getEventName(
-                                                            EventNames.USER_PASSWORD_CHANGED, passType))
+                                                    EventNames.USER_PASSWORD_CHANGED, passType))
                                     .setData(Map.of("user", user)));
                         })
                 .flatMap(e -> this.evictTokens(user.getId()).map(x -> e))
@@ -980,7 +979,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private Mono<Boolean> setPassword(
             ULong userId, ULong currentUserId, String password, AuthenticationPasswordType passwordType) {
 
-        if (currentUserId == null) currentUserId = userId;
+        if (currentUserId == null)
+            currentUserId = userId;
 
         return this.dao
                 .setPassword(userId, currentUserId, password, passwordType)
@@ -1085,18 +1085,17 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 levelType,
                                 client.getBusinessType()),
                         (levelType, departments) -> this.departmentService.createForRegistration(client, departments),
-                        (levelType, departments, departmentIndex) ->
-                                this.appRegistrationDAO.getDesignationsForRegistration(
-                                        appId,
-                                        appClientId,
-                                        urlClientId,
-                                        client.getTypeCode(),
-                                        levelType,
-                                        client.getBusinessType()),
-                        (levelType, departments, departmentIndex, designations) ->
-                                this.designationService.createForRegistration(client, designations, departmentIndex),
-                        (levelType, departments, departmentIndex, designations, designationIndex) ->
-                                this.appRegistrationDAO.getUserDesignationsForRegistration(
+                        (levelType, departments, departmentIndex) -> this.appRegistrationDAO.getDesignationsForRegistration(
+                                appId,
+                                appClientId,
+                                urlClientId,
+                                client.getTypeCode(),
+                                levelType,
+                                client.getBusinessType()),
+                        (levelType, departments, departmentIndex, designations) -> this.designationService
+                                .createForRegistration(client, designations, departmentIndex),
+                        (levelType, departments, departmentIndex, designations, designationIndex) -> this.appRegistrationDAO
+                                .getUserDesignationsForRegistration(
                                         appId,
                                         appClientId,
                                         urlClientId,
@@ -1106,7 +1105,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (levelType, departments, departmentIndex, designations, designationIndex, userDesignations) -> {
                             if (userDesignations.isEmpty()
                                     || !designationIndex.containsKey(
-                                            userDesignations.getFirst().getDesignationId())) return Mono.just(true);
+                                    userDesignations.getFirst().getDesignationId()))
+                                return Mono.just(true);
 
                             return this.dao.addDesignation(
                                     userId,
@@ -1166,9 +1166,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, id) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : this.dao
-                                        .readById(id)
-                                        .flatMap(e -> this.clientService.isBeingManagedBy(
-                                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+                                .readById(id)
+                                .flatMap(e -> this.clientService.isBeingManagedBy(
+                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
                         (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged)
                                 ? Mono.empty()
                                 : this.dao.makeUserActiveIfInActive(id))
@@ -1186,11 +1186,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, id) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : this.dao
-                                        .readById(id)
-                                        .flatMap(e -> this.clientService.isBeingManagedBy(
-                                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                        (ca, id, sysOrManaged) ->
-                                Boolean.FALSE.equals(sysOrManaged) ? Mono.empty() : this.dao.makeUserInActive(id))
+                                .readById(id)
+                                .flatMap(e -> this.clientService.isBeingManagedBy(
+                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+                        (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
+                                : this.dao.makeUserInActive(id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1205,11 +1205,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, id) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : this.dao
-                                        .readById(id)
-                                        .flatMap(e -> this.clientService.isBeingManagedBy(
-                                                ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                        (ca, id, sysOrManaged) ->
-                                Boolean.FALSE.equals(sysOrManaged) ? Mono.empty() : this.unlockUserInternal(id))
+                                .readById(id)
+                                .flatMap(e -> this.clientService.isBeingManagedBy(
+                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+                        (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
+                                : this.unlockUserInternal(id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.unblockUser"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1299,20 +1299,20 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         (ca, user) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : clientService
-                                        .isBeingManagedBy(
-                                                ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
-                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                .isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
                         (ca, user, sysOrManaged) -> this.designationService
                                 .canAssignDesignation(user.getClientId(), designationId)
                                 .flatMap(canAssign -> !BooleanUtil.safeValueOf(canAssign)
                                         ? this.securityMessageResourceService.throwMessage(
-                                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                                SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                         : Mono.just(user)),
                         (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
                         (ca, user, sysOrManaged, validUser, updated) -> this.evictCache(
                                         updated.getId(), updated.getClientId())
-                                .map(evicted -> updated))
+                                .<User>map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
@@ -1320,7 +1320,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<Boolean> checkIfUserIsOwner(ULong userId) {
 
-        if (userId == null) return Mono.empty();
+        if (userId == null)
+            return Mono.empty();
 
         return this.dao.checkIfUserIsOwner(userId);
     }
@@ -1375,11 +1376,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         Flux<User> userFlux = Flux.fromIterable(users);
 
-        if (fetchProfiles) userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
+        if (fetchProfiles)
+            userFlux = userFlux.flatMap(user -> this.profileService.fillUser(appCode, appId, user));
 
         if (fetchClient)
-            userFlux = userFlux.flatMap(user ->
-                    this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
+            userFlux = userFlux
+                    .flatMap(user -> this.clientService.getClientInfoById(user.getClientId()).map(user::setClient));
 
         if (fetchManagingClient)
             userFlux = userFlux.flatMap(user -> this.clientService

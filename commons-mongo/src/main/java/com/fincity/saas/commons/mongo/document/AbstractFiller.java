@@ -24,57 +24,57 @@ import reactor.util.context.Context;
 @ToString(callSuper = true)
 public class AbstractFiller<D extends AbstractFiller<D>> extends AbstractOverridableDTO<D> {
 
-	private static final long serialVersionUID = 2089418665068611650L;
+    private static final long serialVersionUID = 2089418665068611650L;
 
-	private Map<String, Object> definition; // NOSONAR
-	private Map<String, Object> values; // NOSONAR
+    private Map<String, Object> definition; // NOSONAR
+    private Map<String, Object> values; // NOSONAR
 
-	protected AbstractFiller(D fun) {
-		super(fun);
-		this.definition = CloneUtil.cloneMapObject(fun.getDefinition());
-		this.values = CloneUtil.cloneMapObject(fun.getValues());
-	}
+    protected AbstractFiller(D fun) {
+        super(fun);
+        this.definition = CloneUtil.cloneMapObject(fun.getDefinition());
+        this.values = CloneUtil.cloneMapObject(fun.getValues());
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<D> applyOverride(D base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<D> applyOverride(D base) {
 
-		if (base == null)
-			return Mono.just((D) this);
+        if (base == null)
+            return Mono.just((D) this);
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> DifferenceApplicator.apply(this.definition, base.getDefinition()),
+                () -> DifferenceApplicator.apply(this.definition, base.getDefinition()),
 
-				d -> DifferenceApplicator.apply(this.values, base.getValues()),
+                d -> DifferenceApplicator.apply(this.values, base.getValues()),
 
-				(d, v) -> {
-					this.definition = (Map<String, Object>) d;
-					this.values = (Map<String, Object>) v;
-					return Mono.just((D) this);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFiller.applyOverride"));
+                (d, v) -> {
+                    this.definition = (Map<String, Object>) d;
+                    this.values = (Map<String, Object>) v;
+                    return Mono.just((D) this);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFiller.applyOverride"));
 
-	}
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<D> makeOverride(D base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<D> extractDifference(D base) {
 
-		if (base == null)
-			return Mono.just((D) this);
+        if (base == null)
+            return Mono.just((D) this);
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> Mono.just(this),
+                () -> Mono.just(this),
 
-				e -> DifferenceExtractor.extract(e.definition, base.getDefinition()),
+                e -> DifferenceExtractor.extract(e.definition, base.getDefinition()),
 
-				(e, d) -> DifferenceExtractor.extract(e.values, base.getValues()),
+                (e, d) -> DifferenceExtractor.extract(e.values, base.getValues()),
 
-				(e, d, v) -> {
-					e.definition = (Map<String, Object>) d;
-					e.values = (Map<String, Object>) v;
-					return Mono.just((D) e);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFiller.makeOverride"));
-	}
+                (e, d, v) -> {
+                    e.definition = (Map<String, Object>) d;
+                    e.values = (Map<String, Object>) v;
+                    return Mono.just((D) e);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractFiller.makeOverride"));
+    }
 }

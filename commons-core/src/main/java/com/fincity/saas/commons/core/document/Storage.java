@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.enums.StorageTriggerType;
+import com.fincity.saas.commons.core.enums.common.notification.NotificationType;
 import com.fincity.saas.commons.core.model.StorageRelation;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
@@ -9,10 +10,12 @@ import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -128,7 +131,7 @@ public class Storage extends AbstractOverridableDTO<Storage> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Mono<Storage> makeOverride(Storage base) {
+    public Mono<Storage> extractDifference(Storage base) {
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -203,6 +206,82 @@ public class Storage extends AbstractOverridableDTO<Storage> {
         public StorageIndexField(StorageIndexField sIndex) {
             this.fieldName = sIndex.fieldName;
             this.direction = sIndex.direction;
+        }
+    }
+
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    @Document
+    @CompoundIndex(def = "{'appCode': 1, 'clientCode': 1, 'name': 1, }", name = "notificationFilteringIndex", unique = true)
+    @CompoundIndex(
+            def = "{'appCode': 1, 'clientCode': 1, 'notificationType': 1, }",
+            name = "notificationFilteringIndex",
+            unique = true)
+    @Accessors(chain = true)
+    @NoArgsConstructor
+    @ToString(callSuper = true)
+    public static class Notification extends AbstractOverridableDTO<Notification> {
+
+        @Serial
+        private static final long serialVersionUID = 4924671644117461908L;
+
+        private NotificationType notificationType;
+        private String connectionName;
+        private Map<String, Template> channelDetails;
+        private Map<String, Object> variableSchema; // NOSONAR
+
+        public Notification(Notification notification) {
+            super(notification);
+            this.notificationType = notification.notificationType;
+            this.connectionName = notification.connectionName;
+            this.variableSchema = CloneUtil.cloneMapObject(notification.variableSchema);
+            this.channelDetails = CloneUtil.cloneMapObject(notification.channelDetails);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Mono<Notification> applyOverride(Notification base) {
+            if (base == null) return Mono.just(this);
+
+            return FlatMapUtil.flatMapMonoWithNull(
+                            () -> DifferenceApplicator.apply(this.channelDetails, base.channelDetails),
+
+                            ch -> DifferenceApplicator.apply(this.variableSchema, base.variableSchema),
+
+                            (ch, varSchema) -> {
+                                this.channelDetails = (Map<String, Template>) ch;
+                                this.variableSchema = (Map<String, Object>) varSchema;
+
+                                if (this.notificationType == null) this.notificationType = base.notificationType;
+                                if (this.connectionName == null) this.connectionName = base.connectionName;
+
+                                return Mono.just(this);
+                            })
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.applyOverride"));
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Mono<Notification> extractDifference(Notification base) {
+            if (base == null) return Mono.just(this);
+
+            return FlatMapUtil.flatMapMonoWithNull(
+                            () -> Mono.just(this),
+
+                            obj -> DifferenceExtractor.extract(obj.channelDetails, base.channelDetails),
+
+                            (obj, ch) -> DifferenceExtractor.extract(obj.variableSchema, base.variableSchema),
+
+                            (obj, ch, varSchema) -> {
+
+                                obj.channelDetails = (Map<String, Template>) ch;
+                                obj.variableSchema = (Map<String, Object>) varSchema;
+
+                                if (obj.notificationType == null) obj.notificationType = base.notificationType;
+                                if (obj.connectionName == null) obj.connectionName = base.connectionName;
+                                return Mono.just(obj);
+                            })
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "Notification.makeOverride"));
         }
     }
 }

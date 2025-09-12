@@ -21,26 +21,26 @@ import reactor.core.publisher.Mono;
 @ToString(callSuper = true)
 public class Style extends AbstractOverridableDTO<Style> {
 
-	private static final long serialVersionUID = 4355909627072800292L;
+    private static final long serialVersionUID = 4355909627072800292L;
 
-	private String styleString;
+    private String styleString;
 
-	public Style(Style style) {
-		super(style);
+    public Style(Style style) {
+        super(style);
 
-		this.styleString = style.styleString;
-	}
+        this.styleString = style.styleString;
+    }
 
-	@Override
-	public Mono<Style> applyOverride(Style base) {
+    @Override
+    public Mono<Style> applyOverride(Style base) {
 
-		return Mono.just(this);
-	}
+        return Mono.just(this);
+    }
 
-	@Override
-	public Mono<Style> makeOverride(Style base) {
+    @Override
+    public Mono<Style> extractDifference(Style base) {
 
-		return Mono.just(this);
+        return Mono.just(this);
 
-	}
+    }
 }

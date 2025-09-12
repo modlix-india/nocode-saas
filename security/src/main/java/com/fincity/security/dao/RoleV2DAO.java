@@ -43,21 +43,25 @@ public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULon
         return SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID;
     }
 
-
     // This method will get all the roles in the roleIds and their sub roles too
     public Mono<List<RoleV2>> getRoles(Collection<ULong> roleIds) {
 
-        Mono<Map<ULong, List<RoleV2>>> subRoles = Flux.from(this.dslContext.select(SECURITY_V2_ROLE_ROLE.ROLE_ID).select(SECURITY_V2_ROLE.fields())
+        Mono<Map<ULong, List<RoleV2>>> subRoles = Flux
+                .from(this.dslContext.select(SECURITY_V2_ROLE_ROLE.ROLE_ID)
+                        .select(SECURITY_V2_ROLE.fields())
                         .from(SECURITY_V2_ROLE_ROLE)
-                        .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
+                        .leftJoin(SECURITY_V2_ROLE)
+                        .on(SECURITY_V2_ROLE.ID.eq(SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
                         .where(SECURITY_V2_ROLE_ROLE.ROLE_ID.in(roleIds)))
-                .collect(Collectors.groupingBy(rec -> rec.get(SECURITY_V2_ROLE_ROLE.ROLE_ID), Collectors.mapping(rec -> rec.into(RoleV2.class), Collectors.toList())));
+                .collect(Collectors.groupingBy(rec -> rec.get(SECURITY_V2_ROLE_ROLE.ROLE_ID), Collectors
+                        .mapping(rec -> rec.into(RoleV2.class), Collectors.toList())));
 
-        return subRoles.flatMap(map ->
-                Flux.from(this.dslContext.selectFrom(SECURITY_V2_ROLE).where(SECURITY_V2_ROLE.ID.in(roleIds)))
-                        .map(rec -> rec.into(RoleV2.class))
-                        .map(role -> role.setSubRoles(map.get(role.getId())))
-                        .collectList());
+        return subRoles.flatMap(map -> Flux
+                .from(this.dslContext.selectFrom(SECURITY_V2_ROLE)
+                        .where(SECURITY_V2_ROLE.ID.in(roleIds)))
+                .map(rec -> rec.into(RoleV2.class))
+                .map(role -> role.setSubRoles(map.get(role.getId())))
+                .collectList());
     }
 
     public Mono<Map<String, List<String>>> getRoleAuthoritiesPerApp(ULong userId) {
@@ -65,24 +69,24 @@ public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULon
         return FlatMapUtil.flatMapMono(
 
                 () -> Flux.from(this.dslContext
-                                .select(SECURITY_APP.APP_CODE, SECURITY_V2_ROLE.NAME, SECURITY_V2_ROLE.ID)
-                                .from(SECURITY_V2_ROLE)
-                                .leftJoin(SECURITY_APP)
-                                .on(SECURITY_V2_ROLE.APP_ID.eq(SECURITY_APP.ID))
-                                .where(SECURITY_V2_ROLE.ID.in(
-                                        this.dslContext
-                                                .select(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID)
-                                                .from(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
-                                                .leftJoin(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
-                                                .on(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID
-                                                        .eq(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.ROLE_ID))
-                                                .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId))
-                                                .union(
-                                                        this.dslContext
-                                                                .select(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
-                                                                .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
-                                                                .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID
-                                                                        .eq(userId))))))
+                        .select(SECURITY_APP.APP_CODE, SECURITY_V2_ROLE.NAME, SECURITY_V2_ROLE.ID)
+                        .from(SECURITY_V2_ROLE)
+                        .leftJoin(SECURITY_APP)
+                        .on(SECURITY_V2_ROLE.APP_ID.eq(SECURITY_APP.ID))
+                        .where(SECURITY_V2_ROLE.ID.in(
+                                this.dslContext
+                                        .select(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID)
+                                        .from(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE)
+                                        .leftJoin(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                                        .on(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID
+                                                .eq(SecurityV2RoleRole.SECURITY_V2_ROLE_ROLE.ROLE_ID))
+                                        .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId))
+                                        .union(
+                                                this.dslContext
+                                                        .select(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
+                                                        .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                                                        .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID
+                                                                .eq(userId))))))
                         .distinct()
                         .collectList(),
 
@@ -99,44 +103,50 @@ public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULon
                         .distinct()
                         .collectList(),
 
-                (roles, permissions) -> Mono.just(
+                (roles, permissions) -> Mono.<Map<String, List<String>>>just(
 
                         Stream.concat(
-                                        roles.stream()
-                                                .map(e -> Tuples.of(CommonsUtil.nonNullValue(e.getValue(SecurityApp.SECURITY_APP.APP_CODE), ""), AuthoritiesNameUtil.makeRoleName(
+                                roles.stream()
+                                        .map(e -> Tuples.of(
+                                                CommonsUtil.nonNullValue(e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                        ""),
+                                                AuthoritiesNameUtil.makeRoleName(
                                                         e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
                                                         e.getValue(SecurityV2Role.SECURITY_V2_ROLE.NAME)))),
-                                        permissions
-                                                .stream()
-                                                .map(e -> Tuples.of(CommonsUtil.nonNullValue(e.getValue(SecurityApp.SECURITY_APP.APP_CODE), ""), AuthoritiesNameUtil.makePermissionName(
+                                permissions
+                                        .stream()
+                                        .map(e -> Tuples.of(
+                                                CommonsUtil.nonNullValue(e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
+                                                        ""),
+                                                AuthoritiesNameUtil.makePermissionName(
                                                         e.getValue(SecurityApp.SECURITY_APP.APP_CODE),
                                                         e.getValue(SecurityPermission.SECURITY_PERMISSION.NAME)))))
-                                .collect(Collectors.groupingBy(Tuple2::getT1, Collectors.mapping(Tuple2::getT2, Collectors.toList())))
-                )
+                                .collect(Collectors.groupingBy(Tuple2::getT1,
+                                        Collectors.mapping(Tuple2::getT2, Collectors.toList()))))
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.getRoleAuthorities"));
     }
-
 
     public Mono<List<RoleV2>> getRolesForAssignmentInApp(String appCode, ClientHierarchy hierarchy) {
 
         return Flux.from(this.dslContext.selectFrom(SECURITY_V2_ROLE).where(DSL.and(
                 SECURITY_V2_ROLE.CLIENT_ID.eq(hierarchy.getClientId()),
-                "nothing".equals(appCode) ? DSL.trueCondition() :
-                        DSL.or(SECURITY_V2_ROLE.APP_ID.eq(this.dslContext.select(SECURITY_APP.ID).from(SECURITY_APP)
-                                        .where(SECURITY_APP.APP_CODE.eq(appCode))),
-                                SECURITY_V2_ROLE.APP_ID.isNull()
-                        )
-        ))).map(r -> r.into(RoleV2.class)).collectList();
+                "nothing".equals(appCode) ? DSL.trueCondition()
+                        : DSL.or(SECURITY_V2_ROLE.APP_ID.eq(this.dslContext
+                                .select(SECURITY_APP.ID).from(SECURITY_APP)
+                                .where(SECURITY_APP.APP_CODE.eq(appCode))),
+                                SECURITY_V2_ROLE.APP_ID.isNull()))))
+                .map(r -> r.into(RoleV2.class)).collectList();
     }
 
     public Mono<Map<ULong, List<RoleV2>>> fetchSubRoles(List<ULong> roleIds) {
 
-        return Flux.from(this.dslContext.select(SECURITY_V2_ROLE.fields()).select(SECURITY_V2_ROLE_ROLE.ROLE_ID).from(SECURITY_V2_ROLE_ROLE)
-                .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
+        return Flux.from(this.dslContext.select(SECURITY_V2_ROLE.fields()).select(SECURITY_V2_ROLE_ROLE.ROLE_ID)
+                .from(SECURITY_V2_ROLE_ROLE)
+                .leftJoin(SECURITY_V2_ROLE)
+                .on(SECURITY_V2_ROLE.ID.eq(SECURITY_V2_ROLE_ROLE.SUB_ROLE_ID))
                 .where(SECURITY_V2_ROLE_ROLE.ROLE_ID.in(roleIds))).collect(Collectors.groupingBy(
-                r -> r.get(SECURITY_V2_ROLE_ROLE.ROLE_ID),
-                Collectors.mapping(r -> r.into(RoleV2.class), Collectors.toList())
-        ));
+                        r -> r.get(SECURITY_V2_ROLE_ROLE.ROLE_ID),
+                        Collectors.mapping(r -> r.into(RoleV2.class), Collectors.toList())));
     }
 }

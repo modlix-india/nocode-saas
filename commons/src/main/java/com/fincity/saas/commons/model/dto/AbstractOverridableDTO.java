@@ -4,6 +4,7 @@ import java.io.Serial;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import com.fincity.saas.commons.difference.IDifferentiable;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -16,80 +17,80 @@ import reactor.core.publisher.Mono;
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
-	public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
-		extends AbstractUpdatableDTO<String, String> {
+public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
+        extends AbstractUpdatableDTO<String, String> implements IDifferentiable<D> {
 
-	@Serial
-	private static final long serialVersionUID = -7561098495897714431L;
+    @Serial
+    private static final long serialVersionUID = -7561098495897714431L;
 
-	private String name;
-	private String message;
-	private String clientCode;
-	private String permission;
-	private String appCode;
-	private String baseClientCode;
-	private Boolean notOverridable;
-	private String description;
-	private String title;
+    private String name;
+    private String message;
+    private String clientCode;
+    private String permission;
+    private String appCode;
+    private String baseClientCode;
+    private Boolean notOverridable;
+    private String description;
+    private String title;
 
-	private int version = 1;
+    private int version = 1;
 
-	protected AbstractOverridableDTO(D obj) {
-		this.clone(obj);
-	}
+    protected AbstractOverridableDTO(D obj) {
+        this.clone(obj);
+    }
 
-	public Mono<D> applyActualOverride(D base) {
+    public Mono<D> applyActualOverride(D base) {
 
-		if (base != null) {
+        if (base != null) {
 
-			if (this.description == null)
-				this.description = base.getDescription();
+            if (this.description == null)
+                this.description = base.getDescription();
 
-			if (this.title == null)
-				this.title = base.getTitle();
-		}
+            if (this.title == null)
+                this.title = base.getTitle();
+        }
 
-		return this.applyOverride(base);
-	}
+        return this.applyOverride(base);
+    }
 
-	public Mono<D> makeActualOverride(D base) {
-		if (base != null) {
-			if (this.description != null && this.description.equals(base.getDescription()))
-				this.description = null;
+    public Mono<D> makeActualOverride(D base) {
+        if (base != null) {
+            if (this.description != null && this.description.equals(base.getDescription()))
+                this.description = null;
 
-			if (this.title != null && this.title.equals(base.getTitle()))
-				this.title = null;
-		}
+            if (this.title != null && this.title.equals(base.getTitle()))
+                this.title = null;
+        }
 
-		return this.makeOverride(base);
-	}
+        return this.extractDifference(base);
+    }
 
-	public abstract Mono<D> applyOverride(D base);
+    public abstract Mono<D> applyOverride(D base);
 
-	public abstract Mono<D> makeOverride(D base);
+    public abstract Mono<D> extractDifference(D base);
 
-	protected void clone(D obj) {
+    protected void clone(D obj) {
 
-		this.setName(obj.getName())
-				.setMessage(obj.getMessage())
-				.setClientCode(obj.getClientCode())
-				.setPermission(obj.getPermission())
-				.setAppCode(obj.getAppCode())
-				.setBaseClientCode(obj.getBaseClientCode())
-				.setVersion(obj.getVersion())
-				.setDescription(obj.getDescription())
-				.setTitle(obj.getTitle())
-				.setUpdatedAt(obj.getUpdatedAt())
-				.setUpdatedBy(obj.getUpdatedBy())
-				.setId(obj.getId())
-				.setCreatedAt(obj.getCreatedAt())
-				.setCreatedBy(obj.getCreatedBy());
+        this.setName(obj.getName())
+                .setMessage(obj.getMessage())
+                .setClientCode(obj.getClientCode())
+                .setPermission(obj.getPermission())
+                .setAppCode(obj.getAppCode())
+                .setBaseClientCode(obj.getBaseClientCode())
+                .setVersion(obj.getVersion())
+                .setDescription(obj.getDescription())
+                .setTitle(obj.getTitle())
+                .setUpdatedAt(obj.getUpdatedAt())
+                .setUpdatedBy(obj.getUpdatedBy())
+                .setId(obj.getId())
+                .setCreatedAt(obj.getCreatedAt())
+                .setCreatedBy(obj.getCreatedBy());
 
-		this.notOverridable = obj.getNotOverridable();
-	}
+        this.notOverridable = obj.getNotOverridable();
+    }
 
-	@JsonIgnore
-	public String getTransportName() {
-		return this.name;
-	}
+    @JsonIgnore
+    public String getTransportName() {
+        return this.name;
+    }
 }

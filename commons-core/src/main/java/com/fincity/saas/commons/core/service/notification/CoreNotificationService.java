@@ -1,7 +1,7 @@
 package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.document.common.notification.Notification;
+import com.fincity.saas.commons.core.document.Storage;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.enums.common.notification.NotificationChannelType;
 import com.fincity.saas.commons.core.enums.common.notification.NotificationType;
@@ -16,7 +16,9 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.UniqueUtil;
 import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
+
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,25 +29,26 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class CoreNotificationService extends AbstractOverridableDataService<Notification, NotificationRepository> {
+public class CoreNotificationService extends AbstractOverridableDataService<Storage.Notification, NotificationRepository> {
 
     private static final String CHANNEL_CONNECTIONS = "channelConnections";
 
     private final ConnectionService connectionService;
 
     @Autowired(required = false) //NOSONAR
-    @Qualifier("pubRedisAsyncCommand") private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
+    @Qualifier("pubRedisAsyncCommand")
+    private RedisPubSubAsyncCommands<String, String> pubAsyncCommand;
 
     @Value("${redis.notification.eviction.channel:notificationChannel}")
     private String channel;
 
     protected CoreNotificationService(ConnectionService connectionService) {
-        super(Notification.class);
+        super(Storage.Notification.class);
         this.connectionService = connectionService;
     }
 
     @Override
-    protected Mono<Notification> updatableEntity(Notification entity) {
+    protected Mono<Storage.Notification> updatableEntity(Storage.Notification entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
                     if (existing.getVersion() != entity.getVersion())
@@ -65,7 +68,7 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
     }
 
     @Override
-    public Mono<Notification> create(Notification entity) {
+    public Mono<Storage.Notification> create(Storage.Notification entity) {
 
         entity.setName(UniqueUtil.uniqueName(32, entity.getAppCode(), entity.getName()));
 
@@ -73,7 +76,7 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.create"));
     }
 
-    public Mono<Notification> validate(Notification entity) {
+    public Mono<Storage.Notification> validate(Storage.Notification entity) {
 
         if (entity.getNotificationType() == null || !NotificationType.isLiteralValid(entity.getNotificationType()))
             return this.messageResourceService.throwMessage(
@@ -119,8 +122,8 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                         .then(Mono.just(Boolean.TRUE)));
     }
 
-    private Mono<Notification> validateChannelDetails(Notification entity) {
-        for (Map.Entry<String, Notification.NotificationTemplate> entry :
+    private Mono<Storage.Notification> validateChannelDetails(Storage.Notification entity) {
+        for (Map.Entry<String, Storage.Notification.NotificationTemplate> entry :
                 entity.getChannelDetails().entrySet()) {
 
             if (NotificationChannelType.EMAIL.getLiteral().equals(entry.getKey())
@@ -130,7 +133,7 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                                 HttpStatus.BAD_REQUEST, "Please provide delivery details for email"),
                         entity.getNotificationType());
 
-            Notification.DeliveryOptions options = entry.getValue().getDeliveryOptions();
+            Storage.Notification.DeliveryOptions options = entry.getValue().getDeliveryOptions();
 
             if (options != null && !options.isValid())
                 return this.messageResourceService.throwMessage(
@@ -138,14 +141,14 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                         options.getCronStatement(),
                         entity.getNotificationType());
 
-            if (options == null) entry.getValue().setDeliveryOptions(new Notification.DeliveryOptions());
+            if (options == null) entry.getValue().setDeliveryOptions(new Storage.Notification.DeliveryOptions());
         }
 
         return Mono.just(entity);
     }
 
     @Override
-    public Mono<Notification> update(Notification entity) {
+    public Mono<Storage.Notification> update(Storage.Notification entity) {
         return FlatMapUtil.flatMapMono(
                         () -> this.validate(entity), super::update, (validated, updated) -> this.evictNotificationCache(
                                         updated)
@@ -163,13 +166,13 @@ public class CoreNotificationService extends AbstractOverridableDataService<Noti
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.delete"));
     }
 
-    public Mono<Notification> readInternalNotification(String name, String appCode, String clientCode) {
+    public Mono<Storage.Notification> readInternalNotification(String name, String appCode, String clientCode) {
         return super.readInternal(name, appCode, clientCode)
                 .map(ObjectWithUniqueID::getObject)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NotificationService.getNotification"));
     }
 
-    private Mono<Boolean> evictNotificationCache(Notification notification) {
+    private Mono<Boolean> evictNotificationCache(Storage.Notification notification) {
         return FlatMapUtil.flatMapMono(
                 () -> this.cacheService.evictAll(
                         super.getOutsideServerCacheName(notification.getAppCode(), notification.getName())),

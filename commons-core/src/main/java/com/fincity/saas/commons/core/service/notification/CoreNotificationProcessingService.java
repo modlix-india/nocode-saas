@@ -2,7 +2,7 @@ package com.fincity.saas.commons.core.service.notification;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.feign.IFeignNotificationService;
-import com.fincity.saas.commons.core.model.notification.NotificationRequest;
+import com.fincity.saas.commons.core.model.NotificationRequest;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -10,8 +10,10 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+
 import java.math.BigInteger;
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

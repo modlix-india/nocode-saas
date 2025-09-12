@@ -32,72 +32,72 @@ import reactor.util.context.Context;
 @ToString(callSuper = true)
 public class URIPath extends AbstractOverridableDTO<URIPath> {
 
-	@Serial
-	private static final long serialVersionUID = 2627066085463822531L;
+    @Serial
+    private static final long serialVersionUID = 2627066085463822531L;
 
-	private String pathString;
-	private String shortCode;
+    private String pathString;
+    private String shortCode;
 
-	private Map<String, PathDefinition> pathDefinitions;
+    private Map<String, PathDefinition> pathDefinitions;
 
-	public URIPath(URIPath uriPath) {
+    public URIPath(URIPath uriPath) {
 
-		super(uriPath);
+        super(uriPath);
 
-		this.pathString = uriPath.pathString;
-		this.shortCode = uriPath.shortCode;
-		this.pathDefinitions = CloneUtil.cloneMapObject(uriPath.pathDefinitions);
-	}
+        this.pathString = uriPath.pathString;
+        this.shortCode = uriPath.shortCode;
+        this.pathDefinitions = CloneUtil.cloneMapObject(uriPath.pathDefinitions);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<URIPath> applyOverride(URIPath base) {
-		if (base == null) {
-			return Mono.just(this);
-		}
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<URIPath> applyOverride(URIPath base) {
+        if (base == null) {
+            return Mono.just(this);
+        }
 
-		return FlatMapUtil.flatMapMonoWithNull(
-				() -> DifferenceApplicator.apply(this.pathDefinitions, base.pathDefinitions),
-				pDef -> {
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> DifferenceApplicator.apply(this.pathDefinitions, base.pathDefinitions),
+                pDef -> {
 
-					this.pathDefinitions = (Map<String, PathDefinition>) pDef;
+                    this.pathDefinitions = (Map<String, PathDefinition>) pDef;
 
-					if (this.pathString == null)
-						this.pathString = base.pathString;
+                    if (this.pathString == null)
+                        this.pathString = base.pathString;
 
-					if (this.shortCode == null)
-						this.shortCode = base.shortCode;
+                    if (this.shortCode == null)
+                        this.shortCode = base.shortCode;
 
-					return Mono.just(this);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
-	}
+                    return Mono.just(this);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.applyOverride"));
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<URIPath> makeOverride(URIPath base) {
-		if (base == null) {
-			return Mono.just(this);
-		}
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<URIPath> extractDifference(URIPath base) {
+        if (base == null) {
+            return Mono.just(this);
+        }
 
-		return FlatMapUtil.flatMapMonoWithNull(
-				() -> Mono.just(this),
-				(obj) -> DifferenceExtractor.extract(obj.pathDefinitions, base.pathDefinitions),
-				(obj, pDef) -> {
-					obj.setPathDefinitions((Map<String, PathDefinition>) pDef);
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> Mono.just(this),
+                (obj) -> DifferenceExtractor.extract(obj.pathDefinitions, base.pathDefinitions),
+                (obj, pDef) -> {
+                    obj.setPathDefinitions((Map<String, PathDefinition>) pDef);
 
-					if (obj.pathString != null && obj.pathString.equals(base.pathString))
-						obj.pathString = null;
+                    if (obj.pathString != null && obj.pathString.equals(base.pathString))
+                        obj.pathString = null;
 
-					if (obj.shortCode != null && obj.shortCode.equals(base.shortCode))
-						obj.shortCode = null;
+                    if (obj.shortCode != null && obj.shortCode.equals(base.shortCode))
+                        obj.shortCode = null;
 
-					return Mono.just(obj);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
-	}
+                    return Mono.just(obj);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPath.makeOverride"));
+    }
 
-	@Override
-	@JsonIgnore
-	public String getTransportName() {
-		return this.getId();
-	}
+    @Override
+    @JsonIgnore
+    public String getTransportName() {
+        return this.getId();
+    }
 }
