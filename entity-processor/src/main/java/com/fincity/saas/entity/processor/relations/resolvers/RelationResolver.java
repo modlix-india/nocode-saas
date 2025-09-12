@@ -1,9 +1,13 @@
 package com.fincity.saas.entity.processor.relations.resolvers;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 public interface RelationResolver {
@@ -17,7 +21,23 @@ public interface RelationResolver {
                 : getFields().contains(field);
     }
 
-    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve);
+    default Mono<Map<ULong, Map<String, Object>>> applyEagerFiltering(
+            Map<ULong, Map<String, Object>> resolvedMap, Boolean eager, List<String> eagerFields) {
+        if (eager == null || !eager) return Mono.just(resolvedMap);
+        if (eagerFields == null || eagerFields.isEmpty()) return Mono.just(resolvedMap);
 
-    Mono<Map<ULong, Map<String, Object>>> resolveBatch(Set<ULong> idsToResolve, List<String> eagerFields);
+        Set<String> eagerFieldSet = new HashSet<>(eagerFields);
+
+        Map<ULong, Map<String, Object>> filtered = resolvedMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
+                    Map<String, Object> originalMap = entry.getValue();
+                    return originalMap.keySet().stream()
+                            .filter(eagerFieldSet::contains)
+                            .collect(Collectors.toMap(key -> key, originalMap::get, (a, b) -> b, LinkedHashMap::new));
+                }));
+        return Mono.just(filtered);
+    }
+
+    Mono<Map<ULong, Map<String, Object>>> resolveBatch(
+            Set<ULong> idsToResolve, MultiValueMap<String, String> queryParams);
 }

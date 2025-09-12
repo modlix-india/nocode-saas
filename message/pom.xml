@@ -40,8 +40,6 @@
         <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
         <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
-        <package.i.saas-commons-mongo-version>2.0.0</package.i.saas-commons-mongo-version>
-        <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
@@ -91,16 +89,6 @@
         </dependency>
         <dependency>
             <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mongo</artifactId>
-            <version>${package.i.saas-commons-mongo-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${package.i.saas-commons-mq-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
             <artifactId>commons-security</artifactId>
             <version>${package.i.saas-commons-security-version}</version>
         </dependency>
@@ -108,6 +96,10 @@
             <groupId>com.googlecode.libphonenumber</groupId>
             <artifactId>libphonenumber</artifactId>
             <version>${package.o.com.googlecode.libphonenumber.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
         </dependency>
         <dependency>
             <groupId>com.playtika.reactivefeign</groupId>
@@ -203,10 +195,6 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
@@ -296,44 +284,52 @@
                                     <forcedTypes>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.METADATA</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.message.model.message.whatsapp.messages.Message
-                                            </userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <userType>java.util.Map</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.EVENT</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.messages.Message</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.MESSAGE</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse
-                                            </userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.MESSAGE_RESPONSE</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.model.message.whatsapp.templates.ComponentList
-                                            </userType>
-                                            <converter>
-                                                com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter
-                                            </converter>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.webhook.IMessage</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.IN_MESSAGE</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.templates.ComponentList</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.COMPONENTS</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.oserver.files.model.FileDetail</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.(.*_FILE_DETAIL(S)?)</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.message.enums.call.CallStatus</userType>
@@ -342,106 +338,79 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus
-                                            </userType>
-                                            <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS
-                                            </includeExpression>
+                                            <userType>com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus</userType>
+                                            <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType</userType>
                                             <includeExpression>.*\.MESSAGE_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus</userType>
                                             <includeExpression>.*\.MESSAGE_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.Category
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.Category</userType>
                                             <includeExpression>.*\.CATEGORY|.*\.PREVIOUS_CATEGORY</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.SubCategory</userType>
                                             <includeExpression>.*\.SUB_CATEGORY</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.ParameterFormat</userType>
                                             <includeExpression>.*\.PARAMETER_FORMAT</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateRejectedReason</userType>
                                             <includeExpression>.*\.REJECTED_REASON</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus</userType>
                                             <includeExpression>.*\.STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType</userType>
                                             <includeExpression>.*\.NAME_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType</userType>
                                             <includeExpression>.*\.PLATFORM_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType</userType>
                                             <includeExpression>.*\.QUALITY_RATING</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType</userType>
                                             <includeExpression>.*\.THROUGHPUT_LEVEL_TYPE</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>
-                                                com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus
-                                            </userType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus</userType>
                                             <includeExpression>.*\.CODE_VERIFICATION_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>

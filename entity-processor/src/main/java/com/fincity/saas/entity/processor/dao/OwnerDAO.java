@@ -5,6 +5,7 @@ import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_OWN
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Condition;
@@ -18,23 +19,22 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
         super(Owner.class, ENTITY_PROCESSOR_OWNERS, ENTITY_PROCESSOR_OWNERS.ID);
     }
 
-    public Mono<Owner> readByNumberAndEmail(
-            String appCode, String clientCode, Integer dialCode, String number, String email) {
+    public Mono<Owner> readByNumberAndEmail(ProcessorAccess access, Integer dialCode, String number, String email) {
         return Mono.from(this.dslContext
                         .selectFrom(this.table)
-                        .where(this.getOwnerIdentifierConditions(appCode, clientCode, dialCode, number, email))
+                        .where(this.getOwnerIdentifierConditions(access, dialCode, number, email))
                         .orderBy(this.idField.desc())
                         .limit(1))
                 .map(e -> e.into(this.pojoClass));
     }
 
     private List<Condition> getOwnerIdentifierConditions(
-            String appCode, String clientCode, Integer dialCode, String number, String email) {
+            ProcessorAccess access, Integer dialCode, String number, String email) {
 
         List<Condition> conditions = new ArrayList<>();
 
-        conditions.add(this.appCodeField.eq(appCode));
-        conditions.add(this.clientCodeField.eq(clientCode));
+        conditions.add(this.appCodeField.eq(access.getAppCode()));
+        conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 

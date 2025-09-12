@@ -5,9 +5,11 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -32,6 +34,11 @@ public class Tables {
     public static final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 
     /**
+     * The table <code>entity_processor.entity_processor_campaigns</code>.
+     */
+    public static final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
      */
     public static final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
@@ -45,6 +52,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_owners</code>.
      */
     public static final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_partners</code>.
+     */
+    public static final EntityProcessorPartners ENTITY_PROCESSOR_PARTNERS = EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS;
 
     /**
      * The table

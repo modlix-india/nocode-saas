@@ -16,7 +16,7 @@ public class EntityController {
 
     private final EntityCollectorService entityCollectorService;
 
-    @Value("${entity-collector.meta.webhook.verify-token}")
+    @Value("${meta.webhook.verify-token:null}")
     private String token;
 
     public EntityController(EntityCollectorService entityCollectorService) {

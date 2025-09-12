@@ -40,11 +40,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import jakarta.annotation.PostConstruct;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -161,7 +163,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                             if (fun instanceof DefinitionFunction df
                                     && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
                                     && !SecurityContextUtil.hasAuthority(
-                                            df.getExecutionAuthorization(), ca.getAuthorities()))
+                                    df.getExecutionAuthorization(), ca.getAuthorities()))
                                 return this.messageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                         AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
@@ -169,11 +171,11 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                             AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
 
                             return fun.execute(new ReactiveFunctionExecutionParameters(
-                                            new ReactiveHybridRepository<>(
-                                                    new KIRunReactiveFunctionRepository(),
-                                                    this.coreFunctionRepository,
-                                                    funRepo),
-                                            schRepo)
+                                    new ReactiveHybridRepository<>(
+                                            new KIRunReactiveFunctionRepository(),
+                                            this.coreFunctionRepository,
+                                            funRepo),
+                                    schRepo)
                                     .setArguments(args)
                                     .setValuesMap(Map.of(ate.getPrefix(), ate)));
                         })
@@ -182,6 +184,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
             Map<String, Parameter> parameters, ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
+
         MultiValueMap<String, String> queryParams =
                 request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
 

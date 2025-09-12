@@ -15,6 +15,11 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
         extends BaseUpdatableService<R, D, O> {
 
     @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    @Override
     protected Mono<D> updatableEntity(D entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             if (existing.getVersion() != entity.getVersion())

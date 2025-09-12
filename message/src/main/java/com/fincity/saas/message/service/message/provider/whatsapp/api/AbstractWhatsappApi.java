@@ -41,13 +41,37 @@ public abstract class AbstractWhatsappApi {
             ClientResponse clientResponse, MessageResourceService msgService) {
         Logger logger = LoggerFactory.getLogger(AbstractWhatsappApi.class);
 
+        String contentType =
+                clientResponse.headers().contentType().map(Object::toString).orElse("");
+
+        if (!contentType.contains("application/json")) {
+            logger.error("Unsupported content type received: {}. Falling back to default handling.", contentType);
+            return clientResponse
+                    .bodyToMono(String.class)
+                    .defaultIfEmpty("No response body received.")
+                    .flatMap(responseBody -> {
+                        logger.error("Raw response body: {}", responseBody);
+                        return Mono.error(new GenericException(
+                                HttpStatus.valueOf(clientResponse.statusCode().value()),
+                                "Unexpected content type '" + contentType + "'. Response body: " + responseBody));
+                    });
+        }
+
         return clientResponse.bodyToMono(WhatsappApiError.class).flatMap(errorBody -> {
             logger.error("Error response received from WhatsApp API: {}", errorBody);
+
+            String errorMessage = errorBody.getError().getMessage()
+                    + (errorBody.getError().getErrorUserSubtitle() != null
+                            ? ". " + errorBody.getError().getErrorUserSubtitle()
+                            : "")
+                    + (errorBody.getError().getErrorUserMsg() != null
+                            ? ". " + errorBody.getError().getErrorUserMsg()
+                            : "");
 
             return msgService.throwStrMessage(
                     msg -> new GenericException(
                             HttpStatus.valueOf(clientResponse.statusCode().value()), msg),
-                    errorBody.getError().getMessage());
+                    errorMessage);
         });
     }
 

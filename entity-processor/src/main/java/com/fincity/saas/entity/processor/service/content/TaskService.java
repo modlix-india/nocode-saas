@@ -50,31 +50,21 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, taskRequest),
                         (task) -> this.createContent(taskRequest),
-                        (task, content) -> content.isTicketContent()
-                                ? this.createTicketContent(access, content)
-                                : this.createOwnerContent(access, content))
+                        (task, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
     }
 
     private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
 
-        Mono<Identity> ticketIdMono = taskRequest.getTicketId() != null
-                ? this.checkTicket(access, taskRequest.getTicketId())
-                : Mono.just(Identity.ofNull());
+        if (taskRequest.getUserId() != null) return Mono.just(taskRequest);
 
-        Mono<Identity> ownerIdMono = ticketIdMono.flatMap(ticketId -> taskRequest.getOwnerId() != null
-                ? this.checkOwner(access, taskRequest.getOwnerId(), ticketId)
-                : Mono.just(Identity.ofNull()));
-
-        Mono<Identity> taskTypeIdMono = taskRequest.getTaskTypeId() != null
-                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(access, taskRequest.getTaskTypeId())
-                : Mono.just(Identity.ofNull());
-
-        return Mono.zip(ticketIdMono, ownerIdMono, taskTypeIdMono)
-                .map(tuple3 -> taskRequest
-                        .setTicketId(tuple3.getT1())
-                        .setOwnerId(tuple3.getT2())
-                        .setTaskTypeId(tuple3.getT3()))
+        return FlatMapUtil.flatMapMono(
+                        () -> super.updateBaseIdentities(access, taskRequest),
+                        bTaskRequest -> taskRequest.getTaskTypeId() != null
+                                ? this.taskTypeService.checkAndUpdateIdentityWithAccess(
+                                        access, taskRequest.getTaskTypeId())
+                                : Mono.just(Identity.ofNull()),
+                        (bTaskRequest, uTaskType) -> Mono.just(bTaskRequest.setTaskTypeId(uTaskType)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.updateIdentities"));
     }
 

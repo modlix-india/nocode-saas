@@ -49,14 +49,13 @@ public class MessageService extends BaseUpdatableService<MessageMessagesRecord, 
     public Mono<Message> sendMessage(MessageRequest messageRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.connectionService.getConnection(
+                        access -> this.connectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), messageRequest.getConnectionName()),
                         (access, connection) -> {
                             IMessageService<?> service = services.get(connection.getConnectionSubType());
 
                             return service.sendMessage(access, messageRequest, connection);
-                        },
-                        (access, connection, message) -> this.createInternal(access, message))
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "MessageService.sendMessage"));
     }
 }

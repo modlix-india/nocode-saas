@@ -4,6 +4,8 @@ import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
+import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,7 +16,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public class TicketRequest extends BaseRequest<TicketRequest> {
+public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRequest {
 
     @Serial
     private static final long serialVersionUID = 3948634318723751023L;
@@ -24,6 +26,9 @@ public class TicketRequest extends BaseRequest<TicketRequest> {
     private Email email;
     private String source;
     private String subSource;
+    private Boolean dnc;
+    private NoteRequest noteRequest;
+    private String comment;
 
     public boolean hasIdentifyInfo() {
         return this.getPhoneNumber() != null || this.getEmail() != null;

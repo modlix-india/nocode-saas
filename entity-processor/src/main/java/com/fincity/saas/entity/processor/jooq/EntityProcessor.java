@@ -5,9 +5,11 @@ package com.fincity.saas.entity.processor.jooq;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -46,6 +48,11 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorActivities ENTITY_PROCESSOR_ACTIVITIES = EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 
     /**
+     * The table <code>entity_processor.entity_processor_campaigns</code>.
+     */
+    public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
+
+    /**
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
      */
     public final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
@@ -59,6 +66,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_owners</code>.
      */
     public final EntityProcessorOwners ENTITY_PROCESSOR_OWNERS = EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_partners</code>.
+     */
+    public final EntityProcessorPartners ENTITY_PROCESSOR_PARTNERS = EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS;
 
     /**
      * The table
@@ -131,9 +143,11 @@ public class EntityProcessor extends SchemaImpl {
     public final List<Table<?>> getTables() {
         return Arrays.asList(
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
+            EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
+            EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
             EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES,
             EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,

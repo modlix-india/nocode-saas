@@ -168,7 +168,7 @@ public class WhatsappPhoneNumberService
 
     private Mono<Tuple2<String, PhoneNumbers>> getPhoneNumbers(String connectionName, MessageAccess messageAccess) {
         return FlatMapUtil.flatMapMono(
-                () -> super.messageConnectionService.getConnection(
+                () -> super.messageConnectionService.getCoreDocument(
                         messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
                 this::getWhatsappBusinessAccountId,
                 (connection, businessAccountId) -> this.getBusinessManagementApi(connection),
@@ -180,11 +180,11 @@ public class WhatsappPhoneNumberService
     private Mono<Tuple2<String, PhoneNumber>> getPhoneNumber(
             String connectionName, MessageAccess messageAccess, String phoneNumberId) {
         return FlatMapUtil.flatMapMono(
-                () -> super.messageConnectionService.getConnection(
+                () -> super.messageConnectionService.getCoreDocument(
                         messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
                 this::getWhatsappBusinessAccountId,
                 (connection, businessAccountId) -> this.getBusinessManagementApi(connection),
-                (connection, businessAccountId, api) -> api.retrievePhoneNumber(businessAccountId, phoneNumberId),
+                (connection, businessAccountId, api) -> api.retrievePhoneNumber(phoneNumberId),
                 (connection, businessAccountId, api, phoneNumber) ->
                         Mono.just(Tuples.of(businessAccountId, phoneNumber)));
     }

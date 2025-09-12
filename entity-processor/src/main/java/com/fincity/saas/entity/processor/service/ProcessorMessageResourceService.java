@@ -21,11 +21,13 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
     public static final String INVALID_USER_ACCESS = "invalid_user_access";
     public static final String IDENTITY_MISSING = "identity_missing";
+    public static final String IDENTITY_INFO_MISSING = "identity_info_missing";
     public static final String IDENTITY_WRONG = "identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
     public static final String PRODUCT_TEMPLATE_FORBIDDEN_ACCESS = "product_template_forbidden_access";
     public static final String OWNER_NOT_CREATED = "owner_not_created";
     public static final String DUPLICATE_ENTITY = "duplicate_entity";
+    public static final String DUPLICATE_ENTITY_OUTSIDE_USER = "duplicate_entity_outside_user";
     public static final String INVALID_TICKET_OWNER = "invalid_ticket_owner";
     public static final String USER_DISTRIBUTION_TYPE_MISSING = "user_distribution_type_missing";
     public static final String USER_DISTRIBUTION_INVALID = "user_distribution_invalid";
@@ -43,6 +45,9 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String CONTENT_FORBIDDEN_ACCESS = "content_forbidden_access";
     public static final String TASK_ALREADY_COMPLETED = "task_already_completed";
     public static final String TASK_ALREADY_CANCELLED = "task_already_cancelled";
+    public static final String OUTSIDE_USER_ACCESS = "outside_user_access";
+    public static final String PARTNER_ACCESS_DENIED = "partner_access_denied";
+    public static final String INVALID_CLIENT_TYPE = "invalid_client_type";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

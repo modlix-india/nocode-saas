@@ -1,9 +1,8 @@
-package com.fincity.saas.commons.mongo.model;
+package com.fincity.saas.commons.model.dto;
 
 import java.io.Serial;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,7 +16,7 @@ import reactor.core.publisher.Mono;
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
-public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
+	public abstract class AbstractOverridableDTO<D extends AbstractOverridableDTO<D>>
 		extends AbstractUpdatableDTO<String, String> {
 
 	@Serial

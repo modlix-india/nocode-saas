@@ -10,6 +10,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegrationTokens;
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
+import com.fincity.security.jooq.tables.SecurityAppSsoToken;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecuritySoxLog;
@@ -38,6 +39,7 @@ public class Indexes {
     public static final Index SECURITY_SOX_LOG_CREATED_AT = Internal.createIndex(DSL.name("CREATED_AT"), SecuritySoxLog.SECURITY_SOX_LOG, new OrderField[] { SecuritySoxLog.SECURITY_SOX_LOG.CREATED_AT }, false);
     public static final Index SECURITY_OTP_EXPIRES_AT = Internal.createIndex(DSL.name("EXPIRES_AT"), SecurityOtp.SECURITY_OTP, new OrderField[] { SecurityOtp.SECURITY_OTP.EXPIRES_AT }, false);
     public static final Index SECURITY_APP_ACCESS_FK1_APP_CLIENT_ID = Internal.createIndex(DSL.name("FK1_APP_CLIENT_ID"), SecurityAppAccess.SECURITY_APP_ACCESS, new OrderField[] { SecurityAppAccess.SECURITY_APP_ACCESS.CLIENT_ID }, false);
+    public static final Index SECURITY_APP_SSO_TOKEN_FK1_APP_SSO_TOKEN_BUNDLE_ID = Internal.createIndex(DSL.name("FK1_APP_SSO_TOKEN_BUNDLE_ID"), SecurityAppSsoToken.SECURITY_APP_SSO_TOKEN, new OrderField[] { SecurityAppSsoToken.SECURITY_APP_SSO_TOKEN.BUNDLE_ID }, false);
     public static final Index SECURITY_ONE_TIME_TOKEN_FK1_ONE_TIME_TOKEN_USER_ID = Internal.createIndex(DSL.name("FK1_ONE_TIME_TOKEN_USER_ID"), SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN, new OrderField[] { SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN.USER_ID }, false);
     public static final Index SECURITY_APP_REG_DEPARTMENT_FK3_APP_REG_DEPARTMENT_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_DEPARTMENT_APP_ID"), SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT, new OrderField[] { SecurityAppRegDepartment.SECURITY_APP_REG_DEPARTMENT.APP_ID }, false);
     public static final Index SECURITY_APP_REG_USER_DESIGNATION_FK3_APP_REG_USER_DESIGNATION_APP_ID = Internal.createIndex(DSL.name("FK3_APP_REG_USER_DESIGNATION_APP_ID"), SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION, new OrderField[] { SecurityAppRegUserDesignation.SECURITY_APP_REG_USER_DESIGNATION.APP_ID }, false);

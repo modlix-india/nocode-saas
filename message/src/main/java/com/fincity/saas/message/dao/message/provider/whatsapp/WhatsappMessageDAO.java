@@ -4,6 +4,7 @@ import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_MESSAGES;
 
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
+import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageStatus;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
 import java.time.LocalDateTime;
@@ -69,5 +70,29 @@ public class WhatsappMessageDAO extends BaseProviderDAO<MessageWhatsappMessagesR
                         .orderBy(MESSAGE_WHATSAPP_MESSAGES.CREATED_AT.desc())
                         .limit(1))
                 .map(rec -> rec.into(this.pojoClass));
+    }
+
+    public Mono<Integer> markConversationAsRead(
+            MessageAccess access,
+            ULong whatsappPhoneNumberId,
+            String customerPhoneNumber,
+            Integer customerDialCode,
+            LocalDateTime readTime,
+            LocalDateTime uptoCreatedAt) {
+        return Mono.from(this.dslContext
+                .update(MESSAGE_WHATSAPP_MESSAGES)
+                .set(MESSAGE_WHATSAPP_MESSAGES.MESSAGE_STATUS, MessageStatus.READ)
+                .set(MESSAGE_WHATSAPP_MESSAGES.READ_TIME, readTime)
+                .where(MESSAGE_WHATSAPP_MESSAGES
+                        .APP_CODE
+                        .eq(access.getAppCode())
+                        .and(MESSAGE_WHATSAPP_MESSAGES.CLIENT_CODE.eq(access.getClientCode()))
+                        .and(MESSAGE_WHATSAPP_MESSAGES.WHATSAPP_PHONE_NUMBER_ID.eq(whatsappPhoneNumberId))
+                        .and(MESSAGE_WHATSAPP_MESSAGES.IS_OUTBOUND.isFalse())
+                        .and(MESSAGE_WHATSAPP_MESSAGES.CUSTOMER_PHONE_NUMBER.eq(customerPhoneNumber))
+                        .and(MESSAGE_WHATSAPP_MESSAGES.CUSTOMER_DIAL_CODE.eq(customerDialCode.shortValue()))
+                        .and(MESSAGE_WHATSAPP_MESSAGES.MESSAGE_STATUS.ne(MessageStatus.READ))
+                        .and(MESSAGE_WHATSAPP_MESSAGES.READ_TIME.isNull())
+                        .and(MESSAGE_WHATSAPP_MESSAGES.CREATED_AT.le(uptoCreatedAt))));
     }
 }

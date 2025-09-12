@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.*;
 import org.jetbrains.annotations.Nullable;
@@ -337,16 +338,16 @@ public class AuthenticationService implements IAuthenticationService {
                                 (tup, linCCheck) -> this.checkUserStatus(tup.getT3()),
                                 (tup, linCCheck, user) -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
                                         authRequest.getSocialRegisterState()),
-                                (tup, linCCheck, user, appRegIntgToken) -> Mono.just(
-                                                appRegIntgToken.getUsername().equals(authRequest.getUserName()))
+                                (tup, linCCheck, user, appRegIntegrationToken) -> Mono.just(
+                                                appRegIntegrationToken.getUsername().equals(authRequest.getUserName()))
                                         .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                                (tup, linCCheck, user, appRegIntgToken, usernameChecked) -> {
-                                    appRegIntgToken.setCreatedBy(user.getId());
-                                    appRegIntgToken.setUpdatedBy(user.getId());
+                                (tup, linCCheck, user, appRegIntegrationToken, usernameChecked) -> {
+                                    appRegIntegrationToken.setCreatedBy(user.getId());
+                                    appRegIntegrationToken.setUpdatedBy(user.getId());
 
-                                    return this.integrationTokenDao.update(appRegIntgToken);
+                                    return this.integrationTokenDao.update(appRegIntegrationToken);
                                 },
-                                (tup, linCCheck, user, appRegIntgToken, usernameChecked, updatedToken) ->
+                                (tup, linCCheck, user, appRegIntegrationToken, usernameChecked, updatedToken) ->
                                         logAndMakeToken(authRequest.isRememberMe(), authRequest.isCookie(), request, response, appCode, user, tup.getT2(), tup.getT1()))
                         .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.authenticate")))
                 .switchIfEmpty(
@@ -401,7 +402,7 @@ public class AuthenticationService implements IAuthenticationService {
                                     appCode,
                                     user,
                                     new OtpVerificationRequest()
-                                            .setPurpose(OtpPurpose.PASSWORD_RESET)
+                                            .setPurpose(OtpPurpose.LOGIN)
                                             .setOtp(passwordString));
                         },
                         isValid -> Boolean.FALSE.equals(isValid)
@@ -592,7 +593,7 @@ public class AuthenticationService implements IAuthenticationService {
     public Mono<Authentication> getAuthentication(
             boolean basic, String bearerToken, String clientCode, String appCode, ServerHttpRequest request) {
 
-        if (StringUtil.safeIsBlank(bearerToken)) return this.makeAnonySpringAuthentication(request);
+        if (StringUtil.safeIsBlank(bearerToken)) return this.makeAnonymousSpringAuthentication(request);
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> cacheService.get(CACHE_NAME_TOKEN, bearerToken).map(ContextAuthentication.class::cast),
@@ -603,7 +604,7 @@ public class AuthenticationService implements IAuthenticationService {
 
                             return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
                         })
-                .onErrorResume(e -> this.makeAnonySpringAuthentication(request))
+                .onErrorResume(e -> this.makeAnonymousSpringAuthentication(request))
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
 
@@ -731,7 +732,7 @@ public class AuthenticationService implements IAuthenticationService {
 
         return FlatMapUtil.flatMapMono(
                         () -> checkTokenOrigin(request, jwtClaims),
-                        claims -> this.userService.readInternal(appCode, tokenObject.getUserId()),
+                        claims -> this.userService.readInternal(tokenObject.getUserId()),
                         (claims, u) -> this.clientService.getClientTypeNCodeNClientLevel(u.getClientId()),
                         (claims, u, typ) -> Mono.just(new ContextAuthentication(
                                 u.toContextUser(),
@@ -745,11 +746,11 @@ public class AuthenticationService implements IAuthenticationService {
                                 tokenObject.getExpiresAt(),
                                 null,
                                 null,
-                                claims.getAppCode())))
+                                CommonsUtil.nonNullValue(claims.getAppCode(), appCode))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.makeSpringAuthentication"));
     }
 
-    private Mono<Authentication> makeAnonySpringAuthentication(ServerHttpRequest request) {
+    private Mono<Authentication> makeAnonymousSpringAuthentication(ServerHttpRequest request) {
 
         List<String> clientCode = request.getHeaders().get(ClientService.CC);
 

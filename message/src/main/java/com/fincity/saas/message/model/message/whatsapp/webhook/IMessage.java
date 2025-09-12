@@ -1,13 +1,11 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -69,7 +67,7 @@ public final class IMessage implements Serializable {
     private IOrder order;
 
     @JsonProperty("system")
-    private System system;
+    private ISystem system;
 
     @JsonProperty("video")
     private IVideo video;
@@ -80,9 +78,15 @@ public final class IMessage implements Serializable {
     @JsonProperty("document")
     private IDocument document;
 
-    public LocalDateTime getTimestampAsDate() {
-        return this.timestamp != null
-                ? LocalDateTime.ofInstant(Instant.ofEpochSecond(Long.parseLong(timestamp)), ZoneOffset.UTC)
-                : LocalDateTime.now();
+    @JsonIgnore
+    public String getMediaId() {
+        return switch (this.getType()) {
+            case AUDIO -> this.audio.getId();
+            case DOCUMENT -> this.document.getId();
+            case IMAGE -> this.image.getId();
+            case STICKER -> this.sticker.getId();
+            case VIDEO -> this.video.getId();
+            default -> null;
+        };
     }
 }

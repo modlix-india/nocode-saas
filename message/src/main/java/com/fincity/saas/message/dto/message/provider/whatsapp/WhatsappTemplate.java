@@ -10,6 +10,7 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.Templat
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
+import com.fincity.saas.message.oserver.files.model.FileDetail;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -42,36 +43,68 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
     private Category previousCategory;
     private ComponentList components;
     private Integer monthlyEditCount = 0;
+    private FileDetail headerFileDetail;
+
+    public WhatsappTemplate() {
+        super();
+    }
+
+    public WhatsappTemplate(WhatsappTemplate whatsappTemplate) {
+        super(whatsappTemplate);
+        this.whatsappBusinessAccountId = whatsappTemplate.whatsappBusinessAccountId;
+        this.templateId = whatsappTemplate.templateId;
+        this.templateName = whatsappTemplate.templateName;
+        this.allowCategoryChange = whatsappTemplate.allowCategoryChange;
+        this.category = whatsappTemplate.category;
+        this.subCategory = whatsappTemplate.subCategory;
+        this.messageSendTtlSeconds = whatsappTemplate.messageSendTtlSeconds;
+        this.parameterFormat = whatsappTemplate.parameterFormat;
+        this.language = whatsappTemplate.language;
+        this.status = whatsappTemplate.status;
+        this.rejectedReason = whatsappTemplate.rejectedReason;
+        this.previousCategory = whatsappTemplate.previousCategory;
+        this.components = whatsappTemplate.components;
+        this.monthlyEditCount = whatsappTemplate.monthlyEditCount;
+        this.headerFileDetail = whatsappTemplate.headerFileDetail;
+    }
 
     public static WhatsappTemplate of(
-            String whatsappBusinessAccountId, MessageTemplate messageTemplate, Template template) {
+            String whatsappBusinessAccountId,
+            MessageTemplate messageTemplate,
+            Template template,
+            FileDetail fileDetail) {
         WhatsappTemplate whatsappTemplate =
                 new WhatsappTemplate().setWhatsappBusinessAccountId(whatsappBusinessAccountId);
 
         if (template != null) {
             whatsappTemplate
                     .setTemplateId(template.getId())
-                    .setTemplateName(template.getName())
-                    .setLanguage(template.getLanguage())
+                    .setCategory(template.getCategory())
                     .setStatus(template.getStatus())
                     .setPreviousCategory(template.getPreviousCategory());
-
-            if (template.getComponents() != null) {
-                ComponentList componentList = new ComponentList();
-                componentList.addAll(template.getComponents());
-                whatsappTemplate.setComponents(componentList);
-            }
 
             if (template.getRejectedReason() != null) whatsappTemplate.setRejectedReason(template.getRejectedReason());
         }
 
-        if (messageTemplate != null)
+        if (messageTemplate != null) {
+
             whatsappTemplate
+                    .setTemplateName(messageTemplate.getName())
+                    .setLanguage(messageTemplate.getLanguage().getValue())
                     .setAllowCategoryChange(messageTemplate.isAllowCategoryChange())
                     .setCategory(messageTemplate.getCategory())
                     .setSubCategory(messageTemplate.getSubCategory())
                     .setMessageSendTtlSeconds(ULongUtil.valueOf(messageTemplate.getMessageSendTtlSeconds()))
                     .setParameterFormat(messageTemplate.getParameterFormat());
+
+            if (messageTemplate.getComponents() != null) {
+                ComponentList componentList = new ComponentList();
+                componentList.addAll(messageTemplate.getComponents());
+                whatsappTemplate.setComponents(componentList);
+            }
+        }
+
+        whatsappTemplate.setHeaderFileDetail(fileDetail);
 
         return whatsappTemplate;
     }

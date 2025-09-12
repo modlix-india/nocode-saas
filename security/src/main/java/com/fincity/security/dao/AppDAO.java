@@ -36,6 +36,7 @@ import reactor.util.function.Tuples;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
@@ -67,9 +68,9 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                         return Tuples.of(mainQuery, countQuery);
 
                     return Tuples.of((SelectJoinStep<Record>) mainQuery.leftJoin(SECURITY_APP_ACCESS)
-                            .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)
-                                    .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser()
-                                            .getClientId())))),
+                                    .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)
+                                            .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser()
+                                                    .getClientId())))),
                             (SelectJoinStep<Record1<Integer>>) countQuery.leftJoin(SECURITY_APP_ACCESS)
                                     .on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)
                                             .and(SECURITY_APP_ACCESS.CLIENT_ID.eq(ULong.valueOf(ca.getUser()
@@ -157,13 +158,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .where(DSL.and(conditions));
 
         return Mono.from(this.dslContext.select(DSL.count())
-                .from(SECURITY_APP)
-                .leftJoin(SECURITY_CLIENT)
-                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
-                .where(SECURITY_APP.APP_CODE.eq(appCode)
-                        .and(SECURITY_CLIENT.CODE.eq(clientCode)
-                                .or(SECURITY_APP.ID.in(inQuery))))
-                .limit(1))
+                        .from(SECURITY_APP)
+                        .leftJoin(SECURITY_CLIENT)
+                        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+                        .where(SECURITY_APP.APP_CODE.eq(appCode)
+                                .and(SECURITY_CLIENT.CODE.eq(clientCode)
+                                        .or(SECURITY_APP.ID.in(inQuery))))
+                        .limit(1))
                 .map(Record1::value1)
                 .map(e -> e != 0);
     }
@@ -188,27 +189,27 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     public Mono<Boolean> removeClientAccess(ULong appId, ULong accessId) {
 
         return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_ACCESS)
-                .where(SECURITY_APP_ACCESS.ID.eq(accessId)
-                        .and(SECURITY_APP_ACCESS.APP_ID.eq(appId))))
+                        .where(SECURITY_APP_ACCESS.ID.eq(accessId)
+                                .and(SECURITY_APP_ACCESS.APP_ID.eq(appId))))
                 .map(e -> e == 1);
     }
 
     public Mono<Boolean> updateClientAccess(ULong accessId, boolean writeAccess) {
 
         return Mono.from(this.dslContext.update(SECURITY_APP_ACCESS)
-                .set(SECURITY_APP_ACCESS.EDIT_ACCESS, UByte.valueOf(writeAccess ? 1 : 0))
-                .where(SECURITY_APP_ACCESS.ID.eq(accessId)))
+                        .set(SECURITY_APP_ACCESS.EDIT_ACCESS, UByte.valueOf(writeAccess ? 1 : 0))
+                        .where(SECURITY_APP_ACCESS.ID.eq(accessId)))
                 .map(e -> e == 1);
     }
 
     public Mono<List<String>> appInheritance(String appCode, String urlClientCode, String clientCode) {
 
         return Mono.from(this.dslContext.select(SECURITY_CLIENT.CODE)
-                .from(SECURITY_APP)
-                .leftJoin(SECURITY_CLIENT)
-                .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
-                .where(SECURITY_APP.APP_CODE.eq(appCode))
-                .limit(1))
+                        .from(SECURITY_APP)
+                        .leftJoin(SECURITY_CLIENT)
+                        .on(SECURITY_CLIENT.ID.eq(SECURITY_APP.CLIENT_ID))
+                        .where(SECURITY_APP.APP_CODE.eq(appCode))
+                        .limit(1))
                 .map(Record1::value1)
                 .map(code -> {
 
@@ -233,8 +234,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     public Mono<App> getByAppCode(String appCode) {
 
         return Mono.from(this.dslContext.selectFrom(SECURITY_APP)
-                .where(SECURITY_APP.APP_CODE.eq(appCode))
-                .limit(1))
+                        .where(SECURITY_APP.APP_CODE.eq(appCode))
+                        .limit(1))
                 .map(e -> e.into(App.class));
     }
 
@@ -242,8 +243,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
         return FlatMapUtil.flatMapMono(
                 () -> Mono.from(this.dslContext.selectFrom(SECURITY_APP)
-                        .where(SECURITY_APP.APP_CODE.eq(appCode))
-                        .limit(1))
+                                .where(SECURITY_APP.APP_CODE.eq(appCode))
+                                .limit(1))
                         .map(e -> e.into(com.fincity.saas.commons.security.dto.App.class)),
 
                 app -> {
@@ -252,9 +253,9 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                         return Mono.just(app);
 
                     return Mono.from(this.dslContext.selectFrom(SECURITY_APP_ACCESS)
-                            .where(DSL.and(SECURITY_APP_ACCESS.APP_ID.eq(ULong.valueOf(app.getId())),
-                                    SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))))
-                            .limit(1)).map(e -> e.getClientId().toBigInteger()).map(app::setExplicitClientId)
+                                    .where(DSL.and(SECURITY_APP_ACCESS.APP_ID.eq(ULong.valueOf(app.getId())),
+                                            SECURITY_APP_ACCESS.EDIT_ACCESS.eq(UByte.valueOf(1))))
+                                    .limit(1)).map(e -> e.getClientId().toBigInteger()).map(app::setExplicitClientId)
                             .defaultIfEmpty(app);
                 });
     }
@@ -268,8 +269,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
         return Mono.just(UniqueUtil.uniqueNameOnlyLetters(36, appName))
                 .expandDeep(n -> Mono.from(this.dslContext.selectCount()
-                        .from(SECURITY_APP)
-                        .where(SECURITY_APP.APP_CODE.eq(n)))
+                                .from(SECURITY_APP)
+                                .where(SECURITY_APP.APP_CODE.eq(n)))
                         .map(Record1::value1)
                         .flatMap(count -> {
                             if (count == 0L)
@@ -282,13 +283,13 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     public Mono<Map<ULong, Map<String, AppProperty>>> getProperties(List<ULong> clientIds, ULong appId, String appCode,
-            String propName) {
+                                                                    String propName) {
 
         return FlatMapUtil.flatMapMono(
 
                 () -> Mono.from(this.dslContext.selectFrom(SECURITY_APP)
-                        .where(appId != null ? SECURITY_APP.ID.eq(appId) : SECURITY_APP.APP_CODE.eq(appCode))
-                        .limit(1))
+                                .where(appId != null ? SECURITY_APP.ID.eq(appId) : SECURITY_APP.APP_CODE.eq(appCode))
+                                .limit(1))
                         .map(e -> e.into(App.class)),
 
                 app -> SecurityContextUtil.getUsersContextAuthentication(),
@@ -321,20 +322,20 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     public Mono<AppProperty> getPropertyById(ULong id) {
 
         return Mono.from(this.dslContext.selectFrom(SECURITY_APP_PROPERTY)
-                .where(SECURITY_APP_PROPERTY.ID.eq(id))
-                .limit(1))
+                        .where(SECURITY_APP_PROPERTY.ID.eq(id))
+                        .limit(1))
                 .map(e -> e.into(AppProperty.class));
     }
 
     public Mono<Boolean> deletePropertyById(ULong id) {
 
         return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_PROPERTY)
-                .where(SECURITY_APP_PROPERTY.ID.eq(id)))
+                        .where(SECURITY_APP_PROPERTY.ID.eq(id)))
                 .map(e -> e == 1);
     }
 
     public Map<ULong, Map<String, AppProperty>> convertAttributesToMap(ULong appClientId,
-            List<AppProperty> lst) {
+                                                                       List<AppProperty> lst) {
 
         Map<String, AppProperty> appDefaultProps = new HashMap<>();
         Map<ULong, Map<String, AppProperty>> appClientProps = new HashMap<>();
@@ -371,29 +372,29 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
     public Mono<Boolean> updateProperty(AppProperty property) {
         return Mono.from(this.dslContext.insertInto(SECURITY_APP_PROPERTY)
-                .columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
-                        SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
-                .values(property.getAppId(), property.getClientId(), property.getName(), property.getValue())
-                .onDuplicateKeyUpdate()
-                .set(SECURITY_APP_PROPERTY.VALUE, property.getValue()))
+                        .columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
+                                SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
+                        .values(property.getAppId(), property.getClientId(), property.getName(), property.getValue())
+                        .onDuplicateKeyUpdate()
+                        .set(SECURITY_APP_PROPERTY.VALUE, property.getValue()))
                 .map(e -> true);
     }
 
     public Mono<Boolean> deleteProperty(ULong clientId, ULong appId, String propName) {
         return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_PROPERTY)
-                .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId)
-                        .and(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId))
-                        .and(SECURITY_APP_PROPERTY.NAME.eq(propName))))
+                        .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId)
+                                .and(SECURITY_APP_PROPERTY.CLIENT_ID.eq(clientId))
+                                .and(SECURITY_APP_PROPERTY.NAME.eq(propName))))
                 .map(e -> e == 1);
     }
 
     public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong appId, BigInteger bigInteger) {
         return Mono.justOrEmpty(
-                this.dslContext.selectCount()
-                        .from(SECURITY_APP_ACCESS)
-                        .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
-                                .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger))))
-                        .fetchOne())
+                        this.dslContext.selectCount()
+                                .from(SECURITY_APP_ACCESS)
+                                .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
+                                        .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger))))
+                                .fetchOne())
                 .map(Record1::value1)
                 .map(e -> e == 0);
     }
@@ -426,8 +427,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
                     () ->
 
-                    Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
-                            .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
+                            Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
+                                    .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
 
                     a -> Mono.zip(urlIds, permissionIds, roleIds),
 
@@ -464,19 +465,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     public Mono<Boolean> createPropertyFromTransport(ULong appId, ULong clientId, String propertyName,
-            String propertyValue) {
+                                                     String propertyValue) {
 
         return Mono.from(this.dslContext.insertInto(SECURITY_APP_PROPERTY)
-                .columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
-                        SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
-                .values(appId, clientId, propertyName, propertyValue)
-                .onDuplicateKeyUpdate()
-                .set(SECURITY_APP_PROPERTY.VALUE, propertyValue))
+                        .columns(SECURITY_APP_PROPERTY.APP_ID, SECURITY_APP_PROPERTY.CLIENT_ID,
+                                SECURITY_APP_PROPERTY.NAME, SECURITY_APP_PROPERTY.VALUE)
+                        .values(appId, clientId, propertyName, propertyValue)
+                        .onDuplicateKeyUpdate()
+                        .set(SECURITY_APP_PROPERTY.VALUE, propertyValue))
                 .map(e -> e == 1);
     }
 
     public Mono<Page<App>> readAnyAppsPageFilter(org.springframework.data.domain.Pageable pageable,
-            AbstractCondition condition, ULong clientId) {
+                                                 AbstractCondition condition, ULong clientId) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -508,7 +509,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                     }
 
                     Mono<List<App>> recordsList = Flux.from(selectJoinStep.limit(pageable.getPageSize())
-                            .offset(pageable.getOffset()))
+                                    .offset(pageable.getOffset()))
                             .map(e -> e.into(this.pojoClass))
                             .collectList();
 
@@ -521,20 +522,20 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     public Mono<AppDependency> addAppDependency(ULong appId, ULong dependentAppId) {
 
         return FlatMapUtil.flatMapMono(
-                () -> Mono.from(this.dslContext.insertInto(SECURITY_APP_DEPENDENCY)
-                        .columns(SECURITY_APP_DEPENDENCY.APP_ID, SECURITY_APP_DEPENDENCY.DEP_APP_ID)
-                        .values(appId, dependentAppId)
-                        .onDuplicateKeyIgnore()).map(e -> e == 1),
+                        () -> Mono.from(this.dslContext.insertInto(SECURITY_APP_DEPENDENCY)
+                                .columns(SECURITY_APP_DEPENDENCY.APP_ID, SECURITY_APP_DEPENDENCY.DEP_APP_ID)
+                                .values(appId, dependentAppId)
+                                .onDuplicateKeyIgnore()).map(e -> e == 1),
 
-                done -> Mono.just(new AppDependency().setAppId(appId).setDependentAppId(dependentAppId)))
+                        done -> Mono.just(new AppDependency().setAppId(appId).setDependentAppId(dependentAppId)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.addAppDependency"));
     }
 
     public Mono<Boolean> removeAppDependency(ULong appId, ULong dependentAppId) {
 
         return Mono.from(this.dslContext.deleteFrom(SECURITY_APP_DEPENDENCY)
-                .where(SECURITY_APP_DEPENDENCY.APP_ID.eq(appId)
-                        .and(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(dependentAppId))))
+                        .where(SECURITY_APP_DEPENDENCY.APP_ID.eq(appId)
+                                .and(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(dependentAppId))))
                 .map(e -> e == 1);
     }
 
@@ -542,49 +543,60 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
         return FlatMapUtil.flatMapMono(
 
-                () -> Flux
-                        .from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.APP_NAME, SECURITY_APP.APP_CODE)
-                                .from(SECURITY_APP_DEPENDENCY)
-                                .leftJoin(SECURITY_APP).on(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(SECURITY_APP.ID))
-                                .where(SECURITY_APP_DEPENDENCY.APP_ID.eq(appId)))
-                        .map(e -> new AppDependency().setDependentAppId(e.get(SECURITY_APP.ID))
-                                .setDependentAppName(e.get(SECURITY_APP.APP_NAME))
-                                .setDependentAppCode(e.get(SECURITY_APP.APP_CODE)))
-                        .collectList(),
+                        () -> Flux
+                                .from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.APP_NAME, SECURITY_APP.APP_CODE)
+                                        .from(SECURITY_APP_DEPENDENCY)
+                                        .leftJoin(SECURITY_APP).on(SECURITY_APP_DEPENDENCY.DEP_APP_ID.eq(SECURITY_APP.ID))
+                                        .where(SECURITY_APP_DEPENDENCY.APP_ID.eq(appId)))
+                                .map(e -> new AppDependency().setDependentAppId(e.get(SECURITY_APP.ID))
+                                        .setDependentAppName(e.get(SECURITY_APP.APP_NAME))
+                                        .setDependentAppCode(e.get(SECURITY_APP.APP_CODE)))
+                                .collectList(),
 
-                dependencies -> {
+                        dependencies -> {
 
-                    if (dependencies.isEmpty())
-                        return Mono.empty();
+                            if (dependencies.isEmpty())
+                                return Mono.empty();
 
-                    return Mono
-                            .from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.APP_NAME, SECURITY_APP.APP_CODE)
-                                    .from(SECURITY_APP)
-                                    .where(SECURITY_APP.ID.eq(appId)))
-                            .map(app -> {
+                            return Mono
+                                    .from(this.dslContext.select(SECURITY_APP.ID, SECURITY_APP.APP_NAME, SECURITY_APP.APP_CODE)
+                                            .from(SECURITY_APP)
+                                            .where(SECURITY_APP.ID.eq(appId)))
+                                    .map(app -> {
 
-                                dependencies.forEach(e -> e.setAppId(appId).setAppName(app.get(SECURITY_APP.APP_NAME))
-                                        .setAppCode(app.get(SECURITY_APP.APP_CODE)));
+                                        dependencies.forEach(e -> e.setAppId(appId).setAppName(app.get(SECURITY_APP.APP_NAME))
+                                                .setAppCode(app.get(SECURITY_APP.APP_CODE)));
 
-                                return dependencies;
-                            });
-                })
+                                        return dependencies;
+                                    });
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
     }
 
     public Mono<Page<Client>> getAppClients(String appCode, boolean onlyWriteAccess, String name, ULong clientId,
-            Pageable pageable) {
+                                            Pageable pageable) {
 
         throw new UnsupportedOperationException("Unimplemented method 'getAppClients'");
     }
 
     public Mono<Boolean> noOneHasWriteAccessExcept(String appCode, String clientCode) {
         return Mono.from(this.dslContext.selectCount()
-                .from(SECURITY_APP_ACCESS)
-                .join(SECURITY_APP).on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID))
-                .join(SECURITY_CLIENT).on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID))
-                .where(DSL.and(SECURITY_APP.APP_CODE.eq(appCode),
-                        SECURITY_CLIENT.CODE.ne(clientCode))))
+                        .from(SECURITY_APP_ACCESS)
+                        .join(SECURITY_APP).on(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID))
+                        .join(SECURITY_CLIENT).on(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+                        .where(DSL.and(SECURITY_APP.APP_CODE.eq(appCode),
+                                SECURITY_CLIENT.CODE.ne(clientCode))))
                 .map(Record1::value1).map(e -> e == 0);
+    }
+
+    public Mono<Map<ULong, List<ULong>>> getAppsIDsPerClient(Collection<ULong> clientIds) {
+
+        if (clientIds == null || clientIds.isEmpty()) return Mono.just(Map.of());
+
+        return
+                Flux.from(this.dslContext.select(SECURITY_APP.CLIENT_ID, SECURITY_APP.ID).from(SECURITY_APP).where(SECURITY_APP.CLIENT_ID.in(clientIds)).union(
+                                this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID, SECURITY_APP_ACCESS.APP_ID).from(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.CLIENT_ID.in(clientIds))
+                        ))
+                        .collect(Collectors.groupingBy(Record2::value1, Collectors.mapping(Record2::value2, Collectors.toList())));
     }
 }

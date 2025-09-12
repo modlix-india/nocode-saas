@@ -29,17 +29,16 @@ public class Note extends BaseContentDto<Note> {
     }
 
     public static Note of(NoteRequest noteRequest) {
-        return new Note()
+        Note note = (Note) new Note()
                 .setContent(noteRequest.getContent())
                 .setHasAttachment(noteRequest.getHasAttachment())
-                .setOwnerId(
-                        noteRequest.getOwnerId() != null
-                                ? noteRequest.getOwnerId().getULongId()
-                                : null)
-                .setTicketId(
-                        noteRequest.getTicketId() != null
-                                ? noteRequest.getTicketId().getULongId()
-                                : null);
+                .setContentEntitySeries(noteRequest.getContentEntitySeries());
+
+        return switch (note.getContentEntitySeries()) {
+            case OWNER -> note.setOwnerId(noteRequest.getOwnerId().getULongId());
+            case TICKET -> note.setTicketId(noteRequest.getTicketId().getULongId());
+            case USER -> note.setUserId(noteRequest.getUserId());
+        };
     }
 
     @Override
