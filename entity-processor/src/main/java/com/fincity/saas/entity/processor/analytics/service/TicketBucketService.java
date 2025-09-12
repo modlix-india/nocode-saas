@@ -66,31 +66,35 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
     public Mono<Tuple2<BucketFilter, List<IdAndValue<ULong, String>>>> resolveUsersIds(
             ProcessorAccess access, BucketFilter filter) {
 
-        if (access.getSubOrg().size() == 1)
+        if (access.getUserInherit().getSubOrg().size() == 1)
             return FlatMapUtil.flatMapMono(
                     () -> this.securityService.getUserInternal(
-                            access.getSubOrg().getFirst().toBigInteger()),
-                    userResponse -> Mono.just(Tuples.of(
-                            filter.filterUserIds(List.of(access.getSubOrg().getFirst())),
+                            access.getUserInherit().getSubOrg().getFirst().toBigInteger(), null),
+                    user -> Mono.just(Tuples.of(
+                            filter.filterUserIds(
+                                    List.of(access.getUserInherit().getSubOrg().getFirst())),
                             List.of(IdAndValue.of(
-                                    access.getSubOrg().getFirst(),
+                                    access.getUserInherit().getSubOrg().getFirst(),
                                     NameUtil.assembleFullName(
-                                            userResponse.getFirstName(),
-                                            userResponse.getMiddleName(),
-                                            userResponse.getLastName()))))));
+                                            user.getFirstName(),
+                                            user.getMiddleName(),
+                                            user.getLastName()))))));
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getUserInternal(
-                        access.getSubOrg().stream().map(ULong::toBigInteger).toList()),
+                        access.getUserInherit().getSubOrg().stream()
+                                .map(ULong::toBigInteger)
+                                .toList(),
+                        null),
                 userList -> Mono.just(Tuples.of(
-                        filter.filterUserIds(access.getSubOrg()),
+                        filter.filterUserIds(access.getUserInherit().getSubOrg()),
                         userList.stream()
-                                .map(userResponse -> IdAndValue.of(
-                                        ULongUtil.valueOf(userResponse.getId()),
+                                .map(user -> IdAndValue.of(
+                                        ULongUtil.valueOf(user.getId()),
                                         NameUtil.assembleFullName(
-                                                userResponse.getFirstName(),
-                                                userResponse.getMiddleName(),
-                                                userResponse.getLastName())))
+                                                user.getFirstName(),
+                                                user.getMiddleName(),
+                                                user.getLastName())))
                                 .toList())));
     }
 }
