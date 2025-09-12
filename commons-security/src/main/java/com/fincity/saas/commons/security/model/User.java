@@ -26,6 +26,7 @@ public class User implements Serializable, IClassConvertor {
     private String lastName;
     private String middleName;
     private String localeCode;
+    private String statusCode;
 
     private Client client;
     private Client managingClient;
