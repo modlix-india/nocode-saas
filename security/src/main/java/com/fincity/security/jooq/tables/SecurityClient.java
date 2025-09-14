@@ -20,7 +20,6 @@ import com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.Securit
 import com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.SecurityAppRegUserDesignationPath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserProfile.SecurityAppRegUserProfilePath;
 import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2.SecurityAppRegUserRoleV2Path;
-import com.fincity.security.jooq.tables.SecurityAppSsoBundle.SecurityAppSsoBundlePath;
 import com.fincity.security.jooq.tables.SecurityClientAddress.SecurityClientAddressPath;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy.SecurityClientHierarchyPath;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy.SecurityClientOtpPolicyPath;
@@ -405,19 +404,6 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
             _securityAppRegUserRoleV2 = new SecurityAppRegUserRoleV2Path(this, null, Keys.FK1_APP_REG_USER_ROLE_CLIENT_ID.getInverseKey());
 
         return _securityAppRegUserRoleV2;
-    }
-
-    private transient SecurityAppSsoBundlePath _securityAppSsoBundle;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_app_sso_bundle</code> table
-     */
-    public SecurityAppSsoBundlePath securityAppSsoBundle() {
-        if (_securityAppSsoBundle == null)
-            _securityAppSsoBundle = new SecurityAppSsoBundlePath(this, null, Keys.FK1_APP_SSO_BUNDLE_CLIENT_CODE.getInverseKey());
-
-        return _securityAppSsoBundle;
     }
 
     private transient SecurityClientAddressPath _securityClientAddress;
