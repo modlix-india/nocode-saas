@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.security.dto.*;
 import com.fincity.security.model.*;
@@ -815,7 +816,7 @@ public class AuthenticationService implements IAuthenticationService {
         return Mono.just(jwtClaims);
     }
 
-    public Mono<AuthenticationResponse> refreshToken(ServerHttpRequest request) {
+    public Mono<AuthenticationResponse> refreshToken(ServerHttpRequest request, ServerHttpResponse response) {
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
@@ -939,7 +940,6 @@ public class AuthenticationService implements IAuthenticationService {
 
         String appCode = request.getHeaders().getFirst(AppService.AC);
         String clientCode = request.getHeaders().getFirst(ClientService.CC);
-
 
         return FlatMapUtil.flatMapMono(
                         () -> this.oneTimeTokenService.getUserId(token),
