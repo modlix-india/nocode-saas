@@ -89,8 +89,6 @@ public class AuthenticationService implements IAuthenticationService {
 
     private final OneTimeTokenService oneTimeTokenService;
 
-    private final SSOBundleService ssoBundleService;
-
     @Value("${security.appCodeSuffix:}")
     private String appCodeSuffix;
 
@@ -107,8 +105,7 @@ public class AuthenticationService implements IAuthenticationService {
             AppRegistrationIntegrationTokenDao integrationTokenDao,
             AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
             ProfileService profileService,
-            OneTimeTokenService oneTimeTokenService,
-            SSOBundleService ssoBundleService) {
+            OneTimeTokenService oneTimeTokenService) {
         this.userService = userService;
         this.clientService = clientService;
         this.appService = appService;
@@ -122,7 +119,6 @@ public class AuthenticationService implements IAuthenticationService {
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
         this.profileService = profileService;
         this.oneTimeTokenService = oneTimeTokenService;
-        this.ssoBundleService = ssoBundleService;
     }
 
     @Value("${jwt.key}")
@@ -174,13 +170,7 @@ public class AuthenticationService implements IAuthenticationService {
                         .collectList()
                         .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
                         .flatMap(tokenService::delete)
-                        .defaultIfEmpty(1))
-                .flatMap(x -> {
-                    HttpCookie cookie = request.getCookies().getFirst(SSOBundleService.SSO_TOKEN);
-                    if (cookie == null) return Mono.just(x);
-
-                    return this.ssoBundleService.deleteTokens(cookie.getValue()).thenReturn(x);
-                });
+                        .defaultIfEmpty(1));
     }
 
     private Mono<Integer> ssoRevoke() {
@@ -310,10 +300,7 @@ public class AuthenticationService implements IAuthenticationService {
                         // If findNonDeletedUserNClient returns empty, try authenticateUserForHavingApp
                         Mono.defer(() -> this.authenticateUserForHavingApp(authRequest, clientCode, request, response))
                                 .switchIfEmpty(Mono.defer(() ->
-                                        this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))))
-                .flatMap(authResponse ->
-                        this.ssoBundleService.makeSSOTokens(getRemoteAddressFrom(request), authResponse.getAccessTokenExpiryAt(), ULongUtil.valueOf(authResponse.getUser().getId()), appCode, clientCode, response)
-                                .thenReturn(authResponse));
+                                        this.authError(SecurityMessageResourceService.USER_CREDENTIALS_MISMATCHED))));
     }
 
     public Mono<AuthenticationResponse> authenticateWSocial(
@@ -864,16 +851,7 @@ public class AuthenticationService implements IAuthenticationService {
                                             .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                                     );
                         })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"))
-                .flatMap(auth -> {
-                    var cookie = request.getCookies().getFirst(SSOBundleService.SSO_TOKEN);
-                    if (cookie == null) return Mono.just(auth);
-
-                    String appCode = request.getHeaders().getFirst(AppService.AC);
-                    String clientCode = request.getHeaders().getFirst(ClientService.CC);
-
-                    return this.ssoBundleService.updateExpiry(cookie.getValue(), auth.getAccessTokenExpiryAt(), appCode, clientCode, response).thenReturn(auth);
-                });
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
     }
 
     private Mono<AuthenticationResponse> generateNewToken(
