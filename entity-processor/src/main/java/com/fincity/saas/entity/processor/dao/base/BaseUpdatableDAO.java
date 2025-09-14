@@ -138,21 +138,11 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private AbstractCondition getAppCodeCondition(ProcessorAccess access) {
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
-                .setOperator(FilterConditionOperator.EQUALS);
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode());
     }
 
     private AbstractCondition getClientCodeCondition(ProcessorAccess access) {
-        if (access.isOutsideUser())
-            return ComplexCondition.or(
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
-                            .setOperator(FilterConditionOperator.IN),
-                    FilterCondition.make(
-                                    AbstractFlowUpdatableDTO.Fields.clientCode,
-                                    access.getUserInherit().getManagedClientCode())
-                            .setOperator(FilterConditionOperator.IN));
-
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode());
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getEffectiveClientCode());
     }
 
     public Mono<D> readInternal(ULong id) {
@@ -179,7 +169,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<Boolean> existsByName(String appCode, String clientCode, String name) {
+    public Mono<Boolean> existsByName(String appCode, String clientCode, ULong id, String name) {
 
         if (StringUtil.safeIsBlank(name)) return Mono.just(Boolean.FALSE);
 
@@ -187,6 +177,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         baseConditions.add(super.appCodeField.eq(appCode));
         baseConditions.add(super.clientCodeField.eq(clientCode));
         baseConditions.add(this.nameField.eq(name));
+
+        if (id != null) baseConditions.add(this.idField.ne(id));
 
         return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
                 .map(rec -> Boolean.TRUE)

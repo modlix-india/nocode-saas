@@ -73,11 +73,15 @@ public class Message implements Serializable {
     }
 
     @JsonIgnore
-    public boolean hasMediaFile() {
-        return this.audioMessage != null
-                || this.documentMessage != null
-                || this.imageMessage != null
-                || this.videoMessage != null;
+    public String getMediaId() {
+        return switch (this.getType()) {
+            case AUDIO -> this.audioMessage.getId();
+            case DOCUMENT -> this.documentMessage.getId();
+            case IMAGE -> this.imageMessage.getId();
+            case STICKER -> this.stickerMessage.getId();
+            case VIDEO -> this.videoMessage.getId();
+            default -> null;
+        };
     }
 
     public static class MessageBuilder {

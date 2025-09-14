@@ -3,6 +3,7 @@ package com.fincity.saas.message.service.message.provider;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.feign.IFeignFileService;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
@@ -27,6 +28,7 @@ public abstract class AbstractMessageService<
     protected MessageEventService messageEventService;
     protected MessageService messageService;
     protected MessageWebhookService messageWebhookService;
+    protected IFeignFileService fileService;
 
     @Lazy
     @Autowired
@@ -52,6 +54,12 @@ public abstract class AbstractMessageService<
         this.messageWebhookService = messageWebhookService;
     }
 
+    @Lazy
+    @Autowired
+    private void setFileService(IFeignFileService fileService) {
+        this.fileService = fileService;
+    }
+
     @Override
     public ConnectionType getConnectionType() {
         return ConnectionType.TEXT;
@@ -62,7 +70,12 @@ public abstract class AbstractMessageService<
         entity.setAppCode(publicAccess.getAppCode());
         entity.setClientCode(publicAccess.getClientCode());
 
-        return this.dao.update(entity);
+        return this.dao.update(entity).flatMap(updated -> this.evictCache(entity)
+                .map(evicted -> updated));
+    }
+
+    public Mono<D> updateInternal(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
     protected Mono<Boolean> isValidConnection(Connection connection) {

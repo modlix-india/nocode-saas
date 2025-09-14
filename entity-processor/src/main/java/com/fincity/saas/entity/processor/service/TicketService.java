@@ -119,7 +119,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         super::hasPublicAccess,
                         access -> Mono.zip(
-                                this.productService.updateIdentity(ticketRequest.getProductId()), this.getDnc(access)),
+                                this.productService.updateIdentity(ticketRequest.getProductId()),
+                                this.getDnc(access, ticketRequest)),
                         (access, productIdentityDnc) -> Mono.just(
                                 ticket.setProductId(productIdentityDnc.getT1().getULongId())
                                         .setDnc(productIdentityDnc.getT2())),
@@ -132,11 +133,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .thenReturn(created))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
-    }
-
-    private Mono<Boolean> getDnc(ProcessorAccess access) {
-        if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
-        return this.partnerService.getPartnerDnc(access);
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
@@ -157,17 +153,27 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.productService.checkAndUpdateIdentityWithAccess(
-                                access, ticketRequest.getProductId()),
+                        access -> Mono.zip(
+                                this.productService.updateIdentity(ticketRequest.getProductId()),
+                                this.getDnc(access, ticketRequest)),
                         (access, productIdentity) -> this.checkDuplicate(access, ticketRequest),
-                        (access, productIdentity, isDuplicate) ->
-                                Mono.just(ticket.setProductId(productIdentity.getULongId())),
+                        (access, productIdentity, isDuplicate) -> Mono.just(
+                                ticket.setProductId(productIdentity.getT1().getULongId())
+                                        .setDnc(productIdentity.getT2())),
                         (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
                         (access, productIdentity, isDuplicate, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
+    }
+
+    private Mono<Boolean> getDnc(ProcessorAccess access, TicketRequest ticketRequest) {
+        if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
+
+        return ticketRequest.getDnc() != null
+                ? Mono.just(ticketRequest.getDnc())
+                : this.partnerService.getPartnerDnc(access);
     }
 
     public Mono<Ticket> updateStageStatus(Identity ticketId, TicketStatusRequest ticketStatusRequest) {
@@ -372,12 +378,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     if (existing.getId() != null)
                         return this.activityService
                                 .acReInquiry(existing, ticketRequest)
-                                .then(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                        this.getEntityPrefix(access.getAppCode()),
-                                        existing.getId(),
-                                        this.getEntityPrefix(access.getClientCode())));
+                                .then(super.throwDuplicateError(access, existing));
                     return Mono.just(Boolean.FALSE);
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE))

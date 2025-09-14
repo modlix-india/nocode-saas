@@ -1,5 +1,6 @@
 package com.fincity.saas.message.model.message.whatsapp.webhook;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
@@ -76,4 +77,16 @@ public final class IMessage implements Serializable {
 
     @JsonProperty("document")
     private IDocument document;
+
+    @JsonIgnore
+    public String getMediaId() {
+        return switch (this.getType()) {
+            case AUDIO -> this.audio.getId();
+            case DOCUMENT -> this.document.getId();
+            case IMAGE -> this.image.getId();
+            case STICKER -> this.sticker.getId();
+            case VIDEO -> this.video.getId();
+            default -> null;
+        };
+    }
 }

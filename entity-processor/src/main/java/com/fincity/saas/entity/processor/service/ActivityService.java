@@ -9,7 +9,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
-import com.fincity.saas.commons.security.model.UserResponse;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
@@ -91,7 +91,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         if (actorId == null || actorId.longValue() <= 0) return this.getLoggedInUser();
 
         return this.securityService
-                .getUserInternal(actorId.toBigInteger())
+                .getUserInternal(actorId.toBigInteger(), null)
                 .map(this::getUserIdAndValue)
                 .switchIfEmpty(this.getLoggedInUser());
     }
@@ -538,10 +538,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         return FlatMapUtil.flatMapMono(
                         () -> Mono.zip(
                                 super.securityService
-                                        .getUserInternal(oldUser.toBigInteger())
+                                        .getUserInternal(oldUser.toBigInteger(), null)
                                         .map(this::getUserIdAndValue),
                                 super.securityService
-                                        .getUserInternal(newUser.toBigInteger())
+                                        .getUserInternal(newUser.toBigInteger(), null)
                                         .map(this::getUserIdAndValue)),
                         users -> this.createActivityInternal(
                                 ActivityAction.REASSIGN,
@@ -658,7 +658,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         }
     }
 
-    private IdAndValue<ULong, String> getUserIdAndValue(UserResponse user) {
+    private IdAndValue<ULong, String> getUserIdAndValue(User user) {
         return IdAndValue.of(
                 ULongUtil.valueOf(user.getId()),
                 NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName()));

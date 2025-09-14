@@ -116,4 +116,20 @@ public abstract class BaseProcessorService<
                 super::deleteInternal,
                 (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
+
+    protected <T> Mono<T> throwDuplicateError(ProcessorAccess access, D existing) {
+
+        if (access.isOutsideUser())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.DUPLICATE_ENTITY_OUTSIDE_USER,
+                    this.getEntityPrefix(access.getAppCode()));
+
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.DUPLICATE_ENTITY,
+                this.getEntityPrefix(access.getAppCode()),
+                existing.getId(),
+                this.getEntityPrefix(access.getAppCode()));
+    }
 }

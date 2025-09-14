@@ -45,6 +45,29 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
     private Integer monthlyEditCount = 0;
     private FileDetail headerFileDetail;
 
+    public WhatsappTemplate() {
+        super();
+    }
+
+    public WhatsappTemplate(WhatsappTemplate whatsappTemplate) {
+        super(whatsappTemplate);
+        this.whatsappBusinessAccountId = whatsappTemplate.whatsappBusinessAccountId;
+        this.templateId = whatsappTemplate.templateId;
+        this.templateName = whatsappTemplate.templateName;
+        this.allowCategoryChange = whatsappTemplate.allowCategoryChange;
+        this.category = whatsappTemplate.category;
+        this.subCategory = whatsappTemplate.subCategory;
+        this.messageSendTtlSeconds = whatsappTemplate.messageSendTtlSeconds;
+        this.parameterFormat = whatsappTemplate.parameterFormat;
+        this.language = whatsappTemplate.language;
+        this.status = whatsappTemplate.status;
+        this.rejectedReason = whatsappTemplate.rejectedReason;
+        this.previousCategory = whatsappTemplate.previousCategory;
+        this.components = whatsappTemplate.components;
+        this.monthlyEditCount = whatsappTemplate.monthlyEditCount;
+        this.headerFileDetail = whatsappTemplate.headerFileDetail;
+    }
+
     public static WhatsappTemplate of(
             String whatsappBusinessAccountId,
             MessageTemplate messageTemplate,

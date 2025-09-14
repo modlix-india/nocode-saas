@@ -1,7 +1,5 @@
 package com.fincity.security.controller;
 
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.util.ConditionUtil;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -22,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
@@ -88,6 +88,11 @@ public class ClientController
     @GetMapping("/internal/clientHierarchy")
     public Mono<ResponseEntity<List<ULong>>> getClientHierarchy(@RequestParam ULong clientId) {
         return this.service.getClientHierarchy(clientId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/managingClientIds")
+    public Mono<ResponseEntity<List<ULong>>> getManagingClientIds(@RequestParam ULong clientId) {
+        return this.service.getManagingClientIds(clientId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/validateClientCode")
@@ -210,6 +215,19 @@ public class ClientController
                 .flatMap(page -> this.service
                         .fillDetails(page.getContent(), request.getQueryParams())
                         .thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<Client>>> readPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service
+                .readPageFilterInternal(pageable, query.getCondition())
+                .flatMap(page ->
+                        this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
                 .map(ResponseEntity::ok);
     }
 }
