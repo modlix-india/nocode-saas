@@ -5,7 +5,6 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.util.*;
 import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
@@ -294,7 +293,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
 
     @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
-    public Mono<Boolean> deleteMobileApp(String appCode, String id) {
+    public Mono<Boolean> deleteMobileApp(String id) {
 
         return flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
