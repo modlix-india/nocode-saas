@@ -278,7 +278,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
             return url;
         }
 
-        url = url.replace("{envDotSuffix}", appCodeSuffix);
+        url = url.replace("{envDotPrefix}", appCodeSuffix);
 
         String env = StringUtil.safeIsBlank(appCodeSuffix) ? "" : appCodeSuffix.substring(appCodeSuffix.indexOf(".") + 1);
 
@@ -286,7 +286,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
         env = StringUtil.safeIsBlank(env) ? "" : env + ".";
 
-        url = url.replace("{envDotPrefix}", env);
+        url = url.replace("{envDotSuffix}", env);
 
         return url;
     }
