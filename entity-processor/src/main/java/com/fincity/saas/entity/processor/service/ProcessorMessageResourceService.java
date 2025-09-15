@@ -17,6 +17,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
     public static final String LOGIN_REQUIRED = "login_required";
     public static final String NAME_MISSING = "name_missing";
+    public static final String CONNECTION_NOT_FOUND = "connection_not_found";
     public static final String DUPLICATE_NAME_FOR_ENTITY = "duplicate_name_for_entity";
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
     public static final String INVALID_USER_ACCESS = "invalid_user_access";

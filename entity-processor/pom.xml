@@ -44,6 +44,7 @@
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
         <!-- open source -->
         <package.o.com.googlecode.libphonenumber.version>9.0.9</package.o.com.googlecode.libphonenumber.version>
+        <package.o.jakarta.mail.version>2.0.2</package.o.jakarta.mail.version>
         <package.o.jooq.version>3.20.5</package.o.jooq.version>
         <package.o.palantir-java.format.version>2.70.0</package.o.palantir-java.format.version>
         <package.o.spotless.version>2.45.0</package.o.spotless.version>
@@ -94,6 +95,11 @@
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>${package.o.jakarta.mail.version}</version>
         </dependency>
         <dependency>
             <groupId>io.asyncer</groupId>
