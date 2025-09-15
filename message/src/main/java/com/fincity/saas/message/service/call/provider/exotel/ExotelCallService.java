@@ -64,21 +64,10 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     public Mono<Call> toCall(ExotelCall providerObject) {
         return Mono.just(new Call()
                         .setUserId(providerObject.getUserId())
-                        .setFromDialCode(providerObject.getFromDialCode())
-                        .setFrom(providerObject.getFrom())
-                        .setToDialCode(providerObject.getToDialCode())
-                        .setTo(providerObject.getTo())
-                        .setCallerId(providerObject.getCallerId())
                         .setCallProvider(this.getConnectionSubType().getProvider())
                         .setIsOutbound(ExotelDirection.getByName(providerObject.getDirection())
                                 .isOutbound())
-                        .setStatus(providerObject.getExotelCallStatus().toCallStatus())
-                        .setStartTime(providerObject.getStartTime())
-                        .setEndTime(providerObject.getEndTime())
-                        .setDuration(providerObject.getDuration())
-                        .setRecordingUrl(providerObject.getRecordingUrl())
-                        .setExotelCallId(providerObject.getId() != null ? providerObject.getId() : null)
-                        .setMetadata(providerObject.toMap()))
+                        .setExotelCallId(providerObject.getId() != null ? providerObject.getId() : null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.toCall"));
     }
 
