@@ -301,7 +301,8 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .leftJoin(SECURITY_PROFILE_ROLE).on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                 .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                 .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
-                .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition))
+                .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition)
+                .and(SECURITY_USER.CLIENT_ID.in(map.keySet())))
         ).collectMultimap(Record2::value1, Record2::value2);
     }
 

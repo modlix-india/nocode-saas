@@ -187,7 +187,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getPartnerByClientId(access, clientId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), clientId));
+                super.getCacheKey(access.getAppCode(), access.getEffectiveClientCode(), clientId));
     }
 
     public Mono<Boolean> getPartnerDnc(ProcessorAccess access) {

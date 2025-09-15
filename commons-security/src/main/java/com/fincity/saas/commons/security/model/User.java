@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.IClassConvertor;
 
 import lombok.Data;
@@ -25,4 +26,9 @@ public class User implements Serializable, IClassConvertor {
     private String lastName;
     private String middleName;
     private String localeCode;
+    private String statusCode;
+
+    private Client client;
+    private Client managingClient;
+    private User createdByUser;
 }
