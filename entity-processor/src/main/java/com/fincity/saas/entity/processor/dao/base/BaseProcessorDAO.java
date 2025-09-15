@@ -94,29 +94,18 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
         if (!hasAccessAssignment()) return Mono.just(condition);
 
-        if (access.isOutsideUser()) {
-            if (this.isEmptyCondition(condition))
-                return Mono.just(FilterCondition.make(
-                        AbstractDTO.Fields.createdBy, access.getUser().getId()));
-            return Mono.just(ComplexCondition.and(
-                    condition,
-                    FilterCondition.make(
-                            AbstractDTO.Fields.createdBy, access.getUser().getId())));
-        }
+        String userField = access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
 
-        if (isEmptyCondition(condition))
-            return this.buildInCondition(
-                    this.jUserAccessField, access.getUserInherit().getSubOrg());
+        if (this.isEmptyCondition(condition))
+            return this.buildInCondition(userField, access.getUserInherit().getSubOrg());
 
         return this.updateExistingCondition(
                         condition,
-                        this.jUserAccessField,
+                        userField,
                         access.getUserInherit().getSubOrg(),
                         ULongUtil.valueOf(access.getUser().getId()))
                 .switchIfEmpty(this.appendNewCondition(
-                        condition,
-                        this.jUserAccessField,
-                        access.getUserInherit().getSubOrg()));
+                        condition, userField, access.getUserInherit().getSubOrg()));
     }
 
     private boolean isEmptyCondition(AbstractCondition condition) {
@@ -143,7 +132,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> appendNewCondition(AbstractCondition root, String field, List<?> values) {
-        return buildInCondition(field, values).flatMap(fc -> Mono.just(ComplexCondition.and(root, fc)));
+        return this.buildInCondition(field, values).flatMap(fc -> Mono.just(ComplexCondition.and(root, fc)));
     }
 
     public Flux<D> updateAll(Flux<D> entities) {

@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
@@ -202,7 +203,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 this::hasAccess,
                 access -> this.addManagingClientIds(access, query.getCondition()),
                 (access, pCondition) -> super.securityService
-                        .readClientPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
+                        .readClientPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)
                         .map(page -> page.map(IClassConvertor::toMap)),
                 (access, pCondition, clientPage) -> this.fillDetails(access, clientPage.getContent(), queryParams)
                         .thenReturn(clientPage));
@@ -215,7 +216,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 access -> this.readIdentityWithAccess(access, partnerId),
                 (access, partner) -> this.addClientIds(partner, query.getCondition()),
                 (access, partner, pCondition) -> super.securityService
-                        .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
+                        .readUserPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)
                         .map(page -> page.map(IClassConvertor::toMap)));
     }
 
@@ -273,12 +274,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
 
         if (condition == null || condition.isEmpty())
-            return Mono.just(FilterCondition.make(AbstractDTO.Fields.id, partner.getClientId())
+            return Mono.just(FilterCondition.make(User.Fields.clientId, partner.getClientId())
                     .setMatchOperator(FilterConditionOperator.EQUALS));
 
         return Mono.just(ComplexCondition.and(
                 condition,
-                FilterCondition.make(AbstractDTO.Fields.id, partner.getClientId())
+                FilterCondition.make(User.Fields.clientId, partner.getClientId())
                         .setMatchOperator(FilterConditionOperator.EQUALS)));
     }
 
