@@ -1,9 +1,10 @@
 package com.fincity.saas.commons.util;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Array;
 import java.util.Collection;
@@ -20,6 +21,10 @@ public interface IClassConvertor {
 
     private static Gson getGson() {
         return SpringContextAccessor.getBean(Gson.class);
+    }
+
+    private static ObjectMapper getObjectMapper() {
+        return SpringContextAccessor.getBean(ObjectMapper.class);
     }
 
     private static MultiValueMap<String, String> mapToFormData(Map<String, Object> map) {
@@ -71,12 +76,12 @@ public interface IClassConvertor {
 
     @JsonIgnore
     default Map<String, Object> toMap() {
-        Gson gson = getGson();
-        return gson.fromJson(gson.toJson(this), new TypeToken<Map<String, Object>>() {}.getType());
+        ObjectMapper mapper = getObjectMapper();
+        return mapper.convertValue(this, new TypeReference<>() {});
     }
 
     @JsonIgnore
-    default JsonElement toJson() {
+    default JsonElement toJsonElement() {
         return getGson().toJsonTree(this, this.getClass());
     }
 
@@ -87,7 +92,7 @@ public interface IClassConvertor {
 
     @JsonIgnore
     default Mono<JsonElement> toJsonAsync() {
-        return Mono.fromCallable(this::toJson).subscribeOn(Schedulers.boundedElastic());
+        return Mono.fromCallable(this::toJsonElement).subscribeOn(Schedulers.boundedElastic());
     }
 
     @JsonIgnore
