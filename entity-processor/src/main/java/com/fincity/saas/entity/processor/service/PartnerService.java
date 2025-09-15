@@ -78,17 +78,6 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     @Override
-    public Mono<Partner> update(ULong key, Map<String, Object> fields) {
-        return super.update(key, fields)
-                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
-    public Mono<Partner> update(Partner entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
     protected Mono<Partner> updatableEntity(Partner entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             existing.setManagerId(entity.getManagerId());
@@ -96,11 +85,6 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
             existing.setDnc(entity.getDnc());
             return Mono.just(existing);
         });
-    }
-
-    @Override
-    public Mono<Integer> delete(ULong id) {
-        return super.delete(id);
     }
 
     @Override

@@ -264,6 +264,17 @@ public abstract class BaseUpdatableService<
     }
 
     @Override
+    public Mono<D> update(ULong key, Map<String, Object> fields) {
+        return super.update(key, fields)
+                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
+    @Override
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
@@ -454,5 +465,13 @@ public abstract class BaseUpdatableService<
 
     public Mono<BaseResponse> getBaseResponse(String code) {
         return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
+    }
+
+    protected <T> Mono<T> throwMissingParam(String paramName) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.MISSING_PARAMETERS,
+                this.getEntityName(),
+                paramName);
     }
 }
