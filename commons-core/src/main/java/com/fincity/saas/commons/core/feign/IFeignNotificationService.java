@@ -1,6 +1,6 @@
 package com.fincity.saas.commons.core.feign;
 
-import com.fincity.saas.commons.core.model.NotificationRequest;
+import com.fincity.saas.commons.core.model.NotificationQueObject;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import reactivefeign.spring.config.ReactiveFeignClient;
@@ -13,5 +13,5 @@ public interface IFeignNotificationService {
     String NOTIFICATION_SEND = NOTIFICATION_PATH + "/send";
 
     @PostMapping(NOTIFICATION_SEND)
-    Mono<Boolean> sendNotification(@RequestBody NotificationRequest notification);
+    Mono<Boolean> sendNotification(@RequestBody NotificationQueObject notification);
 }

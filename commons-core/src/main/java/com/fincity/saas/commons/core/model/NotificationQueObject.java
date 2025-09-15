@@ -12,14 +12,18 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class NotificationRequest implements Serializable {
+public class NotificationQueObject implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 5451810150227431980L;
 
     private String appCode;
     private String clientCode;
-    private BigInteger userId;
+    private BigInteger targetId;
+    private String targetType;
+    private String targetCode;
+    private String filterAuthorization;
     private String notificationName;
-    private Map<String, Object> channelObjectMap;
+    private String xDebug;
+    private Map<String, Object> payload;
 }
