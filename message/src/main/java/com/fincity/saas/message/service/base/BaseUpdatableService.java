@@ -124,11 +124,6 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> createInternal(MessageAccess access, D entity) {
 
-        if (access.getClientCode().equals("SYSTEM"))
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    "SYSTEM Adding Message is not allowed");
-
         entity.setAppCode(access.getAppCode());
         entity.setClientCode(access.getClientCode());
         entity.setUserId(access.getUserId());
