@@ -2,11 +2,11 @@ package com.fincity.saas.commons.core.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Notification;
-import com.fincity.saas.commons.core.model.NotificationQueObject;
 import com.fincity.saas.commons.core.repository.NotificationRepository;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
+import com.fincity.saas.commons.mq.notifications.NotificationQueObject;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.data.CircularLinkedList;
@@ -155,6 +155,6 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                         }
                 )
                 .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "NotificationProcessingService.processAndSendNotification"));
+                        Context.of(LogUtil.METHOD_NAME, "NotificationService.processAndSendNotification"));
     }
 }

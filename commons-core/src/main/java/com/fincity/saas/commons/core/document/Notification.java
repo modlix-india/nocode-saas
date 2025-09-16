@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.fincity.saas.commons.core.enums.NotificationType;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -36,7 +37,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
     @Serial
     private static final long serialVersionUID = 4924671644117461908L;
 
-    private String notificationType;
+    private NotificationType notificationType = NotificationType.INFO;
     private String defaultLanguage;
     private String languageExpression;
 

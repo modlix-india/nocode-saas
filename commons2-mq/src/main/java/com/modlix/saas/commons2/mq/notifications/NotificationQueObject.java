@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.core.model;
+package com.modlix.saas.commons2.mq.notifications;
 
 import java.io.Serial;
 import java.io.Serializable;
