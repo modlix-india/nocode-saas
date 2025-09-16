@@ -2,6 +2,7 @@ package com.modlix.saas.notification.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.modlix.saas.commons2.jooq.configuration.AbstractJooqBaseConfiguration;
+import com.modlix.saas.commons2.mq.configuration.IMQConfiguration;
 import com.modlix.saas.commons2.security.ISecurityConfiguration;
 import com.modlix.saas.commons2.security.service.IAuthenticationService;
 import com.modlix.saas.commons2.security.util.LogUtil;
@@ -17,7 +18,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import javax.annotation.PostConstruct;
 
 @Configuration
-public class NotificationConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
+public class NotificationConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration, IMQConfiguration {
 
     private final NotificationMessageResourceService messageService;
 
