@@ -429,24 +429,19 @@ public class WhatsappMessageService
 
         boolean isTemplateMessage = whatsappMessage.getMessageType() == MessageType.TEMPLATE;
 
-        return Mono.just(Boolean.TRUE);
-
-        //        return customerServiceWindowService
-        //                .canSendMessage(access, whatsappPhoneNumber, customerPhone, isTemplateMessage)
-        //                .flatMap(canSend -> {
-        //                    if (Boolean.FALSE.equals(canSend))
-        //                        return Mono.error(
-        //                                new GenericException(
-        //                                        HttpStatus.BAD_REQUEST,
-        //                                        "Cannot send non-template message outside customer service window. "
-        //                                                + "Customer service window is open for 24 hours after
-        // receiving a message from the customer. "
-        //                                                + "Use template messages to initiate conversations or send
-        // messages outside the window."));
-        //                    return Mono.just(Boolean.TRUE);
-        //                })
-        //                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-        // "WhatsappMessageService.validateCustomerServiceWindow"));
+        return customerServiceWindowService
+                .canSendMessage(access, whatsappPhoneNumber, customerPhone, isTemplateMessage)
+                .flatMap(canSend -> {
+                    if (Boolean.FALSE.equals(canSend))
+                        return Mono.error(
+                                new GenericException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "Cannot send non-template message outside customer service window. "
+                                                + "Customer service window is open for 24 hours after receiving a message from the customer. "
+                                                + "Use template messages to initiate conversations or send messages outside the window."));
+                    return Mono.just(Boolean.TRUE);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.validateCustomerServiceWindow"));
     }
 
     public Mono<WhatsappCswService.CswStatus> getCswStatus(WhatsappMessageCswRequest request) {
