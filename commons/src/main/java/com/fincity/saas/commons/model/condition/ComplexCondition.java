@@ -45,6 +45,27 @@ public class ComplexCondition extends AbstractCondition {
     }
 
     @Override
+    public Flux<FilterCondition> findConditionWithPrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        return Flux.fromIterable(this.conditions).flatMap(c -> c.findConditionWithPrefix(prefix));
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndTrimPrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndTrimPrefix(prefix));
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndCreatePrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndCreatePrefix(prefix));
+    }
+
+    @Override
     public Mono<AbstractCondition> removeConditionWithField(String fieldName) {
 
         if (StringUtil.safeIsBlank(fieldName)) return Mono.empty();

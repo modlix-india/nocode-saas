@@ -3,6 +3,7 @@ package com.fincity.saas.commons.model.condition;
 import java.io.Serial;
 import java.util.List;
 
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
@@ -28,6 +29,22 @@ public class FilterCondition extends AbstractCondition {
     private boolean isToValueField = false;
     private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
 
+    public FilterCondition() {
+        super();
+    }
+
+    public FilterCondition(FilterCondition condition) {
+        super();
+        this.field = condition.getField();
+        this.operator = condition.getOperator();
+        this.value = CloneUtil.cloneObject(condition.getValue());
+        this.toValue = CloneUtil.cloneObject(condition.getToValue());
+        this.multiValue = CloneUtil.cloneMapList(condition.getMultiValue());
+        this.isValueField = condition.isValueField();
+        this.isToValueField = condition.isToValueField();
+        this.matchOperator = condition.getMatchOperator();
+    }
+
     public static FilterCondition make(String field, Object value) {
         return new FilterCondition().setField(field).setValue(value);
     }
@@ -45,6 +62,34 @@ public class FilterCondition extends AbstractCondition {
     public Flux<FilterCondition> findConditionWithField(String fieldName) {
 
         if (StringUtil.safeEquals(field, fieldName)) return Flux.just(this);
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Flux<FilterCondition> findConditionWithPrefix(String prefix) {
+
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(this);
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndTrimPrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(this.setField(field.substring(prefix.length() + 1)));
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndCreatePrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(new FilterCondition(this).setField(field.substring(prefix.length() + 1)));
 
         return Flux.empty();
     }

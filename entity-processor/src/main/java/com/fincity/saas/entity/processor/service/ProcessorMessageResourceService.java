@@ -49,6 +49,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String OUTSIDE_USER_ACCESS = "outside_user_access";
     public static final String PARTNER_ACCESS_DENIED = "partner_access_denied";
     public static final String INVALID_CLIENT_TYPE = "invalid_client_type";
+    public static final String MISSING_PARAMETERS = "missing_parameters";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

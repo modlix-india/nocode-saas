@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
@@ -78,17 +79,6 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     @Override
-    public Mono<Partner> update(ULong key, Map<String, Object> fields) {
-        return super.update(key, fields)
-                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
-    public Mono<Partner> update(Partner entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
     protected Mono<Partner> updatableEntity(Partner entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             existing.setManagerId(entity.getManagerId());
@@ -96,11 +86,6 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
             existing.setDnc(entity.getDnc());
             return Mono.just(existing);
         });
-    }
-
-    @Override
-    public Mono<Integer> delete(ULong id) {
-        return super.delete(id);
     }
 
     @Override
@@ -200,13 +185,38 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     public Mono<Page<Map<String, Object>>> readPartnerClient(Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> this.addManagingClientIds(access, query.getCondition()),
-                (access, pCondition) -> super.securityService
-                        .readClientPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)
-                        .map(page -> page.map(IClassConvertor::toMap)),
-                (access, pCondition, clientPage) -> this.fillDetails(access, clientPage.getContent(), queryParams)
-                        .thenReturn(clientPage));
+                        this::hasAccess,
+                        access -> super.securityService
+                                .getManagingClientIds(access.getUser().getClientId())
+                                .map(ids -> ids.stream().map(ULongUtil::valueOf).toList()),
+                        (access, clientIds) -> this.addClientConditions(query.getCondition(), clientIds),
+                        (access, clientIds, clientCondition) ->
+                                this.getPartners(query.getCondition(), access, clientIds),
+                        (access, clientIds, clientCondition, partners) -> this.updateClientCondition(
+                                clientCondition,
+                                partners.stream().map(Partner::getClientId).toList()),
+                        (access, clientIds, clientCondition, partners, uClientCondition) -> super.securityService
+                                .readClientPageFilterInternal(
+                                        this.updateQueryCondition(query, uClientCondition), queryParams)
+                                .map(page -> page.map(IClassConvertor::toMap)),
+                        (access, clientIds, clientCondition, partners, uClientCondition, clientPage) ->
+                                this.fillDetails(access, partners, clientPage.getContent(), queryParams)
+                                        .thenReturn(clientPage))
+                .switchIfEmpty(Mono.just(Page.empty()));
+    }
+
+    public Mono<List<Partner>> getPartners(AbstractCondition condition, ProcessorAccess access, List<ULong> clientIds) {
+
+        if (clientIds == null || clientIds.isEmpty()) return Mono.empty();
+
+        if (condition == null || condition.isEmpty()) return this.dao.getPartners(access, clientIds);
+
+        return FlatMapUtil.flatMapMono(
+                () -> condition
+                        .findAndCreatePrefix(this.getEntityPrefix(access.getAppCode()))
+                        .collectList(),
+                conditions -> this.dao.getPartners(
+                        ComplexCondition.and(conditions.toArray(new AbstractCondition[0])), access, clientIds));
     }
 
     public Mono<Page<Map<String, Object>>> readPartnerTeammates(
@@ -232,13 +242,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     private Mono<List<Map<String, Object>>> fillDetails(
-            ProcessorAccess access, List<Map<String, Object>> clients, MultiValueMap<String, String> queryParams) {
-
-        return Mono.defer(() -> Mono.just(clients)).flatMap(c -> fillPartnerDetails(access, c, queryParams));
+            ProcessorAccess access,
+            List<Partner> partners,
+            List<Map<String, Object>> clients,
+            MultiValueMap<String, String> queryParams) {
+        return Mono.defer(() -> fillPartnerDetails(partners, clients, queryParams));
     }
 
     private Mono<List<Map<String, Object>>> fillPartnerDetails(
-            ProcessorAccess access, List<Map<String, Object>> clients, MultiValueMap<String, String> queryParams) {
+            List<Partner> partners, List<Map<String, Object>> clients, MultiValueMap<String, String> queryParams) {
 
         boolean fetchPartner = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARTNERS));
 
@@ -248,20 +260,17 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .collect(Collectors.toMap(
                         c -> ULongUtil.valueOfDouble(c.get(AbstractDTO.Fields.id)), Function.identity()));
 
-        return this.dao
-                .getPartnerByClientIds(access, clientMapById.keySet().stream().toList())
-                .map(partners -> {
-                    partners.forEach(partner -> {
-                        Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-                        if (clientMap != null) clientMap.put(this.getEntityKey(), partner.toMap());
-                    });
-                    return clients;
-                })
-                .switchIfEmpty(Mono.just(clients));
+        partners.forEach(partner -> {
+            Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
+            if (clientMap != null) clientMap.put(this.getEntityKey(), partner.toMap());
+        });
+        return Mono.just(clients);
     }
 
     private Query updateQueryCondition(Query query, AbstractCondition condition) {
         if (condition == null || condition.isEmpty()) return query;
+
+        query.setCount(Boolean.FALSE);
 
         if (query.getCondition() == null || query.getCondition().isEmpty()) {
             query.setCondition(condition);
@@ -283,26 +292,36 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         .setMatchOperator(FilterConditionOperator.EQUALS)));
     }
 
-    public Mono<AbstractCondition> addManagingClientIds(ProcessorAccess access, AbstractCondition condition) {
+    public Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
 
         return FlatMapUtil.flatMapMono(
-                () -> super.securityService.getManagingClientIds(
-                        access.getUser().getClientId()),
-                clientIds -> {
-                    if (clientIds == null || clientIds.isEmpty()) return Mono.empty();
-
-                    if (condition == null || condition.isEmpty())
-                        return Mono.just(new FilterCondition()
+                () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
+                conditions -> Mono.just(ComplexCondition.and(
+                        conditions,
+                        new FilterCondition()
                                 .setField(AbstractDTO.Fields.id)
                                 .setOperator(FilterConditionOperator.IN)
-                                .setMultiValue(clientIds));
+                                .setMultiValue(clientIds))));
+    }
 
-                    return Mono.just(ComplexCondition.and(
-                            condition,
-                            new FilterCondition()
-                                    .setField(AbstractDTO.Fields.id)
-                                    .setOperator(FilterConditionOperator.IN)
-                                    .setMultiValue(clientIds)));
-                });
+    public Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
+
+        if (clientIds == null || clientIds.isEmpty()) return Mono.empty();
+
+        if (condition == null || condition.isEmpty())
+            return Mono.just(ComplexCondition.and(
+                    FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
+                    new FilterCondition()
+                            .setField(AbstractDTO.Fields.id)
+                            .setOperator(FilterConditionOperator.IN)
+                            .setMultiValue(clientIds)));
+
+        return Mono.just(ComplexCondition.and(
+                condition,
+                FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
+                new FilterCondition()
+                        .setField(AbstractDTO.Fields.id)
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(clientIds)));
     }
 }
