@@ -2,7 +2,7 @@ package com.fincity.saas.ui.controller;
 
 import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
-import feign.Response;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,9 +27,9 @@ public class ApplicationController
     }
 
     @DeleteMapping("/{appCode}/mobileApps/{id}")
-    public Mono<ResponseEntity<Boolean>> deleteApp(@PathVariable String appCode, @PathVariable String id) {
+    public Mono<ResponseEntity<Boolean>> deleteApp(@PathVariable String id) {
 
-        return this.service.deleteMobileApp(appCode, id).map(ResponseEntity::ok);
+        return this.service.deleteMobileApp(id).map(ResponseEntity::ok);
     }
 
     @PostMapping("/{appCode}/mobileApps")

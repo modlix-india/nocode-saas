@@ -138,21 +138,11 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private AbstractCondition getAppCodeCondition(ProcessorAccess access) {
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
-                .setOperator(FilterConditionOperator.EQUALS);
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode());
     }
 
     private AbstractCondition getClientCodeCondition(ProcessorAccess access) {
-        if (access.isOutsideUser())
-            return ComplexCondition.or(
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
-                            .setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make(
-                                    AbstractFlowUpdatableDTO.Fields.clientCode,
-                                    access.getUserInherit().getManagedClientCode())
-                            .setOperator(FilterConditionOperator.EQUALS));
-
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode());
+        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getEffectiveClientCode());
     }
 
     public Mono<D> readInternal(ULong id) {

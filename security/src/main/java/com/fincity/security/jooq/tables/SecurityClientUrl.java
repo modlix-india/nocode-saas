@@ -7,7 +7,6 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
-import com.fincity.security.jooq.tables.SecurityBundledApp.SecurityBundledAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecuritySslCertificate.SecuritySslCertificatePath;
 import com.fincity.security.jooq.tables.SecuritySslRequest.SecuritySslRequestPath;
@@ -221,19 +220,6 @@ public class SecurityClientUrl extends TableImpl<SecurityClientUrlRecord> {
             _securityClient = new SecurityClientPath(this, Keys.FK1_CLIENT_URL_CLIENT_ID, null);
 
         return _securityClient;
-    }
-
-    private transient SecurityBundledAppPath _securityBundledApp;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_bundled_app</code> table
-     */
-    public SecurityBundledAppPath securityBundledApp() {
-        if (_securityBundledApp == null)
-            _securityBundledApp = new SecurityBundledAppPath(this, null, Keys.FK1_BUNDLED_APP_URL_ID.getInverseKey());
-
-        return _securityBundledApp;
     }
 
     private transient SecuritySslCertificatePath _securitySslCertificate;

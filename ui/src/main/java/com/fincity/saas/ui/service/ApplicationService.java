@@ -5,7 +5,6 @@ import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.util.*;
 import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
@@ -237,11 +236,11 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                                 object.getProperties().remove("manifest");
                             }
 
-                            if (object.getProperties().get("sso2") instanceof Map<?, ?> sso2) {
+                            if (object.getProperties().get("sso") instanceof Map<?, ?> sso) {
 
-                                String url = StringUtil.safeValueOf(sso2.get("urlPrefix"));
+                                String url = StringUtil.safeValueOf(sso.get("redirectURL"));
                                 if (url != null) {
-                                    ((Map<String, String>) sso2).put("urlPrefix", processForVariables(url));
+                                    ((Map<String, String>) sso).put("redirectURL", processForVariables(url));
                                 }
                             }
 
@@ -279,7 +278,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
             return url;
         }
 
-        url = url.replace("{envDotSuffix}", appCodeSuffix);
+        url = url.replace("{envDotPrefix}", appCodeSuffix);
 
         String env = StringUtil.safeIsBlank(appCodeSuffix) ? "" : appCodeSuffix.substring(appCodeSuffix.indexOf(".") + 1);
 
@@ -287,14 +286,14 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
 
         env = StringUtil.safeIsBlank(env) ? "" : env + ".";
 
-        url = url.replace("{envDotPrefix}", env);
+        url = url.replace("{envDotSuffix}", env);
 
         return url;
     }
 
 
     @PreAuthorize("hasAuthority('Authorities.ROLE_MobileApp_CREATE')")
-    public Mono<Boolean> deleteMobileApp(String appCode, String id) {
+    public Mono<Boolean> deleteMobileApp(String id) {
 
         return flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
