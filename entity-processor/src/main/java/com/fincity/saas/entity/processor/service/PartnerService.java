@@ -1,18 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.util.MultiValueMap;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -37,7 +24,17 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -297,10 +294,14 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     public Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
 
-        return FlatMapUtil.flatMapMono(() -> condition.removeConditionWithField(AbstractDTO.Fields.id), conditions -> Mono.just(ComplexCondition.and(conditions, new FilterCondition()
-                .setField(AbstractDTO.Fields.id)
-                .setOperator(FilterConditionOperator.IN)
-                .setMultiValue(clientIds))));
+        return FlatMapUtil.flatMapMono(
+                () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
+                conditions -> Mono.just(ComplexCondition.and(
+                        conditions,
+                        new FilterCondition()
+                                .setField(AbstractDTO.Fields.id)
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))));
     }
 
     public Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
