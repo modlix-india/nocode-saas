@@ -239,6 +239,12 @@ public class WhatsappMessageService
     }
 
     public Mono<MessageResponse> processWebhookEvent(String appCode, String clientCode, IWebHookEvent event) {
+
+        if (clientCode.equals("SYSTEM"))
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.WEBHOOK_CONFIG_NOT_DONE);
+
         if (event == null || event.getEntry() == null) return Mono.empty();
 
         MessageAccess access = MessageAccess.of(appCode, clientCode, true);

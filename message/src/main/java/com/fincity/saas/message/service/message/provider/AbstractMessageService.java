@@ -67,8 +67,7 @@ public abstract class AbstractMessageService<
 
     public Mono<D> updateInternalWithoutUser(MessageAccess publicAccess, D entity) {
 
-        entity.setAppCode(publicAccess.getAppCode());
-        entity.setClientCode(publicAccess.getClientCode());
+        if (publicAccess.getUserId() != null) entity.setUpdatedBy(publicAccess.getUserId());
 
         return this.dao.update(entity).flatMap(updated -> this.evictCache(entity)
                 .map(evicted -> updated));
