@@ -1,18 +1,15 @@
 package com.fincity.saas.message.dto.call;
 
-import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.util.NameUtil;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

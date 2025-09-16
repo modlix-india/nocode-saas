@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -57,6 +58,11 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_partners</code>.
      */
     public static final EntityProcessorPartners ENTITY_PROCESSOR_PARTNERS = EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS;
+
+    /**
+     * The table <code>entity_processor.entity_processor_product_comms</code>.
+     */
+    public static final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
 
     /**
      * The table

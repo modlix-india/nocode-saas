@@ -21,5 +21,11 @@ public abstract class AbstractCondition implements Serializable {
 
     public abstract Flux<FilterCondition> findConditionWithField(String fieldName);
 
+    public abstract Flux<FilterCondition> findConditionWithPrefix(String prefix);
+
+    public abstract Flux<FilterCondition> findAndTrimPrefix(String prefix);
+
+    public abstract Flux<FilterCondition> findAndCreatePrefix(String prefix);
+
     public abstract Mono<AbstractCondition> removeConditionWithField(String fieldName);
 }
