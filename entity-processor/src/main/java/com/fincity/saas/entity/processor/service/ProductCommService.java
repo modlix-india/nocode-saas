@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import java.util.Map;
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -40,6 +41,21 @@ public class ProductCommService
     }
 
     @Override
+    protected Mono<Boolean> evictCache(ProductComm entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getProductId(),
+                                entity.getConnectionName(),
+                                entity.getConnectionType())),
+                (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
+    }
+
+    @Override
     protected Mono<ProductComm> checkEntity(ProductComm entity, ProcessorAccess access) {
 
         if (entity.getProductId() == null) return super.throwMissingParam(ProductComm.Fields.productId);
@@ -50,30 +66,19 @@ public class ProductCommService
             return super.throwMissingParam(ProductComm.Fields.source);
 
         ConnectionType connectionType = ConnectionType.valueOf(entity.getConnectionType());
+
+        Mono<ProductComm> duplicateCheck = this.dao.getProductComm(
+                access,
+                entity.getProductId(),
+                entity.getConnectionName(),
+                connectionType,
+                entity.getSource(),
+                entity.getSubSource());
+
         return switch (connectionType) {
-            case MAIL ->
-                this.validateMail(entity)
-                        .flatMap(valid -> checkDuplicate(
-                                this.dao.getProductComm(
-                                        access,
-                                        entity.getProductId(),
-                                        entity.getEmail(),
-                                        entity.getSource(),
-                                        entity.getSubSource()),
-                                entity,
-                                access));
+            case MAIL -> this.validateMail(entity).flatMap(valid -> checkDuplicate(duplicateCheck, entity, access));
             case CALL, TEXT ->
-                this.validatePhone(entity)
-                        .flatMap(valid -> checkDuplicate(
-                                this.dao.getProductComm(
-                                        access,
-                                        entity.getProductId(),
-                                        entity.getDialCode(),
-                                        entity.getPhoneNumber(),
-                                        entity.getSource(),
-                                        entity.getSubSource()),
-                                entity,
-                                access));
+                this.validatePhone(entity).flatMap(valid -> checkDuplicate(duplicateCheck, entity, access));
             default -> Mono.empty();
         };
     }
@@ -119,6 +124,9 @@ public class ProductCommService
 
     public Mono<ProductComm> create(ProductCommRequest productCommRequest) {
 
+        if (productCommRequest.getConnectionName() == null)
+            return super.throwMissingParam(ProductComm.Fields.connectionName);
+
         if (productCommRequest.getConnectionType() == null)
             return super.throwMissingParam(ProductComm.Fields.connectionType);
 
@@ -132,7 +140,7 @@ public class ProductCommService
                         .getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), productCommRequest.getConnectionName()),
                 (access, product, connection) -> {
-                    if (Boolean.TRUE.equals(productCommRequest.getIsDefault()))
+                    if (Boolean.TRUE.equals(productCommRequest.isDefault()))
                         return this.dao
                                 .unsetDefaultsForProduct(
                                         access,
@@ -150,7 +158,31 @@ public class ProductCommService
                 super::hasAccess, access -> this.readIdentityWithAccess(access, productCommId), (access, pc) -> this.dao
                         .unsetDefaultsForProduct(
                                 access, pc.getProductId(), ConnectionType.valueOf(pc.getConnectionType()))
-                        .then(this.updateInternal(
+                        .then(super.updateInternal(
                                 access, pc.getId(), Map.of(ProductComm.Fields.isDefault, Boolean.TRUE))));
+    }
+
+    public Mono<ProductComm> getDefault(Identity productId, String connectionName, ConnectionType connectionType) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, access -> this.getDefault(access, productId, connectionName, connectionType));
+    }
+
+    public Mono<ProductComm> getDefault(
+            ProcessorAccess access, Identity productId, String connectionName, ConnectionType connectionType) {
+        return this.getDefaultInternal(access, productId.getULongId(), connectionName, connectionType);
+    }
+
+    public Mono<ProductComm> getDefault(
+            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
+        return this.getDefaultInternal(access, productId, connectionName, connectionType);
+    }
+
+    private Mono<ProductComm> getDefaultInternal(
+            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getDefaultProductComm(access, productId, connectionName, connectionType),
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), productId, connectionName, connectionType.name()));
     }
 }

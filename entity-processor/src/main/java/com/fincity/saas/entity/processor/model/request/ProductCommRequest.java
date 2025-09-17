@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.model.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -25,7 +27,6 @@ public class ProductCommRequest extends BaseRequest<ProductCommRequest> {
     private ConnectionType connectionType;
     private PhoneNumber phoneNumber;
     private Email email;
-    private Boolean isDefault;
     private String source;
     private String subSource;
 
@@ -37,5 +38,10 @@ public class ProductCommRequest extends BaseRequest<ProductCommRequest> {
             case TEXT, CALL -> phoneNumber != null;
             default -> Boolean.FALSE;
         };
+    }
+
+    @JsonIgnore
+    public Boolean isDefault() {
+        return StringUtil.safeIsBlank(this.source);
     }
 }

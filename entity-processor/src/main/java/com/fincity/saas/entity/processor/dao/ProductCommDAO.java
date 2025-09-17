@@ -6,6 +6,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
@@ -23,16 +24,10 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
         super(ProductComm.class, ENTITY_PROCESSOR_PRODUCT_COMMS, ENTITY_PROCESSOR_PRODUCT_COMMS.ID);
     }
 
-    public Mono<ProductComm> getProductComm(
-            ProcessorAccess access,
-            ULong productId,
-            Integer dialCode,
-            String phoneNumber,
-            String source,
-            String subSource) {
-
+    public Mono<ProductComm> getDefaultProductComm(
+            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getProductCommPhoneCondition(access, productId, dialCode, phoneNumber, source, subSource),
+                () -> this.getProductCommDefaultCondition(access, productId, connectionName, connectionType),
                 super::filter,
                 (pCondition, condition) -> Mono.from(this.dslContext
                                 .selectFrom(ENTITY_PROCESSOR_PRODUCT_COMMS)
@@ -41,10 +36,16 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
     }
 
     public Mono<ProductComm> getProductComm(
-            ProcessorAccess access, ULong productId, String email, String source, String subSource) {
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            String source,
+            String subSource) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.getProductCommEmailCondition(access, productId, email, source, subSource),
+                () -> this.getProductCommCondition(
+                        access, productId, connectionName, connectionType, source, subSource),
                 super::filter,
                 (pCondition, condition) -> Mono.from(this.dslContext
                                 .selectFrom(ENTITY_PROCESSOR_PRODUCT_COMMS)
@@ -68,36 +69,23 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
                         .where(condition)));
     }
 
-    private Mono<AbstractCondition> getProductCommEmailCondition(
-            ProcessorAccess access, ULong productId, String email, String source, String subSource) {
-        AbstractCondition emailCondition = FilterCondition.make(ProductComm.Fields.email, email);
+    private Mono<AbstractCondition> getProductCommDefaultCondition(
+            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
 
-        return this.getProductCommCondition(access, productId, source, subSource, emailCondition);
-    }
+        AbstractCondition defaultCondition = new FilterCondition()
+                .setField(ProductComm.Fields.isDefault)
+                .setMatchOperator(FilterConditionOperator.IS_TRUE);
 
-    private Mono<AbstractCondition> getProductCommPhoneCondition(
-            ProcessorAccess access,
-            ULong productId,
-            Integer dialCode,
-            String phoneNumber,
-            String source,
-            String subSource) {
-
-        AbstractCondition phoneCondition = ComplexCondition.and(
-                FilterCondition.make(ProductComm.Fields.dialCode, dialCode),
-                FilterCondition.make(ProductComm.Fields.phoneNumber, phoneNumber));
-
-        return this.getProductCommCondition(access, productId, source, subSource, phoneCondition);
+        return this.getProductCommCondition(access, productId, connectionName, connectionType, defaultCondition);
     }
 
     private Mono<AbstractCondition> getProductCommCondition(
             ProcessorAccess access,
             ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
             String source,
-            String subSource,
-            AbstractCondition connectionMediumCondition) {
-
-        AbstractCondition productCondition = FilterCondition.make(ProductComm.Fields.productId, productId);
+            String subSource) {
 
         AbstractCondition sourceCondition = FilterCondition.make(ProductComm.Fields.source, source);
 
@@ -105,7 +93,26 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
                 ? ComplexCondition.and(sourceCondition, FilterCondition.make(ProductComm.Fields.subSource, subSource))
                 : sourceCondition;
 
+        return this.getProductCommCondition(
+                access, productId, connectionName, connectionType, sourceSubSourceCondition);
+    }
+
+    private Mono<AbstractCondition> getProductCommCondition(
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            AbstractCondition sourceCondition) {
+
+        AbstractCondition productCondition = FilterCondition.make(ProductComm.Fields.productId, productId);
+
+        AbstractCondition connectionCondition = FilterCondition.make(ProductComm.Fields.connectionName, connectionName);
+
+        AbstractCondition connectionTypeCondition =
+                FilterCondition.make(ProductComm.Fields.connectionType, connectionType.name());
+
         return super.processorAccessCondition(
-                ComplexCondition.and(productCondition, connectionMediumCondition, sourceSubSourceCondition), access);
+                ComplexCondition.and(productCondition, connectionCondition, connectionTypeCondition, sourceCondition),
+                access);
     }
 }
