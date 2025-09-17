@@ -4,8 +4,10 @@ import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
+
 import java.io.Serial;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -44,7 +46,7 @@ public class Connection extends AbstractOverridableDTO<Connection> {
     }
 
     @Override
-    public Mono<Connection> makeOverride(Connection base) {
+    public Mono<Connection> extractDifference(Connection base) {
         return Mono.just(this);
     }
 }
