@@ -45,7 +45,9 @@ public class ProductCommService
         if (entity.getProductId() == null) return super.throwMissingParam(ProductComm.Fields.productId);
         if (StringUtil.safeIsBlank(entity.getConnectionType()))
             return super.throwMissingParam(ProductComm.Fields.connectionType);
-        if (StringUtil.safeIsBlank(entity.getSource())) return super.throwMissingParam(ProductComm.Fields.source);
+
+        if (!entity.isDefault() && StringUtil.safeIsBlank(entity.getSource()))
+            return super.throwMissingParam(ProductComm.Fields.source);
 
         ConnectionType connectionType = ConnectionType.valueOf(entity.getConnectionType());
         return switch (connectionType) {

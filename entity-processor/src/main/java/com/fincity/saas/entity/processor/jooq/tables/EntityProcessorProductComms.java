@@ -165,7 +165,7 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
      * <code>entity_processor.entity_processor_product_comms.SOURCE</code>. Name
      * of source form where we get this ticket.
      */
-    public final TableField<EntityProcessorProductCommsRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32).nullable(false), this, "Name of source form where we get this ticket.");
+    public final TableField<EntityProcessorProductCommsRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32), this, "Name of source form where we get this ticket.");
 
     /**
      * The column

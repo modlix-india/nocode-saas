@@ -3,7 +3,7 @@ ALTER TABLE `entity_processor`.`entity_processor_product_comms`
     DROP INDEX `IDX5_PRODUCT_COMMS_AC_CC_PRODUCT_EMAIL`;
 
 ALTER TABLE `entity_processor_product_comms`
-    ADD COLUMN `SOURCE` CHAR(32) NOT NULL COMMENT 'Name of source form where we get this ticket.' AFTER `IS_DEFAULT`,
+    ADD COLUMN `SOURCE` CHAR(32) NULL COMMENT 'Name of source form where we get this ticket.' AFTER `IS_DEFAULT`,
     ADD COLUMN `SUB_SOURCE` CHAR(32) NULL COMMENT 'Name of sub source of source form where we get this ticket.' AFTER `SOURCE`;
 
 ALTER TABLE `entity_processor_product_comms`
