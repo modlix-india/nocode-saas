@@ -40,7 +40,7 @@ public class AuthenticationController {
 
     @PostMapping("authenticate")
     public Mono<ResponseEntity<AuthenticationResponse>> authenticate(@RequestBody AuthenticationRequest authRequest,
-                                                                     ServerHttpRequest request, ServerHttpResponse response) {
+            ServerHttpRequest request, ServerHttpResponse response) {
 
         return this.service.authenticate(authRequest, request, response).map(ResponseEntity::ok);
     }
@@ -54,12 +54,14 @@ public class AuthenticationController {
 
     @PostMapping("authenticate/otp/generate")
     public Mono<ResponseEntity<Boolean>> generateOtp(@RequestBody AuthenticationRequest authRequest,
-                                                     ServerHttpRequest request) {
+            ServerHttpRequest request) {
         return this.service.generateOtp(authRequest, request).map(ResponseEntity::ok);
     }
 
     @GetMapping(value = "revoke")
-    public Mono<ResponseEntity<Void>> revoke(@RequestParam(name = "ssoLogout", defaultValue = "false", required = false) boolean ssoLogout, ServerHttpRequest request) {
+    public Mono<ResponseEntity<Void>> revoke(
+            @RequestParam(name = "ssoLogout", defaultValue = "false", required = false) boolean ssoLogout,
+            ServerHttpRequest request) {
         return this.service.revoke(ssoLogout, request).map(e -> ResponseEntity.ok().build());
     }
 
@@ -74,26 +76,26 @@ public class AuthenticationController {
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> {
+                ca -> {
 
-                            if (ca.isAuthenticated())
-                                return Mono.just(ca);
+                    if (ca.isAuthenticated())
+                        return Mono.just(ca);
 
-                            Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+                    Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
 
-                            Mono<ContextAuthentication> errorMono;
-                            if (tuple.getT2().isBlank())
-                                errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
-                            else
-                                errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+                    Mono<ContextAuthentication> errorMono;
+                    if (tuple.getT2().isBlank())
+                        errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
+                    else
+                        errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-                            return this.service.revoke(false, request).flatMap(e -> Mono.defer(() -> errorMono));
+                    return this.service.revoke(false, request).flatMap(e -> Mono.defer(() -> errorMono));
 
-                        },
+                },
 
-                        (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
+                (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
 
                         (ca, ca2, client) -> this.clientService.getManagedClientOfClientById(client.getId())
                                 .map(mc -> new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
@@ -106,37 +108,40 @@ public class AuthenticationController {
                                         .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
                                 ),
 
-                        (ca, ca2, client, vr) -> Mono.just(ResponseEntity.ok(vr)))
+                (ca, ca2, client, vr) -> Mono.<ResponseEntity<AuthenticationResponse>>just(ResponseEntity.ok(vr)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
     }
 
     @PostMapping(value = "/makeOneTimeToken")
-    public Mono<ResponseEntity<Map<String, String>>> makeOneTimeToken(@RequestBody MakeOneTimeTimeTokenRequest request, ServerHttpRequest httpRequest) {
+    public Mono<ResponseEntity<Map<String, String>>> makeOneTimeToken(@RequestBody MakeOneTimeTimeTokenRequest request,
+            ServerHttpRequest httpRequest) {
         return this.service.makeOneTimeToken(request, httpRequest).map(ResponseEntity::ok);
     }
 
     @GetMapping(value = "/authenticateWithOneTimeToken/{pathToken}")
-    public Mono<ResponseEntity<ContextAuthentication>> authenticateWithOneTimeToken(@PathVariable(required = false) String pathToken, @RequestParam(required = false) String token, ServerHttpRequest request, ServerHttpResponse response) {
+    public Mono<ResponseEntity<ContextAuthentication>> authenticateWithOneTimeToken(
+            @PathVariable(required = false) String pathToken, @RequestParam(required = false) String token,
+            ServerHttpRequest request, ServerHttpResponse response) {
         return this.service.authenticateWithOneTimeToken(pathToken == null ? token : pathToken, request, response)
                 .map(AuthenticationResponse::makeContextAuthentication)
                 .map(ResponseEntity::ok);
     }
 
-
-    @GetMapping(value = "internal/securityContextAuthentication", produces = {"application/json"})
+    @GetMapping(value = "internal/securityContextAuthentication", produces = { "application/json" })
     public Mono<ResponseEntity<ContextAuthentication>> contextAuthentication() {
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        contextAuthentication -> Mono.just(ResponseEntity.ok(contextAuthentication)))
+                contextAuthentication -> Mono.just(ResponseEntity.ok(contextAuthentication)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.contextAuthentication"));
     }
 
     @PostMapping("user/access")
-    public Mono<ResponseEntity<UserAccess>> getUserAccess(@RequestBody UserAppAccessRequest request, ServerHttpRequest httpRequest) {
+    public Mono<ResponseEntity<UserAccess>> getUserAccess(@RequestBody UserAppAccessRequest request,
+            ServerHttpRequest httpRequest) {
         return this.service.getUserAppAccess(request, httpRequest).map(ResponseEntity::ok);
     }
 

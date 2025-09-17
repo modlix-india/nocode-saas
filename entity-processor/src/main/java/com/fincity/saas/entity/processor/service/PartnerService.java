@@ -24,10 +24,12 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -258,7 +260,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         Map<ULong, Map<String, Object>> clientMapById = clients.stream()
                 .collect(Collectors.toMap(
-                        c -> ULongUtil.valueOfDouble(c.get(AbstractDTO.Fields.id)), Function.identity()));
+                        c -> ULongUtil.valueOf(c.get(AbstractDTO.Fields.id)), Function.identity()));
 
         partners.forEach(partner -> {
             Map<String, Object> clientMap = clientMapById.get(partner.getClientId());

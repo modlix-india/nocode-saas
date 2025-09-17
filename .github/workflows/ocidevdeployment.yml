@@ -24,17 +24,29 @@ jobs:
       - name: Building commons
         working-directory: ./commons
         run: mvn clean install
+      - name: Building commons2
+        working-directory: ./commons2
+        run: mvn clean install
       - name: Building commons-jooq
         working-directory: ./commons-jooq
         run: mvn clean install
+      - name: Building commons2-jooq
+        working-directory: ./commons2-jooq
+        run: mvn clean install
       - name: Building commons-security
         working-directory: ./commons-security
+        run: mvn clean install
+      - name: Building commons2-security
+        working-directory: ./commons2-security
         run: mvn clean install
       - name: Building commons-mongo
         working-directory: ./commons-mongo
         run: mvn clean install
       - name: Building commons-mq
         working-directory: ./commons-mq
+        run: mvn clean install
+      - name: Building commons2-mq
+        working-directory: ./commons2-mq
         run: mvn clean install
       - name: Building commons-core
         working-directory: ./commons-core
