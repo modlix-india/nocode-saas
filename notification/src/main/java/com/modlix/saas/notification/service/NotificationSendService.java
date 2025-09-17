@@ -23,7 +23,7 @@ public class NotificationSendService {
 
     public void sendNotification(NotificationQueObject qob) {
 
-        this.coreService.
-                LogUtil.info(logger, "Sending notification: {}", qob);
+//        this.coreService.
+//                LogUtil.info(logger, "Sending notification: {}", qob);
     }
 }
