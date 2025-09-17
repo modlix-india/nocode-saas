@@ -6,6 +6,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 
@@ -17,6 +18,7 @@ import java.util.List;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -200,6 +202,11 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PARTNERS_IDX0_PARTNERS_AC_CC);
     }
 
     @Override
