@@ -4,10 +4,8 @@ import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
-
 import java.io.Serial;
 import java.util.Map;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
