@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
-import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
@@ -17,7 +17,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ProductComm extends BaseUpdatableDto<ProductComm> {
+public class ProductComm extends BaseProcessorDto<ProductComm> {
 
     @Serial
     private static final long serialVersionUID = 8028699089699178352L;
@@ -29,6 +29,8 @@ public class ProductComm extends BaseUpdatableDto<ProductComm> {
     private String phoneNumber;
     private String email;
     private boolean isDefault = false;
+    private String source;
+    private String subSource;
 
     public ProductComm() {
         super();
@@ -43,6 +45,8 @@ public class ProductComm extends BaseUpdatableDto<ProductComm> {
         this.phoneNumber = productComm.phoneNumber;
         this.email = productComm.email;
         this.isDefault = productComm.isDefault;
+        this.source = productComm.source;
+        this.subSource = productComm.subSource;
     }
 
     public static ProductComm of(ProductCommRequest productCommRequest, ULong productId, Connection connection) {
@@ -51,6 +55,8 @@ public class ProductComm extends BaseUpdatableDto<ProductComm> {
                 .setConnectionType(connection.getConnectionType().name())
                 .setProductId(productId)
                 .setDefault(productCommRequest.getIsDefault())
+                .setSource(productCommRequest.getSource())
+                .setSubSource(productCommRequest.getSubSource())
                 .setName(productCommRequest.getName());
 
         return switch (connection.getConnectionType()) {
