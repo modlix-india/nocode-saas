@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
@@ -23,6 +24,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -335,6 +337,11 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASKS_IDX0_TASKS_AC_CC);
     }
 
     @Override
