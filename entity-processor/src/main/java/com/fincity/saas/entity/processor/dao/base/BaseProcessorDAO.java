@@ -38,8 +38,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         this.jUserAccessField = null;
     }
 
-    public boolean hasAccessAssignment() {
-        return this.userAccessField != null;
+    public boolean hasNoAccessAssignment() {
+        return this.userAccessField == null;
     }
 
     @Override
@@ -52,7 +52,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
 
-        if (!hasAccessAssignment()) return Mono.empty();
+        if (hasNoAccessAssignment()) return Mono.empty();
 
         if (access.isOutsideUser()) {
             if (this.isEmptyCondition(condition))
@@ -92,7 +92,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
-        if (!hasAccessAssignment()) return Mono.empty();
+        if (hasNoAccessAssignment()) return Mono.empty();
 
         String userField = access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
 
@@ -122,6 +122,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     private Mono<AbstractCondition> updateExistingCondition(
             AbstractCondition root, String field, List<?> hierarchy, Object equalsValue) {
         return FlatMapUtil.flatMapMono(() -> root.findConditionWithField(field).collectList(), existingConditions -> {
+            if (existingConditions.isEmpty()) return Mono.empty();
+
             for (FilterCondition fc : existingConditions) {
                 if (fc.getOperator() == FilterConditionOperator.IN)
                     fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), hierarchy));
@@ -135,6 +137,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         return this.buildInCondition(field, values).flatMap(fc -> Mono.just(ComplexCondition.and(root, fc)));
     }
 
+    @SuppressWarnings("unchecked")
     public Flux<D> updateAll(Flux<D> entities) {
         return entities.flatMap(super::update);
     }

@@ -11,10 +11,8 @@ import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Service
 public abstract class BaseProcessorService<
                 R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>, O extends BaseProcessorDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
