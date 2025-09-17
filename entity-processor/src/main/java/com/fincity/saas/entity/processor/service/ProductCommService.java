@@ -1,21 +1,23 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.ProductCommDAO;
 import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
-import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
 public class ProductCommService
-        extends BaseUpdatableService<EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO> {
+        extends BaseProcessorService<EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO> {
 
     private static final String PRODUCT_COMM = "productComm";
 
@@ -38,12 +40,78 @@ public class ProductCommService
     }
 
     @Override
+    protected Mono<ProductComm> checkEntity(ProductComm entity, ProcessorAccess access) {
+
+        if (entity.getProductId() == null) return super.throwMissingParam(ProductComm.Fields.productId);
+        if (StringUtil.safeIsBlank(entity.getConnectionType()))
+            return super.throwMissingParam(ProductComm.Fields.connectionType);
+
+        if (!entity.isDefault() && StringUtil.safeIsBlank(entity.getSource()))
+            return super.throwMissingParam(ProductComm.Fields.source);
+
+        ConnectionType connectionType = ConnectionType.valueOf(entity.getConnectionType());
+        return switch (connectionType) {
+            case MAIL ->
+                this.validateMail(entity)
+                        .flatMap(valid -> checkDuplicate(
+                                this.dao.getProductComm(
+                                        access,
+                                        entity.getProductId(),
+                                        entity.getEmail(),
+                                        entity.getSource(),
+                                        entity.getSubSource()),
+                                entity,
+                                access));
+            case CALL, TEXT ->
+                this.validatePhone(entity)
+                        .flatMap(valid -> checkDuplicate(
+                                this.dao.getProductComm(
+                                        access,
+                                        entity.getProductId(),
+                                        entity.getDialCode(),
+                                        entity.getPhoneNumber(),
+                                        entity.getSource(),
+                                        entity.getSubSource()),
+                                entity,
+                                access));
+            default -> Mono.empty();
+        };
+    }
+
+    private Mono<ProductComm> validateMail(ProductComm entity) {
+        if (StringUtil.safeIsBlank(entity.getEmail())) return super.throwMissingParam(ProductComm.Fields.email);
+        return Mono.just(entity);
+    }
+
+    private Mono<ProductComm> validatePhone(ProductComm entity) {
+        if (entity.getDialCode() == null) return super.throwMissingParam(ProductComm.Fields.dialCode);
+        if (StringUtil.safeIsBlank(entity.getPhoneNumber()))
+            return super.throwMissingParam(ProductComm.Fields.phoneNumber);
+        return Mono.just(entity);
+    }
+
+    private Mono<ProductComm> checkDuplicate(
+            Mono<ProductComm> existingMono, ProductComm entity, ProcessorAccess access) {
+
+        return existingMono
+                .flatMap(existing -> {
+                    if (existing == null) return Mono.just(entity);
+                    if (entity.getId() == null || !existing.getId().equals(entity.getId()))
+                        return this.throwDuplicateError(access, existing);
+                    return Mono.just(entity);
+                })
+                .switchIfEmpty(Mono.just(entity));
+    }
+
+    @Override
     protected Mono<ProductComm> updatableEntity(ProductComm entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
             existing.setDialCode(entity.getDialCode());
             existing.setPhoneNumber(entity.getPhoneNumber());
             existing.setEmail(entity.getEmail());
             existing.setDefault(entity.isDefault());
+            existing.setSource(entity.getSource());
+            existing.setSubSource(entity.getSubSource());
 
             return Mono.just(existing);
         });
@@ -53,6 +121,8 @@ public class ProductCommService
 
         if (productCommRequest.getConnectionType() == null)
             return super.throwMissingParam(ProductComm.Fields.connectionType);
+
+        if (!productCommRequest.isValid()) return super.throwMissingParam("Communication Medium objects");
 
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,

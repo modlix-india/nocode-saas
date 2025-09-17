@@ -26,4 +26,16 @@ public class ProductCommRequest extends BaseRequest<ProductCommRequest> {
     private PhoneNumber phoneNumber;
     private Email email;
     private Boolean isDefault;
+    private String source;
+    private String subSource;
+
+    public boolean isValid() {
+        if (connectionType == null) return Boolean.FALSE;
+
+        return switch (connectionType) {
+            case MAIL -> email != null;
+            case TEXT, CALL -> phoneNumber != null;
+            default -> Boolean.FALSE;
+        };
+    }
 }
