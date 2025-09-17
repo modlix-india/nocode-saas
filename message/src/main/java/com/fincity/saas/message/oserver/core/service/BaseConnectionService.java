@@ -1,9 +1,8 @@
-package com.fincity.saas.message.service.base;
+package com.fincity.saas.message.oserver.core.service;
 
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
-import com.fincity.saas.message.oserver.core.service.AbstractCoreService;
 import com.fincity.saas.message.service.MessageResourceService;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;

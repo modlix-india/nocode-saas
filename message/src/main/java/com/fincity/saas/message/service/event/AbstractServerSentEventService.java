@@ -28,6 +28,7 @@ public abstract class AbstractServerSentEventService {
         Many<MessageServerEvent> sink = getSink(event.getAppCode(), event.getClientCode(), event.getUserId());
 
         return Mono.fromRunnable(() -> {
+            logger.debug("Sending event: {}", event);
             Sinks.EmitResult result = sink.tryEmitNext(event);
             if (result.isFailure()) logger.error("Failed to emit event: {}", result);
         });
