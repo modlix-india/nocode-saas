@@ -54,10 +54,11 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
                 .setConnectionName(connection.getName())
                 .setConnectionType(connection.getConnectionType().name())
                 .setProductId(productId)
-                .setDefault(productCommRequest.getIsDefault())
-                .setSource(productCommRequest.getSource())
-                .setSubSource(productCommRequest.getSubSource())
+                .setDefault(productCommRequest.isDefault())
                 .setName(productCommRequest.getName());
+
+        if (!productCommRequest.isDefault())
+            productComm.setSource(productCommRequest.getSource()).setSubSource(productCommRequest.getSubSource());
 
         return switch (connection.getConnectionType()) {
             case TEXT, CALL ->

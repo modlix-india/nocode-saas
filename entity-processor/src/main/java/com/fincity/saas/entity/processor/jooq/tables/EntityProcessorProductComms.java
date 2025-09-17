@@ -106,13 +106,6 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_comms.VERSION</code>.
-     * Version of this row.
-     */
-    public final TableField<EntityProcessorProductCommsRecord, ULong> VERSION = createField(DSL.name("VERSION"), SQLDataType.BIGINTUNSIGNED.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BIGINTUNSIGNED)), this, "Version of this row.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_product_comms.CONNECTION_NAME</code>.
      * Name of the connection used for the productComm.
      */
@@ -155,24 +148,24 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
-     * Flag to check if this Product Comm is default or not.
-     */
-    public final TableField<EntityProcessorProductCommsRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Product Comm is default or not.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_product_comms.SOURCE</code>. Name
-     * of source form where we get this ticket.
+     * of source form where we get this Product Comm.
      */
-    public final TableField<EntityProcessorProductCommsRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32), this, "Name of source form where we get this ticket.");
+    public final TableField<EntityProcessorProductCommsRecord, String> SOURCE = createField(DSL.name("SOURCE"), SQLDataType.CHAR(32), this, "Name of source form where we get this Product Comm.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_comms.SUB_SOURCE</code>.
-     * Name of sub source of source form where we get this ticket.
+     * Name of sub source of source form where we get this Product Comm.
      */
-    public final TableField<EntityProcessorProductCommsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this ticket.");
+    public final TableField<EntityProcessorProductCommsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this Product Comm.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
+     * Flag to check if this Product Comm is default or not.
+     */
+    public final TableField<EntityProcessorProductCommsRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Product Comm is default or not.");
 
     /**
      * The column
@@ -187,13 +180,6 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
      * Flag to check if this Product Comm is active or not.
      */
     public final TableField<EntityProcessorProductCommsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Product Comm is active or not.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_comms.CLIENT_ID</code>.
-     * Id of client who created this product.
-     */
-    public final TableField<EntityProcessorProductCommsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this product.");
 
     /**
      * The column
@@ -297,7 +283,7 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX0_PRODUCT_COMMS_AC_CC, Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX1_PRODUCT_COMMS_APP_CLIENT_PRODUCT, Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX2_PRODUCT_COMMS_AC_CC_PRODUCT_CONNECTION, Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX3_PRODUCT_COMMS_AC_CC_PRODUCT_IS_DEFAULT, Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX4_PRODUCT_COMMS_AC_CC_P_S_SS_DIAL_PHONE, Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX5_PRODUCT_COMMS_AC_CC_P_S_SS_EMAIL);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCT_COMMS_IDX0_PRODUCT_COMMS_AC_CC);
     }
 
     @Override
@@ -312,7 +298,7 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     @Override
     public List<UniqueKey<EntityProcessorProductCommsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK1_PRODUCT_COMMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK2_PRODUCT_COMMS_AC_CC_P_S_SS_DIAL_PHONE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK2_PRODUCT_COMMS_AC_CC_P_S_SS_EMAIL);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK1_PRODUCT_COMMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK2_PRODUCT_COMMS_AC_CC_P_C_CT_S_SS);
     }
 
     @Override
