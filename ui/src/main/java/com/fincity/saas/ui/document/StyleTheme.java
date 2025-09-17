@@ -29,47 +29,47 @@ import reactor.util.context.Context;
 @ToString(callSuper = true)
 public class StyleTheme extends AbstractOverridableDTO<StyleTheme> {
 
-	private static final long serialVersionUID = 4355909627072800292L;
+    private static final long serialVersionUID = 4355909627072800292L;
 
-	private Map<String, Map<String, String>> variables;
+    private Map<String, Map<String, String>> variables;
 
-	public StyleTheme(StyleTheme styleTheme) {
+    public StyleTheme(StyleTheme styleTheme) {
 
-		super(styleTheme);
-		this.variables = CloneUtil.cloneMapStringMap(styleTheme.variables);
-	}
+        super(styleTheme);
+        this.variables = CloneUtil.cloneMapStringMap(styleTheme.variables);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<StyleTheme> applyOverride(StyleTheme base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<StyleTheme> applyOverride(StyleTheme base) {
 
-		if (base != null) {
+        if (base != null) {
 
-			return FlatMapUtil.flatMapMonoWithNull(
+            return FlatMapUtil.flatMapMonoWithNull(
 
-					() -> DifferenceApplicator.apply(this.variables, base.variables),
+                    () -> DifferenceApplicator.apply(this.variables, base.variables),
 
-					v -> {
-						this.variables = (Map<String, Map<String, String>>) v;
-						return Mono.just(this);
-					}).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleTheme.applyOverride"));
-		}
-		return Mono.just(this);
-	}
+                    v -> {
+                        this.variables = (Map<String, Map<String, String>>) v;
+                        return Mono.just(this);
+                    }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleTheme.applyOverride"));
+        }
+        return Mono.just(this);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<StyleTheme> makeOverride(StyleTheme base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<StyleTheme> extractDifference(StyleTheme base) {
 
-		if (base == null)
-			return Mono.just(this);
+        if (base == null)
+            return Mono.just(this);
 
-		return Mono.just(this)
-				.flatMap(a -> DifferenceExtractor.extract(a.variables, base.variables)
-						.map(e -> {
-							a.setVariables((Map<String, Map<String, String>>) e);
-							return a;
-						}));
+        return Mono.just(this)
+                .flatMap(a -> DifferenceExtractor.extract(a.variables, base.variables)
+                        .map(e -> {
+                            a.setVariables((Map<String, Map<String, String>>) e);
+                            return a;
+                        }));
 
-	}
+    }
 }
