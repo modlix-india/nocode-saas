@@ -78,7 +78,7 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
     private Mono<AbstractCondition> getProductCommPhoneCondition(
             ProcessorAccess access,
             ULong productId,
-            String dialCode,
+            Integer dialCode,
             String phoneNumber,
             String source,
             String subSource) {
