@@ -123,7 +123,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     public Mono<Partner> getLoggedInPartner() {
-        return this.hasAccess().flatMap(this::getLoggedInPartner);
+        return super.hasAccess().flatMap(this::getLoggedInPartner);
     }
 
     private Mono<Partner> getLoggedInPartner(ProcessorAccess access) {

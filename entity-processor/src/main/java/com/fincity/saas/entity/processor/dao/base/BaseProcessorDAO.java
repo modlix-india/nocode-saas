@@ -52,7 +52,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
 
-        if (!hasAccessAssignment()) return Mono.just(condition);
+        if (!hasAccessAssignment()) return Mono.empty();
 
         if (access.isOutsideUser()) {
             if (this.isEmptyCondition(condition))
@@ -92,7 +92,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
-        if (!hasAccessAssignment()) return Mono.just(condition);
+        if (!hasAccessAssignment()) return Mono.empty();
 
         String userField = access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
 
