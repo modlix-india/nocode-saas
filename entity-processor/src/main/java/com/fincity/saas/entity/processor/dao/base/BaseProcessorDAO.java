@@ -1,12 +1,5 @@
 package com.fincity.saas.entity.processor.dao.base;
 
-import java.util.List;
-
-import org.jooq.Field;
-import org.jooq.Table;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -18,7 +11,11 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.util.EagerUtil;
 import com.fincity.saas.entity.processor.util.FilterUtil;
-
+import java.util.List;
+import org.jooq.Field;
+import org.jooq.Table;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
