@@ -34,6 +34,7 @@ public class SendNotification extends AbstractReactiveFunction {
     private static final String FILTER_AUTHORIZATION = "filterAuthorization";
     private static final String NOTIFICATION_NAME = "notificationName";
     private static final String PAYLOAD = "payload";
+    private static final String CONNECTION_NAME = "connectionName";
 
     private final NotificationService notificationService;
 
@@ -49,6 +50,7 @@ public class SendNotification extends AbstractReactiveFunction {
         Map<String, Parameter> parameters = new HashMap<>(Map.ofEntries(
                 Parameter.ofEntry(APP_CODE, Schema.ofString(APP_CODE).setDefaultValue(new JsonPrimitive(""))),
                 Parameter.ofEntry(CLIENT_CODE, Schema.ofString(CLIENT_CODE).setDefaultValue(new JsonPrimitive(""))),
+                Parameter.ofEntry(CONNECTION_NAME, Schema.ofString(CONNECTION_NAME)),
                 Parameter.ofEntry(TARGET_ID, Schema.ofNumber(TARGET_ID).setDefaultValue(new JsonPrimitive(0))),
                 Parameter.ofEntry(TARGET_CODE, Schema.ofString(TARGET_CODE).setDefaultValue(new JsonPrimitive(""))),
                 Parameter.ofEntry(TARGET_TYPE, Schema.ofString(TARGET_TYPE).setDefaultValue(new JsonPrimitive(NotificationService.USER_ID))
@@ -74,6 +76,7 @@ public class SendNotification extends AbstractReactiveFunction {
         BigInteger targetId = context.getArguments().get(TARGET_ID).getAsBigInteger();
         String targetCode = context.getArguments().get(TARGET_CODE).getAsString();
         String targetType = context.getArguments().get(TARGET_TYPE).getAsString();
+        String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
         String filterAuthorization = context.getArguments().get(FILTER_AUTHORIZATION).getAsString();
         String notificationName = context.getArguments().get(NOTIFICATION_NAME).getAsString();
 
@@ -91,7 +94,7 @@ public class SendNotification extends AbstractReactiveFunction {
             String inTargetCode = targetCode.isEmpty() ? null : targetCode;
 
             return notificationService
-                    .processAndSendNotification(inAppCode, inClientCode, targetId, inTargetCode, targetType, inFilterAuthorization,
+                    .processAndSendNotification(inAppCode, inClientCode, connectionName, targetId, inTargetCode, targetType, inFilterAuthorization,
                             notificationName, payload)
                     .switchIfEmpty(Mono.just(Boolean.FALSE))
                     .map(e -> new FunctionOutput(

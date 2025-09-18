@@ -52,14 +52,16 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
-        return FlatMapUtil.flatMapMonoWithNull(
+
+        if (hasNoAccessAssignment()) return super.processorAccessCondition(condition, access);
+
+        return FlatMapUtil.flatMapMono(
                 () -> this.addUserIds(condition, access),
                 uCondition -> this.addClientIds(uCondition, access),
                 (uCondition, cCondition) -> super.processorAccessCondition(cCondition, access));
     }
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
-        if (hasNoAccessAssignment()) return Mono.empty();
 
         if (access.isOutsideUser()) return this.handleOutsideUserAccess(condition, access);
 
@@ -97,16 +99,16 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> handleHierarchyAccess(AbstractCondition condition, ProcessorAccess access) {
-        List<ULong> clientHierarchy = access.getUserInherit().getClientHierarchy();
+        List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
 
         if (isEmptyCondition(condition))
-            return Mono.just(this.createInCondition(BaseProcessorDto.Fields.clientId, clientHierarchy));
+            return Mono.just(this.createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
 
-        return this.processExistingClientConditions(condition, access, clientHierarchy);
+        return this.processExistingClientConditions(condition, access, managingClientIds);
     }
 
     private Mono<AbstractCondition> processExistingClientConditions(
-            AbstractCondition condition, ProcessorAccess access, List<?> clientHierarchy) {
+            AbstractCondition condition, ProcessorAccess access, List<ULong> managingClientIds) {
 
         return FlatMapUtil.flatMapMono(
                 () -> condition
@@ -114,7 +116,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                         .collectList(),
                 clientConditions -> {
                     List<FilterCondition> updatedClientConditions =
-                            updateClientConditions(clientConditions, clientHierarchy);
+                            updateClientConditions(clientConditions, managingClientIds);
                     return this.processUserConditions(condition, this.getUserField(access), updatedClientConditions);
                 });
     }
@@ -151,18 +153,17 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private List<FilterCondition> updateClientConditions(
-            List<FilterCondition> clientConditions, List<?> clientHierarchy) {
+            List<FilterCondition> clientConditions, List<ULong> managingClientIds) {
         if (clientConditions.isEmpty())
-            return List.of(createInCondition(BaseProcessorDto.Fields.clientId, clientHierarchy));
+            return List.of(createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
 
         clientConditions.forEach(
-                fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), clientHierarchy)));
+                fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), managingClientIds)));
 
         return clientConditions;
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
-        if (hasNoAccessAssignment()) return Mono.empty();
 
         String userField = this.getUserField(access);
 
