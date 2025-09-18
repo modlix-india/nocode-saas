@@ -1,10 +1,13 @@
 package com.fincity.saas.commons.security.feign;
 
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.model.UserResponse;
+import com.fincity.saas.commons.security.model.User;
 
+import org.springframework.data.domain.Page;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -19,7 +24,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-@reactivefeign.spring.config.ReactiveFeignClient(name = "security")
+@ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.contextAuthentication:/api/security/internal/securityContextAuthentication}")
@@ -50,6 +55,9 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
     Mono<List<BigInteger>> getClientHierarchy(@RequestParam BigInteger clientId);
+
+    @GetMapping("${security.feign.getManagingClientIds:/api/security/clients/internal/managingClientIds}")
+    Mono<List<BigInteger>> getManagingClientIds(@RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.hasReadAccess:/api/security/applications/internal/hasReadAccess}")
     Mono<Boolean> hasReadAccess(@RequestParam String appCode, @RequestParam String clientCode);
@@ -163,11 +171,20 @@ public interface IFeignSecurityService {
             @RequestHeader(name = "appCode", required = false) String headerAppCode,
             @RequestHeader("X-Real-IP") String ipAddress);
 
-    @GetMapping(value = "${security.feign.getUser:/api/security/users/internal/{id}}")
-    Mono<UserResponse> getUserInternal(@PathVariable("id") BigInteger id);
+    @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal/{id}}")
+    Mono<User> getUserInternal(@PathVariable("id") BigInteger id, @RequestParam MultiValueMap<String, String> params);
 
-    @GetMapping(value = "${security.feign.getUser:/api/security/users/internal}")
-    Mono<List<UserResponse>> getUserInternal(@RequestParam List<BigInteger> userIds);
+    @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal}")
+    Mono<List<User>> getUserInternal(
+            @RequestParam List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal/{id}}")
+    Mono<Map<String, Object>> getClientInternal(
+            @PathVariable("id") BigInteger id, @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal}")
+    Mono<List<Map<String, Object>>> getClientInternal(
+            @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(
@@ -178,7 +195,15 @@ public interface IFeignSecurityService {
             @PathVariable BigInteger userId, @RequestParam String appCode, @RequestParam BigInteger clientId);
 
     @GetMapping(value = "${security.feign.getUserAdminEmails:/api/security/users/internal/adminEmails}")
-    Mono<Map<String,Object>> getUserAdminEmailsInternal(
+    Mono<Map<String, Object>> getUserAdminEmailsInternal(
             @RequestHeader(name = "clientCode") String clientCode,
             @RequestHeader(name = "appCode") String headerAppCode);
+
+    @PostMapping(value = "${security.feign.readClientPageFilterInternal:/api/security/clients/internal/query}")
+    Mono<Page<Client>> readClientPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
+
+    @PostMapping(value = "${security.feign.readUserPageFilterInternal:/api/security/users/internal/query}")
+    Mono<Page<User>> readUserPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
 }

@@ -11,12 +11,6 @@ public enum ConnectionType {
 
     NOTIFICATION,
 
-    IN_APP,
-
-    MOBILE_PUSH,
-
-    WEB_PUSH,
-
     TEXT(ConnectionSubType.WHATSAPP),
 
     CALL(ConnectionSubType.EXOTEL);

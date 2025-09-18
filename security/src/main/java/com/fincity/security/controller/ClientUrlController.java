@@ -20,17 +20,21 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/clienturls")
 public class ClientUrlController
-		extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
+        extends AbstractJOOQDataController<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO, ClientUrlService> {
 
-	@GetMapping("/fetchUrls")
-	public Mono<List<String>> getUrlsOfApp(@RequestParam() String appCode, @RequestParam(required = false) String suffix) {
-		return this.service.getUrlsBasedOnApp(appCode, suffix);
-	}
+    @GetMapping("/fetchUrls")
+    public Mono<List<String>> getUrlsOfApp(@RequestParam() String appCode, @RequestParam(required = false) String suffix) {
+        return this.service.getUrlsBasedOnApp(appCode, suffix);
+    }
 
-	@GetMapping("/internal/applications/property/url")
-	public Mono<ResponseEntity<String>> getAppUrl(@RequestParam String appCode,
-	                                              @RequestParam(required = false) String clientCode) {
-		return this.service.getAppUrl(appCode, clientCode).map(ResponseEntity::ok);
-	}
+    @GetMapping("/internal/applications/property/url")
+    public Mono<ResponseEntity<String>> getAppUrl(@RequestParam String appCode,
+                                                  @RequestParam(required = false) String clientCode) {
+        return this.service.getAppUrl(appCode, clientCode).map(ResponseEntity::ok);
+    }
 
+    @GetMapping("/urls")
+    public Mono<ResponseEntity<List<ClientUrl>>> getClientUrl(@RequestParam String appCode, @RequestParam String clientCode) {
+        return this.service.getClientUrls(appCode, clientCode).map(ResponseEntity::ok);
+    }
 }

@@ -2,11 +2,20 @@ package com.fincity.saas.commons.security.dto;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.util.IClassConvertor;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
-public class Client implements Serializable {
+@Accessors(chain = true)
+@FieldNameConstants
+public class Client implements Serializable, IClassConvertor {
 
     private BigInteger id;
     private BigInteger createdBy;
@@ -20,4 +29,20 @@ public class Client implements Serializable {
     private String businessType;
     private String businessSize;
     private String industry;
+    private String levelType;
+    private int activeUsers;
+    private int inactiveUsers;
+    private int deletedUsers;
+    private int lockedUsers;
+    private int passwordExpiredUsers;
+
+    private List<User> owners;
+    private Client managagingClient;
+    private List<App> apps;
+    private User createdByUser;
+
+    @JsonProperty(value = "totalUsers")
+    public Integer getTotalUsers() {
+        return activeUsers + inactiveUsers + deletedUsers + lockedUsers + passwordExpiredUsers;
+    }
 }

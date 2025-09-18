@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
@@ -23,6 +24,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -180,6 +182,12 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     public final TableField<EntityProcessorTicketsRecord, String> SUB_SOURCE = createField(DSL.name("SUB_SOURCE"), SQLDataType.CHAR(32), this, "Name of sub source of source form where we get this ticket.");
 
     /**
+     * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Byte> DNC = createField(DSL.name("DNC"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Do Not Call flag for this ticket.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
      * Campaign Id related to this ticket.
@@ -303,6 +311,11 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC);
     }
 
     @Override

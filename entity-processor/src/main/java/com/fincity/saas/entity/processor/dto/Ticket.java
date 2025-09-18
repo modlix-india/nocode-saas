@@ -6,7 +6,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
-import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
+import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
@@ -38,6 +38,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String source;
     private String subSource;
     private ULong campaignId;
+    private Boolean dnc = Boolean.FALSE;
 
     public Ticket() {
         super();
@@ -62,6 +63,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.source = ticket.source;
         this.subSource = ticket.subSource;
         this.campaignId = ticket.campaignId;
+        this.dnc = ticket.dnc;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {

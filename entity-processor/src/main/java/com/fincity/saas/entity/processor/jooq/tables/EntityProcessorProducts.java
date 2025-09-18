@@ -4,13 +4,17 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -21,7 +25,9 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -117,6 +123,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * Product Template related to this Product.
      */
     public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template related to this Product.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> LOGO_FILE_DETAIL = createField(DSL.name("LOGO_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a logo file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> BANNER_FILE_DETAIL = createField(DSL.name("BANNER_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a banner file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
 
     /**
      * The column
@@ -245,6 +265,11 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC);
+    }
+
+    @Override
     public Identity<EntityProcessorProductsRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorProductsRecord, ULong>) super.getIdentity();
     }
@@ -288,6 +313,19 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
 
         return _entityProcessorCampaigns;
+    }
+
+    private transient EntityProcessorProductCommsPath _entityProcessorProductComms;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_comms</code> table
+     */
+    public EntityProcessorProductCommsPath entityProcessorProductComms() {
+        if (_entityProcessorProductComms == null)
+            _entityProcessorProductComms = new EntityProcessorProductCommsPath(this, null, Keys.FK1_PRODUCT_COMMS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorProductComms;
     }
 
     private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;

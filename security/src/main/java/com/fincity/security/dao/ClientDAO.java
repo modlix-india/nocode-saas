@@ -301,7 +301,14 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .leftJoin(SECURITY_PROFILE_ROLE).on(SECURITY_PROFILE_ROLE.PROFILE_ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
                 .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                 .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
-                .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition))
+                .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition)
+                .and(SECURITY_USER.CLIENT_ID.in(map.keySet())))
         ).collectMultimap(Record2::value1, Record2::value2);
+    }
+
+    public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT_URL.ID, SECURITY_CLIENT_URL.URL_PATTERN).from(SECURITY_CLIENT_URL)
+                        .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT_URL.CLIENT_ID.eq(SECURITY_CLIENT.ID)).where(SECURITY_CLIENT.CODE.eq(clientCode).and(SECURITY_CLIENT_URL.ID.in(urlIds))))
+                .collectMap(Record2::value1, Record2::value2);
     }
 }

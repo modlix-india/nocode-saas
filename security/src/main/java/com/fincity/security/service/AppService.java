@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.http.protocol.HTTP;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -929,4 +930,5 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 .toList())
                 );
     }
+
 }

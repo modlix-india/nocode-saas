@@ -30,6 +30,7 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private Email email;
     private String source;
     private String subSource;
+    private Boolean dnc;
     private NoteRequest noteRequest;
     private String comment;
     private Identity campaignId;

@@ -9,7 +9,7 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.security.jwt.ContextUser;
-import com.fincity.saas.commons.security.model.UserResponse;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
@@ -44,6 +44,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -90,7 +91,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         if (actorId == null || actorId.longValue() <= 0) return this.getLoggedInUser();
 
         return this.securityService
-                .getUserInternal(actorId.toBigInteger())
+                .getUserInternal(actorId.toBigInteger(), null)
                 .map(this::getUserIdAndValue)
                 .switchIfEmpty(this.getLoggedInUser());
     }
@@ -116,8 +117,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             Identity ticket,
             AbstractCondition condition,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.ticketService.checkAndUpdateIdentityWithAccess(access, ticket),
@@ -125,8 +125,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 pageable,
                                 addTicketToCondition(access, condition, uTicket.getULongId()),
                                 tableFields,
-                                eager,
-                                eagerFields))
+                                queryParams))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.readPageFilterEager"));
     }
 
@@ -541,10 +540,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         return FlatMapUtil.flatMapMono(
                         () -> Mono.zip(
                                 super.securityService
-                                        .getUserInternal(oldUser.toBigInteger())
+                                        .getUserInternal(oldUser.toBigInteger(), null)
                                         .map(this::getUserIdAndValue),
                                 super.securityService
-                                        .getUserInternal(newUser.toBigInteger())
+                                        .getUserInternal(newUser.toBigInteger(), null)
                                         .map(this::getUserIdAndValue)),
                         users -> this.createActivityInternal(
                                 ActivityAction.REASSIGN,
@@ -661,7 +660,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         }
     }
 
-    private IdAndValue<ULong, String> getUserIdAndValue(UserResponse user) {
+    private IdAndValue<ULong, String> getUserIdAndValue(User user) {
         return IdAndValue.of(
                 ULongUtil.valueOf(user.getId()),
                 NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName()));

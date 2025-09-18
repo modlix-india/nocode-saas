@@ -22,6 +22,7 @@ import reactor.util.context.Context;
 public class FeignAuthenticationService implements IAuthenticationService {
 
     private static final String CACHE_NAME_BEING_MANAGED = "beingManaged";
+    private static final String CACHE_NAME_BEING_MANAGED_ID = "beingManagedId";
     private static final String CACHE_NAME_USER_BEING_MANAGED = "userBeingManaged";
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
@@ -94,6 +95,13 @@ public class FeignAuthenticationService implements IAuthenticationService {
         return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
                 () -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
                 clientCode);
+    }
+
+    public Mono<Boolean> isBeingManaged(BigInteger managingClientId, BigInteger clientId) {
+
+        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED_ID,
+                () -> this.feignAuthService.isBeingManagedById(managingClientId, clientId), managingClientId, ":",
+                clientId);
     }
 
     public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {

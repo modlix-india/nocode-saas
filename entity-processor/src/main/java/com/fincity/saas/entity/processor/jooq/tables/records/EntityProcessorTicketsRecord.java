@@ -335,6 +335,23 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     }
 
     /**
+     * Setter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public EntityProcessorTicketsRecord setDnc(Byte value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public Byte getDnc() {
+        return (Byte) get(17);
+    }
+
+    /**
      * Setter for
      * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
      * Campaign Id related to this ticket.
@@ -509,7 +526,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Byte dnc, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -530,6 +547,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setSource(source);
         setSubSource(subSource);
         setCampaignId(campaignId);
+        setDnc(dnc);
         setTempActive(tempActive);
         setIsActive(isActive);
         setClientId(clientId);

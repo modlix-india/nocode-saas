@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -72,7 +73,8 @@ public class UserSubOrganizationService
 
     private static Collection<? extends GrantedAuthority> toGrantedAuthorities(List<String> stringAuthorities) {
 
-        if (stringAuthorities == null || stringAuthorities.isEmpty()) return Set.of();
+        if (stringAuthorities == null || stringAuthorities.isEmpty())
+            return Set.of();
 
         return stringAuthorities.parallelStream()
                 .map(SimpleGrantedAuthority::new)
@@ -107,8 +109,8 @@ public class UserSubOrganizationService
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
         return Mono.zip(
                 this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId))
-                ).map(evicted -> evicted.getT1() && evicted.getT2());
+                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
+                .map(evicted -> evicted.getT1() && evicted.getT2());
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -135,36 +137,37 @@ public class UserSubOrganizationService
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
-                    if (user.getReportingTo().equals(managerId)) return Mono.just(user);
-                    return this.updateManager(user, managerId);
-                })
+            if (user.getReportingTo().equals(managerId))
+                return Mono.just(user);
+            return this.updateManager(user, managerId);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"));
     }
 
     private Mono<User> updateManager(User user, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.just(user),
-                        (ca, uUser) -> ca.isSystemClient()
-                                ? Mono.just(Boolean.TRUE)
-                                : clientService
-                                        .isBeingManagedBy(
-                                                ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
-                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
-                                .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
-                                        ? this.msgService.throwMessage(
-                                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                                SecurityMessageResourceService.USER_REPORTING_ERROR)
-                                        : Mono.just(uUser)),
-                        (ca, uUser, sysOrManaged, validUser) -> {
-                            ULong oldReportingTo = validUser.getReportingTo();
-                            return super.update(validUser.setReportingTo(managerId))
-                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
-                        },
-                        (ca, uUser, sysOrManaged, validUser, updated) ->
-                                this.evictTokens(updated.getId()).map(evicted -> updated))
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(user),
+                (ContextAuthentication ca, User uUser) -> ca.isSystemClient()
+                        ? Mono.just(Boolean.TRUE)
+                        : clientService
+                                .isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
+                                .<Boolean>flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
+                        .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
+                                ? this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        SecurityMessageResourceService.USER_REPORTING_ERROR)
+                                : Mono.just(uUser)),
+                (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
+                    ULong oldReportingTo = validUser.getReportingTo();
+                    return super.update(validUser.setReportingTo(managerId))
+                            .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                },
+                (ca, uUser, sysOrManaged, validUser, updated) -> this.evictTokens(updated.getId())
+                        .<User>map(evicted -> updated))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user reporting manager"));
     }
@@ -182,7 +185,8 @@ public class UserSubOrganizationService
 
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
 
-        if (reportingTo == null) return Mono.just(Boolean.TRUE);
+        if (reportingTo == null)
+            return Mono.just(Boolean.TRUE);
 
         return this.dao.canReportTo(clientId, reportingTo, userId);
     }
@@ -230,13 +234,13 @@ public class UserSubOrganizationService
                             Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.dao.readById(managerId),
-                        user -> this.clientService.isBeingManagedBy(clientId, user.getClientId()),
-                        (user, isManaged) -> Boolean.TRUE.equals(isManaged)
-                                ? Mono.just(Tuples.of(user.getClientId(), managerId))
-                                : this.forbiddenError(
-                                        SecurityMessageResourceService.FORBIDDEN_PERMISSION,
-                                        "user reporting hierarchy"))
+                () -> this.dao.readById(managerId),
+                user -> this.clientService.isBeingManagedBy(clientId, user.getClientId()),
+                (user, isManaged) -> Boolean.TRUE.equals(isManaged)
+                        ? Mono.just(Tuples.of(user.getClientId(), managerId))
+                        : this.forbiddenError(
+                                SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                "user reporting hierarchy"))
                 .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE, isOwner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
     }

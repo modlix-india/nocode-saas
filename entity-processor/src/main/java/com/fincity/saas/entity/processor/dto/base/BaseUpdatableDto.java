@@ -11,7 +11,7 @@ import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
-import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
+import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import java.util.Collection;
 import java.util.HashMap;

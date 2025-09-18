@@ -6,6 +6,7 @@ package com.fincity.saas.message.jooq;
 
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
+import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
@@ -41,6 +42,11 @@ public class Message extends SchemaImpl {
      * The table <code>message.message_exotel_calls</code>.
      */
     public final MessageExotelCalls MESSAGE_EXOTEL_CALLS = MessageExotelCalls.MESSAGE_EXOTEL_CALLS;
+
+    /**
+     * The table <code>message.message_message_webhooks</code>.
+     */
+    public final MessageMessageWebhooks MESSAGE_MESSAGE_WEBHOOKS = MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS;
 
     /**
      * The table <code>message.message_messages</code>.
@@ -80,6 +86,7 @@ public class Message extends SchemaImpl {
         return Arrays.asList(
             MessageCalls.MESSAGE_CALLS,
             MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
+            MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS,
             MessageMessages.MESSAGE_MESSAGES,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
             MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER,
