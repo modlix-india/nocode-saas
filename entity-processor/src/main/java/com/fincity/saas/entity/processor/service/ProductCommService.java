@@ -49,6 +49,22 @@ public class ProductCommService
     protected Mono<Boolean> evictCache(ProductComm entity) {
         return Mono.zip(
                 super.evictCache(entity),
+                this.evictProductCommCache(entity),
+                (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
+    }
+
+    private Mono<Boolean> evictProductCommCache(ProductComm entity) {
+        return Mono.zip(
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getProductId(),
+                                entity.getConnectionName(),
+                                entity.getConnectionType(),
+                                entity.getSource(),
+                                entity.getSubSource())),
                 super.cacheService.evict(
                         this.getCacheName(),
                         super.getCacheKey(
@@ -219,6 +235,18 @@ public class ProductCommService
                         .thenReturn(updated));
     }
 
+    public Mono<ProductComm> getProductComm(
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            String source,
+            String subSource) {
+        return this.getProductCommInternal(access, productId, connectionName, connectionType, source, subSource)
+                .switchIfEmpty(this.getDefault(access, productId, connectionName, connectionType))
+                .switchIfEmpty(Mono.empty());
+    }
+
     public Mono<ProductComm> getDefault(Identity productId, String connectionName, ConnectionType connectionType) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess, access -> this.getDefault(access, productId, connectionName, connectionType));
@@ -232,6 +260,26 @@ public class ProductCommService
     public Mono<ProductComm> getDefault(
             ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
         return this.getDefaultInternal(access, productId, connectionName, connectionType);
+    }
+
+    private Mono<ProductComm> getProductCommInternal(
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            String source,
+            String subSource) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getProductComm(access, productId, connectionName, connectionType, source, subSource),
+                super.getCacheKey(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        productId,
+                        connectionName,
+                        connectionType.name(),
+                        source,
+                        subSource));
     }
 
     private Mono<ProductComm> getDefaultInternal(
