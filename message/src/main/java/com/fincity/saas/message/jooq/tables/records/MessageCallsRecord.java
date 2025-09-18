@@ -4,11 +4,9 @@
 package com.fincity.saas.message.jooq.tables.records;
 
 
-import com.fincity.saas.message.enums.call.CallStatus;
 import com.fincity.saas.message.jooq.tables.MessageCalls;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -107,96 +105,11 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     }
 
     /**
-     * Setter for <code>message.message_calls.FROM_DIAL_CODE</code>. Dial code
-     * of the caller's phone number.
-     */
-    public MessageCallsRecord setFromDialCode(Short value) {
-        set(5, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.FROM_DIAL_CODE</code>. Dial code
-     * of the caller's phone number.
-     */
-    public Short getFromDialCode() {
-        return (Short) get(5);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.FROM</code>. Phone number of the
-     * caller.
-     */
-    public MessageCallsRecord setFrom(String value) {
-        set(6, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.FROM</code>. Phone number of the
-     * caller.
-     */
-    public String getFrom() {
-        return (String) get(6);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.TO_DIAL_CODE</code>. Dial code of
-     * the receiver's phone number.
-     */
-    public MessageCallsRecord setToDialCode(Short value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.TO_DIAL_CODE</code>. Dial code of
-     * the receiver's phone number.
-     */
-    public Short getToDialCode() {
-        return (Short) get(7);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.TO</code>. Phone number of the
-     * receiver.
-     */
-    public MessageCallsRecord setTo(String value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.TO</code>. Phone number of the
-     * receiver.
-     */
-    public String getTo() {
-        return (String) get(8);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.CALLER_ID</code>. Caller ID
-     * configured for this call.
-     */
-    public MessageCallsRecord setCallerId(String value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.CALLER_ID</code>. Caller ID
-     * configured for this call.
-     */
-    public String getCallerId() {
-        return (String) get(9);
-    }
-
-    /**
      * Setter for <code>message.message_calls.CONNECTION_NAME</code>. Name of
      * the connection used for the call.
      */
     public MessageCallsRecord setConnectionName(String value) {
-        set(10, value);
+        set(5, value);
         return this;
     }
 
@@ -205,7 +118,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * the connection used for the call.
      */
     public String getConnectionName() {
-        return (String) get(10);
+        return (String) get(5);
     }
 
     /**
@@ -213,7 +126,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * call provider (e.g., Exotel or similar).
      */
     public MessageCallsRecord setCallProvider(String value) {
-        set(11, value);
+        set(6, value);
         return this;
     }
 
@@ -222,7 +135,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * call provider (e.g., Exotel or similar).
      */
     public String getCallProvider() {
-        return (String) get(11);
+        return (String) get(6);
     }
 
     /**
@@ -230,7 +143,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * whether the call is outbound.
      */
     public MessageCallsRecord setIsOutbound(Byte value) {
-        set(12, value);
+        set(7, value);
         return this;
     }
 
@@ -239,92 +152,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * whether the call is outbound.
      */
     public Byte getIsOutbound() {
-        return (Byte) get(12);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.CALL_STATUS</code>. Status of the
-     * call.
-     */
-    public MessageCallsRecord setCallStatus(CallStatus value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.CALL_STATUS</code>. Status of the
-     * call.
-     */
-    public CallStatus getCallStatus() {
-        return (CallStatus) get(13);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.START_TIME</code>. Timestamp when
-     * the call started.
-     */
-    public MessageCallsRecord setStartTime(LocalDateTime value) {
-        set(14, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.START_TIME</code>. Timestamp when
-     * the call started.
-     */
-    public LocalDateTime getStartTime() {
-        return (LocalDateTime) get(14);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.END_TIME</code>. Timestamp when
-     * the call ended.
-     */
-    public MessageCallsRecord setEndTime(LocalDateTime value) {
-        set(15, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.END_TIME</code>. Timestamp when
-     * the call ended.
-     */
-    public LocalDateTime getEndTime() {
-        return (LocalDateTime) get(15);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.DURATION</code>. Duration of the
-     * call in seconds.
-     */
-    public MessageCallsRecord setDuration(Long value) {
-        set(16, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.DURATION</code>. Duration of the
-     * call in seconds.
-     */
-    public Long getDuration() {
-        return (Long) get(16);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.RECORDING_URL</code>. URL of the
-     * call recording.
-     */
-    public MessageCallsRecord setRecordingUrl(String value) {
-        set(17, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.RECORDING_URL</code>. URL of the
-     * call recording.
-     */
-    public String getRecordingUrl() {
-        return (String) get(17);
+        return (Byte) get(7);
     }
 
     /**
@@ -332,7 +160,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * associated Exotel call.
      */
     public MessageCallsRecord setExotelCallId(ULong value) {
-        set(18, value);
+        set(8, value);
         return this;
     }
 
@@ -341,24 +169,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * associated Exotel call.
      */
     public ULong getExotelCallId() {
-        return (ULong) get(18);
-    }
-
-    /**
-     * Setter for <code>message.message_calls.METADATA</code>. Additional
-     * metadata related to the call.
-     */
-    public MessageCallsRecord setMetadata(Map value) {
-        set(19, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>message.message_calls.METADATA</code>. Additional
-     * metadata related to the call.
-     */
-    public Map getMetadata() {
-        return (Map) get(19);
+        return (ULong) get(8);
     }
 
     /**
@@ -366,7 +177,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * this Call is active or not.
      */
     public MessageCallsRecord setIsActive(Byte value) {
-        set(20, value);
+        set(9, value);
         return this;
     }
 
@@ -375,7 +186,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * this Call is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(20);
+        return (Byte) get(9);
     }
 
     /**
@@ -383,7 +194,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * who created this row.
      */
     public MessageCallsRecord setCreatedBy(ULong value) {
-        set(21, value);
+        set(10, value);
         return this;
     }
 
@@ -392,7 +203,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(10);
     }
 
     /**
@@ -400,7 +211,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * record was created.
      */
     public MessageCallsRecord setCreatedAt(LocalDateTime value) {
-        set(22, value);
+        set(11, value);
         return this;
     }
 
@@ -409,7 +220,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -417,7 +228,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * who updated this row.
      */
     public MessageCallsRecord setUpdatedBy(ULong value) {
-        set(23, value);
+        set(12, value);
         return this;
     }
 
@@ -426,7 +237,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(23);
+        return (ULong) get(12);
     }
 
     /**
@@ -434,7 +245,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * record was last updated.
      */
     public MessageCallsRecord setUpdatedAt(LocalDateTime value) {
-        set(24, value);
+        set(13, value);
         return this;
     }
 
@@ -443,7 +254,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(24);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -469,7 +280,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     /**
      * Create a detached, initialised MessageCallsRecord
      */
-    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, Short fromDialCode, String from, Short toDialCode, String to, String callerId, String connectionName, String callProvider, Byte isOutbound, CallStatus callStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, String recordingUrl, ULong exotelCallId, Map metadata, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String callProvider, Byte isOutbound, ULong exotelCallId, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageCalls.MESSAGE_CALLS);
 
         setId(id);
@@ -477,21 +288,10 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
         setClientCode(clientCode);
         setUserId(userId);
         setCode(code);
-        setFromDialCode(fromDialCode);
-        setFrom(from);
-        setToDialCode(toDialCode);
-        setTo(to);
-        setCallerId(callerId);
         setConnectionName(connectionName);
         setCallProvider(callProvider);
         setIsOutbound(isOutbound);
-        setCallStatus(callStatus);
-        setStartTime(startTime);
-        setEndTime(endTime);
-        setDuration(duration);
-        setRecordingUrl(recordingUrl);
         setExotelCallId(exotelCallId);
-        setMetadata(metadata);
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
