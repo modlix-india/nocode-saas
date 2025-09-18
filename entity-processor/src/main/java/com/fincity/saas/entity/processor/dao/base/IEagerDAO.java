@@ -77,7 +77,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             AbstractCondition condition,
             List<String> tableFields,
             MultiValueMap<String, String> queryParams) {
-        return getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
+        return this.getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 

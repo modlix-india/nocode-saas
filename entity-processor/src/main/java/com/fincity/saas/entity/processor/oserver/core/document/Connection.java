@@ -44,7 +44,7 @@ public class Connection extends AbstractOverridableDTO<Connection> {
     }
 
     @Override
-    public Mono<Connection> makeOverride(Connection base) {
+    public Mono<Connection> extractDifference(Connection base) {
         return Mono.just(this);
     }
 }

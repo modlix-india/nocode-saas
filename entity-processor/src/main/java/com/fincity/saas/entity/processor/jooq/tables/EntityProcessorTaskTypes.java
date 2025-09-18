@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTaskTypesRecord;
@@ -18,6 +19,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -211,6 +213,11 @@ public class EntityProcessorTaskTypes extends TableImpl<EntityProcessorTaskTypes
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASK_TYPES_IDX0_TASK_TYPES_AC_CC);
     }
 
     @Override

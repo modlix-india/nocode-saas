@@ -111,6 +111,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Lazy
     private IFeignFilesService filesService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -129,7 +132,8 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                         .setFilesService(filesService)
                         .setTemplateConversionService(templateConversionService)
                         .setGson(gson)
-                        .setObjectMapper(objectMapper)));
+                        .setObjectMapper(objectMapper)
+                        .setNotificationService(notificationService)));
     }
 
     @Override

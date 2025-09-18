@@ -6,8 +6,10 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -23,6 +25,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
@@ -262,6 +265,11 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC);
+    }
+
+    @Override
     public Identity<EntityProcessorProductsRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorProductsRecord, ULong>) super.getIdentity();
     }
@@ -305,6 +313,19 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
 
         return _entityProcessorCampaigns;
+    }
+
+    private transient EntityProcessorProductCommsPath _entityProcessorProductComms;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_comms</code> table
+     */
+    public EntityProcessorProductCommsPath entityProcessorProductComms() {
+        if (_entityProcessorProductComms == null)
+            _entityProcessorProductComms = new EntityProcessorProductCommsPath(this, null, Keys.FK1_PRODUCT_COMMS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorProductComms;
     }
 
     private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;

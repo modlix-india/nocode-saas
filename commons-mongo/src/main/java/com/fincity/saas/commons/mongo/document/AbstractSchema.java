@@ -21,41 +21,41 @@ import reactor.core.publisher.Mono;
 @ToString(callSuper = true)
 public class AbstractSchema<D extends AbstractSchema<D>> extends AbstractOverridableDTO<D> {
 
-	private static final long serialVersionUID = 2089418665068611650L;
+    private static final long serialVersionUID = 2089418665068611650L;
 
-	private Map<String, Object> definition; // NOSONAR
+    private Map<String, Object> definition; // NOSONAR
 
-	protected AbstractSchema(D fun) {
-		super(fun);
-		this.definition = CloneUtil.cloneMapObject(fun.getDefinition());
-	}
+    protected AbstractSchema(D fun) {
+        super(fun);
+        this.definition = CloneUtil.cloneMapObject(fun.getDefinition());
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<D> applyOverride(D base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<D> applyOverride(D base) {
 
-		if (base != null)
-			return DifferenceApplicator.apply(this.definition, base.getDefinition())
-					.map(a -> {
-						this.definition = (Map<String, Object>) a;
-						return (D) this;
-					});
+        if (base != null)
+            return DifferenceApplicator.apply(this.definition, base.getDefinition())
+                    .map(a -> {
+                        this.definition = (Map<String, Object>) a;
+                        return (D) this;
+                    });
 
-		return Mono.just((D) this);
-	}
+        return Mono.just((D) this);
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Mono<D> makeOverride(D base) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public Mono<D> extractDifference(D base) {
 
-		if (base == null)
-			return Mono.just((D) this);
+        if (base == null)
+            return Mono.just((D) this);
 
-		return Mono.just(this)
-				.flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
-						.map(k -> {
-							e.definition = (Map<String, Object>) k;
-							return (D) e;
-						}));
-	}
+        return Mono.just(this)
+                .flatMap(e -> DifferenceExtractor.extract(e.definition, base.getDefinition())
+                        .map(k -> {
+                            e.definition = (Map<String, Object>) k;
+                            return (D) e;
+                        }));
+    }
 }

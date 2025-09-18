@@ -4,8 +4,10 @@ import com.fincity.saas.commons.core.model.TriggerWorkflowStep;
 import com.fincity.saas.commons.core.model.WorkflowStep;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
+
 import java.io.Serial;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -46,7 +48,7 @@ public class Workflow extends AbstractOverridableDTO<Workflow> {
     }
 
     @Override
-    public Mono<Workflow> makeOverride(Workflow base) {
+    public Mono<Workflow> extractDifference(Workflow base) {
         return Mono.just(this);
     }
 }

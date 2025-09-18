@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.dto.Campaign;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.dto.Product;
+import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
@@ -21,6 +22,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
@@ -48,45 +50,52 @@ public enum EntitySeries implements EnumType {
             15,
             "ProductTemplate",
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES),
-    STAGE("STAGE", "Stage", 15, "Stage", EntityProcessorStages.ENTITY_PROCESSOR_STAGES),
+    PRODUCT_COMM(
+            "PRODUCT_COMM",
+            "Product Communications",
+            16,
+            "ProductComm",
+            EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS),
+    STAGE("STAGE", "Stage", 17, "Stage", EntityProcessorStages.ENTITY_PROCESSOR_STAGES),
     SIMPLE_RULE(
-            "SIMPLE_RULE", "Simple Rule", 16, "SimpleRule", EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES),
+            "SIMPLE_RULE", "Simple Rule", 18, "SimpleRule", EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES),
     COMPLEX_RULE(
             "COMPLEX_RULE",
             "Complex Rule",
-            17,
+            19,
             "ComplexRule",
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES),
     SIMPLE_COMPLEX_CONDITION_RELATION(
             "SIMPLE_COMPLEX_CONDITION_RELATION",
             "Simple Complex Condition Relation",
-            18,
+            20,
             "SimpleComplexConditionRelation",
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS),
     PRODUCT_STAGE_RULE(
             "PRODUCT_STAGE_RULE",
             "Product Stage Rule",
-            19,
+            21,
             "ProductStageRule",
             EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES),
     PRODUCT_TEMPLATE_RULE(
             "PRODUCT_TEMPLATE_RULE",
             "Product Template Rule",
-            20,
+            22,
             "ProductTemplateRule",
             EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES),
-    TASK("TASK", "Task", 21, "Task", EntityProcessorTasks.ENTITY_PROCESSOR_TASKS),
-    TASK_TYPE("TASK_TYPE", "TaskType", 22, "TaskType", EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES),
-    NOTE("NOTE", "Note", 23, "Note", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES),
-    ACTIVITY("ACTIVITY", "Activity", 24, "Activity", null),
-    CAMPAIGN("CAMPAIGN", "Campaign", 25, "Campaign", EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS),
-    PARTNER("PARTNER", "Partner", 26, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
+    TASK("TASK", "Task", 23, "Task", EntityProcessorTasks.ENTITY_PROCESSOR_TASKS),
+    TASK_TYPE("TASK_TYPE", "TaskType", 24, "TaskType", EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES),
+    NOTE("NOTE", "Note", 25, "Note", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES),
+    ACTIVITY("ACTIVITY", "Activity", 26, "Activity", null),
+    CAMPAIGN("CAMPAIGN", "Campaign", 27, "Campaign", EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS),
+    PARTNER("PARTNER", "Partner", 28, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
             Map.entry(TICKET, "Deal"),
             Map.entry(OWNER, "Lead"),
             Map.entry(PRODUCT, "Project"),
+            Map.entry(PRODUCT_COMM, "ProjectComm"),
             Map.entry(PRODUCT_TEMPLATE, "ProjectTemplate"),
             Map.entry(STAGE, "Stage"),
             Map.entry(SIMPLE_RULE, SIMPLE_RULE.getPrefix()),
@@ -136,6 +145,7 @@ public enum EntitySeries implements EnumType {
             case OWNER -> Owner.class;
             case PRODUCT -> Product.class;
             case PRODUCT_TEMPLATE -> ProductTemplate.class;
+            case PRODUCT_COMM -> ProductComm.class;
             case STAGE -> Stage.class;
             case SIMPLE_RULE -> SimpleRule.class;
             case COMPLEX_RULE -> ComplexRule.class;

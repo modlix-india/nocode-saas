@@ -38,8 +38,16 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         this.jUserAccessField = null;
     }
 
-    public boolean hasAccessAssignment() {
-        return this.userAccessField != null;
+    public boolean hasNoAccessAssignment() {
+        return this.userAccessField == null;
+    }
+
+    private String getUserField(ProcessorAccess access) {
+        return access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
+    }
+
+    private boolean isEmptyCondition(AbstractCondition condition) {
+        return condition == null || condition.isEmpty();
     }
 
     @Override
@@ -51,90 +59,157 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> addClientIds(AbstractCondition condition, ProcessorAccess access) {
+        if (hasNoAccessAssignment()) return Mono.empty();
 
-        if (!hasAccessAssignment()) return Mono.just(condition);
+        if (access.isOutsideUser()) return this.handleOutsideUserAccess(condition, access);
 
-        if (access.isOutsideUser()) {
-            if (this.isEmptyCondition(condition))
-                return Mono.just(FilterCondition.make(
-                        BaseProcessorDto.Fields.clientId, access.getUser().getClientId()));
-            return Mono.just(ComplexCondition.and(
-                    condition,
-                    FilterCondition.make(
-                            BaseProcessorDto.Fields.clientId, access.getUser().getClientId())));
-        }
+        if (!access.isHasBpAccess()) return this.handleNoBpAccess(condition);
 
-        if (!access.isHasBpAccess()) {
-            if (this.isEmptyCondition(condition))
-                return Mono.just(new FilterCondition()
-                        .setOperator(FilterConditionOperator.IS_NULL)
-                        .setField(BaseProcessorDto.Fields.clientId));
-            return Mono.just(ComplexCondition.and(
-                    condition,
-                    new FilterCondition()
-                            .setOperator(FilterConditionOperator.IS_NULL)
-                            .setField(BaseProcessorDto.Fields.clientId)));
-        }
+        return this.handleHierarchyAccess(condition, access);
+    }
 
-        if (this.isEmptyCondition(condition))
-            return this.buildInCondition(
-                    BaseProcessorDto.Fields.clientId, access.getUserInherit().getClientHierarchy());
+    private Mono<AbstractCondition> handleOutsideUserAccess(AbstractCondition condition, ProcessorAccess access) {
 
-        return this.updateExistingCondition(
-                        condition,
-                        BaseProcessorDto.Fields.clientId,
-                        access.getUserInherit().getClientHierarchy(),
-                        ULongUtil.valueOf(access.getUser().getClientId()))
-                .switchIfEmpty(this.appendNewCondition(
-                        condition,
-                        BaseProcessorDto.Fields.clientId,
-                        access.getUserInherit().getClientHierarchy()));
+        if (isEmptyCondition(condition))
+            return Mono.just(FilterCondition.make(
+                    BaseProcessorDto.Fields.clientId, access.getUser().getClientId()));
+
+        return Mono.just(ComplexCondition.and(
+                condition,
+                FilterCondition.make(
+                        BaseProcessorDto.Fields.clientId, access.getUser().getClientId())));
+    }
+
+    private Mono<AbstractCondition> handleNoBpAccess(AbstractCondition condition) {
+
+        if (isEmptyCondition(condition))
+            return Mono.just(new FilterCondition()
+                    .setOperator(FilterConditionOperator.IS_NULL)
+                    .setField(BaseProcessorDto.Fields.clientId));
+
+        return FlatMapUtil.flatMapMono(
+                () -> condition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
+                cond -> Mono.just(ComplexCondition.and(
+                        cond,
+                        new FilterCondition()
+                                .setOperator(FilterConditionOperator.IS_NULL)
+                                .setField(BaseProcessorDto.Fields.clientId))));
+    }
+
+    private Mono<AbstractCondition> handleHierarchyAccess(AbstractCondition condition, ProcessorAccess access) {
+        List<ULong> clientHierarchy = access.getUserInherit().getClientHierarchy();
+
+        if (isEmptyCondition(condition))
+            return Mono.just(this.createInCondition(BaseProcessorDto.Fields.clientId, clientHierarchy));
+
+        return this.processExistingClientConditions(condition, access, clientHierarchy);
+    }
+
+    private Mono<AbstractCondition> processExistingClientConditions(
+            AbstractCondition condition, ProcessorAccess access, List<?> clientHierarchy) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> condition
+                        .findConditionWithField(BaseProcessorDto.Fields.clientId)
+                        .collectList(),
+                clientConditions -> {
+                    List<FilterCondition> updatedClientConditions =
+                            updateClientConditions(clientConditions, clientHierarchy);
+                    return this.processUserConditions(condition, this.getUserField(access), updatedClientConditions);
+                });
+    }
+
+    private Mono<AbstractCondition> processUserConditions(
+            AbstractCondition condition, String userField, List<FilterCondition> clientConditions) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> condition.findConditionWithField(userField).collectList(),
+                userConditions -> this.removeExistingConditionsAndCombine(
+                        condition, userField, clientConditions, userConditions));
+    }
+
+    private Mono<AbstractCondition> removeExistingConditionsAndCombine(
+            AbstractCondition condition,
+            String userField,
+            List<FilterCondition> clientConditions,
+            List<FilterCondition> userConditions) {
+
+        return FlatMapUtil.flatMapMonoWithNull(
+                () -> condition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
+                conditionWithoutClient -> conditionWithoutClient != null
+                        ? conditionWithoutClient.removeConditionWithField(userField)
+                        : Mono.empty(),
+                (conditionWithoutClient, finalCondition) -> {
+                    ComplexCondition or = ComplexCondition.or(
+                            ComplexCondition.and(clientConditions.toArray(new FilterCondition[0])),
+                            ComplexCondition.and(userConditions.toArray(new FilterCondition[0])));
+
+                    if (this.isEmptyCondition(finalCondition)) return Mono.just(or);
+
+                    return Mono.just(ComplexCondition.and(finalCondition, or));
+                });
+    }
+
+    private List<FilterCondition> updateClientConditions(
+            List<FilterCondition> clientConditions, List<?> clientHierarchy) {
+        if (clientConditions.isEmpty())
+            return List.of(createInCondition(BaseProcessorDto.Fields.clientId, clientHierarchy));
+
+        clientConditions.forEach(
+                fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), clientHierarchy)));
+
+        return clientConditions;
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
-        if (!hasAccessAssignment()) return Mono.just(condition);
+        if (hasNoAccessAssignment()) return Mono.empty();
 
-        String userField = access.isOutsideUser() ? AbstractDTO.Fields.createdBy : this.jUserAccessField;
+        String userField = this.getUserField(access);
 
-        if (this.isEmptyCondition(condition))
-            return this.buildInCondition(userField, access.getUserInherit().getSubOrg());
+        List<ULong> userHierarchy = access.getUserInherit().getSubOrg();
+
+        if (isEmptyCondition(condition)) return Mono.just(createInCondition(userField, userHierarchy));
+
+        return this.updateExistingUserCondition(condition, userField, userHierarchy, access)
+                .switchIfEmpty(Mono.just(ComplexCondition.and(condition, createInCondition(userField, userHierarchy))));
+    }
+
+    private Mono<AbstractCondition> updateExistingUserCondition(
+            AbstractCondition condition, String userField, List<?> userHierarchy, ProcessorAccess access) {
 
         return this.updateExistingCondition(
-                        condition,
-                        userField,
-                        access.getUserInherit().getSubOrg(),
-                        ULongUtil.valueOf(access.getUser().getId()))
-                .switchIfEmpty(this.appendNewCondition(
-                        condition, userField, access.getUserInherit().getSubOrg()));
-    }
-
-    private boolean isEmptyCondition(AbstractCondition condition) {
-        return condition == null || condition.isEmpty();
-    }
-
-    private Mono<AbstractCondition> buildInCondition(String field, List<?> values) {
-        return Mono.just(new FilterCondition()
-                .setField(field)
-                .setOperator(FilterConditionOperator.IN)
-                .setMultiValue(values));
+                condition,
+                userField,
+                userHierarchy,
+                ULongUtil.valueOf(access.getUser().getId()));
     }
 
     private Mono<AbstractCondition> updateExistingCondition(
             AbstractCondition root, String field, List<?> hierarchy, Object equalsValue) {
+
         return FlatMapUtil.flatMapMono(() -> root.findConditionWithField(field).collectList(), existingConditions -> {
-            for (FilterCondition fc : existingConditions) {
-                if (fc.getOperator() == FilterConditionOperator.IN)
-                    fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), hierarchy));
-                if (fc.getOperator() == FilterConditionOperator.EQUALS) fc.setValue(equalsValue);
-            }
+            if (existingConditions.isEmpty()) return Mono.empty();
+            this.updateFilterConditions(existingConditions, hierarchy, equalsValue);
             return Mono.just(root);
         });
     }
 
-    private Mono<AbstractCondition> appendNewCondition(AbstractCondition root, String field, List<?> values) {
-        return this.buildInCondition(field, values).flatMap(fc -> Mono.just(ComplexCondition.and(root, fc)));
+    private void updateFilterConditions(List<FilterCondition> conditions, List<?> hierarchy, Object equalsValue) {
+        conditions.forEach(fc -> {
+            if (fc.getOperator() == FilterConditionOperator.IN)
+                fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), hierarchy));
+            if (fc.getOperator() == FilterConditionOperator.EQUALS) fc.setValue(equalsValue);
+        });
     }
 
+    private FilterCondition createInCondition(String field, List<?> values) {
+        return new FilterCondition()
+                .setField(field)
+                .setOperator(FilterConditionOperator.IN)
+                .setMultiValue(values);
+    }
+
+    @SuppressWarnings("unchecked")
     public Flux<D> updateAll(Flux<D> entities) {
         return entities.flatMap(super::update);
     }
