@@ -10,6 +10,8 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/entity/collector/entry")
 public class EntityController {
@@ -38,7 +40,7 @@ public class EntityController {
     }
 
     @PostMapping("/website")
-    public Mono<Void> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
+    public Mono<Map<String, Object>> handleWebsiteEntity(@RequestBody WebsiteDetails requestBodyMono, ServerHttpRequest request) {
         return entityCollectorService.processWebsiteFormEntity(requestBodyMono, request);
     }
 }

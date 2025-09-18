@@ -61,10 +61,12 @@ public class EntityCollectorLogService
     }
 
     public Mono<EntityCollectorLog> updateOnError(ULong logId, String statusMessage) {
+
         EntityCollectorLog errorLog = (EntityCollectorLog) new EntityCollectorLog()
                 .setStatus(EntityCollectorLogStatus.REJECTED)
                 .setStatusMessage(statusMessage)
                 .setId(logId);
+
         return super.update(errorLog);
     }
 }

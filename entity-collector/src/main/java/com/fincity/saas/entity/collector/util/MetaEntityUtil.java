@@ -89,25 +89,34 @@ public final class MetaEntityUtil {
             String leadGenId, String formId, String token, EntityCollectorLogService logService, ULong logId) {
 
         return FlatMapUtil.flatMapMono(
+
                         () -> fetchMetaGraphData(META_VERSION + leadGenId, Map.of(ACCESS_TOKEN, token)),
+
                         leadData -> fetchMetaGraphData(
                                 META_VERSION + formId, Map.of(ACCESS_TOKEN, token, META_FIELD, META_QUESTION)),
+
                         (leadData, formData) -> Mono.just(Tuples.of(leadData, formData)))
                 .onErrorResume(error ->
                         logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
     }
 
-    private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails) {
+    private static EntityResponse buildEntityResponse(LeadDetails lead, CampaignDetails campaignDetails, EntityIntegration integration) {
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
         response.setCampaignDetails(campaignDetails);
+        response.setAppCode(integration.getOutAppCode());
+        response.setClientCode(integration.getClientCode());
         return response;
     }
 
     public static Mono<List<ExtractPayload>> extractMetaPayload(JsonNode payload) {
+
         return FlatMapUtil.flatMapMono(
+
                         () -> Mono.justOrEmpty(payload).filter(p -> p.has(ENTRY)),
+
                         validPayload -> {
+
                             List<ExtractPayload> resultList = new ArrayList<>();
 
                             validPayload.get(ENTRY).forEach(entry -> entry.path(CHANGES)
@@ -140,8 +149,8 @@ public final class MetaEntityUtil {
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> buildCampaignDetails(adId, token),
-                        campaignDetails -> buildLeadDetails(incomingLead, formDetails, integration),
-                        (campaignDetails, leadDetails) -> Mono.just(buildEntityResponse(leadDetails, campaignDetails)),
+                        campaignDetails -> buildLeadDetails(incomingLead, formDetails),
+                        (campaignDetails, leadDetails) -> Mono.just(buildEntityResponse(leadDetails, campaignDetails, integration)),
                         (campaignDetails, leadDetails, response) -> Mono.just(response))
                 .switchIfEmpty(messageService
                         .getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
@@ -168,10 +177,12 @@ public final class MetaEntityUtil {
                 });
     }
 
-    public static Mono<LeadDetails> buildLeadDetails(
-            JsonNode incomingLead, JsonNode formDetails, EntityIntegration integration) {
+    public static Mono<LeadDetails> buildLeadDetails(JsonNode incomingLead, JsonNode formDetails) {
+
         return FlatMapUtil.flatMapMonoWithNull(
+
                 () -> Mono.just(new ObjectMapper()),
+
                 mapper -> {
                     ObjectNode leadNode = JsonNodeFactory.instance.objectNode();
                     ObjectNode customFieldsNode = JsonNodeFactory.instance.objectNode();
@@ -208,7 +219,7 @@ public final class MetaEntityUtil {
                             mapper.convertValue(customFieldsNode, new TypeReference<Map<String, Object>>() {});
                     LeadDetails lead = mapper.convertValue(leadNode, LeadDetails.class);
                     lead.setCustomFields(customFields);
-                    populateStaticFields(lead, integration, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);
+                    populateStaticFields(lead, FACEBOOK, LeadSource.SOCIAL_MEDIA, LeadSubSource.FACEBOOK);
 
                     return Mono.just(lead);
                 },
