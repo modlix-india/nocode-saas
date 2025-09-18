@@ -99,18 +99,10 @@ jobs:
           VERSION=$(date '+%Y%m%d%H%M%S')
           echo "Setting version to ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-      - name: Pushing Config Docker Image to OCI
-        working-directory: ./config
-        run: |
-          docker pull openjdk:21-ea-jdk-oracle
-          docker build -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
-          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
-          docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
       - name: Pushing Eureka Docker Image to OCI
         working-directory: ./eureka
         run: |
+          docker pull openjdk:21-ea-jdk-oracle
           docker build -t dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
@@ -196,3 +188,13 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag dev-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-message-server:latest
+      # Always push the config image last after all the other images are pushed.
+      # This is because we check in the script that the config image is latest or not and then pull all the images on the server.
+      - name: Pushing Config Docker Image to OCI
+        working-directory: ./config
+        run: |
+            docker build -t dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
+            docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+            docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+            docker tag dev-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
+            docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server:latest
