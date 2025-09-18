@@ -338,7 +338,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 sTicket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 access.getUserId(),
-                                sTicket.toJson()),
+                                sTicket.toJsonElement()),
                         (product, sTicket, userId) ->
                                 this.setTicketAssignment(sTicket, userId != null ? userId : access.getUserId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));

@@ -14,19 +14,19 @@ import reactor.core.publisher.Mono;
 @Accessors(chain = true)
 public class Transport extends AbstractOverridableDTO<Transport> {
 
-	private static final long serialVersionUID = -5436810186809455453L;
+    private static final long serialVersionUID = -5436810186809455453L;
 
-	private String uniqueTransportCode;
-	private List<TransportObject> objects;
-	private String type;
+    private String uniqueTransportCode;
+    private List<TransportObject> objects;
+    private String type;
 
-	@Override
-	public Mono<Transport> applyOverride(Transport base) {
-		return Mono.just(this);
-	}
+    @Override
+    public Mono<Transport> applyOverride(Transport base) {
+        return Mono.just(this);
+    }
 
-	@Override
-	public Mono<Transport> makeOverride(Transport base) {
-		return Mono.just(this);
-	}
+    @Override
+    public Mono<Transport> extractDifference(Transport base) {
+        return Mono.just(this);
+    }
 }

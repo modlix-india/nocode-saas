@@ -17,6 +17,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
     public static final String LOGIN_REQUIRED = "login_required";
     public static final String NAME_MISSING = "name_missing";
+    public static final String CONNECTION_NOT_FOUND = "connection_not_found";
     public static final String DUPLICATE_NAME_FOR_ENTITY = "duplicate_name_for_entity";
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
     public static final String INVALID_USER_ACCESS = "invalid_user_access";
@@ -48,6 +49,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String OUTSIDE_USER_ACCESS = "outside_user_access";
     public static final String PARTNER_ACCESS_DENIED = "partner_access_denied";
     public static final String INVALID_CLIENT_TYPE = "invalid_client_type";
+    public static final String MISSING_PARAMETERS = "missing_parameters";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
