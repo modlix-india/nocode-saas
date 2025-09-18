@@ -94,19 +94,38 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
     @Bean
     public S3AsyncClient s3Client() {
 
-        final SdkAsyncHttpClient httpClient = NettyNioAsyncHttpClient.builder()
-                .readTimeout(Duration.ofMinutes(20))
-                .writeTimeout(Duration.ofMinutes(20))
-                .connectionTimeout(Duration.ofMinutes(20))
-                .maxConcurrency(64)
+        SdkAsyncHttpClient httpClient = NettyNioAsyncHttpClient.builder()
+                // POOL / QUEUE
+                .maxConcurrency(128)                        // raise if host has headroom; 64→128 is a safe bump
+                .maxPendingConnectionAcquires(1000)         // let callers queue instead of failing fast
+                .connectionAcquisitionTimeout(Duration.ofSeconds(30))
+
+                // TIMEOUTS: quick to connect, generous to transfer
+                .connectionTimeout(Duration.ofSeconds(5))
+                .readTimeout(Duration.ofSeconds(120))
+                .writeTimeout(Duration.ofSeconds(120))
+
+                .tcpKeepAlive(true)
+                .protocol(software.amazon.awssdk.http.Protocol.HTTP1_1)
                 .build();
 
         return S3AsyncClient.builder()
-                .region(Region.US_EAST_1)
-                .endpointOverride(URI.create(endpoint))
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+                .endpointOverride(URI.create(endpoint))     // e.g. https://<accountid>.r2.cloudflarestorage.com
+                .region(software.amazon.awssdk.regions.Region.of("auto")) // R2 requires "auto"
+                .credentialsProvider(
+                        StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+                .serviceConfiguration(c -> c
+                        // keep true if using the "universal" endpoint above (bucket in PATH)
+                        .pathStyleAccessEnabled(true)
+                        // optional, avoids extra validations
+                        .checksumValidationEnabled(false)
+                )
                 .httpClient(httpClient)
-                .overrideConfiguration(o -> o.apiCallTimeout(java.time.Duration.ofMinutes(20)))
+                // Whole-call deadlines: prefer attempt timeout to fail faster per try
+                .overrideConfiguration(o -> o
+                        .apiCallAttemptTimeout(Duration.ofSeconds(60))   // per retry attempt
+                        .apiCallTimeout(Duration.ofMinutes(5))           // whole call upper bound
+                )
                 .build();
     }
 

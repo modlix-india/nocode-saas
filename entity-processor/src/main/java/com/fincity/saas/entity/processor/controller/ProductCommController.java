@@ -11,7 +11,6 @@ import com.fincity.saas.entity.processor.service.ProductCommService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,11 +26,6 @@ public class ProductCommController
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<ProductComm>> createFromRequest(@RequestBody ProductCommRequest request) {
         return this.service.create(request).map(ResponseEntity::ok);
-    }
-
-    @PutMapping("/default")
-    public Mono<ResponseEntity<ProductComm>> setDefaultNumber(@RequestBody Identity productCommId) {
-        return this.service.setDefaultNumber(productCommId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/default")

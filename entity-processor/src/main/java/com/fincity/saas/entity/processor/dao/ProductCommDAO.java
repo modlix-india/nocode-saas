@@ -12,7 +12,6 @@ import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
-import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -51,22 +50,6 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
                                 .selectFrom(ENTITY_PROCESSOR_PRODUCT_COMMS)
                                 .where(condition))
                         .map(rec -> rec.into(ProductComm.class)));
-    }
-
-    public Mono<Integer> unsetDefaultsForProduct(
-            ProcessorAccess access, ULong productId, ConnectionType connectionType) {
-
-        return FlatMapUtil.flatMapMono(
-                () -> super.processorAccessCondition(
-                        ComplexCondition.and(
-                                FilterCondition.make(ProductComm.Fields.connectionType, connectionType.name()),
-                                FilterCondition.make(ProductComm.Fields.productId, productId)),
-                        access),
-                super::filter,
-                (pCondition, condition) -> Mono.from(this.dslContext
-                        .update(ENTITY_PROCESSOR_PRODUCT_COMMS)
-                        .set(ENTITY_PROCESSOR_PRODUCT_COMMS.IS_DEFAULT, DSL.inline((byte) 0))
-                        .where(condition)));
     }
 
     private Mono<AbstractCondition> getProductCommDefaultCondition(
