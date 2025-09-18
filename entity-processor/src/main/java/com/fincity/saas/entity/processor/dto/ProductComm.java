@@ -57,7 +57,7 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
                 .setDefault(productCommRequest.isDefault())
                 .setName(productCommRequest.getName());
 
-        if (!productCommRequest.isDefault())
+        if (Boolean.FALSE.equals(productCommRequest.isDefault()))
             productComm.setSource(productCommRequest.getSource()).setSubSource(productCommRequest.getSubSource());
 
         return switch (connection.getConnectionType()) {
