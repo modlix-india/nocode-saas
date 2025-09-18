@@ -26,4 +26,9 @@ public class NotificationQueObject implements Serializable {
     private String notificationName;
     private String xDebug;
     private Map<String, Object> payload;
+    private Map<String, Connection> channelConnections;
+
+    private static final class Connection implements Serializable {
+
+    }
 }
