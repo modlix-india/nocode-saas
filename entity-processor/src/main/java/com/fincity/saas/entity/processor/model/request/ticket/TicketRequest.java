@@ -35,12 +35,29 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private Identity campaignId;
 
     public static TicketRequest of(CampaignTicketRequest campaignTicketRequest, ULong productId, ULong campaignId) {
+
         TicketRequest ticketRequest = new TicketRequest()
                 .setProductId(new Identity().setId(productId.toBigInteger()))
-                .setCampaignId(new Identity().setId(campaignId.toBigInteger()))
-                .setSource(campaignTicketRequest.getLeadDetails().getSource())
                 .setPhoneNumber(new PhoneNumber()
                         .setNumber(campaignTicketRequest.getLeadDetails().getPhone()));
+
+        if (campaignTicketRequest.getLeadDetails().getFullName() != null) {
+            ticketRequest.setName(campaignTicketRequest.getLeadDetails().getFullName());
+        } else if (campaignTicketRequest.getLeadDetails().getFirstName() != null) {
+            if (campaignTicketRequest.getLeadDetails().getLastName() != null) {
+                ticketRequest.setName(campaignTicketRequest.getLeadDetails().getFirstName() + " "
+                        + campaignTicketRequest.getLeadDetails().getLastName());
+            } else {
+                ticketRequest.setName(campaignTicketRequest.getLeadDetails().getFirstName());
+            }
+        } else {
+            ticketRequest.setName("New Customer");
+        }
+
+        if (campaignId != null) ticketRequest.setCampaignId(new Identity().setId(campaignId.toBigInteger()));
+
+        if (campaignTicketRequest.getLeadDetails().getSource() != null)
+            ticketRequest.setSource(campaignTicketRequest.getLeadDetails().getSource());
 
         if (campaignTicketRequest.getLeadDetails().getEmail() != null)
             ticketRequest.setEmail(new Email()

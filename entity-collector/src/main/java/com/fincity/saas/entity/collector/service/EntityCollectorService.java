@@ -103,12 +103,16 @@ public class EntityCollectorService extends AbstractConnectionService {
     public Mono<Void> processWebsiteFormEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
+
                 () -> Mono.just(getHost(request)),
+
                 host -> entityIntegrationService.findByInSourceAndType(host, EntityIntegrationsInSourceType.WEBSITE),
+
                 (host, integration) -> entityCollectorLogService.create(
                         integration.getId(),
                         mapper.convertValue(websiteBody, new TypeReference<>() {}),
                         getClientIpAddress(request)),
+
                 (host, integration, logId) -> normalizeWebsiteEntity(
                                 websiteBody, integration, coreService, msgService, entityCollectorLogService, logId)
                         .flatMap(response -> msgService

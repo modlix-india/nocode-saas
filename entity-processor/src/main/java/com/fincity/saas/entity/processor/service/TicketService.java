@@ -411,9 +411,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                         (campaign, product, ticket, ticketRequest) -> this.checkDuplicate(access, ticketRequest),
 
-                        (campaign, product, ticket, ticketRequest, isDuplicate) -> {
-                            return Mono.just(ticket.setProductId(product.getId()));
-                        },
+                        (campaign, product, ticket, ticketRequest, isDuplicate) ->  Mono.just(ticket.setProductId(product.getId())),
 
                         (campaign, product, ticket, ticketRequest, isDuplicate, pTicket) ->
                                 super.createInternal(access, pTicket),
@@ -425,5 +423,46 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 this.activityService.acCreate(created, null, access).thenReturn(created))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[CampaignTicketRequest]"));
+    }
+
+    public Mono<Ticket> createForWebsite(CampaignTicketRequest cTicketRequest, String productCode) {
+
+        if (cTicketRequest.getCampaignDetails() != null )
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.WEBSITE_ENTITY_DATA_INVALID);
+
+        ProcessorAccess access = ProcessorAccess.of(
+                cTicketRequest.getAppCode(), cTicketRequest.getClientCode(), true, null, null);
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.productService.readByCode(productCode),
+
+                product -> {
+                    TicketRequest ticket = TicketRequest.of(cTicketRequest, product.getId(), null);
+
+                    if (ticket.getSource() == null)
+                        ticket.setSource("Website");
+
+                    return Mono.just(ticket);
+                },
+
+                (product, ticketRequest) -> Mono.just(Ticket.of(ticketRequest)),
+
+                (product, ticketRequest, ticket) -> this.checkDuplicate(access, ticketRequest),
+
+                (product, ticketRequest, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
+
+                (product, ticketRequest, ticket, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+
+                (product, ticketRequest, ticket, isDuplicate, pTicket, created) ->
+                        this.createNote(access, ticketRequest, created),
+
+                (product, ticketRequest, ticket, isDuplicate, pTicket, created, noteCreated) ->
+                        this.activityService.acCreate(created, null, access).thenReturn(created))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
+
     }
 }

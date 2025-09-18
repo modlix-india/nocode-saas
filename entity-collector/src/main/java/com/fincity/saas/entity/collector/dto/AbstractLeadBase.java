@@ -43,8 +43,6 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
     private Map<String, Object> customFields;
 
     public T createLead(WebsiteDetails details) {
-
-        this.email = details.getEmail();
         this.setEmail(details.getEmail());
         this.setFullName(details.getFullName());
         this.setPhone(details.getPhone());

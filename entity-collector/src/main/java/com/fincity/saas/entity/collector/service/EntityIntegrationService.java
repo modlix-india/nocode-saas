@@ -3,6 +3,7 @@ package com.fincity.saas.entity.collector.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -52,8 +53,14 @@ public class EntityIntegrationService
 
     @Override
     public Mono<EntityIntegration> create(EntityIntegration entity) {
-        return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, ca -> verifyTargetUrl(entity)
-                .then(super.create(entity)));
+
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> verifyTargetUrl(ca, entity),
+
+                (ca, verified) -> super.create(entity));
     }
 
     @Override
@@ -61,15 +68,17 @@ public class EntityIntegrationService
 
         return FlatMapUtil.flatMapMono(
 
-                        () -> this.read(entity.getId()),
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                        existingEntity -> verifyTargetUrl(entity),
+                        ca -> this.read(entity.getId()),
 
-                        (existingEntity, verified) -> this.cacheService.evict(
+                        (ca, existingEntity) -> verifyTargetUrl(ca, entity),
+
+                        (ca,existingEntity, verified) -> this.cacheService.evict(
                                 CACHE_NAME_ENTITY_INTEGRATIONS,
                                 getCacheKeys(entity.getInSource(), entity.getInSourceType())),
 
-                        (existingEntity, verified, evicted) -> super.update(entity))
+                        (ca,existingEntity, verified, evicted) -> super.update(entity))
                 .switchIfEmpty(entityCollectorMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         EntityCollectorMessageResourceService.OBJECT_NOT_FOUND));
@@ -93,7 +102,8 @@ public class EntityIntegrationService
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
     }
 
-    private Mono<Boolean> sendVerificationRequest(String targetUrl, String verifyToken, int challenge) {
+    private Mono<Boolean> sendVerificationRequest(
+            ContextAuthentication ca, String targetUrl, String verifyToken, int challenge) {
 
         URI targetUri = URI.create(targetUrl);
 
@@ -126,19 +136,19 @@ public class EntityIntegrationService
                 });
     }
 
-    private Mono<Void> verifyTargetUrl(EntityIntegration entity) {
+    private Mono<Boolean> verifyTargetUrl(ContextAuthentication ca, EntityIntegration entity) {
 
         int challenge = UniqueUtil.shortUUID().hashCode();
 
         return FlatMapUtil.flatMapMono(
-                () -> sendVerificationRequest(entity.getPrimaryTarget(), entity.getPrimaryVerifyToken(), challenge),
+
+                () -> sendVerificationRequest(ca, entity.getPrimaryTarget(), entity.getPrimaryVerifyToken(), challenge),
+
                 primaryVerified -> {
                     if (entity.getSecondaryTarget() == null || entity.getSecondaryVerifyToken() == null) {
-                        return Mono.empty();
+                        return Mono.just(true);
                     }
-                    return sendVerificationRequest(
-                                    entity.getSecondaryTarget(), entity.getSecondaryVerifyToken(), challenge)
-                            .then();
+                    return sendVerificationRequest(ca, entity.getSecondaryTarget(), entity.getSecondaryVerifyToken(), challenge);
                 });
     }
 

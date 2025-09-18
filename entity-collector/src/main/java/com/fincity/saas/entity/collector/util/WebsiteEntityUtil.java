@@ -35,6 +35,8 @@ public final class WebsiteEntityUtil {
 
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
+        response.setAppCode(integration.getOutAppCode());
+        response.setClientCode(integration.getClientCode());
 
         String adId = websiteDetails.getUtmAd();
 
