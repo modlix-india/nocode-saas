@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 public class EntityCollectorService extends AbstractConnectionService {
@@ -100,7 +102,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                 (extractList, ex) -> Mono.empty());
     }
 
-    public Mono<Void> processWebsiteFormEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
+    public Mono<Map<String, Object>> processWebsiteFormEntity(WebsiteDetails websiteBody, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
@@ -114,15 +116,19 @@ public class EntityCollectorService extends AbstractConnectionService {
                         getClientIpAddress(request)),
 
                 (host, integration, logId) -> normalizeWebsiteEntity(
-                                websiteBody, integration, coreService, msgService, entityCollectorLogService, logId)
-                        .flatMap(response -> msgService
-                                .getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
-                                .flatMap(successMessage -> EntityUtil.sendEntityToTarget(integration, response)
-                                        .then(entityCollectorLogService.update(
-                                                logId,
-                                                mapper.convertValue(response, new TypeReference<>() {}),
-                                                EntityCollectorLogStatus.SUCCESS,
-                                                successMessage))
-                                        .then())));
+                        websiteBody, integration, coreService, msgService, entityCollectorLogService, logId),
+
+                (host, integration, logId, response) ->
+                        msgService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE),
+
+                (host, integration, logId, response, sMessage) -> EntityUtil.sendEntityToTarget(integration, response),
+
+                (host, integration, logId, response, sMessage, result) -> this.entityCollectorLogService.update(
+                        logId,
+                        mapper.convertValue(response, new TypeReference<>() {}),
+                        EntityCollectorLogStatus.SUCCESS,
+                        sMessage),
+                
+                (host, integration, logId, response, sMessage, result, uLog) -> Mono.just(result));
     }
 }

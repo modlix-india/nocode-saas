@@ -11,9 +11,12 @@ import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
 import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.types.ULong;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @Slf4j
 public final class EntityUtil {
@@ -27,22 +30,26 @@ public final class EntityUtil {
     private static final String UNKNOWN = "UNKNOWN";
     private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
 
-    public static Mono<Void> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
-        return FlatMapUtil.flatMapMono(() -> sendToUrl(integration.getPrimaryTarget(), leadData), result -> {
-            String secondary = integration.getSecondaryTarget();
-            return (secondary != null && !secondary.isBlank()) ? sendToUrl(secondary, leadData) : Mono.empty();
-        });
+    public static Mono<Map<String, Object>> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> sendToUrl(integration.getPrimaryTarget(), leadData),
+
+                result -> {
+                    String secondary = integration.getSecondaryTarget();
+                    return (secondary != null && !secondary.isBlank()) ? sendToUrl(secondary, leadData) : Mono.just(result);
+                });
     }
 
-    private static Mono<Void> sendToUrl(String url, EntityResponse body) {
+    private static Mono<Map<String, Object>> sendToUrl(String url, EntityResponse body) {
         return EntityUtil.webClient
                 .post()
                 .uri(url)
                 .header(CONTENT_TYPE, APPLICATION_JSON)
                 .bodyValue(body)
                 .retrieve()
-                .toBodilessEntity()
-                .then();
+                .bodyToMono(new ParameterizedTypeReference<>() {});
     }
 
     public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode) {

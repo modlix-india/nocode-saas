@@ -52,9 +52,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ActivityService activityService,
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
+            @Lazy CampaignService campaignService,
             @Lazy PartnerService partnerService) {
-            @Lazy NoteService noteService,
-            @Lazy CampaignService campaignService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -382,7 +381,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .flatMap(existing -> {
                     if (existing.getId() != null)
                         return this.activityService
-                                .acReInquiry(existing, ticketRequest)
+                                .acReInquiry(access, existing, null, ticketRequest)
                                 .then(super.throwDuplicateError(access, existing));
                     return Mono.just(Boolean.FALSE);
                 })

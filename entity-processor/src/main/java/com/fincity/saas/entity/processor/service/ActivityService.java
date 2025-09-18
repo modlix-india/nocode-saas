@@ -200,13 +200,15 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acReInquiry(Ticket ticket, TicketRequest ticketRequest) {
-        return this.acReInquiry(ticket, null, ticketRequest)
+        return super.hasAccess()
+                .flatMap(access -> this.acReInquiry(access, ticket, null, ticketRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }
 
-    public Mono<Void> acReInquiry(Ticket ticket, String comment, TicketRequest ticketRequest) {
+    public Mono<Void> acReInquiry(ProcessorAccess access, Ticket ticket, String comment, TicketRequest ticketRequest) {
         return this.createActivityInternal(
                         ActivityAction.RE_INQUIRY,
+                        null,
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId,
@@ -218,7 +220,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 ticketRequest.getSource(),
                                                 Ticket.Fields.subSource,
                                                 ticketRequest.getSubSource())
-                                        : Map.of(Ticket.Fields.source, ticketRequest.getSource())))
+                                        : Map.of(Ticket.Fields.source, ticketRequest.getSource())),
+                        access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }
 
