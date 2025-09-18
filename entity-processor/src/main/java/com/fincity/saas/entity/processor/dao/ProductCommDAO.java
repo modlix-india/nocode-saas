@@ -53,22 +53,6 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
                         .map(rec -> rec.into(ProductComm.class)));
     }
 
-    public Mono<Integer> unsetDefaultsForProduct(
-            ProcessorAccess access, ULong productId, ConnectionType connectionType) {
-
-        return FlatMapUtil.flatMapMono(
-                () -> super.processorAccessCondition(
-                        ComplexCondition.and(
-                                FilterCondition.make(ProductComm.Fields.connectionType, connectionType.name()),
-                                FilterCondition.make(ProductComm.Fields.productId, productId)),
-                        access),
-                super::filter,
-                (pCondition, condition) -> Mono.from(this.dslContext
-                        .update(ENTITY_PROCESSOR_PRODUCT_COMMS)
-                        .set(ENTITY_PROCESSOR_PRODUCT_COMMS.IS_DEFAULT, DSL.inline((byte) 0))
-                        .where(condition)));
-    }
-
     private Mono<AbstractCondition> getProductCommDefaultCondition(
             ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
 

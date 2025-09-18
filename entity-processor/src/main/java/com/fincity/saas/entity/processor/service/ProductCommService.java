@@ -1,9 +1,17 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.Map;
+
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.ProductCommDAO;
 import com.fincity.saas.entity.processor.dto.ProductComm;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -11,9 +19,7 @@ import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-import java.util.Map;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 
 @Service
@@ -41,6 +47,11 @@ public class ProductCommService
     }
 
     @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT_COMM;
+    }
+
+    @Override
     protected Mono<Boolean> evictCache(ProductComm entity) {
         return Mono.zip(
                 super.evictCache(entity),
@@ -55,6 +66,14 @@ public class ProductCommService
                 (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
     }
 
+    private Mono<Boolean> evictDefaultCache(
+            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
+        return super.cacheService.evict(
+                this.getCacheName(),
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), productId, connectionName, connectionType.name()));
+    }
+
     @Override
     protected Mono<ProductComm> checkEntity(ProductComm entity, ProcessorAccess access) {
 
@@ -62,10 +81,11 @@ public class ProductCommService
         if (StringUtil.safeIsBlank(entity.getConnectionType()))
             return super.throwMissingParam(ProductComm.Fields.connectionType);
 
-        if (!entity.isDefault() && StringUtil.safeIsBlank(entity.getSource()))
-            return super.throwMissingParam(ProductComm.Fields.source);
-
         ConnectionType connectionType = ConnectionType.valueOf(entity.getConnectionType());
+
+        if (entity.isDefault()) return this.checkDefault(entity, access);
+
+        if (StringUtil.safeIsBlank(entity.getSource())) return super.throwMissingParam(ProductComm.Fields.source);
 
         Mono<ProductComm> duplicateCheck = this.dao.getProductComm(
                 access,
@@ -81,6 +101,29 @@ public class ProductCommService
                 this.validatePhone(entity).flatMap(valid -> checkDuplicate(duplicateCheck, entity, access));
             default -> Mono.empty();
         };
+    }
+
+    private Mono<ProductComm> checkDefault(ProductComm entity, ProcessorAccess access) {
+        if (!entity.isDefault()) return super.throwMissingParam(ProductComm.Fields.isDefault);
+
+        if (entity.getSource() != null || entity.getSubSource() != null)
+            return super.throwInvalidParam(ProductComm.Fields.source);
+
+        if (entity.getId() != null)
+            return FlatMapUtil.flatMapMono(
+                            () -> this.getDefault(
+                                    access,
+                                    entity.getProductId(),
+                                    entity.getConnectionName(),
+                                    ConnectionType.valueOf(entity.getConnectionType())),
+                            defaultComm -> {
+                                if (!defaultComm.getId().equals(entity.getId()))
+                                    return super.throwInvalidParam(ProductComm.Fields.isDefault);
+                                return Mono.just(entity);
+                            })
+                    .switchIfEmpty(Mono.just(entity));
+
+        return Mono.just(entity);
     }
 
     private Mono<ProductComm> validateMail(ProductComm entity) {
@@ -114,9 +157,14 @@ public class ProductCommService
             existing.setDialCode(entity.getDialCode());
             existing.setPhoneNumber(entity.getPhoneNumber());
             existing.setEmail(entity.getEmail());
-            existing.setDefault(entity.isDefault());
-            existing.setSource(entity.getSource());
-            existing.setSubSource(entity.getSubSource());
+
+            if (entity.isDefault()) {
+                existing.setSource(null);
+                existing.setSubSource(null);
+            } else {
+                existing.setSource(entity.getSource());
+                existing.setSubSource(entity.getSubSource());
+            }
 
             return Mono.just(existing);
         });
@@ -141,25 +189,40 @@ public class ProductCommService
                                 access.getAppCode(), access.getClientCode(), productCommRequest.getConnectionName()),
                 (access, product, connection) -> {
                     if (Boolean.TRUE.equals(productCommRequest.isDefault()))
-                        return this.dao
-                                .unsetDefaultsForProduct(
-                                        access,
-                                        productCommRequest.getProductId().getULongId(),
-                                        productCommRequest.getConnectionType())
-                                .then(super.createInternal(
+                        return this.updateDefault(access, productCommRequest)
+                                .switchIfEmpty(super.createInternal(
                                         access, ProductComm.of(productCommRequest, product.getId(), connection)));
                     return super.createInternal(
                             access, ProductComm.of(productCommRequest, product.getId(), connection));
                 });
     }
 
-    public Mono<ProductComm> setDefaultNumber(Identity productCommId) {
+    public Mono<ProductComm> updateDefault(ProcessorAccess access, ProductCommRequest productCommRequest) {
+
         return FlatMapUtil.flatMapMono(
-                super::hasAccess, access -> this.readIdentityWithAccess(access, productCommId), (access, pc) -> this.dao
-                        .unsetDefaultsForProduct(
-                                access, pc.getProductId(), ConnectionType.valueOf(pc.getConnectionType()))
-                        .then(super.updateInternal(
-                                access, pc.getId(), Map.of(ProductComm.Fields.isDefault, Boolean.TRUE))));
+                () -> this.getDefault(
+                        access,
+                        productCommRequest.getProductId().getULongId(),
+                        productCommRequest.getConnectionName(),
+                        productCommRequest.getConnectionType()),
+                defaultComm -> {
+                    defaultComm = switch (productCommRequest.getConnectionType()) {
+                        case MAIL ->
+                            defaultComm.setEmail(productCommRequest.getEmail().getAddress());
+                        case TEXT, CALL ->
+                            defaultComm.setPhoneNumber(
+                                    productCommRequest.getPhoneNumber().getNumber());
+                        default -> defaultComm;
+                    };
+
+                    return super.updateInternal(access, defaultComm);
+                },
+                (defaultComm, updated) -> this.evictDefaultCache(
+                                access,
+                                productCommRequest.getProductId().getULongId(),
+                                productCommRequest.getConnectionName(),
+                                productCommRequest.getConnectionType())
+                        .thenReturn(updated));
     }
 
     public Mono<ProductComm> getDefault(Identity productId, String connectionName, ConnectionType connectionType) {
