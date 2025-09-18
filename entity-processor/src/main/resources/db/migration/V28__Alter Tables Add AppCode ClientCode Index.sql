@@ -1,5 +1,3 @@
-use entity_processor;
-
 ALTER TABLE `entity_processor`.`entity_processor_product_templates`
     ADD INDEX `IDX0_PRODUCT_TEMPLATES_AC_CC` (`APP_CODE`, `CLIENT_CODE`);
 
