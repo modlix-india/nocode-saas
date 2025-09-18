@@ -89,7 +89,7 @@ public final class ProcessorAccess implements Serializable {
         private ULong managedClientId;
 
         private List<ULong> subOrg;
-        private List<ULong> clientHierarchy;
+        private List<ULong> managingClientIds;
 
         public static UserInheritanceInfo of(
                 ContextAuthentication ca, Tuple3<List<BigInteger>, List<BigInteger>, Client> userInheritTup) {
@@ -98,7 +98,7 @@ public final class ProcessorAccess implements Serializable {
                     .setLoggedInClientCode(ca.getLoggedInFromClientCode())
                     .setLoggedInClientId(ULongUtil.valueOf(ca.getLoggedInFromClientId()))
                     .setSubOrg(userInheritTup.getT1())
-                    .setClientHierarchy(userInheritTup.getT2());
+                    .setManagingClientIds(userInheritTup.getT2());
 
             if (userInheritTup.getT3().getId() != null)
                 userInheritanceInfo
@@ -115,10 +115,10 @@ public final class ProcessorAccess implements Serializable {
             return this;
         }
 
-        private UserInheritanceInfo setClientHierarchy(List<BigInteger> clientHierarchy) {
-            if (clientHierarchy == null) return this;
-            this.clientHierarchy =
-                    clientHierarchy.stream().map(ULongUtil::valueOf).toList();
+        private UserInheritanceInfo setManagingClientIds(List<BigInteger> managingClientIds) {
+            if (managingClientIds == null) return this;
+            this.managingClientIds =
+                    managingClientIds.stream().map(ULongUtil::valueOf).toList();
             return this;
         }
     }

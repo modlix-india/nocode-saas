@@ -81,9 +81,9 @@ public interface IProcessorAccessService {
                 .getUserSubOrgInternal(
                         ca.getUser().getId(), ca.getUrlAppCode(), ca.getUser().getClientId());
 
-        Mono<List<BigInteger>> clientHierarchyMono = BusinessPartnerConstant.isBpManager(
+        Mono<List<BigInteger>> managingClientMono = BusinessPartnerConstant.isBpManager(
                         ca.getUser().getAuthorities())
-                ? this.getSecurityService().getClientHierarchy(ca.getUser().getClientId())
+                ? this.getSecurityService().getManagingClientIds(ca.getUser().getClientId())
                 : Mono.just(List.of());
 
         Mono<Client> managedClientMono = ca.getClientLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP)
@@ -91,7 +91,7 @@ public interface IProcessorAccessService {
                         .getManagedClientOfClientById(ca.getUser().getClientId())
                 : Mono.empty();
 
-        return Mono.zip(userSubOrgMono, clientHierarchyMono, managedClientMono.defaultIfEmpty(new Client()))
+        return Mono.zip(userSubOrgMono, managingClientMono, managedClientMono.defaultIfEmpty(new Client()))
                 .map(userInheritTup -> ProcessorAccess.UserInheritanceInfo.of(ca, userInheritTup));
     }
 }

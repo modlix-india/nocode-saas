@@ -474,4 +474,12 @@ public abstract class BaseUpdatableService<
                 this.getEntityName(),
                 paramName);
     }
+
+    protected <T> Mono<T> throwInvalidParam(String paramName) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.INVALID_PARAMETERS,
+                this.getEntityName(),
+                paramName);
+    }
 }
