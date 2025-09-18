@@ -128,7 +128,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                         mapper.convertValue(response, new TypeReference<>() {}),
                         EntityCollectorLogStatus.SUCCESS,
                         sMessage),
-                
+
                 (host, integration, logId, response, sMessage, result, uLog) -> Mono.just(result));
     }
 }

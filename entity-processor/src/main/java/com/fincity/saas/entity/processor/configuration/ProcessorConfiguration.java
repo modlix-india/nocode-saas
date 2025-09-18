@@ -46,7 +46,6 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/core/function/**",
                 "/api/entity/processor/core/functions/repositoryFilter",
                 "/api/entity/processor/core/functions/repositoryFind",
-                "/api/entity/processor/tickets/req/campaigns",
-                "/api/entity/processor/tickets/req/website/*");
+                "/api/entity/processor/open/tickets/**");
     }
 }
