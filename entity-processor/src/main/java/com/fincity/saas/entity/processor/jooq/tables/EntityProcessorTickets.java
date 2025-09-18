@@ -189,6 +189,13 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
+     * Campaign Id related to this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> CAMPAIGN_ID = createField(DSL.name("CAMPAIGN_ID"), SQLDataType.BIGINTUNSIGNED, this, "Campaign Id related to this ticket.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
