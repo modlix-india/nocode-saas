@@ -96,6 +96,17 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCall"));
     }
 
+    public Mono<Call> makeCall(CallRequest callRequest) {
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.callConnectionService.getCoreDocument(
+                                access.getAppCode(), access.getClientCode(), callRequest.getConnectionName()),
+                        (access, connection) -> super.isValidConnection(connection),
+                        (access, connection, vConn) -> this.makeCall(access, callRequest, connection))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCall(CallRequest)"));
+    }
+
     private void applyConnectionDetailsToRequest(ExotelCallRequest request, Map<String, Object> details) {
         SetterUtil.setIfPresent(
                 super.getConnectionDetail(details, ExotelCallRequest.Fields.callType, String.class),

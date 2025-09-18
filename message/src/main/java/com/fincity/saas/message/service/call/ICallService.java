@@ -17,7 +17,11 @@ public interface ICallService<D extends BaseUpdatableDto<D>> {
 
     String getProviderUri();
 
-    Mono<Call> toCall(D providerObject);
+    default Mono<Call> toCall(D providerObject) {
+        return Mono.empty();
+    }
 
-    Mono<Call> makeCall(MessageAccess access, CallRequest callRequest, Connection connection);
+    default Mono<Call> makeCall(MessageAccess access, CallRequest callRequest, Connection connection) {
+        return Mono.empty();
+    }
 }

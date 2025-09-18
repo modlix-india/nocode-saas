@@ -45,9 +45,9 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
                 http,
                 authService,
                 this.objectMapper,
-                "api/call/callback",
-                "api/call/callback/**",
-                "api/call/exotel/connect",
+                "/api/message/call/callback",
+                "/api/message/call/callback/**",
+                "/api/message/call/exotel/connect",
                 "/api/message/whatsapp/webhooks",
                 "/api/message/whatsapp/webhooks/**");
     }
