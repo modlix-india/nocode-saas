@@ -51,6 +51,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String INVALID_CLIENT_TYPE = "invalid_client_type";
     public static final String MISSING_PARAMETERS = "missing_parameters";
     public static final String INVALID_PARAMETERS = "invalid_parameters";
+    public static final String WEBSITE_ENTITY_DATA_INVALID = "website_entity_data_invalid";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

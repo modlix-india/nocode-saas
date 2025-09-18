@@ -31,10 +31,12 @@ public final class WebsiteEntityUtil {
             EntityCollectorLogService logService,
             ULong logId) {
 
-        LeadDetails lead = new LeadDetails().createLead(websiteDetails, integration);
+        LeadDetails lead = new LeadDetails().createLead(websiteDetails);
 
         EntityResponse response = new EntityResponse();
         response.setLeadDetails(lead);
+        response.setAppCode(integration.getOutAppCode());
+        response.setClientCode(integration.getClientCode());
 
         String adId = websiteDetails.getUtmAd();
 
@@ -43,7 +45,7 @@ public final class WebsiteEntityUtil {
         }
 
         return FlatMapUtil.flatMapMonoWithNull(
-                        () -> fetchOAuthToken(coreService, integration.getClientCode(), integration.getAppCode()),
+                        () -> fetchOAuthToken(coreService, integration.getClientCode(), integration.getInAppCode()),
                         token -> buildCampaignDetails(adId, token),
                         (token, campaignDetails) -> {
                             response.setCampaignDetails(campaignDetails);
