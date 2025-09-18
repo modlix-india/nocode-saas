@@ -2,6 +2,7 @@ package com.fincity.saas.commons.core.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Notification;
+import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.NotificationRepository;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -38,11 +39,14 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
     private DoublePointerNode<String> nextRoutingKey;
 
+    private final ConnectionService connectionService;
+
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(NotificationService.class);
 
-    protected NotificationService(AmqpTemplate amqpTemplate) {
+    protected NotificationService(AmqpTemplate amqpTemplate, ConnectionService connectionService) {
         super(Notification.class);
         this.amqpTemplate = amqpTemplate;
+        this.connectionService = connectionService;
     }
 
     @PostConstruct
@@ -77,6 +81,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
     public Mono<Boolean> processAndSendNotification(
             String appCode,
             String clientCode,
+            String connectionName,
             BigInteger targetId,
             String targetCode,
             String targetType,
@@ -93,7 +98,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                             switch (targetType) {
                                 case USER_ID -> {
                                     if (targetId.longValue() <= 0 && !ca.isSystemClient())
-                                        return Mono.just(false);
+                                        return Mono.empty();
 
                                     if (ca.isSystemClient())
                                         return Mono.just(true);
@@ -102,7 +107,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                 }
                                 case CLIENT_ID -> {
                                     if (targetId.longValue() <= 0 && !ca.isSystemClient())
-                                        return Mono.just(false);
+                                        return Mono.empty();
 
                                     if (ca.isSystemClient())
                                         return Mono.just(true);
@@ -111,7 +116,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                 }
                                 case CLIENT_CODE -> {
                                     if ((targetCode == null || targetCode.isEmpty()) && !ca.isSystemClient())
-                                        return Mono.just(false);
+                                        return Mono.empty();
 
                                     if (ca.isSystemClient())
                                         return Mono.just(true);
@@ -121,11 +126,12 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
                                 default -> {
                                     logger.error("Invalid target type ({}) for notification processing with context : {}", targetType, ca);
-                                    return Mono.just(false);
+                                    return Mono.empty();
                                 }
                             }
                         },
-                        (ca, actualTuple, hasUserAccess) -> {
+                        (ca, actualTuple, hasUserAccess) -> hasUserAccess ? this.connectionService.readInternalConnection(connectionName, actualTuple.getT1(), actualTuple.getT2(), ConnectionType.NOTIFICATION) : Mono.empty(),
+                        (ca, actualTuple, hasUserAccess, connection) -> {
                             if (hasUserAccess) {
                                 this.nextRoutingKey = nextRoutingKey.getNext();
                                 return Mono.just(new NotificationQueObject()
