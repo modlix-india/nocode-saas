@@ -99,18 +99,10 @@ jobs:
           VERSION=$(date '+%Y%m%d%H%M%S')
           echo "Setting version to ${VERSION}"
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-      - name: Pushing Config Docker Image to OCI
-        working-directory: ./config
-        run: |
-          docker pull openjdk:21-ea-jdk-oracle
-          docker build -t stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
-          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
-          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
-          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
       - name: Pushing Eureka Docker Image to OCI
         working-directory: ./eureka
         run: |
+          docker pull openjdk:21-ea-jdk-oracle  
           docker build -t stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} .
           docker tag stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-eureka-server:${{ steps.dockerVersion.outputs.VERSION }}
@@ -196,3 +188,12 @@ jobs:
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:${{ steps.dockerVersion.outputs.VERSION }}
           docker tag stage-message-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:latest
           docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-message-server:latest
+      - name: Pushing Config Docker Image to OCI
+        working-directory: ./config
+        run: |  
+          docker build -t stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} --build-arg profileName=${ENVIRONMENT} .
+          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ steps.dockerVersion.outputs.VERSION }}
+          docker tag stage-config-server:${{ steps.dockerVersion.outputs.VERSION }} ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
+          docker push ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:latest
+  

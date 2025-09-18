@@ -4,11 +4,14 @@
 package com.fincity.saas.message.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageCalls.MessageCallsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageExotelCallsRecord;
+import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
+import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,6 +24,7 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -205,6 +209,19 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
      * of the second leg of the call.
      */
     public final TableField<MessageExotelCallsRecord, ExotelCallStatus> LEG2_STATUS = createField(DSL.name("LEG2_STATUS"), SQLDataType.VARCHAR(9).nullable(false).defaultValue(DSL.inline("NULL", SQLDataType.VARCHAR)), this, "Status of the second leg of the call.", new EnumConverter<String, ExotelCallStatus>(String.class, ExotelCallStatus.class));
+
+    /**
+     * The column <code>message.message_exotel_calls.EXOTEL_CALL_REQUEST</code>.
+     * Entire Exotel Request object send to Exotel.
+     */
+    public final TableField<MessageExotelCallsRecord, ExotelCallRequest> EXOTEL_CALL_REQUEST = createField(DSL.name("EXOTEL_CALL_REQUEST"), SQLDataType.JSON, this, "Entire Exotel Request object send to Exotel.", new JSONtoClassConverter<JSON, ExotelCallRequest>(JSON.class, ExotelCallRequest.class));
+
+    /**
+     * The column
+     * <code>message.message_exotel_calls.EXOTEL_CALL_RESPONSE</code>. Entire
+     * Exotel Response object send by Exotel.
+     */
+    public final TableField<MessageExotelCallsRecord, ExotelCallResponse> EXOTEL_CALL_RESPONSE = createField(DSL.name("EXOTEL_CALL_RESPONSE"), SQLDataType.JSON, this, "Entire Exotel Response object send by Exotel.", new JSONtoClassConverter<JSON, ExotelCallResponse>(JSON.class, ExotelCallResponse.class));
 
     /**
      * The column <code>message.message_exotel_calls.IS_ACTIVE</code>. Flag to
