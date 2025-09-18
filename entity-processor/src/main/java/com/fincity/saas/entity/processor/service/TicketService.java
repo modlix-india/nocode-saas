@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -17,6 +18,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
@@ -41,6 +43,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final TaskService taskService;
     private final NoteService noteService;
     private final PartnerService partnerService;
+    private final ProductCommService productCommService;
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -50,7 +53,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ActivityService activityService,
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
-            @Lazy PartnerService partnerService) {
+            @Lazy PartnerService partnerService,
+            ProductCommService productCommService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -59,6 +63,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.taskService = taskService;
         this.noteService = noteService;
         this.partnerService = partnerService;
+        this.productCommService = productCommService;
     }
 
     @Override
@@ -419,5 +424,19 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .updateAll(tickets)
                 .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
+    }
+
+    public Mono<ProductComm> getTicketProductComm(
+            Identity ticketId, String connectionName, ConnectionType connectionType) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.readIdentityWithAccess(access, ticketId),
+                (access, ticket) -> this.productCommService.getProductComm(
+                        access,
+                        ticket.getProductId(),
+                        connectionName,
+                        connectionType,
+                        ticket.getSource(),
+                        ticket.getSubSource()));
     }
 }
