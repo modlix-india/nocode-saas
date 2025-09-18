@@ -20,4 +20,6 @@ public class UIMessageResourceService extends AbstractMongoMessageResourceServic
     public static final String INTERNAL_ONLY = "internal_only";
 
     public static final String MOBILE_APP_BAD_REQUEST = "mobile_app_bad_request";
+
+    public static final String MOBILE_APP_UNABLE_TO_GEN_KEYSTORE = "mobile_app_unable_to_gen_keystore";
 }
