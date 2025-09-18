@@ -251,11 +251,49 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_comms.SOURCE</code>. Name
+     * of source form where we get this Product Comm.
+     */
+    public EntityProcessorProductCommsRecord setSource(String value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_comms.SOURCE</code>. Name
+     * of source form where we get this Product Comm.
+     */
+    public String getSource() {
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_product_comms.SUB_SOURCE</code>.
+     * Name of sub source of source form where we get this Product Comm.
+     */
+    public EntityProcessorProductCommsRecord setSubSource(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_comms.SUB_SOURCE</code>.
+     * Name of sub source of source form where we get this Product Comm.
+     */
+    public String getSubSource() {
+        return (String) get(13);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
      * Flag to check if this Product Comm is default or not.
      */
     public EntityProcessorProductCommsRecord setIsDefault(Byte value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -265,7 +303,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is default or not.
      */
     public Byte getIsDefault() {
-        return (Byte) get(12);
+        return (Byte) get(14);
     }
 
     /**
@@ -274,7 +312,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Product Comm.
      */
     public EntityProcessorProductCommsRecord setTempActive(Byte value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -284,7 +322,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Product Comm.
      */
     public Byte getTempActive() {
-        return (Byte) get(13);
+        return (Byte) get(15);
     }
 
     /**
@@ -293,7 +331,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is active or not.
      */
     public EntityProcessorProductCommsRecord setIsActive(Byte value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -303,7 +341,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(14);
+        return (Byte) get(16);
     }
 
     /**
@@ -312,7 +350,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public EntityProcessorProductCommsRecord setCreatedBy(ULong value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -322,7 +360,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(17);
     }
 
     /**
@@ -331,7 +369,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public EntityProcessorProductCommsRecord setCreatedAt(LocalDateTime value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -341,7 +379,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -350,7 +388,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public EntityProcessorProductCommsRecord setUpdatedBy(ULong value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -360,7 +398,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(19);
     }
 
     /**
@@ -369,7 +407,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public EntityProcessorProductCommsRecord setUpdatedAt(LocalDateTime value) {
-        set(18, value);
+        set(20, value);
         return this;
     }
 
@@ -379,7 +417,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -405,7 +443,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductCommsRecord
      */
-    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, String connectionName, String connectionType, ULong productId, Short dialCode, String phoneNumber, String email, Byte isDefault, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, String connectionName, String connectionType, ULong productId, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte isDefault, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS);
 
         setId(id);
@@ -420,6 +458,8 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
         setEmail(email);
+        setSource(source);
+        setSubSource(subSource);
         setIsDefault(isDefault);
         setTempActive(tempActive);
         setIsActive(isActive);

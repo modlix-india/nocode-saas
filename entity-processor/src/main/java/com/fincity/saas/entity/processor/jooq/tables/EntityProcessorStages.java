@@ -285,7 +285,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_STAGES_IDX1_STAGE_NAME, Indexes.ENTITY_PROCESSOR_STAGES_IDX2_STAGE_NAME_PLATFORM);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_STAGES_IDX0_STAGES_AC_CC, Indexes.ENTITY_PROCESSOR_STAGES_IDX1_STAGE_NAME, Indexes.ENTITY_PROCESSOR_STAGES_IDX2_STAGE_NAME_PLATFORM);
     }
 
     @Override
