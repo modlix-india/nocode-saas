@@ -58,6 +58,8 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     private ExotelCallStatus leg1Status;
     private ExotelCallStatus leg2Status;
     private List<ExotelLeg> legs;
+    private ExotelCallRequest exotelCallRequest;
+    private ExotelCallResponse exotelCallResponse;
 
     public ExotelCall() {}
 
@@ -65,6 +67,7 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
         this.from = request.getFrom();
         this.to = request.getTo();
         this.callerId = request.getCallerId();
+        this.exotelCallRequest = request;
     }
 
     public ExotelCall(ExotelConnectAppletRequest request) {
@@ -111,7 +114,8 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
                 .setDirection(call.getDirection())
                 .setAnsweredBy(call.getAnsweredBy())
                 .setRecordingUrl(call.getRecordingUrl())
-                .updateDetails(call.getDetails());
+                .updateDetails(call.getDetails())
+                .setExotelCallResponse(response);
     }
 
     public ExotelCall updateDetails(ExotelCallDetailsExtended details) {
