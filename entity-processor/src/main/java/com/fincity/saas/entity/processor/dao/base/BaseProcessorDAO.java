@@ -99,7 +99,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private Mono<AbstractCondition> handleHierarchyAccess(AbstractCondition condition, ProcessorAccess access) {
-        List<ULong>  managingClientIds   = access.getUserInherit().getManagingClientIds();
+        List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
 
         if (isEmptyCondition(condition))
             return Mono.just(this.createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
