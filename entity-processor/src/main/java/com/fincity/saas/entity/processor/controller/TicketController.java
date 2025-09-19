@@ -12,7 +12,6 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusReques
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;

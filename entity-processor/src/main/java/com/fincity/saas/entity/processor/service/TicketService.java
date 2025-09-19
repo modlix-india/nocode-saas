@@ -433,15 +433,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<ProductComm> getTicketProductComm(
             Identity ticketId, String connectionName, ConnectionType connectionType) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.readIdentityWithAccess(access, ticketId),
-                (access, ticket) -> this.productCommService.getProductComm(
-                        access,
-                        ticket.getProductId(),
-                        connectionName,
-                        connectionType,
-                        ticket.getSource(),
-                        ticket.getSubSource()));
+                        super::hasAccess,
+                        access -> this.readIdentityWithAccess(access, ticketId),
+                        (access, ticket) -> this.productCommService.getProductComm(
+                                access,
+                                ticket.getProductId(),
+                                connectionName,
+                                connectionType,
+                                ticket.getSource(),
+                                ticket.getSubSource()))
+                .switchIfEmpty(Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
     }
 
     public Mono<Ticket> createForCampaign(CampaignTicketRequest campaignTicketRequest) {
