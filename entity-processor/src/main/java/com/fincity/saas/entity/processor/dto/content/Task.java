@@ -56,6 +56,7 @@ public class Task extends BaseContentDto<Task> {
     public static Task of(TaskRequest taskRequest) {
 
         Task task = (Task) new Task()
+                .setTaskTypeId(taskRequest.getTaskTypeId().getULongId())
                 .setDueDate(taskRequest.getDueDate())
                 .setTaskPriority(taskRequest.getTaskPriority())
                 .setHasReminder(taskRequest.isHasReminder())
