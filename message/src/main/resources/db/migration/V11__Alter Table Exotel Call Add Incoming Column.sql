@@ -1,0 +1,4 @@
+ALTER TABLE `message`.`message_exotel_calls`
+    ADD COLUMN `CUSTOMER_DIAL_CODE` SMALLINT NOT NULL DEFAULT 91 COMMENT 'Dial code of the customer phone number.' AFTER `CALLER_ID`,
+    ADD COLUMN `CUSTOMER_PHONE_NUMBER` CHAR(15) NULL COMMENT 'Phone number of the customer.' AFTER `CUSTOMER_DIAL_CODE`,
+    ADD COLUMN `EXOTEL_CONNECT_APPLET_REQUEST` JSON NULL COMMENT 'Entire Exotel Response object Received' AFTER `EXOTEL_CALL_REQUEST`;

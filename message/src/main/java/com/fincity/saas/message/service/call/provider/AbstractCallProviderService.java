@@ -6,6 +6,7 @@ import com.fincity.saas.message.configuration.WebClientConfig;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.model.common.IdAndValue;
+import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
@@ -66,6 +67,18 @@ public abstract class AbstractCallProviderService<
         return ConnectionType.CALL;
     }
 
+    public Mono<D> updateInternalWithoutUser(MessageAccess publicAccess, D entity) {
+
+        if (publicAccess.getUserId() != null) entity.setUpdatedBy(publicAccess.getUserId());
+
+        return this.dao.update(entity).flatMap(updated -> this.evictCache(entity)
+                .map(evicted -> updated));
+    }
+
+    public Mono<D> updateInternal(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
+    }
+
     protected Mono<Boolean> isValidConnection(Connection connection) {
         if (connection.getConnectionType() != ConnectionType.CALL
                 || !connection.getConnectionSubType().equals(this.getConnectionSubType()))
@@ -115,6 +128,13 @@ public abstract class AbstractCallProviderService<
     protected Mono<String> getCallBackUrl(String appCode, String clientCode) {
         return this.securityService
                 .getAppUrl(appCode, clientCode)
+                .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri())
+                .switchIfEmpty(Mono.just(this.appBaseUrl + CALL_BACK_URI + this.getProviderUri()));
+    }
+
+    protected Mono<String> getCallBackAppUrl(String appCode) {
+        return this.securityService
+                .getAppUrl(appCode, null)
                 .map(appUrl -> appUrl + CALL_BACK_URI + this.getProviderUri())
                 .switchIfEmpty(Mono.just(this.appBaseUrl + CALL_BACK_URI + this.getProviderUri()));
     }

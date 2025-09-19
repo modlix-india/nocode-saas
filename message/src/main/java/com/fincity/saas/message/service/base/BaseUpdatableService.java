@@ -78,25 +78,14 @@ public abstract class BaseUpdatableService<
     }
 
     private Mono<Boolean> evictAcCcCache(D entity) {
-
-        return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> Mono.zip(
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                this.getCacheKey(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        access.getUserId(),
-                                        entity.getId())),
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                this.getCacheKey(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        access.getUserId(),
-                                        entity.getCode())),
-                        (idEvicted, codeEvicted) -> idEvicted && codeEvicted));
+        return Mono.zip(
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getId())),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCode())),
+                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
     }
 
     @Autowired
@@ -181,14 +170,14 @@ public abstract class BaseUpdatableService<
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, id),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), id));
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
     }
 
     public Mono<D> readByCode(MessageAccess access, String code) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, code),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), code));
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
     }
 
     @Override
