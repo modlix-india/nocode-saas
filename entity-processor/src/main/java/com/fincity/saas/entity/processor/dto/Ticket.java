@@ -97,9 +97,15 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                                 ? campaignTicketRequest.getLeadDetails().getEmail()
                                 : null)
                 .setSource(campaignTicketRequest.getLeadDetails().getSource())
-                .setSubSource(campaignTicketRequest.getLeadDetails().getSubSource() != null ? campaignTicketRequest.getLeadDetails().getSubSource() : null)
-                .setName(campaignTicketRequest.getLeadDetails().getFullName() != null ? campaignTicketRequest.getLeadDetails().getFullName() :
-                        campaignTicketRequest.getLeadDetails().getFirstName() + " " + campaignTicketRequest.getLeadDetails().getLastName());
+                .setSubSource(
+                        campaignTicketRequest.getLeadDetails().getSubSource() != null
+                                ? campaignTicketRequest.getLeadDetails().getSubSource()
+                                : null)
+                .setName(
+                        campaignTicketRequest.getLeadDetails().getFullName() != null
+                                ? campaignTicketRequest.getLeadDetails().getFullName()
+                                : campaignTicketRequest.getLeadDetails().getFirstName() + " "
+                                        + campaignTicketRequest.getLeadDetails().getLastName());
     }
 
     @Override

@@ -84,18 +84,10 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     private Mono<AbstractCondition> handleNoBpAccess(AbstractCondition condition) {
 
-        if (isEmptyCondition(condition))
-            return Mono.just(new FilterCondition()
-                    .setOperator(FilterConditionOperator.IS_NULL)
-                    .setField(BaseProcessorDto.Fields.clientId));
+        if (isEmptyCondition(condition)) return Mono.just(condition);
 
         return FlatMapUtil.flatMapMono(
-                () -> condition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
-                cond -> Mono.just(ComplexCondition.and(
-                        cond,
-                        new FilterCondition()
-                                .setOperator(FilterConditionOperator.IS_NULL)
-                                .setField(BaseProcessorDto.Fields.clientId))));
+                () -> condition.removeConditionWithField(BaseProcessorDto.Fields.clientId), Mono::just);
     }
 
     private Mono<AbstractCondition> handleHierarchyAccess(AbstractCondition condition, ProcessorAccess access) {
