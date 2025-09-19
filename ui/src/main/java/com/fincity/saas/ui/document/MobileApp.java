@@ -26,6 +26,11 @@ public class MobileApp extends AbstractUpdatableDTO<String, String> {
     private AppDetails details;
     private String androidAppURL;
     private String iosAppURL;
+    private String androidKeystore;
+    private String androidStorePass;
+    private String androidKeyPass;
+    private String androidAlias;
+    private String iosCertificate;
 
     public enum Status {
         PENDING,
