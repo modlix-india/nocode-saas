@@ -1,12 +1,10 @@
 package com.fincity.saas.message.dao.base;
 
+import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-
-import com.fincity.saas.message.dto.base.BaseUpdatableDto;
-
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProviderDAO<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>>

@@ -1,8 +1,5 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
@@ -17,7 +14,8 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -202,8 +200,7 @@ public class WhatsappPhoneNumberService
 
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.getByPhoneNumberId(messageAccess, phoneNumber.getId()),
-                        whatsappPhoneNumber ->
-                            super.update(whatsappPhoneNumber.update(phoneNumber)),
+                        whatsappPhoneNumber -> super.update(whatsappPhoneNumber.update(phoneNumber)),
                         (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
                                 this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
                 .switchIfEmpty(Mono.defer(() -> super.createInternal(
