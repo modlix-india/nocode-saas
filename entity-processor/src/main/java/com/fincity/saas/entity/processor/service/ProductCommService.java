@@ -223,8 +223,7 @@ public class ProductCommService
 
                     return super.updateInternal(access, defaultComm);
                 },
-                (defaultComm, updated) -> this.evictCache(updated)
-                        .thenReturn(updated));
+                (defaultComm, updated) -> this.evictCache(updated).thenReturn(updated));
     }
 
     public Mono<ProductComm> getProductComm(
