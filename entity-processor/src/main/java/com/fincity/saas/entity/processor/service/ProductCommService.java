@@ -65,23 +65,19 @@ public class ProductCommService
                                 entity.getConnectionType(),
                                 entity.getSource(),
                                 entity.getSubSource())),
-                super.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getProductId(),
-                                entity.getConnectionName(),
-                                entity.getConnectionType())),
+                this.evictDefaultCache(entity),
                 (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
     }
 
-    private Mono<Boolean> evictDefaultCache(
-            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
+    private Mono<Boolean> evictDefaultCache(ProductComm entity) {
         return super.cacheService.evict(
                 this.getCacheName(),
                 super.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), productId, connectionName, connectionType.name()));
+                        entity.getAppCode(),
+                        entity.getClientCode(),
+                        entity.getProductId(),
+                        entity.getConnectionName(),
+                        entity.getConnectionType()));
     }
 
     @Override
@@ -227,11 +223,7 @@ public class ProductCommService
 
                     return super.updateInternal(access, defaultComm);
                 },
-                (defaultComm, updated) -> this.evictDefaultCache(
-                                access,
-                                productCommRequest.getProductId().getULongId(),
-                                productCommRequest.getConnectionName(),
-                                productCommRequest.getConnectionType())
+                (defaultComm, updated) -> this.evictCache(updated)
                         .thenReturn(updated));
     }
 
