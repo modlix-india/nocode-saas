@@ -26,8 +26,8 @@ public enum ExotelDirection implements ExotelOption<ExotelDirection> {
         return ExotelOption.getByName(ExotelDirection.class, name);
     }
 
-    public boolean isOutbound() {
-        return this == OUTBOUND_DIAL || this == OUTBOUND_API;
+    public Boolean isOutbound() {
+        return (this == OUTBOUND_DIAL || this == OUTBOUND_API);
     }
 
     @Override

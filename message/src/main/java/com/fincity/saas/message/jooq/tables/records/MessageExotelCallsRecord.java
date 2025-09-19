@@ -7,6 +7,7 @@ package com.fincity.saas.message.jooq.tables.records;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
+import com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnectAppletRequest;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 
 import java.math.BigDecimal;
@@ -245,11 +246,47 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     }
 
     /**
+     * Setter for <code>message.message_exotel_calls.CUSTOMER_DIAL_CODE</code>.
+     * Dial code of the customer phone number.
+     */
+    public MessageExotelCallsRecord setCustomerDialCode(Short value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>message.message_exotel_calls.CUSTOMER_DIAL_CODE</code>.
+     * Dial code of the customer phone number.
+     */
+    public Short getCustomerDialCode() {
+        return (Short) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_exotel_calls.CUSTOMER_PHONE_NUMBER</code>. Phone
+     * number of the customer.
+     */
+    public MessageExotelCallsRecord setCustomerPhoneNumber(String value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_exotel_calls.CUSTOMER_PHONE_NUMBER</code>. Phone
+     * number of the customer.
+     */
+    public String getCustomerPhoneNumber() {
+        return (String) get(14);
+    }
+
+    /**
      * Setter for <code>message.message_exotel_calls.EXOTEL_CALL_STATUS</code>.
      * Status of the call.
      */
     public MessageExotelCallsRecord setExotelCallStatus(ExotelCallStatus value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -258,7 +295,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Status of the call.
      */
     public ExotelCallStatus getExotelCallStatus() {
-        return (ExotelCallStatus) get(13);
+        return (ExotelCallStatus) get(15);
     }
 
     /**
@@ -266,7 +303,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Timestamp when the call was initiated.
      */
     public MessageExotelCallsRecord setStartTime(LocalDateTime value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -275,7 +312,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Timestamp when the call was initiated.
      */
     public LocalDateTime getStartTime() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(16);
     }
 
     /**
@@ -283,7 +320,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when the call ended.
      */
     public MessageExotelCallsRecord setEndTime(LocalDateTime value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -292,7 +329,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when the call ended.
      */
     public LocalDateTime getEndTime() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(17);
     }
 
     /**
@@ -300,7 +337,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call in seconds.
      */
     public MessageExotelCallsRecord setDuration(Long value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -309,7 +346,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call in seconds.
      */
     public Long getDuration() {
-        return (Long) get(16);
+        return (Long) get(18);
     }
 
     /**
@@ -317,7 +354,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * call.
      */
     public MessageExotelCallsRecord setPrice(BigDecimal value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -326,7 +363,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * call.
      */
     public BigDecimal getPrice() {
-        return (BigDecimal) get(17);
+        return (BigDecimal) get(19);
     }
 
     /**
@@ -334,7 +371,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call (e.g., inbound or outbound).
      */
     public MessageExotelCallsRecord setDirection(String value) {
-        set(18, value);
+        set(20, value);
         return this;
     }
 
@@ -343,7 +380,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call (e.g., inbound or outbound).
      */
     public String getDirection() {
-        return (String) get(18);
+        return (String) get(20);
     }
 
     /**
@@ -351,7 +388,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * or system that answered the call.
      */
     public MessageExotelCallsRecord setAnsweredBy(String value) {
-        set(19, value);
+        set(21, value);
         return this;
     }
 
@@ -360,7 +397,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * or system that answered the call.
      */
     public String getAnsweredBy() {
-        return (String) get(19);
+        return (String) get(21);
     }
 
     /**
@@ -368,7 +405,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call recording, if available.
      */
     public MessageExotelCallsRecord setRecordingUrl(String value) {
-        set(20, value);
+        set(22, value);
         return this;
     }
 
@@ -377,7 +414,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the call recording, if available.
      */
     public String getRecordingUrl() {
-        return (String) get(20);
+        return (String) get(22);
     }
 
     /**
@@ -386,7 +423,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Conversation duration of the call in seconds.
      */
     public MessageExotelCallsRecord setConversationDuration(Long value) {
-        set(21, value);
+        set(23, value);
         return this;
     }
 
@@ -396,7 +433,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Conversation duration of the call in seconds.
      */
     public Long getConversationDuration() {
-        return (Long) get(21);
+        return (Long) get(23);
     }
 
     /**
@@ -404,7 +441,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the first leg of the call.
      */
     public MessageExotelCallsRecord setLeg1Status(ExotelCallStatus value) {
-        set(22, value);
+        set(24, value);
         return this;
     }
 
@@ -413,7 +450,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the first leg of the call.
      */
     public ExotelCallStatus getLeg1Status() {
-        return (ExotelCallStatus) get(22);
+        return (ExotelCallStatus) get(24);
     }
 
     /**
@@ -421,7 +458,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the second leg of the call.
      */
     public MessageExotelCallsRecord setLeg2Status(ExotelCallStatus value) {
-        set(23, value);
+        set(25, value);
         return this;
     }
 
@@ -430,7 +467,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * of the second leg of the call.
      */
     public ExotelCallStatus getLeg2Status() {
-        return (ExotelCallStatus) get(23);
+        return (ExotelCallStatus) get(25);
     }
 
     /**
@@ -438,7 +475,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Entire Exotel Request object send to Exotel.
      */
     public MessageExotelCallsRecord setExotelCallRequest(ExotelCallRequest value) {
-        set(24, value);
+        set(26, value);
         return this;
     }
 
@@ -447,7 +484,26 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Entire Exotel Request object send to Exotel.
      */
     public ExotelCallRequest getExotelCallRequest() {
-        return (ExotelCallRequest) get(24);
+        return (ExotelCallRequest) get(26);
+    }
+
+    /**
+     * Setter for
+     * <code>message.message_exotel_calls.EXOTEL_CONNECT_APPLET_REQUEST</code>.
+     * Entire Exotel Response object Received
+     */
+    public MessageExotelCallsRecord setExotelConnectAppletRequest(ExotelConnectAppletRequest value) {
+        set(27, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>message.message_exotel_calls.EXOTEL_CONNECT_APPLET_REQUEST</code>.
+     * Entire Exotel Response object Received
+     */
+    public ExotelConnectAppletRequest getExotelConnectAppletRequest() {
+        return (ExotelConnectAppletRequest) get(27);
     }
 
     /**
@@ -456,7 +512,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Exotel Response object send by Exotel.
      */
     public MessageExotelCallsRecord setExotelCallResponse(ExotelCallResponse value) {
-        set(25, value);
+        set(28, value);
         return this;
     }
 
@@ -466,7 +522,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Exotel Response object send by Exotel.
      */
     public ExotelCallResponse getExotelCallResponse() {
-        return (ExotelCallResponse) get(25);
+        return (ExotelCallResponse) get(28);
     }
 
     /**
@@ -474,7 +530,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * check if this call is active or not.
      */
     public MessageExotelCallsRecord setIsActive(Byte value) {
-        set(26, value);
+        set(29, value);
         return this;
     }
 
@@ -483,7 +539,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * check if this call is active or not.
      */
     public Byte getIsActive() {
-        return (Byte) get(26);
+        return (Byte) get(29);
     }
 
     /**
@@ -491,7 +547,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * the user who created this row.
      */
     public MessageExotelCallsRecord setCreatedBy(ULong value) {
-        set(27, value);
+        set(30, value);
         return this;
     }
 
@@ -500,7 +556,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(27);
+        return (ULong) get(30);
     }
 
     /**
@@ -508,7 +564,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when this record was created.
      */
     public MessageExotelCallsRecord setCreatedAt(LocalDateTime value) {
-        set(28, value);
+        set(31, value);
         return this;
     }
 
@@ -517,7 +573,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when this record was created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(28);
+        return (LocalDateTime) get(31);
     }
 
     /**
@@ -525,7 +581,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * the user who updated this row.
      */
     public MessageExotelCallsRecord setUpdatedBy(ULong value) {
-        set(29, value);
+        set(32, value);
         return this;
     }
 
@@ -534,7 +590,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(29);
+        return (ULong) get(32);
     }
 
     /**
@@ -542,7 +598,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when this record was last updated.
      */
     public MessageExotelCallsRecord setUpdatedAt(LocalDateTime value) {
-        set(30, value);
+        set(33, value);
         return this;
     }
 
@@ -551,7 +607,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * when this record was last updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(30);
+        return (LocalDateTime) get(33);
     }
 
     // -------------------------------------------------------------------------
@@ -577,7 +633,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     /**
      * Create a detached, initialised MessageExotelCallsRecord
      */
-    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String from, Short toDialCode, String to, String callerId, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, ExotelCallRequest exotelCallRequest, ExotelCallResponse exotelCallResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String from, Short toDialCode, String to, String callerId, Short customerDialCode, String customerPhoneNumber, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, ExotelCallRequest exotelCallRequest, ExotelConnectAppletRequest exotelConnectAppletRequest, ExotelCallResponse exotelCallResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageExotelCalls.MESSAGE_EXOTEL_CALLS);
 
         setId(id);
@@ -593,6 +649,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
         setToDialCode(toDialCode);
         setTo(to);
         setCallerId(callerId);
+        setCustomerDialCode(customerDialCode);
+        setCustomerPhoneNumber(customerPhoneNumber);
         setExotelCallStatus(exotelCallStatus);
         setStartTime(startTime);
         setEndTime(endTime);
@@ -605,6 +663,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
         setLeg1Status(leg1Status);
         setLeg2Status(leg2Status);
         setExotelCallRequest(exotelCallRequest);
+        setExotelConnectAppletRequest(exotelConnectAppletRequest);
         setExotelCallResponse(exotelCallResponse);
         setIsActive(isActive);
         setCreatedBy(createdBy);

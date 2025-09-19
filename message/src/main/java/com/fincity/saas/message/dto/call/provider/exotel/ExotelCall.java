@@ -2,6 +2,8 @@ package com.fincity.saas.message.dto.call.provider.exotel;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
 import com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus;
+import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelDirection;
+import com.fincity.saas.message.model.common.PhoneNumber;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
 import com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnectAppletRequest;
@@ -11,6 +13,7 @@ import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallDe
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelLeg;
 import com.fincity.saas.message.util.PhoneUtil;
+import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,6 +48,10 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     private String from;
     private Integer toDialCode = PhoneUtil.getDefaultCallingCode();
     private String to;
+
+    private Integer customerDialCode = PhoneUtil.getDefaultCallingCode();
+    private String customerPhoneNumber;
+
     private String callerId;
     private ExotelCallStatus exotelCallStatus;
     private LocalDateTime startTime;
@@ -59,25 +66,45 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     private ExotelCallStatus leg2Status;
     private List<ExotelLeg> legs;
     private ExotelCallRequest exotelCallRequest;
+    private ExotelConnectAppletRequest exotelConnectAppletRequest;
     private ExotelCallResponse exotelCallResponse;
 
-    public ExotelCall() {}
+    public static ExotelCall ofOutbound(ExotelCallRequest request) {
 
-    public ExotelCall(ExotelCallRequest request) {
-        this.from = request.getFrom();
-        this.to = request.getTo();
-        this.callerId = request.getCallerId();
-        this.exotelCallRequest = request;
+        PhoneNumber from = PhoneNumber.of(request.getFrom());
+        PhoneNumber to = PhoneNumber.of(request.getTo());
+
+        return new ExotelCall()
+                .setFromDialCode(from.getCountryCode())
+                .setFrom(from.getNumber())
+                .setToDialCode(to.getCountryCode())
+                .setTo(to.getNumber())
+                .setCustomerDialCode(to.getCountryCode())
+                .setCustomerPhoneNumber(to.getNumber())
+                .setCallerId(request.getCallerId())
+                .setStartTime(LocalDateTime.now())
+                .setExotelCallRequest(request);
     }
 
-    public ExotelCall(ExotelConnectAppletRequest request) {
-        this.sid = request.getCallSid();
-        this.direction = request.getDirection();
-        this.from = Optional.ofNullable(request.getFrom()).orElse(this.from);
-        this.to = Optional.ofNullable(request.getTo()).orElse(this.to);
-        this.callerId = Optional.ofNullable(request.getCallTo()).orElse(this.callerId);
-        this.startTime = parseDate(request.getStartTime());
-        this.dateCreated = parseDate(request.getCreated());
+    public static ExotelCall ofInbound(ExotelConnectAppletRequest request, PhoneNumber to) {
+
+        PhoneNumber from = PhoneNumber.of(request.getFrom());
+        PhoneNumber callerId = PhoneNumber.of(request.getCallTo());
+
+        return new ExotelCall()
+                .setSid(request.getCallSid())
+                .setDirection(ExotelDirection.INBOUND.name())
+                .setFromDialCode(from.getCountryCode())
+                .setFrom(from.getNumber())
+                .setToDialCode(to.getCountryCode())
+                .setTo(to.getNumber())
+                .setCustomerDialCode(from.getCountryCode())
+                .setCustomerPhoneNumber(from.getNumber())
+                .setCallerId(callerId.getLandlineNumber())
+                .setStartTime(parseDate(request.getStartTime()))
+                .setDateCreated(parseDate(request.getCreated()))
+                .setRecordingUrl(request.getRecordingUrl())
+                .setExotelConnectAppletRequest(request);
     }
 
     private static LocalDateTime parseDate(String date) {
@@ -134,16 +161,16 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     public ExotelCall update(ExotelCallStatusCallback callback) {
         if (callback == null) return this;
 
-        this.sid = Optional.ofNullable(this.sid).orElse(callback.getCallSid());
-        this.exotelCallStatus = Optional.ofNullable(callback.getStatus()).orElse(this.exotelCallStatus);
-        this.recordingUrl = Optional.ofNullable(callback.getRecordingUrl()).orElse(this.recordingUrl);
-        this.direction = Optional.ofNullable(callback.getDirection()).orElse(this.direction);
-        this.from = Optional.ofNullable(callback.getFrom()).orElse(this.from);
-        this.to = Optional.ofNullable(callback.getTo()).orElse(this.to);
-        this.startTime = parseDate(callback.getStartTime());
-        this.endTime = parseDate(callback.getEndTime());
-        this.conversationDuration =
-                Optional.ofNullable(callback.getConversationDuration()).orElse(this.conversationDuration);
+        if (this.sid == null) SetterUtil.setIfPresent(callback.getCallSid(), this::setSid);
+
+        SetterUtil.setIfPresent(callback.getStatus(), this::setExotelCallStatus);
+        SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
+        SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
+        SetterUtil.setIfPresent(callback.getFrom(), this::setFrom);
+        SetterUtil.setIfPresent(callback.getTo(), this::setTo);
+        if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
+        if (callback.getEndTime() != null) this.endTime = parseDate(callback.getEndTime());
+        SetterUtil.setIfPresent(callback.getConversationDuration(), this::setConversationDuration);
 
         if (callback.getLegs() != null && !callback.getLegs().isEmpty()) this.legs = callback.getLegs();
 
@@ -153,16 +180,20 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
     public ExotelCall update(ExotelPassThruCallback callback) {
         if (callback == null) return this;
 
-        this.sid = Optional.ofNullable(this.sid).orElse(callback.getCallSid());
-        this.exotelCallStatus = Optional.ofNullable(callback.getCallStatus()).orElse(this.exotelCallStatus);
-        this.recordingUrl = Optional.ofNullable(callback.getRecordingUrl()).orElse(this.recordingUrl);
-        this.direction = Optional.ofNullable(callback.getDirection()).orElse(this.direction);
-        this.from = Optional.ofNullable(callback.getFrom()).orElse(this.from);
-        this.to = Optional.ofNullable(callback.getCallTo()).orElse(this.to);
-        this.callerId = Optional.ofNullable(callback.getTo()).orElse(this.callerId);
-        this.startTime = parseDate(callback.getStartTime());
-        this.dateCreated = parseDate(callback.getCreated());
-        this.endTime = parseDate(callback.getEndTime());
+        if (this.sid == null) SetterUtil.setIfPresent(callback.getCallSid(), this::setSid);
+
+        SetterUtil.setIfPresent(callback.getCallStatus(), this::setExotelCallStatus);
+        SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
+        SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
+        SetterUtil.setIfPresent(callback.getFrom(), this::setFrom);
+        SetterUtil.setIfPresent(callback.getCallTo(), this::setTo);
+        SetterUtil.setIfPresent(callback.getTo(), this::setCallerId);
+
+        if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
+
+        if (callback.getEndTime() != null) this.endTime = parseDate(callback.getEndTime());
+
+        if (callback.getCreated() != null) this.dateCreated = parseDate(callback.getCreated());
 
         Long dialDuration = callback.getDialCallDuration();
         if (dialDuration != null) {
@@ -170,7 +201,7 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
             this.conversationDuration = dialDuration;
         }
 
-        this.callerId = Optional.ofNullable(callback.getOutgoingPhoneNumber()).orElse(this.callerId);
+        SetterUtil.setIfPresent(callback.getOutgoingPhoneNumber(), this::setCallerId);
 
         return this;
     }

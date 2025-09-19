@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -27,8 +28,11 @@ public class ExotelCallController {
     }
 
     @PostMapping("/connect")
-    public Mono<ExotelConnectAppletResponse> connectCall(@RequestBody IncomingCallRequest request) {
-        return exotelCallService.connectCall(request).onErrorResume(e -> {
+    public Mono<ExotelConnectAppletResponse> connectCall(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestBody IncomingCallRequest request) {
+        return exotelCallService.connectCall(appCode, clientCode, request).onErrorResume(e -> {
             logger.error("Error in connectCall: {}", e.getMessage(), e);
             return Mono.empty();
         });
