@@ -16,5 +16,5 @@ public class CallRequest extends BaseMessageRequest {
     private static final long serialVersionUID = 6013191012022643981L;
 
     private PhoneNumber toNumber;
-    private String callerId;
+    private PhoneNumber callerId;
 }
