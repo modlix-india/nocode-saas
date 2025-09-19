@@ -5,9 +5,11 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
 import com.fincity.saas.ui.repository.MobileAppRepository;
+import jakarta.annotation.PostConstruct;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.http.HttpStatus;
@@ -16,10 +18,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.KeyStore;
-import java.security.SecureRandom;
+import java.security.*;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -36,6 +35,13 @@ public class MobileAppService {
     public MobileAppService(MobileAppRepository repo, UIMessageResourceService uiMessageResourceService) {
         this.repo = repo;
         this.uiMessageResourceService = uiMessageResourceService;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
     }
 
     public Mono<List<MobileApp>> list(String appCode, String clientCode) {
