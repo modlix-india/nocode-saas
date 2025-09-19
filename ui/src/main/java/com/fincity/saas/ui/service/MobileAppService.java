@@ -52,11 +52,16 @@ public class MobileAppService {
     }
 
     public static KeystoreBundle createKeystore() throws Exception {
+        // Ensure BC provider is registered, even if PostConstruct hasn't run for some reason
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+
         String alias = "modlix";
         String storePass = new BigInteger(130, new SecureRandom()).toString(32);
 
         // Generate keypair
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", BouncyCastleProvider.PROVIDER_NAME);
         kpg.initialize(2048);
         KeyPair kp = kpg.generateKeyPair();
 
@@ -68,8 +73,12 @@ public class MobileAppService {
         BigInteger serial = new BigInteger(64, new SecureRandom());
         JcaX509v3CertificateBuilder builder =
                 new JcaX509v3CertificateBuilder(subject, serial, notBefore, notAfter, subject, kp.getPublic());
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
-        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA")
+                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .build(kp.getPrivate());
+        X509Certificate cert = new JcaX509CertificateConverter()
+                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .getCertificate(builder.build(signer));
         cert.checkValidity(new Date());
         cert.verify(kp.getPublic());
 
