@@ -74,7 +74,10 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     @Override
     public Mono<Call> makeCall(MessageAccess access, CallRequest callRequest, Connection connection) {
         String to = callRequest.getToNumber().getNumber();
-        String callerId = callRequest.getCallerId().getLandlineNumber();
+
+        String callerId = callRequest.getCallerId() == null
+                ? (String) connection.getConnectionDetails().get(ExotelCallRequest.Fields.callerId)
+                : callRequest.getCallerId().getLandlineNumber();
 
         if (to == null) return super.throwMissingParam(ExotelCallRequest.Fields.to);
 

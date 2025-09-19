@@ -141,7 +141,11 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     private Mono<Void> createActivityInternal(
-            ActivityAction action, LocalDateTime createOn, String comment, Map<String, Object> context, ProcessorAccess access) {
+            ActivityAction action,
+            LocalDateTime createOn,
+            String comment,
+            Map<String, Object> context,
+            ProcessorAccess access) {
         if (!context.containsKey(Activity.Fields.ticketId)) return Mono.empty();
         ULong ticketId = ULongUtil.valueOf(context.get(Activity.Fields.ticketId));
         if (ticketId == null || ticketId.longValue() <= 0) return Mono.empty();
@@ -177,7 +181,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acCreate(Ticket ticket) {
-        return this.hasAccess().flatMap( access -> this.acCreate(ticket, null, access)).contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
+        return this.hasAccess()
+                .flatMap(access -> this.acCreate(ticket, null, access))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
     public Mono<Void> acCreate(Ticket ticket, String comment, ProcessorAccess access) {
@@ -195,7 +201,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 ticket.getSource(),
                                                 Ticket.Fields.subSource,
                                                 ticket.getSubSource())
-                                        : Map.of(Ticket.Fields.source, ticket.getSource())), access)
+                                        : Map.of(Ticket.Fields.source, ticket.getSource())),
+                        access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
@@ -344,13 +351,15 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acTaskCreate(Task task, String comment) {
-        return this.hasAccess().flatMap(access -> this.createActivityInternal(
+        return this.hasAccess()
+                .flatMap(access -> this.createActivityInternal(
                         ActivityAction.TASK_CREATE,
                         task.getCreatedAt(),
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()), access))
+                                Activity.Fields.taskId, task.getId()),
+                        access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCreate"));
     }
 
@@ -374,11 +383,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 ActivityAction.getOldName(Task.class),
                                 uTask.getT2(),
                                 ActivityAction.getDiffName(Task.class),
-                                dTask), access));
+                                dTask),
+                        access));
     }
 
     public Mono<Void> acTaskComplete(Task task) {
-        return this.hasAccess().flatMap(access -> this.acTaskComplete(task, null, access))
+        return this.hasAccess()
+                .flatMap(access -> this.acTaskComplete(task, null, access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskComplete"));
     }
 
@@ -389,12 +400,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()), access)
+                                Activity.Fields.taskId, task.getId()),
+                        access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskComplete"));
     }
 
     public Mono<Void> acTaskCancelled(Task task) {
-        return this.hasAccess().flatMap(access -> this.acTaskCancelled(task, null, access))
+        return this.hasAccess()
+                .flatMap(access -> this.acTaskCancelled(task, null, access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCancelled"));
     }
 
@@ -405,7 +418,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()), access)
+                                Activity.Fields.taskId, task.getId()),
+                        access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCancelled"));
     }
 
@@ -424,7 +438,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acTaskDelete(Task task, String comment, LocalDateTime deletedDate) {
-        return this.hasAccess().flatMap(access -> this.createActivityInternal(
+        return this.hasAccess()
+                .flatMap(access -> this.createActivityInternal(
                         ActivityAction.TASK_DELETE,
                         deletedDate,
                         comment,
@@ -434,12 +449,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 Activity.Fields.taskId,
                                 task.getId(),
                                 EntitySeries.TASK.getDisplayName(),
-                                task), access))
+                                task),
+                        access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskDelete"));
     }
 
     public Mono<Void> acReminderSet(Task task) {
-        return this.hasAccess().flatMap(access -> this.acReminderSet(task, null, access))
+        return this.hasAccess()
+                .flatMap(access -> this.acReminderSet(task, null, access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReminderSet"));
     }
 
@@ -451,18 +468,21 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         Map.of(
                                 Activity.Fields.ticketId, task.getTicketId(),
                                 Activity.Fields.taskId, task.getId(),
-                                Task.Fields.nextReminder, task.getNextReminder()), access)
+                                Task.Fields.nextReminder, task.getNextReminder()),
+                        access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReminderSet"));
     }
 
     public Mono<Void> acNoteAdd(Note note, String comment) {
-        return this.hasAccess().flatMap(access -> this.createActivityInternal(
+        return this.hasAccess()
+                .flatMap(access -> this.createActivityInternal(
                         ActivityAction.NOTE_ADD,
                         note.getCreatedAt(),
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, note.getTicketId(),
-                                Activity.Fields.noteId, note.getId()), access))
+                                Activity.Fields.noteId, note.getId()),
+                        access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteAdd"));
     }
 
@@ -486,11 +506,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 ActivityAction.getOldName(Note.class),
                                 uNote.getT2(),
                                 ActivityAction.getDiffName(Note.class),
-                                dNote), access));
+                                dNote),
+                        access));
     }
 
     public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
-        return this.hasAccess().flatMap( access -> this.createActivityInternal(
+        return this.hasAccess()
+                .flatMap(access -> this.createActivityInternal(
                         ActivityAction.NOTE_DELETE,
                         deletedDate,
                         comment,
@@ -500,7 +522,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 Activity.Fields.noteId,
                                 note.getId(),
                                 EntitySeries.NOTE.getDisplayName(),
-                                note), access))
+                                note),
+                        access))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteDelete"));
     }
 
