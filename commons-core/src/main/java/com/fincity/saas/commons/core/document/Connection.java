@@ -55,11 +55,4 @@ public class Connection extends AbstractOverridableDTO<Connection> {
     public Mono<Connection> extractDifference(Connection base) {
         return Mono.just(this);
     }
-
-    public NotificationQueObject.NotificationConnection toNotificationConnection() {
-        return new NotificationQueObject.NotificationConnection()
-                .setConnectionType(this.connectionType.name())
-                .setConnectionSubType(this.connectionSubType.name())
-                .setConnectionDetails(this.connectionDetails);
-    }
 }
