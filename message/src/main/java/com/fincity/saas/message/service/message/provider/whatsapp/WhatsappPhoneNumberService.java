@@ -199,7 +199,7 @@ public class WhatsappPhoneNumberService
             String whatsappBusinessAccountId, PhoneNumber phoneNumber, MessageAccess messageAccess) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.dao.findByUniqueField(phoneNumber.getId()),
+                        () -> this.dao.getByPhoneNumberId(messageAccess, phoneNumber.getId()),
                         whatsappPhoneNumber -> super.update(whatsappPhoneNumber.update(phoneNumber)),
                         (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
                                 this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))

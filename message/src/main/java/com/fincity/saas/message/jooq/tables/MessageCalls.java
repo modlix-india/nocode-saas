@@ -4,8 +4,6 @@
 package com.fincity.saas.message.jooq.tables;
 
 
-import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
-import com.fincity.saas.message.enums.call.CallStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls.MessageExotelCallsPath;
@@ -15,14 +13,12 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -37,7 +33,6 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
-import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -94,36 +89,6 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
     public final TableField<MessageCallsRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
 
     /**
-     * The column <code>message.message_calls.FROM_DIAL_CODE</code>. Dial code
-     * of the caller's phone number.
-     */
-    public final TableField<MessageCallsRecord, Short> FROM_DIAL_CODE = createField(DSL.name("FROM_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the caller's phone number.");
-
-    /**
-     * The column <code>message.message_calls.FROM</code>. Phone number of the
-     * caller.
-     */
-    public final TableField<MessageCallsRecord, String> FROM = createField(DSL.name("FROM"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the caller.");
-
-    /**
-     * The column <code>message.message_calls.TO_DIAL_CODE</code>. Dial code of
-     * the receiver's phone number.
-     */
-    public final TableField<MessageCallsRecord, Short> TO_DIAL_CODE = createField(DSL.name("TO_DIAL_CODE"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.inline("91", SQLDataType.SMALLINT)), this, "Dial code of the receiver's phone number.");
-
-    /**
-     * The column <code>message.message_calls.TO</code>. Phone number of the
-     * receiver.
-     */
-    public final TableField<MessageCallsRecord, String> TO = createField(DSL.name("TO"), SQLDataType.CHAR(15).nullable(false), this, "Phone number of the receiver.");
-
-    /**
-     * The column <code>message.message_calls.CALLER_ID</code>. Caller ID
-     * configured for this call.
-     */
-    public final TableField<MessageCallsRecord, String> CALLER_ID = createField(DSL.name("CALLER_ID"), SQLDataType.CHAR(50), this, "Caller ID configured for this call.");
-
-    /**
      * The column <code>message.message_calls.CONNECTION_NAME</code>. Name of
      * the connection used for the call.
      */
@@ -142,46 +107,10 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
     public final TableField<MessageCallsRecord, Byte> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.TINYINT.nullable(false), this, "Indicates whether the call is outbound.");
 
     /**
-     * The column <code>message.message_calls.CALL_STATUS</code>. Status of the
-     * call.
-     */
-    public final TableField<MessageCallsRecord, CallStatus> CALL_STATUS = createField(DSL.name("CALL_STATUS"), SQLDataType.VARCHAR(20).nullable(false).defaultValue(DSL.inline("UNKNOWN", SQLDataType.VARCHAR)), this, "Status of the call.", new EnumConverter<String, CallStatus>(String.class, CallStatus.class));
-
-    /**
-     * The column <code>message.message_calls.START_TIME</code>. Timestamp when
-     * the call started.
-     */
-    public final TableField<MessageCallsRecord, LocalDateTime> START_TIME = createField(DSL.name("START_TIME"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the call started.");
-
-    /**
-     * The column <code>message.message_calls.END_TIME</code>. Timestamp when
-     * the call ended.
-     */
-    public final TableField<MessageCallsRecord, LocalDateTime> END_TIME = createField(DSL.name("END_TIME"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the call ended.");
-
-    /**
-     * The column <code>message.message_calls.DURATION</code>. Duration of the
-     * call in seconds.
-     */
-    public final TableField<MessageCallsRecord, Long> DURATION = createField(DSL.name("DURATION"), SQLDataType.BIGINT, this, "Duration of the call in seconds.");
-
-    /**
-     * The column <code>message.message_calls.RECORDING_URL</code>. URL of the
-     * call recording.
-     */
-    public final TableField<MessageCallsRecord, String> RECORDING_URL = createField(DSL.name("RECORDING_URL"), SQLDataType.VARCHAR(2083), this, "URL of the call recording.");
-
-    /**
      * The column <code>message.message_calls.EXOTEL_CALL_ID</code>. ID of the
      * associated Exotel call.
      */
     public final TableField<MessageCallsRecord, ULong> EXOTEL_CALL_ID = createField(DSL.name("EXOTEL_CALL_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID of the associated Exotel call.");
-
-    /**
-     * The column <code>message.message_calls.METADATA</code>. Additional
-     * metadata related to the call.
-     */
-    public final TableField<MessageCallsRecord, Map> METADATA = createField(DSL.name("METADATA"), SQLDataType.JSON, this, "Additional metadata related to the call.", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column <code>message.message_calls.IS_ACTIVE</code>. Flag to check if

@@ -1,0 +1,192 @@
+package com.modlix.saas.commons2.configuration;
+
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType.ArraySchemaTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType.AdditionalTypeAdapter;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
+import com.modlix.saas.commons2.codec.RedisJSONCodec;
+import com.modlix.saas.commons2.codec.RedisObjectCodec;
+import com.modlix.saas.commons2.gson.LocalDateTimeAdapter;
+import com.modlix.saas.commons2.jackson.CommonsSerializationModule;
+import com.modlix.saas.commons2.jackson.SortSerializationModule;
+import com.modlix.saas.commons2.jackson.TupleSerializationModule;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.codec.RedisCodec;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
+import io.lettuce.core.pubsub.api.async.RedisPubSubAsyncCommands;
+
+public abstract class AbstractBaseConfiguration implements WebMvcConfigurer {
+
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractBaseConfiguration.class);
+
+    protected ObjectMapper objectMapper;
+
+    @Value("${redis.url:}")
+    private String redisURL;
+
+    @Value("${redis.codec:object}")
+    private String codecType;
+
+    private RedisCodec<String, Object> objectCodec;
+
+    protected AbstractBaseConfiguration(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    protected void initialize() {
+        this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
+        this.objectMapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_EMPTY, Include.ALWAYS));
+        this.objectMapper.registerModule(new CommonsSerializationModule());
+        this.objectMapper.registerModule(new TupleSerializationModule());
+        this.objectMapper.registerModule(new SortSerializationModule());
+
+        this.objectCodec = "object".equals(codecType) ? new RedisObjectCodec() : new RedisJSONCodec(this.objectMapper);
+    }
+
+    @Bean
+    public Gson makeGson() {
+        ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaTypeAdapter();
+
+        AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
+
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+                .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+                .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                .create();
+
+        arraySchemaTypeAdapter.setGson(gson);
+        additionalTypeAdapter.setGson(gson);
+        return gson;
+    }
+
+    @Bean
+    public MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(this.objectMapper);
+        return converter;
+    }
+
+    protected int getInMemorySize() {
+        return 1024 * 1024 * 50;
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(new PageableHandlerMethodArgumentResolver());
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
+        return new BCryptPasswordEncoder(10, SecureRandom.getInstanceStrong());
+    }
+
+    @Bean
+    public RedisClient redisClient() {
+        if (redisURL == null || redisURL.isBlank())
+            return null;
+
+        return RedisClient.create(redisURL);
+    }
+
+    @Bean
+    public RedisAsyncCommands<String, Object> asyncCommands(@Autowired(required = false) RedisClient client) {
+
+        if (client == null)
+            return null;
+
+        StatefulRedisConnection<String, Object> connection = client.connect(objectCodec);
+        return connection.async();
+    }
+
+    @Bean
+    public StatefulRedisPubSubConnection<String, String> subConnection(
+            @Autowired(required = false) RedisClient client) {
+
+        if (client == null)
+            return null;
+
+        return client.connectPubSub();
+    }
+
+    @Bean
+    public RedisPubSubAsyncCommands<String, String> subRedisAsyncCommand(
+            @Autowired(required = false) StatefulRedisPubSubConnection<String, String> connection) {
+
+        if (connection == null)
+            return null;
+
+        return connection.async();
+    }
+
+    @Bean
+    public RedisPubSubAsyncCommands<String, String> pubRedisAsyncCommand(
+            @Autowired(required = false) RedisClient client) {
+
+        if (client == null)
+            return null;
+
+        return client.connectPubSub()
+                .async();
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+
+        registry.addMapping("/**")
+                .allowedOriginPatterns("https://*.modlix.com", "https://*.dev.modlix.com",
+                        "https://*.stage.modlix.com", "https://modlix.com", "https://dev.modlix.com",
+                        "https://stage.modlix.com", "http://localhost:1234", "http://localhost:3000",
+                        "http://localhost:8080")
+                .allowedMethods("*")
+                .maxAge(3600);
+    }
+
+    @Bean
+    public Caffeine<Object, Object> caffeineConfig() {
+        return Caffeine.newBuilder()
+                .expireAfterAccess(Duration.ofMinutes(5));
+    }
+
+    @Bean
+    public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
+        CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
+        caffeineCacheManager.setCaffeine(caffeine);
+        return caffeineCacheManager;
+    }
+}

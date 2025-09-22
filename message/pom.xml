@@ -287,13 +287,6 @@
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
-                                            <includeExpression>.*\.METADATA</includeExpression>
-                                        </forcedType>
-                                        <forcedType>
-                                            <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
-                                            <includeTypes>JSON</includeTypes>
-                                            <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.EVENT</includeExpression>
                                         </forcedType>
                                         <forcedType>
@@ -332,10 +325,32 @@
                                             <includeExpression>.*\.(.*_FILE_DETAIL(S)?)</includeExpression>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.message.enums.call.CallStatus</userType>
-                                            <includeExpression>.*\.CALL_STATUS</includeExpression>
-                                            <includeTypes>ENUM</includeTypes>
-                                            <enumConverter>true</enumConverter>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.templates.ComponentList</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.COMPONENTS</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallRequest</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.EXOTEL_CALL_REQUEST</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallResponse</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.EXOTEL_CALL_RESPONSE</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.request.call.provider.exotel.ExotelConnectAppletRequest</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.EXOTEL_CONNECT_APPLET_REQUEST</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus</userType>

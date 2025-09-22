@@ -45,3 +45,5 @@ maven-wrapper.jar
 *_STATIC.txt
 *_SECURED.sql
 *_STATIC.sql
+
+bin/

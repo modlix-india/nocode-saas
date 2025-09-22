@@ -1,7 +1,7 @@
 package com.fincity.saas.message.service.call;
 
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
-import com.fincity.saas.message.service.base.BaseConnectionService;
+import com.fincity.saas.message.oserver.core.service.BaseConnectionService;
 import org.springframework.stereotype.Service;
 
 @Service

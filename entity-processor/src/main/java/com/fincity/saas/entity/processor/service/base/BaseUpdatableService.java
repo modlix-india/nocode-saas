@@ -91,24 +91,14 @@ public abstract class BaseUpdatableService<
 
     private Mono<Boolean> evictAcCcCache(D entity) {
 
-        return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> Mono.zip(
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                this.getCacheKey(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        access.getUserId(),
-                                        entity.getId())),
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                this.getCacheKey(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        access.getUserId(),
-                                        entity.getCode())),
-                        (idEvicted, codeEvicted) -> idEvicted && codeEvicted));
+        return Mono.zip(
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getId())),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        this.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCode())),
+                (idEvicted, codeEvicted) -> idEvicted && codeEvicted);
     }
 
     @Autowired
@@ -211,14 +201,14 @@ public abstract class BaseUpdatableService<
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, id),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), id));
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
     }
 
     public Mono<D> readByCode(ProcessorAccess access, String code) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readInternal(access, code),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId(), code));
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
     }
 
     protected Mono<D> checkExistsByName(ProcessorAccess access, D entity) {
@@ -261,6 +251,17 @@ public abstract class BaseUpdatableService<
         return this.hasAccess()
                 .flatMap(access -> this.dao.processorAccessCondition(condition, access))
                 .flatMapMany(super::readAllFilter);
+    }
+
+    @Override
+    public Mono<D> update(ULong key, Map<String, Object> fields) {
+        return super.update(key, fields)
+                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
     @Override
@@ -454,5 +455,21 @@ public abstract class BaseUpdatableService<
 
     public Mono<BaseResponse> getBaseResponse(String code) {
         return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
+    }
+
+    protected <T> Mono<T> throwMissingParam(String paramName) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.MISSING_PARAMETERS,
+                this.getEntityName(),
+                paramName);
+    }
+
+    protected <T> Mono<T> throwInvalidParam(String paramName) {
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.INVALID_PARAMETERS,
+                this.getEntityName(),
+                paramName);
     }
 }

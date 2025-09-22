@@ -3,6 +3,8 @@ package com.fincity.saas.entity.processor.dao;
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PARTNERS;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
@@ -34,7 +36,24 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                         .map(rec -> rec.into(this.pojoClass)));
     }
 
-    public Mono<List<Partner>> getPartnerByClientIds(ProcessorAccess access, List<ULong> clientIds) {
+    public Mono<List<Partner>> getPartners(AbstractCondition condition, ProcessorAccess access, List<ULong> clientIds) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.processorAccessCondition(
+                        ComplexCondition.and(
+                                condition,
+                                new FilterCondition()
+                                        .setField(Partner.Fields.clientId)
+                                        .setOperator(FilterConditionOperator.IN)
+                                        .setMultiValue(clientIds)),
+                        access),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition))
+                        .map(rec -> rec.into(this.pojoClass))
+                        .collectList());
+    }
+
+    public Mono<List<Partner>> getPartners(ProcessorAccess access, List<ULong> clientIds) {
         return FlatMapUtil.flatMapMono(
                 () -> this.processorAccessCondition(
                         new FilterCondition()

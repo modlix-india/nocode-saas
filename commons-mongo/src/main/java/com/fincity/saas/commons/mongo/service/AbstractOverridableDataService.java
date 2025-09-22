@@ -98,10 +98,6 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         super(pojoClass);
     }
 
-    protected String getOutsideServerCacheName(String... entityNames) {
-        return String.join("_", entityNames);
-    }
-
     @Override
     public Mono<D> create(D entity) {
 
