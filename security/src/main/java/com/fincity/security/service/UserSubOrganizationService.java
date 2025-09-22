@@ -28,7 +28,6 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
-import com.fincity.saas.commons.security.model.UserResponse;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 
@@ -74,8 +73,7 @@ public class UserSubOrganizationService
 
     private static Collection<? extends GrantedAuthority> toGrantedAuthorities(List<String> stringAuthorities) {
 
-        if (stringAuthorities == null || stringAuthorities.isEmpty())
-            return Set.of();
+        if (stringAuthorities == null || stringAuthorities.isEmpty()) return Set.of();
 
         return stringAuthorities.parallelStream()
                 .map(SimpleGrantedAuthority::new)
@@ -109,8 +107,8 @@ public class UserSubOrganizationService
 
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
         return Mono.zip(
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
                 .map(evicted -> evicted.getT1() && evicted.getT2());
     }
 
@@ -138,10 +136,9 @@ public class UserSubOrganizationService
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
-            if (user.getReportingTo().equals(managerId))
-                return Mono.just(user);
-            return this.updateManager(user, managerId);
-        })
+                    if (user.getReportingTo().equals(managerId)) return Mono.just(user);
+                    return this.updateManager(user, managerId);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"));
     }
 
@@ -186,8 +183,7 @@ public class UserSubOrganizationService
 
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
 
-        if (reportingTo == null)
-            return Mono.just(Boolean.TRUE);
+        if (reportingTo == null) return Mono.just(Boolean.TRUE);
 
         return this.dao.canReportTo(clientId, reportingTo, userId);
     }
@@ -235,13 +231,13 @@ public class UserSubOrganizationService
                             Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
 
         return FlatMapUtil.flatMapMono(
-                () -> this.dao.readById(managerId),
-                user -> this.clientService.isBeingManagedBy(clientId, user.getClientId()),
-                (user, isManaged) -> Boolean.TRUE.equals(isManaged)
-                        ? Mono.just(Tuples.of(user.getClientId(), managerId))
-                        : this.forbiddenError(
-                                SecurityMessageResourceService.FORBIDDEN_PERMISSION,
-                                "user reporting hierarchy"))
+                        () -> this.dao.readById(managerId),
+                        user -> this.clientService.isBeingManagedBy(clientId, user.getClientId()),
+                        (user, isManaged) -> Boolean.TRUE.equals(isManaged)
+                                ? Mono.just(Tuples.of(user.getClientId(), managerId))
+                                : this.forbiddenError(
+                                        SecurityMessageResourceService.FORBIDDEN_PERMISSION,
+                                        "user reporting hierarchy"))
                 .flatMapMany(tuple -> this.getSubOrgUserIds(tuple.getT1(), tuple.getT2(), Boolean.TRUE, isOwner))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getSubOrg [clientId, userId, managerId]"));
     }
@@ -279,28 +275,27 @@ public class UserSubOrganizationService
                 this.getCacheKey(clientId, OWNER));
     }
 
-    private Flux<UserResponse> mapIdsToResponses(Flux<ULong> idsFlux) {
+    private Flux<User> mapIdsToUser(Flux<ULong> idsFlux) {
         return idsFlux.collectList()
                 .flatMapMany(ids -> (ids == null || ids.isEmpty())
                         ? Flux.empty()
-                        : this.userService.readByIds(ids).flatMapMany(Flux::fromIterable))
+                        : this.userService.readByIds(ids, null).flatMapMany(Flux::fromIterable))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.mapIdsToResponses"));
     }
 
-    public Flux<UserResponse> getCurrentUserSubOrgUsers() {
-        return this.mapIdsToResponses(this.getCurrentUserSubOrg())
+    public Flux<User> getCurrentUserSubOrgUsers() {
+        return this.mapIdsToUser(this.getCurrentUserSubOrg())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrgUsers"));
     }
 
-    public Flux<UserResponse> getUserSubOrgInternalUsers(String appCode, ULong clientId, ULong userId) {
-        return this.mapIdsToResponses(this.getUserSubOrgInternal(appCode, clientId, userId))
+    public Flux<User> getUserSubOrgInternalUsers(String appCode, ULong clientId, ULong userId) {
+        return this.mapIdsToUser(this.getUserSubOrgInternal(appCode, clientId, userId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgInternalUsers"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
-    public Flux<UserResponse> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
-
-        return this.mapIdsToResponses(this.getUserSubOrg(appCode, clientId, userId, managerId))
+    public Flux<User> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
+        return this.mapIdsToUser(this.getUserSubOrg(appCode, clientId, userId, managerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgUsers"));
     }
 }

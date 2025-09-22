@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
 import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.Map;
@@ -26,7 +27,9 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     @Override
     protected Map<String, String> getBucketFilterFieldMappings() {
         return Map.of(
-                BucketFilter.Fields.userIds, Ticket.Fields.assignedUserId,
+                BucketFilter.Fields.createdByIds, AbstractDTO.Fields.createdBy,
+                BucketFilter.Fields.assignedUserIds, Ticket.Fields.assignedUserId,
+                BucketFilter.Fields.clientIds, BaseProcessorDto.Fields.clientId,
                 BucketFilter.Fields.sources, Ticket.Fields.source,
                 BucketFilter.Fields.subSources, Ticket.Fields.subSource,
                 BucketFilter.Fields.productIds, Ticket.Fields.productId,
@@ -48,10 +51,15 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                 .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
                                 .where(conditions)
                                 .groupBy(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID, ENTITY_PROCESSOR_STAGES.NAME))
-                        .map(rec -> new PerValueCount(
-                                rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID),
-                                rec.get(ENTITY_PROCESSOR_STAGES.NAME),
-                                rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID)).longValue())));
+                        .map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = "No Stage";
+                            return new PerValueCount(
+                                    rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID),
+                                    stageName,
+                                    rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                            .longValue());
+                        }));
     }
 
     public Flux<PerValueCount> getTicketPerProjectStageCount(ProcessorAccess access, BucketFilter bucketFilter) {
@@ -68,9 +76,14 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                 .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
                                 .where(ENTITY_PROCESSOR_TICKETS.IS_ACTIVE.eq((byte) 1))
                                 .groupBy(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, ENTITY_PROCESSOR_STAGES.NAME))
-                        .map(rec -> new PerValueCount(
-                                rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID),
-                                rec.get(ENTITY_PROCESSOR_STAGES.NAME),
-                                rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID)).longValue())));
+                        .map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = "No Stage";
+                            return new PerValueCount(
+                                    rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID),
+                                    stageName,
+                                    rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                            .longValue());
+                        }));
     }
 }

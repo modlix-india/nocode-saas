@@ -113,7 +113,7 @@ public abstract class BaseValueDAO<R extends UpdatableRecord<R>, D extends BaseV
             ULong... valueEntityIds) {
         List<Condition> conditions =
                 this.getBaseCommonConditions(appCode, clientCode, platform, productTemplateId, onlyParent);
-        if (valueEntityIds.length > 0)
+        if (valueEntityIds != null && valueEntityIds.length > 0)
             conditions.add(super.idField.in(
                     Arrays.stream(valueEntityIds).filter(Objects::nonNull).toArray(ULong[]::new)));
         return conditions;

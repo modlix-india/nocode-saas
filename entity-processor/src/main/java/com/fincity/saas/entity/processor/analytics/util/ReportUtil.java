@@ -25,6 +25,21 @@ public class ReportUtil {
         return toStatusCounts(perValueCountList, objectNameList, requiredValueList, Function.identity(), includeZero);
     }
 
+    public static Flux<StatusCount> toStatusCounts(
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> objectNameList,
+            Boolean includeZero) {
+
+        List<String> requiredValueList = perValueCountList == null
+                ? List.of()
+                : perValueCountList.stream()
+                        .map(PerValueCount::getValue)
+                        .distinct()
+                        .toList();
+
+        return toStatusCounts(perValueCountList, objectNameList, requiredValueList, includeZero);
+    }
+
     public static <T> Flux<StatusCount> toStatusCounts(
             List<PerValueCount> perValueCountList,
             List<IdAndValue<ULong, String>> objectNameList,
@@ -32,9 +47,18 @@ public class ReportUtil {
             Function<T, String> getNameFunction,
             Boolean includeZero) {
 
-        Map<String, Long> initialValueMap = requiredValueList.stream()
-                .collect(Collectors.toMap(
-                        getNameFunction, v -> 0L, (existing, replacement) -> existing, LinkedHashMap::new));
+        Map<String, Long> initialValueMap;
+        if (requiredValueList != null && !requiredValueList.isEmpty()) {
+            initialValueMap = requiredValueList.stream()
+                    .collect(Collectors.toMap(
+                            getNameFunction, v -> 0L, (existing, replacement) -> existing, LinkedHashMap::new));
+        } else {
+            initialValueMap = perValueCountList.stream()
+                    .map(PerValueCount::getValue)
+                    .distinct()
+                    .collect(Collectors.toMap(
+                            Function.identity(), v -> 0L, (existing, replacement) -> existing, LinkedHashMap::new));
+        }
 
         Map<ULong, List<PerValueCount>> grouped = perValueCountList.stream()
                 .collect(Collectors.groupingBy(PerValueCount::getId, LinkedHashMap::new, Collectors.toList()));
