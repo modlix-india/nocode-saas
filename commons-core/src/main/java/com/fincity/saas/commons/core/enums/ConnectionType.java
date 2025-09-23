@@ -13,7 +13,9 @@ public enum ConnectionType {
 
     TEXT(ConnectionSubType.WHATSAPP),
 
-    CALL(ConnectionSubType.EXOTEL);
+    CALL(ConnectionSubType.EXOTEL),
+
+    AI(ConnectionSubType.OPENAI, ConnectionSubType.GEMINI, ConnectionSubType.CLAUDE, ConnectionSubType.GROK, ConnectionSubType.DEEP_SEEK);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 
