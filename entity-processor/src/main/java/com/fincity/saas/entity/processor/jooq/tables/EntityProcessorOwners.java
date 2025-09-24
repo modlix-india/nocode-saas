@@ -148,14 +148,14 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
      * <code>entity_processor.entity_processor_owners.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorOwnersRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorOwnersRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_owners.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public final TableField<EntityProcessorOwnersRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorOwnersRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
 
     /**
      * The column

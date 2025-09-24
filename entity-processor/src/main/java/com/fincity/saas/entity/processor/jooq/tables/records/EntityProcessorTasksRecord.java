@@ -333,7 +333,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
      * to tell, is the task Completed
      */
-    public EntityProcessorTasksRecord setIsCompleted(Byte value) {
+    public EntityProcessorTasksRecord setIsCompleted(Boolean value) {
         set(17, value);
         return this;
     }
@@ -343,8 +343,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
      * to tell, is the task Completed
      */
-    public Byte getIsCompleted() {
-        return (Byte) get(17);
+    public Boolean getIsCompleted() {
+        return (Boolean) get(17);
     }
 
     /**
@@ -371,7 +371,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
      * to tell, is the task Cancelled
      */
-    public EntityProcessorTasksRecord setIsCancelled(Byte value) {
+    public EntityProcessorTasksRecord setIsCancelled(Boolean value) {
         set(19, value);
         return this;
     }
@@ -381,8 +381,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
      * to tell, is the task Cancelled
      */
-    public Byte getIsCancelled() {
-        return (Byte) get(19);
+    public Boolean getIsCancelled() {
+        return (Boolean) get(19);
     }
 
     /**
@@ -409,7 +409,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
      * Message
      */
-    public EntityProcessorTasksRecord setIsDelayed(Byte value) {
+    public EntityProcessorTasksRecord setIsDelayed(Boolean value) {
         set(21, value);
         return this;
     }
@@ -419,8 +419,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
      * Message
      */
-    public Byte getIsDelayed() {
-        return (Byte) get(21);
+    public Boolean getIsDelayed() {
+        return (Boolean) get(21);
     }
 
     /**
@@ -428,7 +428,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */
-    public EntityProcessorTasksRecord setHasReminder(Byte value) {
+    public EntityProcessorTasksRecord setHasReminder(Boolean value) {
         set(22, value);
         return this;
     }
@@ -438,8 +438,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */
-    public Byte getHasReminder() {
-        return (Byte) get(22);
+    public Boolean getHasReminder() {
+        return (Boolean) get(22);
     }
 
     /**
@@ -466,7 +466,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.TEMP_ACTIVE</code>.
      * Temporary active flag for this task.
      */
-    public EntityProcessorTasksRecord setTempActive(Byte value) {
+    public EntityProcessorTasksRecord setTempActive(Boolean value) {
         set(24, value);
         return this;
     }
@@ -476,8 +476,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.TEMP_ACTIVE</code>.
      * Temporary active flag for this task.
      */
-    public Byte getTempActive() {
-        return (Byte) get(24);
+    public Boolean getTempActive() {
+        return (Boolean) get(24);
     }
 
     /**
@@ -485,7 +485,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_ACTIVE</code>. Flag to
      * check if this task is active or not.
      */
-    public EntityProcessorTasksRecord setIsActive(Byte value) {
+    public EntityProcessorTasksRecord setIsActive(Boolean value) {
         set(25, value);
         return this;
     }
@@ -495,8 +495,8 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_tasks.IS_ACTIVE</code>. Flag to
      * check if this task is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(25);
+    public Boolean getIsActive() {
+        return (Boolean) get(25);
     }
 
     /**
@@ -598,7 +598,7 @@ public class EntityProcessorTasksRecord extends UpdatableRecordImpl<EntityProces
     /**
      * Create a detached, initialised EntityProcessorTasksRecord
      */
-    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ContentEntitySeries contentEntitySeries, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Byte isCompleted, LocalDateTime completedDate, Byte isCancelled, LocalDateTime cancelledDate, Byte isDelayed, Byte hasReminder, LocalDateTime nextReminder, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTasksRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, String hasAttachment, ContentEntitySeries contentEntitySeries, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, ULong taskTypeId, LocalDateTime dueDate, TaskPriority taskPriority, Boolean isCompleted, LocalDateTime completedDate, Boolean isCancelled, LocalDateTime cancelledDate, Boolean isDelayed, Boolean hasReminder, LocalDateTime nextReminder, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTasks.ENTITY_PROCESSOR_TASKS);
 
         setId(id);
