@@ -40,16 +40,17 @@ public class ReactivePaginationUtil {
     }
 
     public static <T> Mono<Page<T>> toPage(List<T> list, Pageable pageable) {
-        return Mono.fromCallable(() -> {
-            if (CollectionUtils.isEmpty(list)) return Page.empty();
 
+        if (CollectionUtils.isEmpty(list)) return Mono.just(new PageImpl<>(List.of(), pageable, 0));
+
+        return Mono.fromCallable(() -> {
             Pageable effectivePageable = pageable;
             if (effectivePageable == null) effectivePageable = PageRequest.of(0, list.size());
 
             int start = Math.toIntExact(effectivePageable.getOffset());
             int end = Math.min((start + effectivePageable.getPageSize()), list.size());
 
-            if (start >= list.size()) return Page.empty();
+            if (start >= list.size()) return new PageImpl<>(List.of(), effectivePageable, 0);
 
             List<T> sortedList = sortListInternal(list, effectivePageable);
 

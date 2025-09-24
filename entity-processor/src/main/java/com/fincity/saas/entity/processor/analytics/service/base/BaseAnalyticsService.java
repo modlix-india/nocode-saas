@@ -6,6 +6,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
+import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -13,15 +14,11 @@ import com.fincity.saas.entity.processor.service.ProductService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import com.fincity.saas.entity.processor.util.NameUtil;
-import java.util.List;
-import java.util.function.Function;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 public abstract class BaseAnalyticsService<
                 R extends UpdatableRecord<R>, D extends AbstractDTO<ULong, ULong>, O extends BaseAnalyticsDAO<R, D>>
@@ -57,8 +54,11 @@ public abstract class BaseAnalyticsService<
         this.productService = productService;
     }
 
-    public <T> Mono<Tuple2<T, List<IdAndValue<ULong, String>>>> resolveUserIds(
-            ProcessorAccess access, Function<List<ULong>, T> function) {
+    public Mono<BucketFilter> updateCreatedByIds(ProcessorAccess access, BucketFilter filter) {
+        return Mono.just(filter.filterCreatedByIds(access.getUserInherit().getSubOrg()));
+    }
+
+    public Mono<BucketFilter> resolveCreatedBys(ProcessorAccess access, BucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getUserInternal(
@@ -66,18 +66,43 @@ public abstract class BaseAnalyticsService<
                                 .map(ULong::toBigInteger)
                                 .toList(),
                         null),
-                userList -> Mono.just(Tuples.of(
-                        function.apply(access.getUserInherit().getSubOrg()),
-                        userList.stream()
-                                .map(user -> IdAndValue.of(
-                                        ULongUtil.valueOf(user.getId()),
-                                        NameUtil.assembleFullName(
-                                                user.getFirstName(), user.getMiddleName(), user.getLastName())))
-                                .toList())));
+                userList -> Mono.just(
+                        filter.filterCreatedByIds(access.getUserInherit().getSubOrg())
+                                .setCreatedBys(userList.stream()
+                                        .map(user -> IdAndValue.of(
+                                                ULongUtil.valueOf(user.getId()),
+                                                NameUtil.assembleFullName(
+                                                        user.getFirstName(), user.getMiddleName(), user.getLastName())))
+                                        .toList())));
     }
 
-    public <T> Mono<Tuple2<T, List<IdAndValue<ULong, String>>>> resolveClientIds(
-            ProcessorAccess access, Function<List<ULong>, T> function) {
+    public Mono<BucketFilter> updateAssignedUserIds(ProcessorAccess access, BucketFilter filter) {
+        return Mono.just(filter.filterAssignedUserIds(access.getUserInherit().getSubOrg()));
+    }
+
+    public Mono<BucketFilter> resolveAssignedUsers(ProcessorAccess access, BucketFilter filter) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> securityService.getUserInternal(
+                        access.getUserInherit().getSubOrg().stream()
+                                .map(ULong::toBigInteger)
+                                .toList(),
+                        null),
+                userList -> Mono.just(
+                        filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
+                                .setAssignedUsers(userList.stream()
+                                        .map(user -> IdAndValue.of(
+                                                ULongUtil.valueOf(user.getId()),
+                                                NameUtil.assembleFullName(
+                                                        user.getFirstName(), user.getMiddleName(), user.getLastName())))
+                                        .toList())));
+    }
+
+    public Mono<BucketFilter> updateClientIds(ProcessorAccess access, BucketFilter filter) {
+        return Mono.just(filter.filterClientIds(access.getUserInherit().getManagingClientIds()));
+    }
+
+    public Mono<BucketFilter> resolveClients(ProcessorAccess access, BucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getClientInternal(
@@ -85,9 +110,9 @@ public abstract class BaseAnalyticsService<
                                 .map(ULong::toBigInteger)
                                 .toList(),
                         null),
-                clientList -> Mono.just(Tuples.of(
-                        function.apply(access.getUserInherit().getManagingClientIds()),
-                        clientList.stream()
+                clientList -> Mono.just(filter.filterClientIds(
+                                access.getUserInherit().getManagingClientIds())
+                        .setClients(clientList.stream()
                                 .map(client -> IdAndValue.of(ULongUtil.valueOf(client.getId()), client.getName()))
                                 .toList())));
     }
