@@ -5,7 +5,6 @@ import com.fincity.saas.commons.core.enums.ConnectionSubType;
 import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.CoreMessageResourceService;
-import com.fincity.saas.commons.core.service.connection.appdata.IAppDataService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;

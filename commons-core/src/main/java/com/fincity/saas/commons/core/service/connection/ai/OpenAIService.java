@@ -6,21 +6,14 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientAsync;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
-import com.openai.models.ChatCompletion;
 import com.openai.models.ChatCompletionCreateParams;
 import com.openai.models.ChatModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.util.List;
-import java.util.Map;
-
 
 @Service
 public class OpenAIService implements IAIService {
@@ -40,7 +33,7 @@ public class OpenAIService implements IAIService {
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     CoreMessageResourceService.UNABLE_AI_CONNECTION, connection == null ? "Unknown Connection" : connection.getName());
-        
+
         return FlatMapUtil.flatMapMono(
 
                 () -> {
