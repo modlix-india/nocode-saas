@@ -142,7 +142,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * Setter for <code>message.message_messages.IS_OUTBOUND</code>. Indicates
      * whether the message is outbound.
      */
-    public MessageMessagesRecord setIsOutbound(Byte value) {
+    public MessageMessagesRecord setIsOutbound(Boolean value) {
         set(7, value);
         return this;
     }
@@ -151,8 +151,8 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * Getter for <code>message.message_messages.IS_OUTBOUND</code>. Indicates
      * whether the message is outbound.
      */
-    public Byte getIsOutbound() {
-        return (Byte) get(7);
+    public Boolean getIsOutbound() {
+        return (Boolean) get(7);
     }
 
     /**
@@ -176,7 +176,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * Setter for <code>message.message_messages.IS_ACTIVE</code>. Flag to check
      * if this message is active or not.
      */
-    public MessageMessagesRecord setIsActive(Byte value) {
+    public MessageMessagesRecord setIsActive(Boolean value) {
         set(9, value);
         return this;
     }
@@ -185,8 +185,8 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
      * Getter for <code>message.message_messages.IS_ACTIVE</code>. Flag to check
      * if this message is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(9);
+    public Boolean getIsActive() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -280,7 +280,7 @@ public class MessageMessagesRecord extends UpdatableRecordImpl<MessageMessagesRe
     /**
      * Create a detached, initialised MessageMessagesRecord
      */
-    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String messageProvider, Byte isOutbound, ULong whatsappMessageId, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String messageProvider, Boolean isOutbound, ULong whatsappMessageId, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageMessages.MESSAGE_MESSAGES);
 
         setId(id);

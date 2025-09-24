@@ -199,7 +199,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.NEGATE</code>. Flag
      * to check if this Simple Rule is negative.
      */
-    public EntityProcessorSimpleRulesRecord setNegate(Byte value) {
+    public EntityProcessorSimpleRulesRecord setNegate(Boolean value) {
         set(9, value);
         return this;
     }
@@ -209,8 +209,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.NEGATE</code>. Flag
      * to check if this Simple Rule is negative.
      */
-    public Byte getNegate() {
-        return (Byte) get(9);
+    public Boolean getNegate() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -218,7 +218,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
      * Flag to tell if this rule has a complex parent or not.
      */
-    public EntityProcessorSimpleRulesRecord setHasParent(Byte value) {
+    public EntityProcessorSimpleRulesRecord setHasParent(Boolean value) {
         set(10, value);
         return this;
     }
@@ -228,8 +228,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
      * Flag to tell if this rule has a complex parent or not.
      */
-    public Byte getHasParent() {
-        return (Byte) get(10);
+    public Boolean getHasParent() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -294,7 +294,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_VALUE_FIELD</code>.
      * Flag to check if value is a field.
      */
-    public EntityProcessorSimpleRulesRecord setIsValueField(Byte value) {
+    public EntityProcessorSimpleRulesRecord setIsValueField(Boolean value) {
         set(14, value);
         return this;
     }
@@ -304,8 +304,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_VALUE_FIELD</code>.
      * Flag to check if value is a field.
      */
-    public Byte getIsValueField() {
-        return (Byte) get(14);
+    public Boolean getIsValueField() {
+        return (Boolean) get(14);
     }
 
     /**
@@ -313,7 +313,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_TO_VALUE_FIELD</code>.
      * Flag to check if to value is a field.
      */
-    public EntityProcessorSimpleRulesRecord setIsToValueField(Byte value) {
+    public EntityProcessorSimpleRulesRecord setIsToValueField(Boolean value) {
         set(15, value);
         return this;
     }
@@ -323,8 +323,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_TO_VALUE_FIELD</code>.
      * Flag to check if to value is a field.
      */
-    public Byte getIsToValueField() {
-        return (Byte) get(15);
+    public Boolean getIsToValueField() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -351,7 +351,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Simple Rule.
      */
-    public EntityProcessorSimpleRulesRecord setTempActive(Byte value) {
+    public EntityProcessorSimpleRulesRecord setTempActive(Boolean value) {
         set(17, value);
         return this;
     }
@@ -361,8 +361,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Simple Rule.
      */
-    public Byte getTempActive() {
-        return (Byte) get(17);
+    public Boolean getTempActive() {
+        return (Boolean) get(17);
     }
 
     /**
@@ -370,7 +370,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_ACTIVE</code>.
      * Flag to check if this Simple Rule is active or not.
      */
-    public EntityProcessorSimpleRulesRecord setIsActive(Byte value) {
+    public EntityProcessorSimpleRulesRecord setIsActive(Boolean value) {
         set(18, value);
         return this;
     }
@@ -380,8 +380,8 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
      * <code>entity_processor.entity_processor_simple_rules.IS_ACTIVE</code>.
      * Flag to check if this Simple Rule is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(18);
+    public Boolean getIsActive() {
+        return (Boolean) get(18);
     }
 
     /**
@@ -483,7 +483,7 @@ public class EntityProcessorSimpleRulesRecord extends UpdatableRecordImpl<Entity
     /**
      * Create a detached, initialised EntityProcessorSimpleRulesRecord
      */
-    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, Byte hasParent, String field, ComparisonOperator comparisonOperator, ValueContainer value, Byte isValueField, Byte isToValueField, ComparisonOperator matchOperator, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Boolean negate, Boolean hasParent, String field, ComparisonOperator comparisonOperator, ValueContainer value, Boolean isValueField, Boolean isToValueField, ComparisonOperator matchOperator, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES);
 
         setId(id);

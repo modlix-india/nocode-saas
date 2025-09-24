@@ -357,7 +357,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Setter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
      * Not Call flag for this ticket.
      */
-    public EntityProcessorTicketsRecord setDnc(Byte value) {
+    public EntityProcessorTicketsRecord setDnc(Boolean value) {
         set(18, value);
         return this;
     }
@@ -366,8 +366,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * Getter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
      * Not Call flag for this ticket.
      */
-    public Byte getDnc() {
-        return (Byte) get(18);
+    public Boolean getDnc() {
+        return (Boolean) get(18);
     }
 
     /**
@@ -375,7 +375,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorTicketsRecord setTempActive(Byte value) {
+    public EntityProcessorTicketsRecord setTempActive(Boolean value) {
         set(19, value);
         return this;
     }
@@ -385,8 +385,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(19);
+    public Boolean getTempActive() {
+        return (Boolean) get(19);
     }
 
     /**
@@ -394,7 +394,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public EntityProcessorTicketsRecord setIsActive(Byte value) {
+    public EntityProcessorTicketsRecord setIsActive(Boolean value) {
         set(20, value);
         return this;
     }
@@ -404,8 +404,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(20);
+    public Boolean getIsActive() {
+        return (Boolean) get(20);
     }
 
     /**
@@ -526,7 +526,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Byte dnc, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);

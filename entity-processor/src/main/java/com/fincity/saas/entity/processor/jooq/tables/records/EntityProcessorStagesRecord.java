@@ -176,7 +176,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_PARENT</code>. Is this
      * the main Source or not.
      */
-    public EntityProcessorStagesRecord setIsParent(Byte value) {
+    public EntityProcessorStagesRecord setIsParent(Boolean value) {
         set(8, value);
         return this;
     }
@@ -186,8 +186,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_PARENT</code>. Is this
      * the main Source or not.
      */
-    public Byte getIsParent() {
-        return (Byte) get(8);
+    public Boolean getIsParent() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -269,7 +269,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
      * flag will tell whether this stage will end in a success or not.
      */
-    public EntityProcessorStagesRecord setIsSuccess(Byte value) {
+    public EntityProcessorStagesRecord setIsSuccess(Boolean value) {
         set(13, value);
         return this;
     }
@@ -279,8 +279,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
      * flag will tell whether this stage will end in a success or not.
      */
-    public Byte getIsSuccess() {
-        return (Byte) get(13);
+    public Boolean getIsSuccess() {
+        return (Boolean) get(13);
     }
 
     /**
@@ -288,7 +288,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
      * flag will tell whether this stage will end in a failure or not.
      */
-    public EntityProcessorStagesRecord setIsFailure(Byte value) {
+    public EntityProcessorStagesRecord setIsFailure(Boolean value) {
         set(14, value);
         return this;
     }
@@ -298,8 +298,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
      * flag will tell whether this stage will end in a failure or not.
      */
-    public Byte getIsFailure() {
-        return (Byte) get(14);
+    public Boolean getIsFailure() {
+        return (Boolean) get(14);
     }
 
     /**
@@ -307,7 +307,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorStagesRecord setTempActive(Byte value) {
+    public EntityProcessorStagesRecord setTempActive(Boolean value) {
         set(15, value);
         return this;
     }
@@ -317,8 +317,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(15);
+    public Boolean getTempActive() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -326,7 +326,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public EntityProcessorStagesRecord setIsActive(Byte value) {
+    public EntityProcessorStagesRecord setIsActive(Boolean value) {
         set(16, value);
         return this;
     }
@@ -336,8 +336,8 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_stages.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(16);
+    public Boolean getIsActive() {
+        return (Boolean) get(16);
     }
 
     /**
@@ -439,7 +439,7 @@ public class EntityProcessorStagesRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorStagesRecord
      */
-    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Platform platform, ULong productTemplateId, Byte isParent, ULong parentLevel_0, ULong parentLevel_1, Integer order, StageType stageType, Byte isSuccess, Byte isFailure, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorStagesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Platform platform, ULong productTemplateId, Boolean isParent, ULong parentLevel_0, ULong parentLevel_1, Integer order, StageType stageType, Boolean isSuccess, Boolean isFailure, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorStages.ENTITY_PROCESSOR_STAGES);
 
         setId(id);

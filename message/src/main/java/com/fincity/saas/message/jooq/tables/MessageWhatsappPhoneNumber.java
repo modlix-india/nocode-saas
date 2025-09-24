@@ -161,13 +161,13 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
      * The column <code>message.message_whatsapp_phone_number.IS_DEFAULT</code>.
      * Flag to indicate if this is the default phone number.
      */
-    public final TableField<MessageWhatsappPhoneNumberRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to indicate if this is the default phone number.");
+    public final TableField<MessageWhatsappPhoneNumberRecord, Boolean> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to indicate if this is the default phone number.");
 
     /**
      * The column <code>message.message_whatsapp_phone_number.IS_ACTIVE</code>.
      * Flag to check if this phone number is active or not.
      */
-    public final TableField<MessageWhatsappPhoneNumberRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this phone number is active or not.");
+    public final TableField<MessageWhatsappPhoneNumberRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this phone number is active or not.");
 
     /**
      * The column <code>message.message_whatsapp_phone_number.CREATED_BY</code>.

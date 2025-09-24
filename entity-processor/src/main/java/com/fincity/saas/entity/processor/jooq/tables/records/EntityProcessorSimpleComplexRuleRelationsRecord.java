@@ -216,7 +216,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.TEMP_ACTIVE</code>.
      * Temporary active flag for this Relation.
      */
-    public EntityProcessorSimpleComplexRuleRelationsRecord setTempActive(Byte value) {
+    public EntityProcessorSimpleComplexRuleRelationsRecord setTempActive(Boolean value) {
         set(10, value);
         return this;
     }
@@ -226,8 +226,8 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.TEMP_ACTIVE</code>.
      * Temporary active flag for this Relation.
      */
-    public Byte getTempActive() {
-        return (Byte) get(10);
+    public Boolean getTempActive() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -235,7 +235,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.IS_ACTIVE</code>.
      * Flag to check if this Relation is active or not.
      */
-    public EntityProcessorSimpleComplexRuleRelationsRecord setIsActive(Byte value) {
+    public EntityProcessorSimpleComplexRuleRelationsRecord setIsActive(Boolean value) {
         set(11, value);
         return this;
     }
@@ -245,8 +245,8 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.IS_ACTIVE</code>.
      * Flag to check if this Relation is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(11);
+    public Boolean getIsActive() {
+        return (Boolean) get(11);
     }
 
     /**
@@ -349,7 +349,7 @@ public class EntityProcessorSimpleComplexRuleRelationsRecord extends UpdatableRe
      * Create a detached, initialised
      * EntityProcessorSimpleComplexRuleRelationsRecord
      */
-    public EntityProcessorSimpleComplexRuleRelationsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong complexConditionId, ULong simpleConditionId, Integer order, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorSimpleComplexRuleRelationsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong complexConditionId, ULong simpleConditionId, Integer order, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS);
 
         setId(id);

@@ -123,21 +123,21 @@ public class EntityProcessorPartners extends TableImpl<EntityProcessorPartnersRe
      * The column <code>entity_processor.entity_processor_partners.DNC</code>.
      * Do Not Call flag for this partner.
      */
-    public final TableField<EntityProcessorPartnersRecord, Byte> DNC = createField(DSL.name("DNC"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Do Not Call flag for this partner.");
+    public final TableField<EntityProcessorPartnersRecord, Boolean> DNC = createField(DSL.name("DNC"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Do Not Call flag for this partner.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_partners.TEMP_ACTIVE</code>.
      * Temporary active flag for this partner.
      */
-    public final TableField<EntityProcessorPartnersRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this partner.");
+    public final TableField<EntityProcessorPartnersRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this partner.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_partners.IS_ACTIVE</code>. Flag
      * to check if this partner is active or not.
      */
-    public final TableField<EntityProcessorPartnersRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this partner is active or not.");
+    public final TableField<EntityProcessorPartnersRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this partner is active or not.");
 
     /**
      * The column

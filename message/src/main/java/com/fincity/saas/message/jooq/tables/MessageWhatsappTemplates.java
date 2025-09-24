@@ -118,7 +118,7 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
      * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
      * Indicates whether category change is allowed for this template.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, Byte> ALLOW_CATEGORY_CHANGE = createField(DSL.name("ALLOW_CATEGORY_CHANGE"), SQLDataType.TINYINT, this, "Indicates whether category change is allowed for this template.");
+    public final TableField<MessageWhatsappTemplatesRecord, Boolean> ALLOW_CATEGORY_CHANGE = createField(DSL.name("ALLOW_CATEGORY_CHANGE"), SQLDataType.BOOLEAN, this, "Indicates whether category change is allowed for this template.");
 
     /**
      * The column <code>message.message_whatsapp_templates.CATEGORY</code>.
@@ -220,7 +220,7 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
      * The column <code>message.message_whatsapp_templates.IS_ACTIVE</code>.
      * Indicates whether this row is active.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Indicates whether this row is active.");
+    public final TableField<MessageWhatsappTemplatesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Indicates whether this row is active.");
 
     private MessageWhatsappTemplates(Name alias, Table<MessageWhatsappTemplatesRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
