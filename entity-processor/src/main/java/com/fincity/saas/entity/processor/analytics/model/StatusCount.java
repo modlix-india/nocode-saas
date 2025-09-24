@@ -13,17 +13,19 @@ import org.jooq.types.ULong;
 @NoArgsConstructor
 public class StatusCount implements Serializable {
 
-    private IdAndValue<ULong, String> user;
+    private IdAndValue<ULong, String> entity;
 
-    private Long totalCount;
+    private CountPercentage totalCount;
 
-    private Map<String, Long> statusCounts;
+    private Map<String, CountPercentage> statusCounts;
 
-    public static StatusCount of(IdAndValue<ULong, String> user, Long totalCount, Map<String, Long> statusCounts) {
-        return new StatusCount().setUser(user).setTotalCount(totalCount).setStatusCounts(statusCounts);
+    public static StatusCount of(
+            IdAndValue<ULong, String> entity, CountPercentage totalCount, Map<String, CountPercentage> statusCounts) {
+        return new StatusCount().setEntity(entity).setTotalCount(totalCount).setStatusCounts(statusCounts);
     }
 
-    public static StatusCount of(ULong userId, String userName, Long totalCount, Map<String, Long> statusCounts) {
-        return of(IdAndValue.of(userId, userName), totalCount, statusCounts);
+    public static StatusCount of(
+            ULong entityId, String entityName, CountPercentage totalCount, Map<String, CountPercentage> statusCounts) {
+        return of(IdAndValue.of(entityId, entityName), totalCount, statusCounts);
     }
 }

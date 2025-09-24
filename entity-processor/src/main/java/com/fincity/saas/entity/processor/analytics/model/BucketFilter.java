@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.util.FilterUtil;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -30,6 +32,9 @@ public class BucketFilter implements Serializable {
     private LocalDateTime endDate;
     private boolean includeZero;
     private boolean includeAll;
+
+    @JsonIgnore
+    private FieldData fieldData;
 
     public BucketFilter filterCreatedByIds(List<ULong> createdByIds) {
         this.createdByIds = FilterUtil.intersectLists(this.createdByIds, createdByIds);
@@ -71,35 +76,57 @@ public class BucketFilter implements Serializable {
         return this;
     }
 
-    public ULong[] getCreatedByIdsArray() {
-        return this.createdByIds == null ? new ULong[0] : this.createdByIds.toArray(new ULong[0]);
+    public BucketFilter setCreatedBys(List<IdAndValue<ULong, String>> createdBys) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setCreatedBys(createdBys);
+        return this;
     }
 
-    public ULong[] getAssignedUserIdsArray() {
-        return this.assignedUserIds == null ? new ULong[0] : this.assignedUserIds.toArray(new ULong[0]);
+    public BucketFilter setAssignedUsers(List<IdAndValue<ULong, String>> assignedUsers) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setAssignedUsers(assignedUsers);
+        return this;
     }
 
-    public ULong[] getClientIdsArray() {
-        return this.clientIds == null ? new ULong[0] : this.clientIds.toArray(new ULong[0]);
+    public BucketFilter setClients(List<IdAndValue<ULong, String>> clients) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setClients(clients);
+        return this;
     }
 
-    public String[] getSourcesArray() {
-        return this.sources == null ? new String[0] : this.sources.toArray(new String[0]);
+    public BucketFilter setStages(List<IdAndValue<ULong, String>> stages) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setStages(stages);
+        return this;
     }
 
-    public String[] getSubSourcesArray() {
-        return this.subSources == null ? new String[0] : this.subSources.toArray(new String[0]);
+    public BucketFilter setStatuses(List<IdAndValue<ULong, String>> statuses) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setStatuses(statuses);
+        return this;
     }
 
-    public ULong[] getStageIdsArray() {
-        return this.stageIds == null ? new ULong[0] : this.stageIds.toArray(new ULong[0]);
+    public BucketFilter setProducts(List<IdAndValue<ULong, String>> products) {
+        this.fieldData = this.fieldData == null ? new FieldData() : this.fieldData;
+        this.fieldData.setProducts(products);
+        return this;
     }
 
-    public ULong[] getStatusIdsArray() {
-        return this.statusIds == null ? new ULong[0] : this.statusIds.toArray(new ULong[0]);
-    }
+    @Data
+    @Accessors(chain = true)
+    @NoArgsConstructor
+    public static class FieldData {
 
-    public ULong[] getProductIdsArray() {
-        return this.productIds == null ? new ULong[0] : this.productIds.toArray(new ULong[0]);
+        private List<IdAndValue<ULong, String>> createdBys;
+
+        private List<IdAndValue<ULong, String>> assignedUsers;
+
+        private List<IdAndValue<ULong, String>> clients;
+
+        private List<IdAndValue<ULong, String>> stages;
+
+        private List<IdAndValue<ULong, String>> statuses;
+
+        private List<IdAndValue<ULong, String>> products;
     }
 }
