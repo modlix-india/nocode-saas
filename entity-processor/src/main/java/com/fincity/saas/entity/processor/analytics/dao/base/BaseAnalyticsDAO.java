@@ -49,12 +49,6 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                         this.getAccessConditions(access, filter, fieldMappings)
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()),
-                        this.getSourceConditions(filter, fieldMappings)
-                                .map(Optional::of)
-                                .defaultIfEmpty(Optional.empty()),
-                        this.getProductConditions(filter, fieldMappings)
-                                .map(Optional::of)
-                                .defaultIfEmpty(Optional.empty()),
                         this.getDateConditions(filter, fieldMappings)
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()))
@@ -63,8 +57,6 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
                     condTuple.getT1().ifPresent(conditions::add);
                     condTuple.getT2().ifPresent(conditions::add);
-                    condTuple.getT3().ifPresent(conditions::add);
-                    condTuple.getT4().ifPresent(conditions::add);
 
                     if (baseCondition != null && !baseCondition.isEmpty()) conditions.add(baseCondition);
 
@@ -146,30 +138,6 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                         .getClientIds());
     }
 
-    private Mono<AbstractCondition> getSourceConditions(BucketFilter filter, Map<String, String> fieldMappings) {
-        return Mono.zip(
-                        this.makeIn(fieldMappings.get(BucketFilter.Fields.sources), filter.getSources())
-                                .map(Optional::of)
-                                .defaultIfEmpty(Optional.empty()),
-                        this.makeIn(fieldMappings.get(BucketFilter.Fields.subSources), filter.getSubSources())
-                                .map(Optional::of)
-                                .defaultIfEmpty(Optional.empty()))
-                .map(sourceSubSourceTup -> {
-                    List<AbstractCondition> conditions = new ArrayList<>();
-
-                    sourceSubSourceTup.getT1().ifPresent(conditions::add);
-                    sourceSubSourceTup.getT2().ifPresent(conditions::add);
-
-                    return ComplexCondition.and(conditions.stream()
-                            .filter(AbstractCondition::isNonEmpty)
-                            .toList());
-                });
-    }
-
-    private Mono<AbstractCondition> getProductConditions(BucketFilter filter, Map<String, String> fieldMappings) {
-        return this.makeIn(fieldMappings.get(BucketFilter.Fields.productIds), filter.getProductIds());
-    }
-
     private Mono<AbstractCondition> getDateConditions(BucketFilter filter, Map<String, String> fieldMappings) {
 
         LocalDateTime startDate = filter.getStartDate();
@@ -196,7 +164,7 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                 .setValue(endDate));
     }
 
-    private <T> Mono<AbstractCondition> makeIn(String mappedField, List<T> values) {
+    protected <T> Mono<AbstractCondition> makeIn(String mappedField, List<T> values) {
 
         if (mappedField == null) return Mono.empty();
 

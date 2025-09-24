@@ -147,7 +147,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     private List<FilterCondition> updateClientConditions(
             List<FilterCondition> clientConditions, List<ULong> managingClientIds) {
         if (clientConditions.isEmpty())
-            return List.of(createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
+            return List.of(this.createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
 
         clientConditions.forEach(
                 fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), managingClientIds)));
@@ -161,10 +161,11 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
         List<ULong> userHierarchy = access.getUserInherit().getSubOrg();
 
-        if (isEmptyCondition(condition)) return Mono.just(createInCondition(userField, userHierarchy));
+        if (isEmptyCondition(condition)) return Mono.just(this.createInCondition(userField, userHierarchy));
 
         return this.updateExistingUserCondition(condition, userField, userHierarchy, access)
-                .switchIfEmpty(Mono.just(ComplexCondition.and(condition, createInCondition(userField, userHierarchy))));
+                .switchIfEmpty(
+                        Mono.just(ComplexCondition.and(condition, this.createInCondition(userField, userHierarchy))));
     }
 
     private Mono<AbstractCondition> updateExistingUserCondition(

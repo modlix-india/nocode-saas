@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 public class TicketBucketController
         extends BaseAnalyticsController<EntityProcessorTicketsRecord, Ticket, TicketBucketDAO, TicketBucketService> {
 
-    @PostMapping("/status-counts")
+    @PostMapping("/stage-counts/assigned-users")
     public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerAssignedUserStatusCount(
             Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
 
@@ -29,6 +29,39 @@ public class TicketBucketController
 
         return this.service
                 .getTicketPerAssignedUserStatusCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/stage-counts/created-bys")
+    public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerCreatedByStatusCount(
+            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+
+        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+
+        return this.service
+                .getTicketPerCreatedByStatusCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/stage-counts/clients")
+    public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerClientIdStatusCount(
+            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+
+        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+
+        return this.service
+                .getTicketPerClientIdStatusCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/stage-counts/products")
+    public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerProductIdStatusCount(
+            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+
+        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+
+        return this.service
+                .getTicketPerProductIdStatusCount(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
     }
 }
