@@ -43,14 +43,13 @@ public class UserFieldResolver implements RelationResolver {
         if (idsToResolve.size() == 1)
             return this.securityService
                     .getUserInternal(idsToResolve.iterator().next().toBigInteger(), queryParams)
-                    .map(userResponse -> Map.of(ULongUtil.valueOf(userResponse.getId()), userResponse.toMap()))
+                    .map(user -> Map.of(ULongUtil.valueOf(user.getId()), user.toMap()))
                     .flatMap(userMap -> this.applyEagerFiltering(userMap, eager, eagerFields));
 
         return securityService
                 .getUserInternal(idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
                 .map(userList -> userList.stream()
-                        .collect(Collectors.toMap(
-                                userResponse -> ULongUtil.valueOf(userResponse.getId()), IClassConvertor::toMap)))
+                        .collect(Collectors.toMap(user -> ULongUtil.valueOf(user.getId()), IClassConvertor::toMap)))
                 .flatMap(userMap -> this.applyEagerFiltering(userMap, eager, eagerFields));
     }
 }

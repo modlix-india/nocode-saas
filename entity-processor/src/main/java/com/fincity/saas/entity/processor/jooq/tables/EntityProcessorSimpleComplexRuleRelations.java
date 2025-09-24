@@ -138,14 +138,14 @@ public class EntityProcessorSimpleComplexRuleRelations extends TableImpl<EntityP
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.TEMP_ACTIVE</code>.
      * Temporary active flag for this Relation.
      */
-    public final TableField<EntityProcessorSimpleComplexRuleRelationsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Relation.");
+    public final TableField<EntityProcessorSimpleComplexRuleRelationsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Relation.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_simple_complex_rule_relations.IS_ACTIVE</code>.
      * Flag to check if this Relation is active or not.
      */
-    public final TableField<EntityProcessorSimpleComplexRuleRelationsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Relation is active or not.");
+    public final TableField<EntityProcessorSimpleComplexRuleRelationsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Relation is active or not.");
 
     /**
      * The column

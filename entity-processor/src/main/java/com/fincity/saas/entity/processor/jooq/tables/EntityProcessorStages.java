@@ -128,7 +128,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.IS_PARENT</code>. Is this
      * the main Source or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_PARENT = createField(DSL.name("IS_PARENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Is this the main Source or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_PARENT = createField(DSL.name("IS_PARENT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Is this the main Source or not.");
 
     /**
      * The column
@@ -162,28 +162,28 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
      * flag will tell whether this stage will end in a success or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a success or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.BOOLEAN, this, "This flag will tell whether this stage will end in a success or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
      * flag will tell whether this stage will end in a failure or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a failure or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.BOOLEAN, this, "This flag will tell whether this stage will end in a failure or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
 
     /**
      * The column

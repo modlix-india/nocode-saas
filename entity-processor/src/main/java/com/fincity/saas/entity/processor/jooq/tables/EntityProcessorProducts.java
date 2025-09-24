@@ -143,14 +143,14 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorProductsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorProductsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
 
     /**
      * The column
@@ -164,7 +164,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
      * to tell whether Partner has access to this product or not.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell whether Partner has access to this product or not.");
+    public final TableField<EntityProcessorProductsRecord, Boolean> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell whether Partner has access to this product or not.");
 
     /**
      * The column

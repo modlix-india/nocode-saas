@@ -198,7 +198,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.NEGATE</code>. Flag
      * to check if this Complex Rule is negative.
      */
-    public EntityProcessorComplexRulesRecord setNegate(Byte value) {
+    public EntityProcessorComplexRulesRecord setNegate(Boolean value) {
         set(9, value);
         return this;
     }
@@ -208,8 +208,8 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.NEGATE</code>. Flag
      * to check if this Complex Rule is negative.
      */
-    public Byte getNegate() {
-        return (Byte) get(9);
+    public Boolean getNegate() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -255,7 +255,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
      * Flag to tell weather this rule has complex children.
      */
-    public EntityProcessorComplexRulesRecord setHasComplexChild(Byte value) {
+    public EntityProcessorComplexRulesRecord setHasComplexChild(Boolean value) {
         set(12, value);
         return this;
     }
@@ -265,8 +265,8 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
      * Flag to tell weather this rule has complex children.
      */
-    public Byte getHasComplexChild() {
-        return (Byte) get(12);
+    public Boolean getHasComplexChild() {
+        return (Boolean) get(12);
     }
 
     /**
@@ -274,7 +274,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
      * Flag to tell weather this rule has simple children.
      */
-    public EntityProcessorComplexRulesRecord setHasSimpleChild(Byte value) {
+    public EntityProcessorComplexRulesRecord setHasSimpleChild(Boolean value) {
         set(13, value);
         return this;
     }
@@ -284,8 +284,8 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
      * Flag to tell weather this rule has simple children.
      */
-    public Byte getHasSimpleChild() {
-        return (Byte) get(13);
+    public Boolean getHasSimpleChild() {
+        return (Boolean) get(13);
     }
 
     /**
@@ -293,7 +293,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Complex Rule.
      */
-    public EntityProcessorComplexRulesRecord setTempActive(Byte value) {
+    public EntityProcessorComplexRulesRecord setTempActive(Boolean value) {
         set(14, value);
         return this;
     }
@@ -303,8 +303,8 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Complex Rule.
      */
-    public Byte getTempActive() {
-        return (Byte) get(14);
+    public Boolean getTempActive() {
+        return (Boolean) get(14);
     }
 
     /**
@@ -312,7 +312,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.IS_ACTIVE</code>.
      * Flag to check if this Complex Rule is active or not.
      */
-    public EntityProcessorComplexRulesRecord setIsActive(Byte value) {
+    public EntityProcessorComplexRulesRecord setIsActive(Boolean value) {
         set(15, value);
         return this;
     }
@@ -322,8 +322,8 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_complex_rules.IS_ACTIVE</code>.
      * Flag to check if this Complex Rule is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(15);
+    public Boolean getIsActive() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -425,7 +425,7 @@ public class EntityProcessorComplexRulesRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorComplexRulesRecord
      */
-    public EntityProcessorComplexRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Byte negate, ULong parentConditionId, LogicalOperator logicalOperator, Byte hasComplexChild, Byte hasSimpleChild, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorComplexRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, ULong productTemplateRuleId, ULong productStageRuleId, Boolean negate, ULong parentConditionId, LogicalOperator logicalOperator, Boolean hasComplexChild, Boolean hasSimpleChild, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES);
 
         setId(id);

@@ -138,7 +138,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_task_types.TEMP_ACTIVE</code>.
      * Temporary active flag for this task type.
      */
-    public EntityProcessorTaskTypesRecord setTempActive(Byte value) {
+    public EntityProcessorTaskTypesRecord setTempActive(Boolean value) {
         set(6, value);
         return this;
     }
@@ -148,8 +148,8 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_task_types.TEMP_ACTIVE</code>.
      * Temporary active flag for this task type.
      */
-    public Byte getTempActive() {
-        return (Byte) get(6);
+    public Boolean getTempActive() {
+        return (Boolean) get(6);
     }
 
     /**
@@ -157,7 +157,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_task_types.IS_ACTIVE</code>. Flag
      * to check if this task type is active or not.
      */
-    public EntityProcessorTaskTypesRecord setIsActive(Byte value) {
+    public EntityProcessorTaskTypesRecord setIsActive(Boolean value) {
         set(7, value);
         return this;
     }
@@ -167,8 +167,8 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_task_types.IS_ACTIVE</code>. Flag
      * to check if this task type is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(7);
+    public Boolean getIsActive() {
+        return (Boolean) get(7);
     }
 
     /**
@@ -270,7 +270,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Create a detached, initialised EntityProcessorTaskTypesRecord
      */
-    public EntityProcessorTaskTypesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTaskTypesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES);
 
         setId(id);

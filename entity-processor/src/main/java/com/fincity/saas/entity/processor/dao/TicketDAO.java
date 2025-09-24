@@ -29,7 +29,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         return Flux.from(dslContext
                         .selectFrom(table)
                         .where(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.eq(clientId))
-                        .and(ENTITY_PROCESSOR_TICKETS.DNC.eq((byte) (Boolean.TRUE.equals(dnc) ? 1 : 0))))
+                        .and(ENTITY_PROCESSOR_TICKETS.DNC.eq(dnc)))
                 .map(rec -> rec.into(this.pojoClass));
     }
 
