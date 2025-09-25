@@ -142,7 +142,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * Setter for <code>message.message_calls.IS_OUTBOUND</code>. Indicates
      * whether the call is outbound.
      */
-    public MessageCallsRecord setIsOutbound(Byte value) {
+    public MessageCallsRecord setIsOutbound(Boolean value) {
         set(7, value);
         return this;
     }
@@ -151,8 +151,8 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
      * Getter for <code>message.message_calls.IS_OUTBOUND</code>. Indicates
      * whether the call is outbound.
      */
-    public Byte getIsOutbound() {
-        return (Byte) get(7);
+    public Boolean getIsOutbound() {
+        return (Boolean) get(7);
     }
 
     /**
@@ -280,7 +280,7 @@ public class MessageCallsRecord extends UpdatableRecordImpl<MessageCallsRecord> 
     /**
      * Create a detached, initialised MessageCallsRecord
      */
-    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String callProvider, Byte isOutbound, ULong exotelCallId, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String connectionName, String callProvider, Boolean isOutbound, ULong exotelCallId, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageCalls.MESSAGE_CALLS);
 
         setId(id);
