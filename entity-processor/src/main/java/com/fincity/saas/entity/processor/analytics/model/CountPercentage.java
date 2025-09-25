@@ -10,11 +10,11 @@ import lombok.experimental.Accessors;
 @NoArgsConstructor
 public class CountPercentage {
 
-    private Number counts;
+    private Number count;
     private Double percentage;
 
-    private CountPercentage(Number counts, Double percentage) {
-        this.counts = counts;
+    private CountPercentage(Number count, Double percentage) {
+        this.count = count;
         this.percentage = percentage;
     }
 
@@ -22,45 +22,45 @@ public class CountPercentage {
         return new CountPercentage(0L, 0.0);
     }
 
-    public static CountPercentage of(Number counts, Number wholePart) {
-        return of(counts, wholePart, 2);
+    public static CountPercentage zeroNoPercent() {
+        return new CountPercentage(0L, null);
     }
 
-    public static CountPercentage of(Number counts, Number wholePart, int roundPlaces) {
-        Double percentage = NumberUtil.getPercentage(counts, wholePart, roundPlaces);
-        return new CountPercentage(counts, percentage);
+    public static CountPercentage of(Number count, Number wholePart, int roundPlaces) {
+        Double percentage = NumberUtil.getPercentage(count, wholePart, roundPlaces);
+        return new CountPercentage(count, percentage);
     }
 
-    public static CountPercentage withCount(Number counts) {
-        return new CountPercentage(counts, 0.0);
+    public static CountPercentage of(Number count, Number wholePart) {
+        return of(count, wholePart, 2);
     }
 
-    public static CountPercentage withPercentage(Double percentage) {
-        return new CountPercentage(0L, percentage);
+    public static CountPercentage withCount(Number count) {
+        return new CountPercentage(count, null);
     }
 
-    public CountPercentage addCount(Number counts) {
-        this.counts = this.counts.longValue() + counts.longValue();
+    public CountPercentage addCount(Number count) {
+        this.count = this.count.longValue() + count.longValue();
         return this;
     }
 
     public CountPercentage recalculatePercentage(Number wholePart) {
-        return recalculatePercentage(wholePart, 2);
+        return this.recalculatePercentage(wholePart, 2);
     }
 
     public CountPercentage recalculatePercentage(Number wholePart, int roundPlaces) {
-        this.percentage = NumberUtil.getPercentage(this.counts, wholePart, roundPlaces);
+        this.percentage = NumberUtil.getPercentage(this.count, wholePart, roundPlaces);
         return this;
     }
 
     public CountPercentage add(CountPercentage other) {
-        this.counts = this.counts.longValue() + other.counts.longValue();
+        this.count = NumberUtil.add(this.count, other.count);
         this.percentage = this.percentage + other.percentage;
         return this;
     }
 
     public CountPercentage incrementCount() {
-        this.counts = this.counts.longValue() + 1;
+        this.count = this.count.longValue() + 1;
         return this;
     }
 }

@@ -31,4 +31,20 @@ public class NumberUtil {
         BigDecimal bd = BigDecimal.valueOf(value).setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
     }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends Number> T add(T a, T b) {
+        if (a == null || b == null) return null;
+
+        if (a instanceof Double || b instanceof Double) {
+            return (T) Double.valueOf(a.doubleValue() + b.doubleValue());
+        } else if (a instanceof Float || b instanceof Float) {
+            return (T) Float.valueOf(a.floatValue() + b.floatValue());
+        } else if (a instanceof Long || b instanceof Long) {
+            return (T) Long.valueOf(a.longValue() + b.longValue());
+        } else {
+            return (T) Integer.valueOf(a.intValue() + b.intValue());
+        }
+    }
+
 }
