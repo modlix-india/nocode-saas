@@ -285,7 +285,7 @@
                                         <forcedType>
                                             <name>BOOLEAN</name>
                                             <includeTypes>TINYINT</includeTypes>
-                                            <expression>.*</expression>
+                                            <includeExpression>.*</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
