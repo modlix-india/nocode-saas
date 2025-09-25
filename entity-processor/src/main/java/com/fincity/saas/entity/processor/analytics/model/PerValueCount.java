@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -9,6 +10,9 @@ import org.jooq.types.ULong;
 @Data
 @AllArgsConstructor
 public class PerValueCount implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 4350179029488896165L;
 
     private ULong id;
     private String value;

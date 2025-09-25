@@ -6,7 +6,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
-import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -54,11 +54,11 @@ public abstract class BaseAnalyticsService<
         this.productService = productService;
     }
 
-    public Mono<BucketFilter> updateCreatedByIds(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> updateCreatedByIds(ProcessorAccess access, TicketBucketFilter filter) {
         return Mono.just(filter.filterCreatedByIds(access.getUserInherit().getSubOrg()));
     }
 
-    public Mono<BucketFilter> resolveCreatedBys(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> resolveCreatedBys(ProcessorAccess access, TicketBucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getUserInternal(
@@ -76,11 +76,11 @@ public abstract class BaseAnalyticsService<
                                         .toList())));
     }
 
-    public Mono<BucketFilter> updateAssignedUserIds(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> updateAssignedUserIds(ProcessorAccess access, TicketBucketFilter filter) {
         return Mono.just(filter.filterAssignedUserIds(access.getUserInherit().getSubOrg()));
     }
 
-    public Mono<BucketFilter> resolveAssignedUsers(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> resolveAssignedUsers(ProcessorAccess access, TicketBucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getUserInternal(
@@ -98,11 +98,11 @@ public abstract class BaseAnalyticsService<
                                         .toList())));
     }
 
-    public Mono<BucketFilter> updateClientIds(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> updateClientIds(ProcessorAccess access, TicketBucketFilter filter) {
         return Mono.just(filter.filterClientIds(access.getUserInherit().getManagingClientIds()));
     }
 
-    public Mono<BucketFilter> resolveClients(ProcessorAccess access, BucketFilter filter) {
+    public Mono<TicketBucketFilter> resolveClients(ProcessorAccess access, TicketBucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
                 () -> securityService.getClientInternal(

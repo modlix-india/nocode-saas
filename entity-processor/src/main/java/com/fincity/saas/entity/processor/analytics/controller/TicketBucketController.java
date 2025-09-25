@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.analytics.controller;
 
 import com.fincity.saas.entity.processor.analytics.controller.base.BaseAnalyticsController;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
-import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.StatusCount;
+import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
@@ -23,9 +23,9 @@ public class TicketBucketController
 
     @PostMapping("/stage-counts/assigned-users")
     public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerAssignedUserStatusCount(
-            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
-        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
                 .getTicketPerAssignedUserStatusCount(pageable, effectiveFilter)
@@ -34,9 +34,9 @@ public class TicketBucketController
 
     @PostMapping("/stage-counts/created-bys")
     public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerCreatedByStatusCount(
-            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
-        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
                 .getTicketPerCreatedByStatusCount(pageable, effectiveFilter)
@@ -45,9 +45,9 @@ public class TicketBucketController
 
     @PostMapping("/stage-counts/clients")
     public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerClientIdStatusCount(
-            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
-        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
                 .getTicketPerClientIdStatusCount(pageable, effectiveFilter)
@@ -56,9 +56,9 @@ public class TicketBucketController
 
     @PostMapping("/stage-counts/products")
     public Mono<ResponseEntity<Page<StatusCount>>> getTicketPerProductIdStatusCount(
-            Pageable pageable, @RequestBody(required = false) BucketFilter filter) {
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
-        BucketFilter effectiveFilter = (filter == null) ? new BucketFilter() : filter;
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
                 .getTicketPerProductIdStatusCount(pageable, effectiveFilter)
