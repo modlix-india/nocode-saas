@@ -18,6 +18,11 @@ public class CountPercentage implements Serializable {
     private Number count;
     private Double percentage;
 
+    public CountPercentage(CountPercentage countPercentage) {
+        this.count = countPercentage.count;
+        this.percentage = countPercentage.percentage;
+    }
+
     private CountPercentage(Number count, Double percentage) {
         this.count = count;
         this.percentage = percentage;

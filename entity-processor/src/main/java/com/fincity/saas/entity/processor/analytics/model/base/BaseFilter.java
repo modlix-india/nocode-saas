@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.util.FilterUtil;
 import java.io.Serial;
@@ -29,6 +30,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private boolean includeZero;
     private boolean includePercentage;
     private boolean includeTotal;
+    private TimePeriod timePeriod;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 
