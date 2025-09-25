@@ -10,8 +10,9 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
-import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
+import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
@@ -36,28 +37,31 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     @Override
     protected Map<String, String> getBucketFilterFieldMappings() {
         return Map.of(
-                BucketFilter.Fields.createdByIds, AbstractDTO.Fields.createdBy,
-                BucketFilter.Fields.assignedUserIds, Ticket.Fields.assignedUserId,
-                BucketFilter.Fields.clientIds, BaseProcessorDto.Fields.clientId,
-                BucketFilter.Fields.sources, Ticket.Fields.source,
-                BucketFilter.Fields.subSources, Ticket.Fields.subSource,
-                BucketFilter.Fields.stageIds, Ticket.Fields.stage,
-                BucketFilter.Fields.statusIds, Ticket.Fields.status,
-                BucketFilter.Fields.productIds, Ticket.Fields.productId,
-                BucketFilter.Fields.startDate, AbstractDTO.Fields.createdAt,
-                BucketFilter.Fields.endDate, AbstractDTO.Fields.createdAt);
+                BaseFilter.Fields.createdByIds, AbstractDTO.Fields.createdBy,
+                BaseFilter.Fields.assignedUserIds, Ticket.Fields.assignedUserId,
+                BaseFilter.Fields.clientIds, BaseProcessorDto.Fields.clientId,
+                TicketBucketFilter.Fields.sources, Ticket.Fields.source,
+                TicketBucketFilter.Fields.subSources, Ticket.Fields.subSource,
+                TicketBucketFilter.Fields.stageIds, Ticket.Fields.stage,
+                TicketBucketFilter.Fields.statusIds, Ticket.Fields.status,
+                TicketBucketFilter.Fields.productIds, Ticket.Fields.productId,
+                BaseFilter.Fields.startDate, AbstractDTO.Fields.createdAt,
+                BaseFilter.Fields.endDate, AbstractDTO.Fields.createdAt);
     }
 
-    private Mono<AbstractCondition> createTicketBucketConditions(ProcessorAccess access, BucketFilter bucketFilter) {
-        return Mono.zip(super.createBucketConditions(access, bucketFilter), this.createTicketConditions(bucketFilter))
+    private Mono<AbstractCondition> createTicketBucketConditions(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return Mono.zip(
+                        super.createBucketConditions(access, ticketBucketFilter),
+                        this.createTicketConditions(ticketBucketFilter))
                 .map(conds -> ComplexCondition.and(conds.getT1(), conds.getT2()));
     }
 
-    private Mono<AbstractCondition> createTicketConditions(BucketFilter filter) {
+    private Mono<AbstractCondition> createTicketConditions(TicketBucketFilter filter) {
 
         Map<String, String> fieldMappings = this.getBucketFilterFieldMappings();
 
-        if (filter == null) filter = new BucketFilter();
+        if (filter == null) filter = new TicketBucketFilter();
 
         return Mono.zip(
                         this.ticketFilterCondition(),
@@ -94,12 +98,12 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 .setMatchOperator(FilterConditionOperator.IS_TRUE));
     }
 
-    private Mono<AbstractCondition> getSourceConditions(BucketFilter filter, Map<String, String> fieldMappings) {
+    private Mono<AbstractCondition> getSourceConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
         return Mono.zip(
-                        super.makeIn(fieldMappings.get(BucketFilter.Fields.sources), filter.getSources())
+                        super.makeIn(fieldMappings.get(TicketBucketFilter.Fields.sources), filter.getSources())
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()),
-                        super.makeIn(fieldMappings.get(BucketFilter.Fields.subSources), filter.getSubSources())
+                        super.makeIn(fieldMappings.get(TicketBucketFilter.Fields.subSources), filter.getSubSources())
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()))
                 .map(sourceSubSourceTup -> {
@@ -114,21 +118,23 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 });
     }
 
-    private Mono<AbstractCondition> getStageConditions(BucketFilter filter, Map<String, String> fieldMappings) {
-        return this.makeIn(fieldMappings.get(BucketFilter.Fields.stageIds), filter.getStageIds());
+    private Mono<AbstractCondition> getStageConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
+        return this.makeIn(fieldMappings.get(TicketBucketFilter.Fields.stageIds), filter.getStageIds());
     }
 
-    private Mono<AbstractCondition> getStatusConditions(BucketFilter filter, Map<String, String> fieldMappings) {
-        return this.makeIn(fieldMappings.get(BucketFilter.Fields.statusIds), filter.getStatusIds());
+    private Mono<AbstractCondition> getStatusConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
+        return this.makeIn(fieldMappings.get(TicketBucketFilter.Fields.statusIds), filter.getStatusIds());
     }
 
-    private Mono<AbstractCondition> getProductConditions(BucketFilter filter, Map<String, String> fieldMappings) {
-        return this.makeIn(fieldMappings.get(BucketFilter.Fields.productIds), filter.getProductIds());
+    private Mono<AbstractCondition> getProductConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
+        return this.makeIn(fieldMappings.get(TicketBucketFilter.Fields.productIds), filter.getProductIds());
     }
 
-    public Flux<PerValueCount> getTicketPerAssignedUserStageCount(ProcessorAccess access, BucketFilter bucketFilter) {
+    public Flux<PerValueCount> getTicketPerAssignedUserStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, bucketFilter).flux(),
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> Flux.from(this.dslContext
                                 .select(
@@ -151,9 +157,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         }));
     }
 
-    public Flux<PerValueCount> getTicketPerCreatedByStageCount(ProcessorAccess access, BucketFilter bucketFilter) {
+    public Flux<PerValueCount> getTicketPerCreatedByStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, bucketFilter).flux(),
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> Flux.from(this.dslContext
                                 .select(
@@ -177,9 +185,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         }));
     }
 
-    public Flux<PerValueCount> getTicketPerClientIdStageCount(ProcessorAccess access, BucketFilter bucketFilter) {
+    public Flux<PerValueCount> getTicketPerClientIdStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, bucketFilter).flux(),
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> Flux.from(this.dslContext
                                 .select(
@@ -203,9 +213,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         }));
     }
 
-    public Flux<PerValueCount> getTicketPerProjectStageCount(ProcessorAccess access, BucketFilter bucketFilter) {
+    public Flux<PerValueCount> getTicketPerProjectStageCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         return FlatMapUtil.flatMapFlux(
-                () -> this.createTicketBucketConditions(access, bucketFilter).flux(),
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> Flux.from(this.dslContext
                                 .select(

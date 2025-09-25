@@ -7,7 +7,8 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
-import com.fincity.saas.entity.processor.analytics.model.BucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,21 +30,22 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
     protected abstract Map<String, String> getBucketFilterFieldMappings();
 
-    public Mono<AbstractCondition> createBucketConditions(ProcessorAccess access, BucketFilter bucketFilter) {
-        return this.addBucketConditions(null, access, bucketFilter);
+    public Mono<AbstractCondition> createBucketConditions(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.addBucketConditions(null, access, ticketBucketFilter);
     }
 
     public Mono<AbstractCondition> createBucketConditions(
-            AbstractCondition condition, ProcessorAccess access, BucketFilter bucketFilter) {
-        return this.addBucketConditions(condition, access, bucketFilter);
+            AbstractCondition condition, ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.addBucketConditions(condition, access, ticketBucketFilter);
     }
 
     private Mono<AbstractCondition> addBucketConditions(
-            AbstractCondition baseCondition, ProcessorAccess access, BucketFilter filter) {
+            AbstractCondition baseCondition, ProcessorAccess access, TicketBucketFilter filter) {
 
         Map<String, String> fieldMappings = this.getBucketFilterFieldMappings();
 
-        if (filter == null) filter = new BucketFilter();
+        if (filter == null) filter = new TicketBucketFilter();
 
         return Mono.zip(
                         this.getAccessConditions(access, filter, fieldMappings)
@@ -67,7 +69,7 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
     }
 
     private Mono<AbstractCondition> getAccessConditions(
-            ProcessorAccess access, BucketFilter filter, Map<String, String> fieldMappings) {
+            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
 
         return Mono.zipDelayError(
                         this.getAppCodeCondition(access).map(Optional::of).defaultIfEmpty(Optional.empty()),
@@ -108,37 +110,37 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
     }
 
     private Mono<AbstractCondition> getUserConditions(
-            ProcessorAccess access, BucketFilter filter, Map<String, String> fieldMappings) {
+            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
 
         if (access.isOutsideUser())
             return this.makeIn(
-                    fieldMappings.get(BucketFilter.Fields.createdByIds),
+                    fieldMappings.get(BaseFilter.Fields.createdByIds),
                     filter.filterCreatedByIds(access.getUserInherit().getSubOrg())
                             .getCreatedByIds());
 
         return this.makeIn(
-                fieldMappings.get(BucketFilter.Fields.assignedUserIds),
+                fieldMappings.get(BaseFilter.Fields.assignedUserIds),
                 filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
                         .getAssignedUserIds());
     }
 
     private Mono<AbstractCondition> getClientIdCondition(
-            ProcessorAccess access, BucketFilter filter, Map<String, String> fieldMappings) {
+            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
 
         if (access.isOutsideUser())
             return Mono.just(FilterCondition.make(
-                    fieldMappings.get(BucketFilter.Fields.clientIds),
+                    fieldMappings.get(BaseFilter.Fields.clientIds),
                     access.getUser().getClientId()));
 
         if (!access.isHasBpAccess()) return Mono.empty();
 
         return this.makeIn(
-                fieldMappings.get(BucketFilter.Fields.clientIds),
+                fieldMappings.get(BaseFilter.Fields.clientIds),
                 filter.filterClientIds(access.getUserInherit().getManagingClientIds())
                         .getClientIds());
     }
 
-    private Mono<AbstractCondition> getDateConditions(BucketFilter filter, Map<String, String> fieldMappings) {
+    private Mono<AbstractCondition> getDateConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
 
         LocalDateTime startDate = filter.getStartDate();
         LocalDateTime endDate = filter.getEndDate();
@@ -147,19 +149,19 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
         if (startDate != null && endDate != null)
             return Mono.just(new FilterCondition()
-                    .setField(fieldMappings.get(BucketFilter.Fields.startDate))
+                    .setField(fieldMappings.get(BaseFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.BETWEEN)
                     .setValue(startDate)
                     .setToValue(endDate));
 
         if (startDate != null)
             return Mono.just(new FilterCondition()
-                    .setField(fieldMappings.get(BucketFilter.Fields.startDate))
+                    .setField(fieldMappings.get(BaseFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.GREATER_THAN_EQUAL)
                     .setValue(startDate));
 
         return Mono.just(new FilterCondition()
-                .setField(fieldMappings.get(BucketFilter.Fields.endDate))
+                .setField(fieldMappings.get(BaseFilter.Fields.endDate))
                 .setOperator(FilterConditionOperator.LESS_THAN_EQUAL)
                 .setValue(endDate));
     }
