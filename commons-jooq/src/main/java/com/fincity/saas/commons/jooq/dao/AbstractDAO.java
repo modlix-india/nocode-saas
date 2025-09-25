@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -290,7 +291,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
             return value.equals("now") ? LocalDateTime.now()
-                    : LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.valueOf(value.toString())), ZoneId.of("UTC"));
+                    : LocalDateTime.ofEpochSecond(Long.parseLong(value.toString()), 0, ZoneOffset.UTC);
         }
 
         return value;
