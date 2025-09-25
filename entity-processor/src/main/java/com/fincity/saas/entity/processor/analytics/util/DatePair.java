@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.analytics.util;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -26,6 +27,10 @@ public final class DatePair implements Comparable<DatePair> {
 
     public static DatePair of(LocalDate first, LocalDate second) {
         return new DatePair(first, second);
+    }
+
+    public static DatePair of(LocalDateTime first, LocalDateTime second) {
+        return new DatePair(first.toLocalDate(), second.toLocalDate());
     }
 
     public static <V> DatePair findContainingDate(LocalDate dateToFind, NavigableMap<DatePair, V> datePairMap) {

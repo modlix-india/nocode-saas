@@ -31,6 +31,6 @@ public class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
         }
 
         String date = in.nextString();
-        return Instant.ofEpochSecond(0, Long.parseLong(date)).atZone(ZoneOffset.UTC).toLocalDateTime();
+        return LocalDateTime.ofEpochSecond(Long.parseLong(date), 0, ZoneOffset.UTC);
     }
 }

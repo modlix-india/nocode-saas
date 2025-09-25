@@ -2,10 +2,10 @@ package com.fincity.saas.entity.processor.analytics.util;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import lombok.experimental.UtilityClass;
 
+@UtilityClass
 public class NumberUtil {
-
-    private NumberUtil() {}
 
     public static Double getPercentage(Number part, Number whole, int roundPlace) {
 
