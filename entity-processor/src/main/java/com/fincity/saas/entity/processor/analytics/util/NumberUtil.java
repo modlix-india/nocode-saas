@@ -46,5 +46,4 @@ public class NumberUtil {
             return (T) Integer.valueOf(a.intValue() + b.intValue());
         }
     }
-
 }

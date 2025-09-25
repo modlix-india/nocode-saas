@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.util.NumberUtil;
+import java.io.Serial;
+import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -8,7 +10,10 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class CountPercentage {
+public class CountPercentage implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 4023518798427014368L;
 
     private Number count;
     private Double percentage;

@@ -41,7 +41,8 @@ public class ReportUtil {
 
         Map<ULong, String> objectNameMap = IdAndValue.toMap(objectNameList);
 
-        Map<String, CountPercentage> initialValueMap = buildInitialValueMap(perValueCountList, requiredValueList, includePercentage);
+        Map<String, CountPercentage> initialValueMap =
+                buildInitialValueMap(perValueCountList, requiredValueList, includePercentage);
 
         Map<ULong, List<PerValueCount>> grouped = perValueCountList.stream()
                 .collect(Collectors.groupingBy(

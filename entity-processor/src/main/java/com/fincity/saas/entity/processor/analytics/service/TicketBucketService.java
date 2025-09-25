@@ -25,92 +25,96 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
 
     public Mono<Page<StatusCount>> getTicketPerAssignedUserStatusCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.resolveAssignedUsers(access, filter),
-                this::resolveStages,
-                (access, aFilter, sFilter) -> super.updateClientIds(access, sFilter),
-                (access, aFilter, sFilter, cFilter) -> super.updateCreatedByIds(access, cFilter),
-                (access, aFilter, sFilter, cFilter, cbFilter) -> this.dao
-                        .getTicketPerAssignedUserStageCount(access, cbFilter)
-                        .collectList(),
-                (access, aFilter, sFilter, cFilter, cbFilter, perStageCount) -> ReportUtil.toStatusCounts(
-                                perStageCount,
-                                cbFilter.getBaseFieldData().getAssignedUsers(),
-                                cbFilter.getFieldData().getStages(),
-                                cbFilter.isIncludeZero(),
-                                cbFilter.isIncludePercentage(),
-                                cbFilter.isIncludeTotal())
-                        .collectList(),
-                (access, aFilter, sFilter, cFilter, cbFilter, perStageCount, perStatusCount) ->
-                        ReactivePaginationUtil.toPage(perStatusCount, pageable))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStatusCount"));
+                        super::hasAccess,
+                        access -> super.resolveAssignedUsers(access, filter),
+                        this::resolveStages,
+                        (access, aFilter, sFilter) -> super.updateClientIds(access, sFilter),
+                        (access, aFilter, sFilter, cFilter) -> super.updateCreatedByIds(access, cFilter),
+                        (access, aFilter, sFilter, cFilter, cbFilter) -> this.dao
+                                .getTicketPerAssignedUserStageCount(access, cbFilter)
+                                .collectList(),
+                        (access, aFilter, sFilter, cFilter, cbFilter, perStageCount) -> ReportUtil.toStatusCounts(
+                                        perStageCount,
+                                        cbFilter.getBaseFieldData().getAssignedUsers(),
+                                        cbFilter.getFieldData().getStages(),
+                                        cbFilter.isIncludeZero(),
+                                        cbFilter.isIncludePercentage(),
+                                        cbFilter.isIncludeTotal())
+                                .collectList(),
+                        (access, aFilter, sFilter, cFilter, cbFilter, perStageCount, perStatusCount) ->
+                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStatusCount"));
     }
 
     public Mono<Page<StatusCount>> getTicketPerCreatedByStatusCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.resolveCreatedBys(access, filter),
-                this::resolveStages,
-                (access, cbFilter, sFilter) -> super.updateClientIds(access, sFilter),
-                (access, cbFilter, sFilter, cFilter) -> super.updateAssignedUserIds(access, cFilter),
-                (access, cbFilter, sFilter, cFilter, aFilter) -> this.dao
-                        .getTicketPerCreatedByStageCount(access, aFilter)
-                        .collectList(),
-                (access, cbFilter, sFilter, cFilter, aFilter, perStageCount) -> ReportUtil.toStatusCounts(
-                                perStageCount,
-                                aFilter.getBaseFieldData().getCreatedBys(),
-                                aFilter.getFieldData().getStages(),
-                                cbFilter.isIncludeZero(),
-                                cbFilter.isIncludePercentage(),
-                                cbFilter.isIncludeTotal())
-                        .collectList(),
-                (access, cbFilter, sFilter, cFilter, aFilter, perStageCount, perStatusCount) ->
-                        ReactivePaginationUtil.toPage(perStatusCount, pageable))
+                        super::hasAccess,
+                        access -> super.resolveCreatedBys(access, filter),
+                        this::resolveStages,
+                        (access, cbFilter, sFilter) -> super.updateClientIds(access, sFilter),
+                        (access, cbFilter, sFilter, cFilter) -> super.updateAssignedUserIds(access, cFilter),
+                        (access, cbFilter, sFilter, cFilter, aFilter) -> this.dao
+                                .getTicketPerCreatedByStageCount(access, aFilter)
+                                .collectList(),
+                        (access, cbFilter, sFilter, cFilter, aFilter, perStageCount) -> ReportUtil.toStatusCounts(
+                                        perStageCount,
+                                        aFilter.getBaseFieldData().getCreatedBys(),
+                                        aFilter.getFieldData().getStages(),
+                                        cbFilter.isIncludeZero(),
+                                        cbFilter.isIncludePercentage(),
+                                        cbFilter.isIncludeTotal())
+                                .collectList(),
+                        (access, cbFilter, sFilter, cFilter, aFilter, perStageCount, perStatusCount) ->
+                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStatusCount"));
     }
 
     public Mono<Page<StatusCount>> getTicketPerClientIdStatusCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.resolveClients(access, filter),
-                this::resolveStages,
-                (access, cFilter, sFilter) -> super.updateCreatedByIds(access, sFilter),
-                (access, cFilter, sFilter, cbFilter) -> super.updateAssignedUserIds(access, cbFilter),
-                (access, cFilter, sFilter, cbFilter, aFilter) ->
-                        this.dao.getTicketPerClientIdStageCount(access, aFilter).collectList(),
-                (access, cFilter, sFilter, cbFilter, aFilter, perStageCount) -> ReportUtil.toStatusCounts(
-                                perStageCount,
-                                aFilter.getBaseFieldData().getClients(),
-                                aFilter.getFieldData().getStages(),
-                                cbFilter.isIncludeZero(),
-                                cbFilter.isIncludePercentage(),
-                                cbFilter.isIncludeTotal())
-                        .collectList(),
-                (access, cFilter, sFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
-                        ReactivePaginationUtil.toPage(perStatusCount, pageable))
+                        super::hasAccess,
+                        access -> super.resolveClients(access, filter),
+                        this::resolveStages,
+                        (access, cFilter, sFilter) -> super.updateCreatedByIds(access, sFilter),
+                        (access, cFilter, sFilter, cbFilter) -> super.updateAssignedUserIds(access, cbFilter),
+                        (access, cFilter, sFilter, cbFilter, aFilter) -> this.dao
+                                .getTicketPerClientIdStageCount(access, aFilter)
+                                .collectList(),
+                        (access, cFilter, sFilter, cbFilter, aFilter, perStageCount) -> ReportUtil.toStatusCounts(
+                                        perStageCount,
+                                        aFilter.getBaseFieldData().getClients(),
+                                        aFilter.getFieldData().getStages(),
+                                        cbFilter.isIncludeZero(),
+                                        cbFilter.isIncludePercentage(),
+                                        cbFilter.isIncludeTotal())
+                                .collectList(),
+                        (access, cFilter, sFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
+                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStatusCount"));
     }
 
     public Mono<Page<StatusCount>> getTicketPerProductIdStatusCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.resolveProducts(access, filter),
-                this::resolveStages,
-                (access, pFilter, sFilter) -> super.updateClientIds(access, sFilter),
-                (access, pFilter, sFilter, cFilter) -> super.updateCreatedByIds(access, cFilter),
-                (access, pFilter, sFilter, cFilter, cbFilter) -> super.updateAssignedUserIds(access, cbFilter),
-                (access, pFilter, sFilter, cFilter, cbFilter, aFilter) ->
-                        this.dao.getTicketPerProjectStageCount(access, aFilter).collectList(),
-                (access, pFilter, sFilter, cFilter, cbFilter, aFilter, perStageCount) -> ReportUtil.toStatusCounts(
-                                perStageCount,
-                                aFilter.getFieldData().getProducts(),
-                                aFilter.getFieldData().getStages(),
-                                cbFilter.isIncludeZero(),
-                                cbFilter.isIncludePercentage(),
-                                cbFilter.isIncludeTotal())
-                        .collectList(),
-                (access, pFilter, sFilter, cFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
-                        ReactivePaginationUtil.toPage(perStatusCount, pageable))
+                        super::hasAccess,
+                        access -> this.resolveProducts(access, filter),
+                        this::resolveStages,
+                        (access, pFilter, sFilter) -> super.updateClientIds(access, sFilter),
+                        (access, pFilter, sFilter, cFilter) -> super.updateCreatedByIds(access, cFilter),
+                        (access, pFilter, sFilter, cFilter, cbFilter) -> super.updateAssignedUserIds(access, cbFilter),
+                        (access, pFilter, sFilter, cFilter, cbFilter, aFilter) -> this.dao
+                                .getTicketPerProjectStageCount(access, aFilter)
+                                .collectList(),
+                        (access, pFilter, sFilter, cFilter, cbFilter, aFilter, perStageCount) ->
+                                ReportUtil.toStatusCounts(
+                                                perStageCount,
+                                                aFilter.getFieldData().getProducts(),
+                                                aFilter.getFieldData().getStages(),
+                                                cbFilter.isIncludeZero(),
+                                                cbFilter.isIncludePercentage(),
+                                                cbFilter.isIncludeTotal())
+                                        .collectList(),
+                        (access, pFilter, sFilter, cFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
+                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductIdStatusCount"));
     }
 
