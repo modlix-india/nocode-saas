@@ -141,7 +141,12 @@ public class ReportUtil {
 
         Map<String, CountPercentage> valueCounts = new LinkedHashMap<>(initialValueMap);
 
-        if (pvcList.isEmpty()) return StatusCount.of(id, objectName, CountPercentage.zero(), valueCounts);
+        if (pvcList.isEmpty())
+            return StatusCount.of(
+                    id,
+                    objectName,
+                    includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent(),
+                    valueCounts);
 
         Long totalCount = 0L;
 

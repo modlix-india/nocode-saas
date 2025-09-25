@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
@@ -17,19 +16,16 @@ public class StatusCount implements Serializable {
     @Serial
     private static final long serialVersionUID = 6036698402832983531L;
 
-    private IdAndValue<ULong, String> entity;
+    private ULong id;
+
+    private String name;
 
     private CountPercentage totalCount;
 
     private Map<String, CountPercentage> perCount;
 
     public static StatusCount of(
-            IdAndValue<ULong, String> entity, CountPercentage totalCount, Map<String, CountPercentage> perCount) {
-        return new StatusCount().setEntity(entity).setTotalCount(totalCount).setPerCount(perCount);
-    }
-
-    public static StatusCount of(
             ULong entityId, String entityName, CountPercentage totalCount, Map<String, CountPercentage> perCount) {
-        return of(IdAndValue.of(entityId, entityName), totalCount, perCount);
+        return new StatusCount().setId(entityId).setName(entityName).setTotalCount(totalCount).setPerCount(perCount);
     }
 }
