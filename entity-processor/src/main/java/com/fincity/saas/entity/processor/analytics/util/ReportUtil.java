@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
@@ -24,6 +25,7 @@ import lombok.experimental.UtilityClass;
 import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -33,18 +35,6 @@ public class ReportUtil {
     private static final String TOTAL = "Total";
     private static final ULong TOTAL_ID = ULong.MIN;
     private static final int PARALLEL_THRESHOLD = Math.max(100, ForkJoinPool.getCommonPoolParallelism() * 4);
-
-    public static Flux<StatusEntityCount> toStatusCountsGroupedIds(
-            List<PerValueCount> perValueCountList,
-            List<IdAndValue<ULong, String>> objectNameList,
-            boolean includeZero,
-            boolean includePercentage,
-            boolean includeTotal,
-            boolean includeNone) {
-
-        return toStatusCountsGroupedIds(
-                perValueCountList, objectNameList, null, includeZero, includePercentage, includeTotal, includeNone);
-    }
 
     public static Flux<DateStatusCount> toDateStatusCounts(
             DatePair totalDatePair,
@@ -83,7 +73,8 @@ public class ReportUtil {
                             .map(statusCounts -> new DateStatusCount()
                                     .setDatePair(entry.getKey())
                                     .setStatusCount(statusCounts));
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
     }
 
     public static <T extends PerCount<T>> Flux<StatusEntityCount> toStatusCountsGroupedIds(
@@ -98,7 +89,9 @@ public class ReportUtil {
         if (includeNone && !includeTotal) return Flux.empty();
         if (perCountList.isEmpty() && !includeZero) return Flux.empty();
 
-        if (includeNone) return getOnlyGroupedIdTotal(perCountList, requiredValueList, includePercentage);
+        if (includeNone)
+            return getOnlyGroupedIdTotal(perCountList, requiredValueList, includePercentage)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toStatusCountsGroupedIds"));
 
         Map<ULong, String> allGroupedIds = IdAndValue.toMap(groupedIdsObjectList);
 
@@ -118,7 +111,8 @@ public class ReportUtil {
             allGroupedIds.put(TOTAL_ID, TOTAL);
         }
 
-        return convertGroupedIdToStatusIdCounts(grouped, allGroupedIds, initialValues, includePercentage);
+        return convertGroupedIdToStatusIdCounts(grouped, allGroupedIds, initialValues, includePercentage)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toStatusCountsGroupedIds"));
     }
 
     public static <T extends PerCount<T>> Flux<StatusNameCount> toStatusCountsGroupedValue(
@@ -132,7 +126,9 @@ public class ReportUtil {
         if (includeNone && !includeTotal) return Flux.empty();
         if (perCountList.isEmpty() && !includeZero) return Flux.empty();
 
-        if (includeNone) return getOnlyGroupedValueTotal(perCountList, requiredValueList, includePercentage);
+        if (includeNone)
+            return getOnlyGroupedValueTotal(perCountList, requiredValueList, includePercentage)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toStatusCountsGroupedValue"));
 
         Set<String> allGroupedValues =
                 perCountList.stream().map(PerCount::getGroupedValue).collect(Collectors.toSet());
@@ -150,7 +146,8 @@ public class ReportUtil {
 
         if (includeTotal) grouped.put(TOTAL, getTotalMap(grouped.values(), initialValues));
 
-        return convertGroupedValueToStatusNameCounts(grouped, initialValues, includePercentage);
+        return convertGroupedValueToStatusNameCounts(grouped, initialValues, includePercentage)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toStatusCountsGroupedValue"));
     }
 
     private static <T extends PerCount<T>> List<IdAndValue<String, CountPercentage>> buildInitialValues(
