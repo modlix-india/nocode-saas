@@ -308,7 +308,7 @@ public class ReportUtil {
 
         long totalCount = values.values().stream().mapToLong(Long::longValue).sum();
 
-        List<IdAndValue<String, CountPercentage>> valueCounts = new ArrayList<>(initialValues.size());
+        List<IdAndValue<String, CountPercentage>> valueCounts = new LinkedList<>();
 
         for (IdAndValue<String, CountPercentage> initialValue : initialValues) {
             String valueKey = initialValue.getId();
