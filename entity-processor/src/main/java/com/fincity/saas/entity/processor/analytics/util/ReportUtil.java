@@ -216,14 +216,13 @@ public class ReportUtil {
 
         Flux<Map.Entry<ULong, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
-        if (groupedCounts.size() > PARALLEL_THRESHOLD) {
+        if (groupedCounts.size() > PARALLEL_THRESHOLD)
             return flux.parallel()
                     .runOn(Schedulers.parallel())
                     .map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage))
                     .sequential();
-        } else {
-            return flux.map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage));
-        }
+
+        return flux.map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage));
     }
 
     private static Flux<StatusNameCount> convertGroupsNameToStatusNameCounts(
@@ -233,14 +232,13 @@ public class ReportUtil {
 
         Flux<Map.Entry<String, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
-        if (groupedCounts.size() > PARALLEL_THRESHOLD) {
+        if (groupedCounts.size() > PARALLEL_THRESHOLD)
             return flux.parallel()
                     .runOn(Schedulers.parallel())
                     .map(entry -> processNameEntry(entry, initialValues, includePercentage))
                     .sequential();
-        } else {
-            return flux.map(entry -> processNameEntry(entry, initialValues, includePercentage));
-        }
+
+        return flux.map(entry -> processNameEntry(entry, initialValues, includePercentage));
     }
 
     private static <T extends PerCount<T>> Flux<StatusEntityCount> onlyTotalId(
