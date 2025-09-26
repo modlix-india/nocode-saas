@@ -5,7 +5,6 @@ import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
-import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
 import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
