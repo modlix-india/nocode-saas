@@ -8,12 +8,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Data
 @NoArgsConstructor
+@Accessors(chain = true)
 @FieldNameConstants
 public class IdAndValue<I extends Serializable, U extends Serializable>
         implements Comparable<IdAndValue<I, U>>, Serializable {
@@ -30,13 +32,8 @@ public class IdAndValue<I extends Serializable, U extends Serializable>
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private boolean compareId = true;
 
-    public IdAndValue(I id, U value) {
-        this.id = id;
-        this.value = value;
-    }
-
     public static <I extends Serializable, U extends Serializable> IdAndValue<I, U> of(I id, U value) {
-        return new IdAndValue<>(id, value);
+        return new IdAndValue<I, U>().setId(id).setValue(value);
     }
 
     public static <I extends Serializable, U extends Serializable> Map<I, U> toMap(

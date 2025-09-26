@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
-import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
@@ -10,13 +9,15 @@ import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
 import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import org.jooq.types.ULong;
@@ -28,16 +29,18 @@ public class ReportUtil {
 
     private static final String TOTAL = "Total";
     private static final ULong TOTAL_ID = ULong.MIN;
+    private static final int PARALLEL_THRESHOLD = Math.max(100, ForkJoinPool.getCommonPoolParallelism() * 4);
 
     public static Flux<StatusEntityCount> toStatusCountsGroupedIds(
             List<PerValueCount> perValueCountList,
             List<IdAndValue<ULong, String>> objectNameList,
             boolean includeZero,
             boolean includePercentage,
-            boolean includeTotal) {
+            boolean includeTotal,
+            boolean includeNone) {
 
         return toStatusCountsGroupedIds(
-                perValueCountList, objectNameList, null, includeZero, includePercentage, includeTotal);
+                perValueCountList, objectNameList, null, includeZero, includePercentage, includeTotal, includeNone);
     }
 
     public static Flux<StatusEntityCount> toStatusCountsGroupedIds(
@@ -46,29 +49,34 @@ public class ReportUtil {
             List<IdAndValue<ULong, String>> requiredValueList,
             boolean includeZero,
             boolean includePercentage,
-            boolean includeTotal) {
+            boolean includeTotal,
+            boolean includeNone) {
 
+        if (includeNone && !includeTotal) return Flux.empty();
         if (perValueCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        if (includeNone) return onlyTotalId(perValueCountList, requiredValueList, includePercentage);
 
         Map<ULong, String> groupedIdsObjectMap = IdAndValue.toMap(groupedIdsObjectList);
 
-        Map<String, CountPercentage> initialValueMap =
-                buildInitialValueMap(perValueCountList, requiredValueList, includePercentage);
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perValueCountList, requiredValueList, includePercentage);
 
-        Map<ULong, List<PerValueCount>> grouped = perValueCountList.stream()
+        Map<ULong, Map<String, Long>> grouped = perValueCountList.stream()
                 .collect(Collectors.groupingBy(
                         PerValueCount::getGroupedId,
-                        () -> LinkedHashMap.newLinkedHashMap(groupedIdsObjectList.size()),
-                        Collectors.toList()));
+                        LinkedHashMap::new,
+                        Collectors.groupingBy(
+                                PerValueCount::getMapValue, Collectors.summingLong(PerValueCount::getCount))));
 
-        if (includeZero) addMissingIdsEntries(grouped, groupedIdsObjectMap.keySet(), initialValueMap);
+        if (includeZero) addMissingIdsEntries(grouped, groupedIdsObjectMap.keySet(), initialValues);
 
         if (includeTotal) {
-            addTotalIdEntry(grouped, initialValueMap);
-            groupedIdsObjectMap.put(ULong.MIN, TOTAL);
+            addTotalIdEntry(grouped, initialValues);
+            groupedIdsObjectMap.put(TOTAL_ID, TOTAL);
         }
 
-        return convertIdGroupsToStatusIdCounts(grouped, groupedIdsObjectMap, initialValueMap, includePercentage);
+        return convertIdGroupsToStatusIdCounts(grouped, groupedIdsObjectMap, initialValues, includePercentage);
     }
 
     public static Flux<DateStatusCount> toDateStatusCounts(
@@ -78,36 +86,36 @@ public class ReportUtil {
             List<IdAndValue<ULong, String>> requiredValueList,
             boolean includeZero,
             boolean includePercentage,
-            boolean includeTotal) {
+            boolean includeTotal,
+            boolean includeNone) {
 
         if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                totalDatePair.toTimePeriodMap(timePeriod, new ArrayList<>());
+                totalDatePair.toTimePeriodMap(timePeriod, new LinkedList<>());
 
-        for (PerDateCount pvc : perDateCountList) {
-            DatePair datePair = DatePair.findContainingDate(pvc.getDate(), datePairMap);
-            if (datePair != null) {
-                datePairMap.computeIfAbsent(datePair, k -> new ArrayList<>()).add(pvc);
-            }
+        for (PerDateCount pdc : perDateCountList) {
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
+            if (datePair != null) datePairMap.get(datePair).add(pdc);
         }
 
-        Iterable<Map.Entry<DatePair, List<PerDateCount>>> iterable = datePairMap.entrySet();
-
-        return Flux.fromIterable(iterable)
-                .filter(entry -> includeZero
-                        || (entry.getValue() != null && !entry.getValue().isEmpty()))
+        return Flux.fromIterable(datePairMap.entrySet())
+                .filter(entry -> includeZero || !entry.getValue().isEmpty())
                 .publishOn(Schedulers.boundedElastic())
-                .map(entry -> {
-                    List<PerDateCount> list = entry.getValue();
+                .flatMap(entry -> {
+                    List<PerDateCount> dateGroupedList = entry.getValue();
 
-                    List<StatusNameCount> statusCounts = toStatusCountsGroupedName(
-                                    list, requiredValueList, includeZero, includePercentage, includeTotal)
+                    return toStatusCountsGroupedName(
+                                    dateGroupedList,
+                                    requiredValueList,
+                                    includeZero,
+                                    includePercentage,
+                                    includeTotal,
+                                    includeNone)
                             .collectList()
-                            .blockOptional()
-                            .orElseGet(Collections::emptyList);
-
-                    return new DateStatusCount().setDatePair(entry.getKey()).setStatusCount(statusCounts);
+                            .map(statusCounts -> new DateStatusCount()
+                                    .setDatePair(entry.getKey())
+                                    .setStatusCount(statusCounts));
                 });
     }
 
@@ -116,203 +124,222 @@ public class ReportUtil {
             List<IdAndValue<ULong, String>> requiredValueList,
             boolean includeZero,
             boolean includePercentage,
-            boolean includeTotal) {
+            boolean includeTotal,
+            boolean includeNone) {
 
+        if (includeNone && !includeTotal) return Flux.empty();
         if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        if (includeNone) return onlyTotalName(perDateCountList, requiredValueList, includePercentage);
 
         Set<String> objectNameSet =
                 perDateCountList.stream().map(PerCount::getGroupedValue).collect(Collectors.toSet());
 
-        Map<String, CountPercentage> initialValueMap =
-                buildInitialValueMap(perDateCountList, requiredValueList, includePercentage);
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perDateCountList, requiredValueList, includePercentage);
 
-        Map<String, List<PerDateCount>> grouped = perDateCountList.stream()
+        Map<String, Map<String, Long>> grouped = perDateCountList.stream()
                 .collect(Collectors.groupingBy(
                         PerDateCount::getGroupedValue,
-                        () -> LinkedHashMap.newLinkedHashMap(objectNameSet.size()),
-                        Collectors.toList()));
+                        LinkedHashMap::new,
+                        Collectors.groupingBy(
+                                PerDateCount::getMapValue, Collectors.summingLong(PerDateCount::getCount))));
 
-        if (includeZero) addMissingNameEntries(grouped, objectNameSet, initialValueMap);
+        if (includeZero) addMissingNameEntries(grouped, objectNameSet, initialValues);
 
-        if (includeTotal) addTotalNameEntry(grouped, initialValueMap);
+        if (includeTotal) addTotalNameEntry(grouped, initialValues);
 
-        return convertGroupsNameToStatusNameCounts(grouped, initialValueMap, includePercentage);
+        return convertGroupsNameToStatusNameCounts(grouped, initialValues, includePercentage);
     }
 
-    private static <T extends PerCount<T>> Map<String, CountPercentage> buildInitialValueMap(
+    private static <T extends PerCount<T>> List<IdAndValue<String, CountPercentage>> buildInitialValues(
             List<T> perValueCountList, List<IdAndValue<ULong, String>> requiredValueList, boolean includePercentage) {
 
         CountPercentage count = includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent();
 
         if (requiredValueList != null && !requiredValueList.isEmpty())
             return requiredValueList.stream()
-                    .collect(Collectors.toMap(
-                            IdAndValue::getValue,
-                            value -> count,
-                            (a, b) -> b,
-                            () -> LinkedHashMap.newLinkedHashMap(requiredValueList.size())));
+                    .map(value -> IdAndValue.of(value.getValue(), count).setCompareId(Boolean.FALSE))
+                    .collect(Collectors.toCollection(LinkedList::new));
+
+        if (perValueCountList.isEmpty()) return new LinkedList<>();
 
         return perValueCountList.stream()
+                .map(PerCount::getMapValue)
                 .distinct()
-                .collect(Collectors.toMap(
-                        PerCount::getMapValue,
-                        value -> count,
-                        (a, b) -> b,
-                        () -> LinkedHashMap.newLinkedHashMap(perValueCountList.size())));
+                .map(mapValue -> IdAndValue.of(mapValue, count).setCompareId(Boolean.FALSE))
+                .collect(Collectors.toCollection(LinkedList::new));
     }
 
-    private static <T extends PerCount<T>> void addMissingIdsEntries(
-            Map<ULong, List<T>> grouped, Set<ULong> allGroupedIds, Map<String, CountPercentage> initialValueMap) {
-        allGroupedIds.forEach(id -> grouped.computeIfAbsent(id, k -> initialValueMap.keySet().stream()
-                .map(value -> new PerCount<T>() {}.create(k, value, 0L))
-                .toList()));
+    private static void addMissingIdsEntries(
+            Map<ULong, Map<String, Long>> grouped,
+            Set<ULong> allGroupedIds,
+            List<IdAndValue<String, CountPercentage>> initialValues) {
+
+        allGroupedIds.forEach(id -> {
+            Map<String, Long> valueMap = grouped.computeIfAbsent(id, k -> new LinkedHashMap<>());
+            initialValues.forEach(value -> valueMap.putIfAbsent(value.getId(), 0L));
+        });
     }
 
-    private static <T extends PerCount<T>> void addMissingNameEntries(
-            Map<String, List<T>> grouped, Set<String> allGroupedName, Map<String, CountPercentage> initialValueMap) {
-        allGroupedName.forEach(name -> grouped.computeIfAbsent(name, k -> initialValueMap.keySet().stream()
-                .map(value -> new PerCount<T>() {}.create(k, value, 0L))
-                .toList()));
+    private static void addMissingNameEntries(
+            Map<String, Map<String, Long>> grouped,
+            Set<String> allGroupedNames,
+            List<IdAndValue<String, CountPercentage>> initialValues) {
+
+        allGroupedNames.forEach(name -> {
+            Map<String, Long> valueMap = grouped.computeIfAbsent(name, k -> new LinkedHashMap<>());
+            initialValues.forEach(value -> valueMap.putIfAbsent(value.getId(), 0L));
+        });
     }
 
-    private static <T extends PerCount<T>> void addTotalIdEntry(
-            Map<ULong, List<T>> grouped, Map<String, CountPercentage> initialValueMap) {
+    private static void addTotalIdEntry(
+            Map<ULong, Map<String, Long>> grouped, List<IdAndValue<String, CountPercentage>> initialValues) {
 
-        Map<String, Long> valueSums = new LinkedHashMap<>();
-        initialValueMap.keySet().forEach(k -> valueSums.put(k, 0L));
+        Map<String, Long> totalMap = new LinkedHashMap<>();
+        initialValues.forEach(value -> totalMap.put(value.getId(), 0L));
 
-        for (List<T> list : grouped.values()) {
-            list.forEach(pc -> valueSums.merge(pc.getMapValue(), pc.getCount(), Long::sum));
-        }
+        for (Map<String, Long> valueMap : grouped.values())
+            valueMap.forEach((key, value) -> totalMap.merge(key, value, Long::sum));
 
-        List<T> totalList = initialValueMap.keySet().stream()
-                .map(v -> new PerCount<T>() {}.create(TOTAL_ID, v, valueSums.getOrDefault(v, 0L)))
-                .toList();
-
-        grouped.put(TOTAL_ID, totalList);
+        grouped.put(TOTAL_ID, totalMap);
     }
 
-    private static <T extends PerCount<T>> void addTotalNameEntry(
-            Map<String, List<T>> grouped, Map<String, CountPercentage> initialValueMap) {
+    private static void addTotalNameEntry(
+            Map<String, Map<String, Long>> grouped, List<IdAndValue<String, CountPercentage>> initialValues) {
 
-        Map<String, Long> valueSums = new LinkedHashMap<>();
-        initialValueMap.keySet().forEach(k -> valueSums.put(k, 0L));
+        Map<String, Long> totalMap = new LinkedHashMap<>();
+        initialValues.forEach(value -> totalMap.put(value.getId(), 0L));
 
-        for (List<T> list : grouped.values()) {
-            list.forEach(pc -> valueSums.merge(pc.getMapValue(), pc.getCount(), Long::sum));
-        }
+        for (Map<String, Long> valueMap : grouped.values())
+            valueMap.forEach((key, value) -> totalMap.merge(key, value, Long::sum));
 
-        List<T> totalList = initialValueMap.keySet().stream()
-                .map(v -> new PerCount<T>() {}.create(TOTAL, v, valueSums.getOrDefault(v, 0L)))
-                .toList();
-
-        grouped.put(TOTAL, totalList);
+        grouped.put(TOTAL, totalMap);
     }
 
-    private static <T extends PerCount<T>> Flux<StatusEntityCount> convertIdGroupsToStatusIdCounts(
-            Map<ULong, List<T>> groupedCounts,
+    private static Flux<StatusEntityCount> convertIdGroupsToStatusIdCounts(
+            Map<ULong, Map<String, Long>> groupedCounts,
             Map<ULong, String> objectNameMap,
-            Map<String, CountPercentage> initialValueMap,
+            List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
         int dataSize = groupedCounts.size();
-        boolean useParallel = dataSize > 100;
+        boolean useParallel = dataSize > PARALLEL_THRESHOLD;
 
-        Flux<Map.Entry<ULong, List<T>>> flux = Flux.fromIterable(groupedCounts.entrySet());
+        Flux<Map.Entry<ULong, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
         if (useParallel) {
             return flux.parallel()
                     .runOn(Schedulers.parallel())
-                    .map(entry -> processIdEntry(entry, objectNameMap, initialValueMap, includePercentage))
+                    .map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage))
                     .sequential();
         } else {
-            return flux.map(entry -> processIdEntry(entry, objectNameMap, initialValueMap, includePercentage));
+            return flux.map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage));
         }
     }
 
-    private static <T extends PerCount<T>> Flux<StatusNameCount> convertGroupsNameToStatusNameCounts(
-            Map<String, List<T>> groupedCounts,
-            Map<String, CountPercentage> initialValueMap,
+    private static Flux<StatusNameCount> convertGroupsNameToStatusNameCounts(
+            Map<String, Map<String, Long>> groupedCounts,
+            List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
         int dataSize = groupedCounts.size();
-        boolean useParallel = dataSize > 100;
+        boolean useParallel = dataSize > PARALLEL_THRESHOLD;
 
-        Flux<Map.Entry<String, List<T>>> flux = Flux.fromIterable(groupedCounts.entrySet());
+        Flux<Map.Entry<String, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
         if (useParallel) {
             return flux.parallel()
                     .runOn(Schedulers.parallel())
-                    .map(entry -> processNameEntry(entry, initialValueMap, includePercentage))
+                    .map(entry -> processNameEntry(entry, initialValues, includePercentage))
                     .sequential();
         } else {
-            return flux.map(entry -> processNameEntry(entry, initialValueMap, includePercentage));
+            return flux.map(entry -> processNameEntry(entry, initialValues, includePercentage));
         }
     }
 
-    private static <T extends PerCount<T>> StatusEntityCount processIdEntry(
-            Map.Entry<ULong, List<T>> entry,
+    private static <T extends PerCount<T>> Flux<StatusEntityCount> onlyTotalId(
+            List<T> perCountList, List<IdAndValue<ULong, String>> requiredValueList, boolean includePercentage) {
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perCountList, requiredValueList, includePercentage);
+
+        Map<String, Long> totalMap = new LinkedHashMap<>();
+        initialValues.forEach(v -> totalMap.put(v.getId(), 0L));
+
+        perCountList.forEach(pvc -> totalMap.merge(pvc.getMapValue(), pvc.getCount(), Long::sum));
+
+        return Flux.just(processIdEntry(
+                new AbstractMap.SimpleEntry<>(TOTAL_ID, totalMap),
+                Map.of(TOTAL_ID, TOTAL),
+                initialValues,
+                includePercentage));
+    }
+
+    private static <T extends PerCount<T>> Flux<StatusNameCount> onlyTotalName(
+            List<T> perCountList, List<IdAndValue<ULong, String>> requiredValueList, boolean includePercentage) {
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perCountList, requiredValueList, includePercentage);
+
+        Map<String, Long> totalMap = new LinkedHashMap<>();
+        initialValues.forEach(v -> totalMap.put(v.getId(), 0L));
+
+        perCountList.forEach(pvc -> totalMap.merge(pvc.getMapValue(), pvc.getCount(), Long::sum));
+
+        return Flux.just(
+                processNameEntry(new AbstractMap.SimpleEntry<>(TOTAL, totalMap), initialValues, includePercentage));
+    }
+
+    private static StatusEntityCount processIdEntry(
+            Map.Entry<ULong, Map<String, Long>> entry,
             Map<ULong, String> objectNameMap,
-            Map<String, CountPercentage> initialValueMap,
+            List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
         ULong id = entry.getKey();
-        List<T> pcList = entry.getValue();
-        String objectName = objectNameMap.get(id);
+        String name = objectNameMap.get(id);
+        Map<String, Long> values = entry.getValue();
 
-        Map<String, CountPercentage> valueCounts = CloneUtil.cloneMapObject(initialValueMap);
+        long totalCount = values.values().stream().mapToLong(Long::longValue).sum();
 
-        if (pcList.isEmpty())
-            return StatusEntityCount.of(
-                    id,
-                    objectName,
-                    includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent(),
-                    valueCounts);
+        List<IdAndValue<String, CountPercentage>> valueCounts = new ArrayList<>(initialValues.size());
 
-        Long totalCount = 0L;
+        for (IdAndValue<String, CountPercentage> initialValue : initialValues) {
+            String valueKey = initialValue.getId();
+            Long count = values.getOrDefault(valueKey, 0L);
 
-        for (T pc : pcList) {
-            totalCount += pc.getCount();
-            valueCounts
-                    .computeIfAbsent(pc.getMapValue(), k -> CountPercentage.withCount(0))
-                    .addCount(pc.getCount());
+            CountPercentage cp = includePercentage && totalCount > 0
+                    ? CountPercentage.of(count, totalCount)
+                    : CountPercentage.withCount(count);
+
+            valueCounts.add(IdAndValue.of(valueKey, cp));
         }
 
-        if (includePercentage) {
-            for (T pc : pcList) {
-                CountPercentage cp = valueCounts.get(pc.getMapValue());
-                if (cp != null) cp.recalculatePercentage(totalCount, 2);
-            }
-        }
-
-        return StatusEntityCount.of(id, objectName, CountPercentage.withCount(totalCount), valueCounts);
+        return StatusEntityCount.of(id, name, CountPercentage.withCount(totalCount), valueCounts);
     }
 
-    private static <T extends PerCount<T>> StatusNameCount processNameEntry(
-            Map.Entry<String, List<T>> entry, Map<String, CountPercentage> initialValueMap, boolean includePercentage) {
+    private static StatusNameCount processNameEntry(
+            Map.Entry<String, Map<String, Long>> entry,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            boolean includePercentage) {
 
         String name = entry.getKey();
-        List<T> pcList = entry.getValue();
+        Map<String, Long> values = entry.getValue();
 
-        Map<String, CountPercentage> valueCounts = CloneUtil.cloneMapObject(initialValueMap);
+        long totalCount = values.values().stream().mapToLong(Long::longValue).sum();
 
-        if (pcList.isEmpty())
-            return StatusNameCount.of(
-                    name, includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent(), valueCounts);
+        List<IdAndValue<String, CountPercentage>> valueCounts = new ArrayList<>(initialValues.size());
 
-        long totalCount = 0L;
-        for (T pc : pcList) {
-            totalCount += pc.getCount();
-            valueCounts
-                    .computeIfAbsent(pc.getMapValue(), k -> CountPercentage.withCount(0))
-                    .addCount(pc.getCount());
-        }
+        for (IdAndValue<String, CountPercentage> initialValue : initialValues) {
+            String valueKey = initialValue.getId();
+            Long count = values.getOrDefault(valueKey, 0L);
 
-        if (includePercentage) {
-            for (T pc : pcList) {
-                CountPercentage cp = valueCounts.get(pc.getMapValue());
-                if (cp != null) cp.recalculatePercentage(totalCount, 2);
-            }
+            CountPercentage cp = includePercentage && totalCount > 0
+                    ? CountPercentage.of(count, totalCount)
+                    : CountPercentage.withCount(count);
+
+            valueCounts.add(IdAndValue.of(valueKey, cp));
         }
 
         return StatusNameCount.of(name, CountPercentage.withCount(totalCount), valueCounts);
