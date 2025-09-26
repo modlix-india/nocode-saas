@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +24,8 @@ import lombok.experimental.UtilityClass;
 import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @UtilityClass
 public class ReportUtil {
@@ -72,7 +75,7 @@ public class ReportUtil {
         if (includeZero) addMissingIdsEntries(grouped, groupedIdsObjectMap.keySet(), initialValues);
 
         if (includeTotal) {
-            addTotalIdEntry(grouped, initialValues);
+            grouped.put(TOTAL_ID, getTotalMap(grouped.values(), initialValues));
             groupedIdsObjectMap.put(TOTAL_ID, TOTAL);
         }
 
@@ -147,7 +150,7 @@ public class ReportUtil {
 
         if (includeZero) addMissingNameEntries(grouped, objectNameSet, initialValues);
 
-        if (includeTotal) addTotalNameEntry(grouped, initialValues);
+        if (includeTotal) grouped.put(TOTAL, getTotalMap(grouped.values(), initialValues));
 
         return convertGroupsNameToStatusNameCounts(grouped, initialValues, includePercentage);
     }
@@ -193,28 +196,16 @@ public class ReportUtil {
         });
     }
 
-    private static void addTotalIdEntry(
-            Map<ULong, Map<String, Long>> grouped, List<IdAndValue<String, CountPercentage>> initialValues) {
+    private static Map<String, Long> getTotalMap(
+            Collection<Map<String, Long>> groupedValues, List<IdAndValue<String, CountPercentage>> initialValues) {
 
         Map<String, Long> totalMap = new LinkedHashMap<>();
         initialValues.forEach(value -> totalMap.put(value.getId(), 0L));
 
-        for (Map<String, Long> valueMap : grouped.values())
+        for (Map<String, Long> valueMap : groupedValues)
             valueMap.forEach((key, value) -> totalMap.merge(key, value, Long::sum));
 
-        grouped.put(TOTAL_ID, totalMap);
-    }
-
-    private static void addTotalNameEntry(
-            Map<String, Map<String, Long>> grouped, List<IdAndValue<String, CountPercentage>> initialValues) {
-
-        Map<String, Long> totalMap = new LinkedHashMap<>();
-        initialValues.forEach(value -> totalMap.put(value.getId(), 0L));
-
-        for (Map<String, Long> valueMap : grouped.values())
-            valueMap.forEach((key, value) -> totalMap.merge(key, value, Long::sum));
-
-        grouped.put(TOTAL, totalMap);
+        return totalMap;
     }
 
     private static Flux<StatusEntityCount> convertIdGroupsToStatusIdCounts(
@@ -223,12 +214,9 @@ public class ReportUtil {
             List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
-        int dataSize = groupedCounts.size();
-        boolean useParallel = dataSize > PARALLEL_THRESHOLD;
-
         Flux<Map.Entry<ULong, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
-        if (useParallel) {
+        if (groupedCounts.size() > PARALLEL_THRESHOLD) {
             return flux.parallel()
                     .runOn(Schedulers.parallel())
                     .map(entry -> processIdEntry(entry, objectNameMap, initialValues, includePercentage))
@@ -243,12 +231,9 @@ public class ReportUtil {
             List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
-        int dataSize = groupedCounts.size();
-        boolean useParallel = dataSize > PARALLEL_THRESHOLD;
-
         Flux<Map.Entry<String, Map<String, Long>>> flux = Flux.fromIterable(groupedCounts.entrySet());
 
-        if (useParallel) {
+        if (groupedCounts.size() > PARALLEL_THRESHOLD) {
             return flux.parallel()
                     .runOn(Schedulers.parallel())
                     .map(entry -> processNameEntry(entry, initialValues, includePercentage))
@@ -299,24 +284,11 @@ public class ReportUtil {
 
         ULong id = entry.getKey();
         String name = objectNameMap.get(id);
-        Map<String, Long> values = entry.getValue();
 
-        long totalCount = values.values().stream().mapToLong(Long::longValue).sum();
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> tuple =
+                getTotalValueCounts(entry.getValue(), initialValues, includePercentage);
 
-        List<IdAndValue<String, CountPercentage>> valueCounts = new ArrayList<>(initialValues.size());
-
-        for (IdAndValue<String, CountPercentage> initialValue : initialValues) {
-            String valueKey = initialValue.getId();
-            Long count = values.getOrDefault(valueKey, 0L);
-
-            CountPercentage cp = includePercentage && totalCount > 0
-                    ? CountPercentage.of(count, totalCount)
-                    : CountPercentage.withCount(count);
-
-            valueCounts.add(IdAndValue.of(valueKey, cp));
-        }
-
-        return StatusEntityCount.of(id, name, CountPercentage.withCount(totalCount), valueCounts);
+        return StatusEntityCount.of(id, name, CountPercentage.withCount(tuple.getT1()), tuple.getT2());
     }
 
     private static StatusNameCount processNameEntry(
@@ -324,8 +296,16 @@ public class ReportUtil {
             List<IdAndValue<String, CountPercentage>> initialValues,
             boolean includePercentage) {
 
-        String name = entry.getKey();
-        Map<String, Long> values = entry.getValue();
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> tuple =
+                getTotalValueCounts(entry.getValue(), initialValues, includePercentage);
+
+        return StatusNameCount.of(entry.getKey(), CountPercentage.withCount(tuple.getT1()), tuple.getT2());
+    }
+
+    private static Tuple2<Long, List<IdAndValue<String, CountPercentage>>> getTotalValueCounts(
+            Map<String, Long> values,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            boolean includePercentage) {
 
         long totalCount = values.values().stream().mapToLong(Long::longValue).sum();
 
@@ -342,6 +322,6 @@ public class ReportUtil {
             valueCounts.add(IdAndValue.of(valueKey, cp));
         }
 
-        return StatusNameCount.of(name, CountPercentage.withCount(totalCount), valueCounts);
+        return Tuples.of(totalCount, valueCounts);
     }
 }
