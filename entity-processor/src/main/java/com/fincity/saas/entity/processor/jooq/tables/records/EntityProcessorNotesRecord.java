@@ -167,7 +167,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.HAS_ATTACHMENT</code>.
      * Whether this note has attachments.
      */
-    public EntityProcessorNotesRecord setHasAttachment(Byte value) {
+    public EntityProcessorNotesRecord setHasAttachment(Boolean value) {
         set(8, value);
         return this;
     }
@@ -177,8 +177,8 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.HAS_ATTACHMENT</code>.
      * Whether this note has attachments.
      */
-    public Byte getHasAttachment() {
-        return (Byte) get(8);
+    public Boolean getHasAttachment() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -277,7 +277,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.
      */
-    public EntityProcessorNotesRecord setTempActive(Byte value) {
+    public EntityProcessorNotesRecord setTempActive(Boolean value) {
         set(14, value);
         return this;
     }
@@ -287,8 +287,8 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.
      */
-    public Byte getTempActive() {
-        return (Byte) get(14);
+    public Boolean getTempActive() {
+        return (Boolean) get(14);
     }
 
     /**
@@ -296,7 +296,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.IS_ACTIVE</code>. Flag to
      * check if this note is active or not.
      */
-    public EntityProcessorNotesRecord setIsActive(Byte value) {
+    public EntityProcessorNotesRecord setIsActive(Boolean value) {
         set(15, value);
         return this;
     }
@@ -306,8 +306,8 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
      * <code>entity_processor.entity_processor_notes.IS_ACTIVE</code>. Flag to
      * check if this note is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(15);
+    public Boolean getIsActive() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -409,7 +409,7 @@ public class EntityProcessorNotesRecord extends UpdatableRecordImpl<EntityProces
     /**
      * Create a detached, initialised EntityProcessorNotesRecord
      */
-    public EntityProcessorNotesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, Byte hasAttachment, ContentEntitySeries contentEntitySeries, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorNotesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Integer version, String content, Boolean hasAttachment, ContentEntitySeries contentEntitySeries, ULong ownerId, ULong ticketId, ULong userId, ULong clientId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorNotes.ENTITY_PROCESSOR_NOTES);
 
         setId(id);

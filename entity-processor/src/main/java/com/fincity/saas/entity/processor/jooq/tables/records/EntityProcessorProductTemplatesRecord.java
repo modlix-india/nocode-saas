@@ -160,7 +160,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorProductTemplatesRecord setTempActive(Byte value) {
+    public EntityProcessorProductTemplatesRecord setTempActive(Boolean value) {
         set(7, value);
         return this;
     }
@@ -170,8 +170,8 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(7);
+    public Boolean getTempActive() {
+        return (Boolean) get(7);
     }
 
     /**
@@ -179,7 +179,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.IS_ACTIVE</code>.
      * Flag to check if this product is active or not.
      */
-    public EntityProcessorProductTemplatesRecord setIsActive(Byte value) {
+    public EntityProcessorProductTemplatesRecord setIsActive(Boolean value) {
         set(8, value);
         return this;
     }
@@ -189,8 +189,8 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.IS_ACTIVE</code>.
      * Flag to check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(8);
+    public Boolean getIsActive() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -292,7 +292,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorProductTemplatesRecord
      */
-    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ProductTemplateType productTemplateType, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ProductTemplateType productTemplateType, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES);
 
         setId(id);

@@ -1,6 +1,9 @@
 package com.fincity.saas.message.controller.call;
 
+import com.fincity.saas.message.controller.base.BaseUpdatableController;
+import com.fincity.saas.message.dao.call.CallDAO;
 import com.fincity.saas.message.dto.call.Call;
+import com.fincity.saas.message.jooq.tables.records.MessageCallsRecord;
 import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.service.call.CallService;
 import org.springframework.http.ResponseEntity;
@@ -12,17 +15,11 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/message/call")
-public class CallController {
-
-    private final CallService callService;
-
-    public CallController(CallService callService) {
-        this.callService = callService;
-    }
+public class CallController extends BaseUpdatableController<MessageCallsRecord, Call, CallDAO, CallService> {
 
     @PostMapping("/make")
     public Mono<ResponseEntity<Call>> makeCall(@RequestBody CallRequest callRequest) {
-        return this.callService
+        return this.service
                 .makeCall(callRequest)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());

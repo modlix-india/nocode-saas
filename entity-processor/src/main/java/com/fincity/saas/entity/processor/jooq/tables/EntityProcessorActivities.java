@@ -186,14 +186,14 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
      * Temporary active flag for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Activity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
      * to check if this Activity is active or not.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Activity is active or not.");
+    public final TableField<EntityProcessorActivitiesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Activity is active or not.");
 
     /**
      * The column

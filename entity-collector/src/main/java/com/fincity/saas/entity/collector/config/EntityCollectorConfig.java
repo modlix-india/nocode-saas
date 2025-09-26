@@ -31,7 +31,7 @@ public class EntityCollectorConfig extends AbstractJooqBaseConfiguration impleme
     @Override
     @PostConstruct
     public void initialize() {
-        super.initialize();
+        super.initialize(messageService);
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null) log.debug("{} - {}", name, v);

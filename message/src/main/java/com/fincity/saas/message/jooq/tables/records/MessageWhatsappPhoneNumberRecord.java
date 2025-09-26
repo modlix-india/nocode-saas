@@ -288,7 +288,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Setter for <code>message.message_whatsapp_phone_number.IS_DEFAULT</code>.
      * Flag to indicate if this is the default phone number.
      */
-    public MessageWhatsappPhoneNumberRecord setIsDefault(Byte value) {
+    public MessageWhatsappPhoneNumberRecord setIsDefault(Boolean value) {
         set(14, value);
         return this;
     }
@@ -297,15 +297,15 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Getter for <code>message.message_whatsapp_phone_number.IS_DEFAULT</code>.
      * Flag to indicate if this is the default phone number.
      */
-    public Byte getIsDefault() {
-        return (Byte) get(14);
+    public Boolean getIsDefault() {
+        return (Boolean) get(14);
     }
 
     /**
      * Setter for <code>message.message_whatsapp_phone_number.IS_ACTIVE</code>.
      * Flag to check if this phone number is active or not.
      */
-    public MessageWhatsappPhoneNumberRecord setIsActive(Byte value) {
+    public MessageWhatsappPhoneNumberRecord setIsActive(Boolean value) {
         set(15, value);
         return this;
     }
@@ -314,8 +314,8 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
      * Getter for <code>message.message_whatsapp_phone_number.IS_ACTIVE</code>.
      * Flag to check if this phone number is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(15);
+    public Boolean getIsActive() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -409,7 +409,7 @@ public class MessageWhatsappPhoneNumberRecord extends UpdatableRecordImpl<Messag
     /**
      * Create a detached, initialised MessageWhatsappPhoneNumberRecord
      */
-    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Byte isDefault, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappPhoneNumberRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String displayPhoneNumber, QualityRatingType qualityRating, String verifiedName, String phoneNumberId, CodeVerificationStatus codeVerificationStatus, NameStatusType nameStatus, PlatformType platformType, LevelType throughputLevelType, Boolean isDefault, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER);
 
         setId(id);

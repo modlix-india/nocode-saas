@@ -104,7 +104,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
      * The column <code>message.message_messages.IS_OUTBOUND</code>. Indicates
      * whether the message is outbound.
      */
-    public final TableField<MessageMessagesRecord, Byte> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Indicates whether the message is outbound.");
+    public final TableField<MessageMessagesRecord, Boolean> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Indicates whether the message is outbound.");
 
     /**
      * The column <code>message.message_messages.WHATSAPP_MESSAGE_ID</code>. ID
@@ -116,7 +116,7 @@ public class MessageMessages extends TableImpl<MessageMessagesRecord> {
      * The column <code>message.message_messages.IS_ACTIVE</code>. Flag to check
      * if this message is active or not.
      */
-    public final TableField<MessageMessagesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this message is active or not.");
+    public final TableField<MessageMessagesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this message is active or not.");
 
     /**
      * The column <code>message.message_messages.CREATED_BY</code>. ID of the

@@ -126,7 +126,7 @@ public class MessageMessageWebhooksRecord extends UpdatableRecordImpl<MessageMes
      * Setter for <code>message.message_message_webhooks.IS_PROCESSED</code>.
      * Flag to check if this message has been processed or not.
      */
-    public MessageMessageWebhooksRecord setIsProcessed(Byte value) {
+    public MessageMessageWebhooksRecord setIsProcessed(Boolean value) {
         set(6, value);
         return this;
     }
@@ -135,8 +135,8 @@ public class MessageMessageWebhooksRecord extends UpdatableRecordImpl<MessageMes
      * Getter for <code>message.message_message_webhooks.IS_PROCESSED</code>.
      * Flag to check if this message has been processed or not.
      */
-    public Byte getIsProcessed() {
-        return (Byte) get(6);
+    public Boolean getIsProcessed() {
+        return (Boolean) get(6);
     }
 
     /**
@@ -160,7 +160,7 @@ public class MessageMessageWebhooksRecord extends UpdatableRecordImpl<MessageMes
      * Setter for <code>message.message_message_webhooks.IS_ACTIVE</code>. Flag
      * to check if this message is active or not.
      */
-    public MessageMessageWebhooksRecord setIsActive(Byte value) {
+    public MessageMessageWebhooksRecord setIsActive(Boolean value) {
         set(8, value);
         return this;
     }
@@ -169,8 +169,8 @@ public class MessageMessageWebhooksRecord extends UpdatableRecordImpl<MessageMes
      * Getter for <code>message.message_message_webhooks.IS_ACTIVE</code>. Flag
      * to check if this message is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(8);
+    public Boolean getIsActive() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -264,7 +264,7 @@ public class MessageMessageWebhooksRecord extends UpdatableRecordImpl<MessageMes
     /**
      * Create a detached, initialised MessageMessageWebhooksRecord
      */
-    public MessageMessageWebhooksRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String provider, Byte isProcessed, Map event, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageMessageWebhooksRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String provider, Boolean isProcessed, Map event, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS);
 
         setId(id);
