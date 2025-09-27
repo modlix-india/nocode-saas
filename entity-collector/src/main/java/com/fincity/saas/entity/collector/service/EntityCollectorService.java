@@ -17,6 +17,8 @@ import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceTy
 import com.fincity.saas.entity.collector.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.collector.util.EntityUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -31,6 +33,7 @@ public class EntityCollectorService extends AbstractConnectionService {
     private final EntityIntegrationService entityIntegrationService;
     private final EntityCollectorLogService entityCollectorLogService;
     private final ObjectMapper mapper;
+    private static final Logger logger = LoggerFactory.getLogger(EntityCollectorService.class);
 
     public EntityCollectorService(
             EntityIntegrationService entityIntegrationService,
@@ -42,6 +45,8 @@ public class EntityCollectorService extends AbstractConnectionService {
     }
 
     public Mono<Void> processMetaFormEntity(JsonNode responseBody) {
+
+        logger.info("Processing meta lead form entity: {}", responseBody);
 
         return FlatMapUtil.flatMapMonoWithNull(
 
