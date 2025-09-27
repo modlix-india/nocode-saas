@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +45,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 cbFilter.getFieldData().getStages(),
                                                 cbFilter.isIncludeZero(),
                                                 cbFilter.isIncludePercentage(),
-                                                cbFilter.isIncludeTotal())
+                                                cbFilter.isIncludeTotal(),
+                                                cbFilter.isIncludeNone())
                                         .collectList(),
                         (access, aFilter, sFilter, cFilter, cbFilter, perStageCount, perStatusCount) ->
                                 ReactivePaginationUtil.toPage(perStatusCount, pageable))
@@ -72,7 +74,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 cbFilter.getFieldData().getStages(),
                                 cbFilter.isIncludeZero(),
                                 cbFilter.isIncludePercentage(),
-                                cbFilter.isIncludeTotal()))
+                                cbFilter.isIncludeTotal(),
+                                cbFilter.isIncludeNone()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStatusCount"));
     }
@@ -95,7 +98,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 aFilter.getFieldData().getStages(),
                                                 cbFilter.isIncludeZero(),
                                                 cbFilter.isIncludePercentage(),
-                                                cbFilter.isIncludeTotal())
+                                                cbFilter.isIncludeTotal(),
+                                                cbFilter.isIncludeNone())
                                         .collectList(),
                         (access, cbFilter, sFilter, cFilter, aFilter, perStageCount, perStatusCount) ->
                                 ReactivePaginationUtil.toPage(perStatusCount, pageable))
@@ -119,7 +123,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 aFilter.getFieldData().getStages(),
                                                 cbFilter.isIncludeZero(),
                                                 cbFilter.isIncludePercentage(),
-                                                cbFilter.isIncludeTotal())
+                                                cbFilter.isIncludeTotal(),
+                                                cbFilter.isIncludeNone())
                                         .collectList(),
                         (access, cFilter, sFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
                                 ReactivePaginationUtil.toPage(perStatusCount, pageable))
@@ -145,7 +150,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 aFilter.getFieldData().getStages(),
                                                 cbFilter.isIncludeZero(),
                                                 cbFilter.isIncludePercentage(),
-                                                cbFilter.isIncludeTotal())
+                                                cbFilter.isIncludeTotal(),
+                                                cbFilter.isIncludeNone())
                                         .collectList(),
                         (access, pFilter, sFilter, cFilter, cbFilter, aFilter, perStageCount, perStatusCount) ->
                                 ReactivePaginationUtil.toPage(perStatusCount, pageable))
@@ -164,6 +170,8 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
     }
 
     public Mono<TicketBucketFilter> resolveStages(ProcessorAccess access, TicketBucketFilter filter) {
+
+        if (filter.isIncludeNone()) return Mono.just(filter.setStageIds(List.of()));
 
         if (!filter.isIncludeAll() && filter.getStageIds() == null) return Mono.just(filter);
 

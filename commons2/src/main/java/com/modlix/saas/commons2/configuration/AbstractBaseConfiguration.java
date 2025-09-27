@@ -3,6 +3,7 @@ package com.modlix.saas.commons2.configuration;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,6 +34,7 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.modlix.saas.commons2.codec.RedisJSONCodec;
 import com.modlix.saas.commons2.codec.RedisObjectCodec;
+import com.modlix.saas.commons2.gson.LocalDateAdapter;
 import com.modlix.saas.commons2.gson.LocalDateTimeAdapter;
 import com.modlix.saas.commons2.jackson.CommonsSerializationModule;
 import com.modlix.saas.commons2.jackson.SortSerializationModule;
@@ -88,6 +90,7 @@ public abstract class AbstractBaseConfiguration implements WebMvcConfigurer {
                 .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
                 .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
                 .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
                 .create();
 
         arraySchemaTypeAdapter.setGson(gson);

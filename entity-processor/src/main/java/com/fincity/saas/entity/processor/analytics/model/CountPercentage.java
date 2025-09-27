@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
-public class CountPercentage implements Serializable {
+public class CountPercentage implements Serializable, Comparable<CountPercentage> {
 
     @Serial
     private static final long serialVersionUID = 4023518798427014368L;
@@ -23,22 +23,17 @@ public class CountPercentage implements Serializable {
         this.percentage = countPercentage.percentage;
     }
 
-    private CountPercentage(Number count, Double percentage) {
-        this.count = count;
-        this.percentage = percentage;
-    }
-
     public static CountPercentage zero() {
-        return new CountPercentage(0L, 0.0);
+        return new CountPercentage().setCount(0L).setPercentage(0.0);
     }
 
     public static CountPercentage zeroNoPercent() {
-        return new CountPercentage(0L, null);
+        return new CountPercentage().setCount(0L);
     }
 
     public static CountPercentage of(Number count, Number wholePart, int roundPlaces) {
         Double percentage = NumberUtil.getPercentage(count, wholePart, roundPlaces);
-        return new CountPercentage(count, percentage);
+        return new CountPercentage().setCount(count).setPercentage(percentage);
     }
 
     public static CountPercentage of(Number count, Number wholePart) {
@@ -46,11 +41,11 @@ public class CountPercentage implements Serializable {
     }
 
     public static CountPercentage withCount(Number count) {
-        return new CountPercentage(count, null);
+        return new CountPercentage().setCount(count);
     }
 
     public CountPercentage addCount(Number count) {
-        this.count = this.count.longValue() + count.longValue();
+        this.count = NumberUtil.add(this.count, count);
         return this;
     }
 
@@ -72,5 +67,14 @@ public class CountPercentage implements Serializable {
     public CountPercentage incrementCount() {
         this.count = this.count.longValue() + 1;
         return this;
+    }
+
+    @Override
+    public int compareTo(CountPercentage other) {
+        if (other == null) return 1;
+        if (this.count == null && other.count == null) return 0;
+        if (this.count == null) return -1;
+        if (other.count == null) return 1;
+        return Long.compare(this.count.longValue(), other.count.longValue());
     }
 }

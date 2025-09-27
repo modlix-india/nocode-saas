@@ -30,6 +30,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> implement
     private List<ULong> statusIds;
     private List<ULong> productIds;
     private boolean includeAll;
+    private boolean includeNone;
 
     @JsonIgnore
     private FieldData fieldData = new FieldData();

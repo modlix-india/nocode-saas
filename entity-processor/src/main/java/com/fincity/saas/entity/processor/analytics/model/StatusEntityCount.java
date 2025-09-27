@@ -1,9 +1,10 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Map;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -24,7 +25,10 @@ public class StatusEntityCount extends BaseStatusCount<StatusEntityCount> implem
     private String name;
 
     public static StatusEntityCount of(
-            ULong entityId, String entityName, CountPercentage totalCount, Map<String, CountPercentage> perCount) {
+            ULong entityId,
+            String entityName,
+            CountPercentage totalCount,
+            List<IdAndValue<String, CountPercentage>> perCount) {
         return new StatusEntityCount()
                 .setId(entityId)
                 .setName(entityName)
