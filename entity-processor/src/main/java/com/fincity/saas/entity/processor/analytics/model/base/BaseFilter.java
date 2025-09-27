@@ -30,7 +30,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private boolean includeZero;
     private boolean includePercentage;
     private boolean includeTotal;
-    private TimePeriod timePeriod;
+    private TimePeriod timePeriod = TimePeriod.WEEKS;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 

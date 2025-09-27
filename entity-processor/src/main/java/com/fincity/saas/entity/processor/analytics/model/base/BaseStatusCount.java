@@ -1,8 +1,9 @@
 package com.fincity.saas.entity.processor.analytics.model.base;
 
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serializable;
-import java.util.Map;
+import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -16,14 +17,14 @@ public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements S
 
     private CountPercentage totalCount;
 
-    private Map<String, CountPercentage> perCount;
+    private List<IdAndValue<String, CountPercentage>> perCount;
 
     public T setTotalCount(CountPercentage totalCount) {
         this.totalCount = totalCount;
         return (T) this;
     }
 
-    public T setPerCount(Map<String, CountPercentage> perCount) {
+    public T setPerCount(List<IdAndValue<String, CountPercentage>> perCount) {
         this.perCount = perCount;
         return (T) this;
     }
