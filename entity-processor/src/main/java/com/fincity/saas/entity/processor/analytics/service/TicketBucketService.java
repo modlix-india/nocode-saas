@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.analytics.util.ReactivePaginationUtil;
 import com.fincity.saas.entity.processor.analytics.util.ReportUtil;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -26,6 +27,11 @@ import reactor.util.context.Context;
 
 @Service
 public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTicketsRecord, Ticket, TicketBucketDAO> {
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.TICKET;
+    }
 
     public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
             Pageable pageable, TicketBucketFilter filter) {
@@ -117,6 +123,26 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         (access, cFilter, sFilter, perStageCount, perStatusCount) ->
                                 ReactivePaginationUtil.toPage(perStatusCount, pageable))
                 .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStatusCount"));
+    }
+
+    public Mono<List<StatusEntityCount>> getTicketPerClientIdStatusCount(
+            ProcessorAccess access, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(
+                        () -> resolveStages(access, filter),
+                        sFilter -> this.dao
+                                .getTicketPerClientIdStageCount(access, sFilter)
+                                .collectList(),
+                        (sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
+                                        perStageCount,
+                                        sFilter.getBaseFieldData().getClients(),
+                                        sFilter.getFieldData().getStages(),
+                                        sFilter.isIncludeZero(),
+                                        sFilter.isIncludePercentage(),
+                                        sFilter.isIncludeTotal(),
+                                        sFilter.isIncludeNone())
+                                .collectList())
+                .switchIfEmpty(Mono.just(List.of()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStatusCount"));
     }
 

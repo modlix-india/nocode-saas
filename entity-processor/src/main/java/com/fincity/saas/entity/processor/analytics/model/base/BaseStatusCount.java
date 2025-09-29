@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.model.base;
 
+import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serializable;
@@ -13,7 +14,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
-public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements Serializable {
+public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements Serializable, IClassConvertor {
 
     private CountPercentage totalCount;
 
