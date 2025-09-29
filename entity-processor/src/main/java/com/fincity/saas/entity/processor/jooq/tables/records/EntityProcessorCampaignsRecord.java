@@ -194,7 +194,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_campaigns.TEMP_ACTIVE</code>.
      * Temporary active flag for this campaign.
      */
-    public EntityProcessorCampaignsRecord setTempActive(Byte value) {
+    public EntityProcessorCampaignsRecord setTempActive(Boolean value) {
         set(9, value);
         return this;
     }
@@ -204,8 +204,8 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_campaigns.TEMP_ACTIVE</code>.
      * Temporary active flag for this campaign.
      */
-    public Byte getTempActive() {
-        return (Byte) get(9);
+    public Boolean getTempActive() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -213,7 +213,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_campaigns.IS_ACTIVE</code>. Flag
      * to check if this campaign is active or not.
      */
-    public EntityProcessorCampaignsRecord setIsActive(Byte value) {
+    public EntityProcessorCampaignsRecord setIsActive(Boolean value) {
         set(10, value);
         return this;
     }
@@ -223,8 +223,8 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
      * <code>entity_processor.entity_processor_campaigns.IS_ACTIVE</code>. Flag
      * to check if this campaign is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(10);
+    public Boolean getIsActive() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -326,7 +326,7 @@ public class EntityProcessorCampaignsRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Create a detached, initialised EntityProcessorCampaignsRecord
      */
-    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, CampaignPlatform campaignPlatform, ULong productId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorCampaignsRecord(ULong id, String code, String appCode, String clientCode, String campaignId, String campaignName, String campaignType, CampaignPlatform campaignPlatform, ULong productId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS);
 
         setId(id);

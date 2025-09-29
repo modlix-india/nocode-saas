@@ -4,6 +4,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type.SchemaTypeAdapter;
 import com.fincity.saas.commons.codec.RedisJSONCodec;
 import com.fincity.saas.commons.codec.RedisObjectCodec;
 import com.fincity.saas.commons.gson.LocalDateTimeAdapter;
+import com.fincity.saas.commons.gson.LocalDateAdapter;
 import com.fincity.saas.commons.jackson.CommonsSerializationModule;
 import com.fincity.saas.commons.jackson.SortSerializationModule;
 import com.fincity.saas.commons.jackson.TupleSerializationModule;
@@ -85,11 +87,12 @@ public abstract class AbstractBaseConfiguration implements WebFluxConfigurer {
         AdditionalTypeAdapter additionalTypeAdapter = new AdditionalTypeAdapter();
 
         Gson gson = new GsonBuilder()
-            .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
-            .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
-            .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
-            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-            .create();
+                .registerTypeAdapter(Type.class, new SchemaTypeAdapter())
+                .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+                .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+                .create();
 
         arraySchemaTypeAdapter.setGson(gson);
         additionalTypeAdapter.setGson(gson);

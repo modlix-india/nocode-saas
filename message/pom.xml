@@ -283,6 +283,11 @@
                                     <inputSchema>${database.schema.name}</inputSchema>
                                     <forcedTypes>
                                         <forcedType>
+                                            <name>BOOLEAN</name>
+                                            <includeTypes>TINYINT</includeTypes>
+                                            <includeExpression>.*</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>java.util.Map</userType>
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>

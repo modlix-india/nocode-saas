@@ -139,28 +139,28 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_template_rules.IS_DEFAULT</code>.
      * Flag to tell weather for this stage this is default rule or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this stage this is default rule or not.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this stage this is default rule or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.BREAK_AT_FIRST_MATCH</code>.
      * Flag to check if execution should break at first match.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> BREAK_AT_FIRST_MATCH = createField(DSL.name("BREAK_AT_FIRST_MATCH"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if execution should break at first match.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> BREAK_AT_FIRST_MATCH = createField(DSL.name("BREAK_AT_FIRST_MATCH"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if execution should break at first match.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.IS_SIMPLE</code>.
      * Flag to tell weather for this is a simple rule or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_SIMPLE = createField(DSL.name("IS_SIMPLE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a simple rule or not.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> IS_SIMPLE = createField(DSL.name("IS_SIMPLE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this is a simple rule or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.IS_COMPLEX</code>.
      * Flag to tell weather for this is a complex rule or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_COMPLEX = createField(DSL.name("IS_COMPLEX"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather for this is a complex rule or not.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> IS_COMPLEX = createField(DSL.name("IS_COMPLEX"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this is a complex rule or not.");
 
     /**
      * The column
@@ -188,14 +188,14 @@ public class EntityProcessorProductTemplateRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_template_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Product Template rule config.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Product Template rule config.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Product Template rule config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_template_rules.IS_ACTIVE</code>.
      * Flag to check if this Product Template rule config is active or not.
      */
-    public final TableField<EntityProcessorProductTemplateRulesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Product Template rule config is active or not.");
+    public final TableField<EntityProcessorProductTemplateRulesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Product Template rule config is active or not.");
 
     /**
      * The column

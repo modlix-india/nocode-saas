@@ -13,6 +13,7 @@ import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
+import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
@@ -46,6 +47,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private static final String FETCH_PARTNERS = "fetchPartners";
 
     private TicketService ticketService;
+
+    private TicketBucketService ticketBucketService;
 
     @Lazy
     @Autowired

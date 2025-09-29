@@ -331,7 +331,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
      * Temporary active flag for this Activity.
      */
-    public EntityProcessorActivitiesRecord setTempActive(Byte value) {
+    public EntityProcessorActivitiesRecord setTempActive(Boolean value) {
         set(16, value);
         return this;
     }
@@ -341,8 +341,8 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
      * Temporary active flag for this Activity.
      */
-    public Byte getTempActive() {
-        return (Byte) get(16);
+    public Boolean getTempActive() {
+        return (Boolean) get(16);
     }
 
     /**
@@ -350,7 +350,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
      * to check if this Activity is active or not.
      */
-    public EntityProcessorActivitiesRecord setIsActive(Byte value) {
+    public EntityProcessorActivitiesRecord setIsActive(Boolean value) {
         set(17, value);
         return this;
     }
@@ -360,8 +360,8 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
      * to check if this Activity is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(17);
+    public Boolean getIsActive() {
+        return (Boolean) get(17);
     }
 
     /**
@@ -425,7 +425,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Create a detached, initialised EntityProcessorActivitiesRecord
      */
-    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, ULong taskId, ULong noteId, String comment, LocalDateTime activityDate, ActivityAction activityAction, ULong actorId, EntitySeries objectEntitySeries, ULong objectId, Map objectData, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt) {
+    public EntityProcessorActivitiesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ticketId, ULong taskId, ULong noteId, String comment, LocalDateTime activityDate, ActivityAction activityAction, ULong actorId, EntitySeries objectEntitySeries, ULong objectId, Map objectData, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt) {
         super(EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES);
 
         setId(id);

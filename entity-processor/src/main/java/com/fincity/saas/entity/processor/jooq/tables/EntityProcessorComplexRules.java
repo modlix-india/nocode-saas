@@ -135,7 +135,7 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
      * <code>entity_processor.entity_processor_complex_rules.NEGATE</code>. Flag
      * to check if this Complex Rule is negative.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, Byte> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Complex Rule is negative.");
+    public final TableField<EntityProcessorComplexRulesRecord, Boolean> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if this Complex Rule is negative.");
 
     /**
      * The column
@@ -156,28 +156,28 @@ public class EntityProcessorComplexRules extends TableImpl<EntityProcessorComple
      * <code>entity_processor.entity_processor_complex_rules.HAS_COMPLEX_CHILD</code>.
      * Flag to tell weather this rule has complex children.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, Byte> HAS_COMPLEX_CHILD = createField(DSL.name("HAS_COMPLEX_CHILD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather this rule has complex children.");
+    public final TableField<EntityProcessorComplexRulesRecord, Boolean> HAS_COMPLEX_CHILD = createField(DSL.name("HAS_COMPLEX_CHILD"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather this rule has complex children.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_complex_rules.HAS_SIMPLE_CHILD</code>.
      * Flag to tell weather this rule has simple children.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, Byte> HAS_SIMPLE_CHILD = createField(DSL.name("HAS_SIMPLE_CHILD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell weather this rule has simple children.");
+    public final TableField<EntityProcessorComplexRulesRecord, Boolean> HAS_SIMPLE_CHILD = createField(DSL.name("HAS_SIMPLE_CHILD"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather this rule has simple children.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_complex_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Complex Rule.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Complex Rule.");
+    public final TableField<EntityProcessorComplexRulesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Complex Rule.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_complex_rules.IS_ACTIVE</code>.
      * Flag to check if this Complex Rule is active or not.
      */
-    public final TableField<EntityProcessorComplexRulesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Complex Rule is active or not.");
+    public final TableField<EntityProcessorComplexRulesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Complex Rule is active or not.");
 
     /**
      * The column

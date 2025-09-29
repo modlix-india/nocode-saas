@@ -98,7 +98,7 @@ public class MessageMessageWebhooks extends TableImpl<MessageMessageWebhooksReco
      * The column <code>message.message_message_webhooks.IS_PROCESSED</code>.
      * Flag to check if this message has been processed or not.
      */
-    public final TableField<MessageMessageWebhooksRecord, Byte> IS_PROCESSED = createField(DSL.name("IS_PROCESSED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this message has been processed or not.");
+    public final TableField<MessageMessageWebhooksRecord, Boolean> IS_PROCESSED = createField(DSL.name("IS_PROCESSED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if this message has been processed or not.");
 
     /**
      * The column <code>message.message_message_webhooks.EVENT</code>. Message
@@ -110,7 +110,7 @@ public class MessageMessageWebhooks extends TableImpl<MessageMessageWebhooksReco
      * The column <code>message.message_message_webhooks.IS_ACTIVE</code>. Flag
      * to check if this message is active or not.
      */
-    public final TableField<MessageMessageWebhooksRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this message is active or not.");
+    public final TableField<MessageMessageWebhooksRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this message is active or not.");
 
     /**
      * The column <code>message.message_message_webhooks.CREATED_BY</code>. ID

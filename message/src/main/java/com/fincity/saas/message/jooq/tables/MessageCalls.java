@@ -104,7 +104,7 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
      * The column <code>message.message_calls.IS_OUTBOUND</code>. Indicates
      * whether the call is outbound.
      */
-    public final TableField<MessageCallsRecord, Byte> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.TINYINT.nullable(false), this, "Indicates whether the call is outbound.");
+    public final TableField<MessageCallsRecord, Boolean> IS_OUTBOUND = createField(DSL.name("IS_OUTBOUND"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Indicates whether the call is outbound.");
 
     /**
      * The column <code>message.message_calls.EXOTEL_CALL_ID</code>. ID of the
@@ -116,7 +116,7 @@ public class MessageCalls extends TableImpl<MessageCallsRecord> {
      * The column <code>message.message_calls.IS_ACTIVE</code>. Flag to check if
      * this Call is active or not.
      */
-    public final TableField<MessageCallsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Call is active or not.");
+    public final TableField<MessageCallsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Call is active or not.");
 
     /**
      * The column <code>message.message_calls.CREATED_BY</code>. ID of the user

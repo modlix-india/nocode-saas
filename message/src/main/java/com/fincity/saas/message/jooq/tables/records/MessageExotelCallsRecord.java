@@ -529,7 +529,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Setter for <code>message.message_exotel_calls.IS_ACTIVE</code>. Flag to
      * check if this call is active or not.
      */
-    public MessageExotelCallsRecord setIsActive(Byte value) {
+    public MessageExotelCallsRecord setIsActive(Boolean value) {
         set(29, value);
         return this;
     }
@@ -538,8 +538,8 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
      * Getter for <code>message.message_exotel_calls.IS_ACTIVE</code>. Flag to
      * check if this call is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(29);
+    public Boolean getIsActive() {
+        return (Boolean) get(29);
     }
 
     /**
@@ -633,7 +633,7 @@ public class MessageExotelCallsRecord extends UpdatableRecordImpl<MessageExotelC
     /**
      * Create a detached, initialised MessageExotelCallsRecord
      */
-    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String from, Short toDialCode, String to, String callerId, Short customerDialCode, String customerPhoneNumber, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, ExotelCallRequest exotelCallRequest, ExotelConnectAppletRequest exotelConnectAppletRequest, ExotelCallResponse exotelCallResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageExotelCallsRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String sid, String parentCallSid, String accountSid, Short fromDialCode, String from, Short toDialCode, String to, String callerId, Short customerDialCode, String customerPhoneNumber, ExotelCallStatus exotelCallStatus, LocalDateTime startTime, LocalDateTime endTime, Long duration, BigDecimal price, String direction, String answeredBy, String recordingUrl, Long conversationDuration, ExotelCallStatus leg1Status, ExotelCallStatus leg2Status, ExotelCallRequest exotelCallRequest, ExotelConnectAppletRequest exotelConnectAppletRequest, ExotelCallResponse exotelCallResponse, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageExotelCalls.MESSAGE_EXOTEL_CALLS);
 
         setId(id);

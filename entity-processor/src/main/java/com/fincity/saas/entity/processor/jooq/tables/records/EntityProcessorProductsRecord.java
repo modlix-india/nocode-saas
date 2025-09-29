@@ -215,7 +215,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorProductsRecord setTempActive(Byte value) {
+    public EntityProcessorProductsRecord setTempActive(Boolean value) {
         set(10, value);
         return this;
     }
@@ -225,8 +225,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(10);
+    public Boolean getTempActive() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -234,7 +234,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public EntityProcessorProductsRecord setIsActive(Byte value) {
+    public EntityProcessorProductsRecord setIsActive(Boolean value) {
         set(11, value);
         return this;
     }
@@ -244,8 +244,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(11);
+    public Boolean getIsActive() {
+        return (Boolean) get(11);
     }
 
     /**
@@ -272,7 +272,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
      * to tell whether Partner has access to this product or not.
      */
-    public EntityProcessorProductsRecord setForPartner(Byte value) {
+    public EntityProcessorProductsRecord setForPartner(Boolean value) {
         set(13, value);
         return this;
     }
@@ -282,8 +282,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
      * to tell whether Partner has access to this product or not.
      */
-    public Byte getForPartner() {
-        return (Byte) get(13);
+    public Boolean getForPartner() {
+        return (Boolean) get(13);
     }
 
     /**
@@ -385,7 +385,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Byte tempActive, Byte isActive, ULong clientId, Byte forPartner, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Boolean tempActive, Boolean isActive, ULong clientId, Boolean forPartner, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);

@@ -172,21 +172,21 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
      * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
      * Flag to check if this Product Comm is default or not.
      */
-    public final TableField<EntityProcessorProductCommsRecord, Byte> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Product Comm is default or not.");
+    public final TableField<EntityProcessorProductCommsRecord, Boolean> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if this Product Comm is default or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_comms.TEMP_ACTIVE</code>.
      * Temporary active flag for this Product Comm.
      */
-    public final TableField<EntityProcessorProductCommsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Product Comm.");
+    public final TableField<EntityProcessorProductCommsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Product Comm.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_comms.IS_ACTIVE</code>.
      * Flag to check if this Product Comm is active or not.
      */
-    public final TableField<EntityProcessorProductCommsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Product Comm is active or not.");
+    public final TableField<EntityProcessorProductCommsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Product Comm is active or not.");
 
     /**
      * The column

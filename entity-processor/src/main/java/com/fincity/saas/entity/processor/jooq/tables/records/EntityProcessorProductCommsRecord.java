@@ -311,7 +311,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
      * Flag to check if this Product Comm is default or not.
      */
-    public EntityProcessorProductCommsRecord setIsDefault(Byte value) {
+    public EntityProcessorProductCommsRecord setIsDefault(Boolean value) {
         set(15, value);
         return this;
     }
@@ -321,8 +321,8 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.IS_DEFAULT</code>.
      * Flag to check if this Product Comm is default or not.
      */
-    public Byte getIsDefault() {
-        return (Byte) get(15);
+    public Boolean getIsDefault() {
+        return (Boolean) get(15);
     }
 
     /**
@@ -330,7 +330,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.TEMP_ACTIVE</code>.
      * Temporary active flag for this Product Comm.
      */
-    public EntityProcessorProductCommsRecord setTempActive(Byte value) {
+    public EntityProcessorProductCommsRecord setTempActive(Boolean value) {
         set(16, value);
         return this;
     }
@@ -340,8 +340,8 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.TEMP_ACTIVE</code>.
      * Temporary active flag for this Product Comm.
      */
-    public Byte getTempActive() {
-        return (Byte) get(16);
+    public Boolean getTempActive() {
+        return (Boolean) get(16);
     }
 
     /**
@@ -349,7 +349,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.IS_ACTIVE</code>.
      * Flag to check if this Product Comm is active or not.
      */
-    public EntityProcessorProductCommsRecord setIsActive(Byte value) {
+    public EntityProcessorProductCommsRecord setIsActive(Boolean value) {
         set(17, value);
         return this;
     }
@@ -359,8 +359,8 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * <code>entity_processor.entity_processor_product_comms.IS_ACTIVE</code>.
      * Flag to check if this Product Comm is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(17);
+    public Boolean getIsActive() {
+        return (Boolean) get(17);
     }
 
     /**
@@ -481,7 +481,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductCommsRecord
      */
-    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, String connectionName, String connectionType, ULong productId, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte isDefault, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, String connectionName, String connectionType, ULong productId, Short dialCode, String phoneNumber, String email, String source, String subSource, Boolean isDefault, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS);
 
         setId(id);

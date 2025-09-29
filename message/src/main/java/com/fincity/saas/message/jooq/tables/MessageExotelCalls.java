@@ -248,7 +248,7 @@ public class MessageExotelCalls extends TableImpl<MessageExotelCallsRecord> {
      * The column <code>message.message_exotel_calls.IS_ACTIVE</code>. Flag to
      * check if this call is active or not.
      */
-    public final TableField<MessageExotelCallsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this call is active or not.");
+    public final TableField<MessageExotelCallsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this call is active or not.");
 
     /**
      * The column <code>message.message_exotel_calls.CREATED_BY</code>. ID of

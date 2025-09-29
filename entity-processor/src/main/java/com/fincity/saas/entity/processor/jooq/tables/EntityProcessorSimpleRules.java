@@ -137,14 +137,14 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.NEGATE</code>. Flag
      * to check if this Simple Rule is negative.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if this Simple Rule is negative.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> NEGATE = createField(DSL.name("NEGATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if this Simple Rule is negative.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_simple_rules.HAS_PARENT</code>.
      * Flag to tell if this rule has a complex parent or not.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> HAS_PARENT = createField(DSL.name("HAS_PARENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to tell if this rule has a complex parent or not.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> HAS_PARENT = createField(DSL.name("HAS_PARENT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell if this rule has a complex parent or not.");
 
     /**
      * The column
@@ -172,14 +172,14 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.IS_VALUE_FIELD</code>.
      * Flag to check if value is a field.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> IS_VALUE_FIELD = createField(DSL.name("IS_VALUE_FIELD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if value is a field.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> IS_VALUE_FIELD = createField(DSL.name("IS_VALUE_FIELD"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if value is a field.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_simple_rules.IS_TO_VALUE_FIELD</code>.
      * Flag to check if to value is a field.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> IS_TO_VALUE_FIELD = createField(DSL.name("IS_TO_VALUE_FIELD"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to check if to value is a field.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> IS_TO_VALUE_FIELD = createField(DSL.name("IS_TO_VALUE_FIELD"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if to value is a field.");
 
     /**
      * The column
@@ -193,14 +193,14 @@ public class EntityProcessorSimpleRules extends TableImpl<EntityProcessorSimpleR
      * <code>entity_processor.entity_processor_simple_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this Simple Rule.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Simple Rule.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Simple Rule.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_simple_rules.IS_ACTIVE</code>.
      * Flag to check if this Simple Rule is active or not.
      */
-    public final TableField<EntityProcessorSimpleRulesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Simple Rule is active or not.");
+    public final TableField<EntityProcessorSimpleRulesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Simple Rule is active or not.");
 
     /**
      * The column
