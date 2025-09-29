@@ -10,7 +10,6 @@ import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
 import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;

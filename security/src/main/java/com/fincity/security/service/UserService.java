@@ -478,6 +478,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 users -> this.fillDetails(users, queryParams));
     }
 
+    public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                                .setField("clientId")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))
+                        .collectList(),
+                users -> this.fillDetails(users, queryParams));
+    }
+
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
     @Override
     public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {

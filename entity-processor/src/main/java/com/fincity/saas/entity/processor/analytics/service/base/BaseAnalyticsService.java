@@ -5,6 +5,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -54,30 +55,24 @@ public abstract class BaseAnalyticsService<
         this.productService = productService;
     }
 
-    public Mono<TicketBucketFilter> updateCreatedByIds(ProcessorAccess access, TicketBucketFilter filter) {
-        return Mono.just(filter.filterCreatedByIds(access.getUserInherit().getSubOrg()));
-    }
-
     public Mono<TicketBucketFilter> resolveCreatedBys(ProcessorAccess access, TicketBucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getUserInternal(
-                        access.getUserInherit().getSubOrg().stream()
+                () -> securityService.getClientUserInternal(
+                        access.getUserInherit().getManagingClientIds().stream()
                                 .map(ULong::toBigInteger)
                                 .toList(),
                         null),
-                userList -> Mono.just(
-                        filter.filterCreatedByIds(access.getUserInherit().getSubOrg())
-                                .setCreatedBys(userList.stream()
-                                        .map(user -> IdAndValue.of(
-                                                ULongUtil.valueOf(user.getId()),
-                                                NameUtil.assembleFullName(
-                                                        user.getFirstName(), user.getMiddleName(), user.getLastName())))
-                                        .toList())));
-    }
-
-    public Mono<TicketBucketFilter> updateAssignedUserIds(ProcessorAccess access, TicketBucketFilter filter) {
-        return Mono.just(filter.filterAssignedUserIds(access.getUserInherit().getSubOrg()));
+                userList -> Mono.just(filter.filterCreatedByIds(userList.stream()
+                                .map(User::getId)
+                                .map(ULongUtil::valueOf)
+                                .toList())
+                        .setCreatedBys(userList.stream()
+                                .map(user -> IdAndValue.of(
+                                        ULongUtil.valueOf(user.getId()),
+                                        NameUtil.assembleFullName(
+                                                user.getFirstName(), user.getMiddleName(), user.getLastName())))
+                                .toList())));
     }
 
     public Mono<TicketBucketFilter> resolveAssignedUsers(ProcessorAccess access, TicketBucketFilter filter) {
@@ -96,10 +91,6 @@ public abstract class BaseAnalyticsService<
                                                 NameUtil.assembleFullName(
                                                         user.getFirstName(), user.getMiddleName(), user.getLastName())))
                                         .toList())));
-    }
-
-    public Mono<TicketBucketFilter> updateClientIds(ProcessorAccess access, TicketBucketFilter filter) {
-        return Mono.just(filter.filterClientIds(access.getUserInherit().getManagingClientIds()));
     }
 
     public Mono<TicketBucketFilter> resolveClients(ProcessorAccess access, TicketBucketFilter filter) {
