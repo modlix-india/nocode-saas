@@ -103,6 +103,28 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStatusCount"));
     }
 
+    public Mono<List<StatusEntityCount>> getTicketPerCreatedByStatusCount(
+            ProcessorAccess access, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(
+                        () -> resolveStages(access, filter),
+                        sFilter -> this.dao
+                                .getTicketPerCreatedByStageCount(access, sFilter)
+                                .collectList(),
+                        (sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
+                                        perStageCount,
+                                        sFilter.getBaseFieldData().getCreatedBys(),
+                                        sFilter.getFieldData().getStages(),
+                                        sFilter.isIncludeZero(),
+                                        sFilter.isIncludePercentage(),
+                                        sFilter.isIncludeTotal(),
+                                        sFilter.isIncludeNone())
+                                .collectList())
+                .switchIfEmpty(Mono.just(List.of()))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "TicketBucketService.getTicketPerCreatedByStatusCount[ProcessorAccess, TicketBucketFilter]"));
+    }
+
     public Mono<Page<StatusEntityCount>> getTicketPerClientIdStatusCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
@@ -143,7 +165,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                         sFilter.isIncludeNone())
                                 .collectList())
                 .switchIfEmpty(Mono.just(List.of()))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStatusCount"));
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "TicketBucketService.getTicketPerClientIdStatusCount[ProcessorAccess, TicketBucketFilter]"));
     }
 
     public Mono<Page<StatusEntityCount>> getTicketPerProductIdStatusCount(
