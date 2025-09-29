@@ -13,6 +13,9 @@ import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
+import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
+import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
@@ -21,10 +24,12 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -46,6 +51,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private static final String FETCH_PARTNERS = "fetchPartners";
 
+    private static final String FETCH_LEADS = "fetchLeads";
+
     private TicketService ticketService;
 
     private TicketBucketService ticketBucketService;
@@ -54,6 +61,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Autowired
     private void setTicketService(TicketService ticketService) {
         this.ticketService = ticketService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setTicketBucketService(TicketBucketService ticketBucketService) {
+        this.ticketBucketService = ticketBucketService;
     }
 
     @Override
@@ -244,29 +257,91 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         .map(page -> page.map(IClassConvertor::toMap)));
     }
 
-    private Mono<List<Map<String, Object>>> fillDetails(
+    private Mono<Collection<Map<String, Object>>> fillDetails(
             ProcessorAccess access,
             List<Partner> partners,
             List<Map<String, Object>> clients,
             MultiValueMap<String, String> queryParams) {
-        return Mono.defer(() -> fillPartnerDetails(partners, clients, queryParams));
-    }
-
-    private Mono<List<Map<String, Object>>> fillPartnerDetails(
-            List<Partner> partners, List<Map<String, Object>> clients, MultiValueMap<String, String> queryParams) {
-
-        boolean fetchPartner = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARTNERS));
-
-        if (!fetchPartner || clients.isEmpty()) return Mono.just(clients);
 
         Map<ULong, Map<String, Object>> clientMapById = clients.stream()
                 .collect(Collectors.toMap(c -> ULongUtil.valueOf(c.get(AbstractDTO.Fields.id)), Function.identity()));
 
+        return FlatMapUtil.flatMapMono(
+                () -> this.fillPartnerTicketDetails(access, partners, clientMapById, queryParams),
+                ticketClients -> this.fillPartnerDetails(partners, clientMapById, queryParams));
+    }
+
+    private Mono<Collection<Map<String, Object>>> fillPartnerDetails(
+            List<Partner> partners,
+            Map<ULong, Map<String, Object>> clientMapById,
+            MultiValueMap<String, String> queryParams) {
+
+        boolean fetchPartner = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARTNERS));
+
+        if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
+
+        String partnerEntityKey = this.getEntityKey();
+
         partners.forEach(partner -> {
             Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-            if (clientMap != null) clientMap.put(this.getEntityKey(), partner.toMap());
+            if (clientMap != null) clientMap.put(partnerEntityKey, partner.toMap());
         });
-        return Mono.just(clients);
+        return Mono.just(clientMapById.values());
+    }
+
+    private Mono<Collection<Map<String, Object>>> fillPartnerTicketDetails(
+            ProcessorAccess access,
+            List<Partner> partners,
+            Map<ULong, Map<String, Object>> clientMapById,
+            MultiValueMap<String, String> queryParams) {
+
+        boolean fetchPartner = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_LEADS));
+
+        boolean includeZero = BooleanUtil.safeValueOf(queryParams.getFirst(BaseFilter.Fields.includeZero));
+        boolean includePercentage = BooleanUtil.safeValueOf(queryParams.getFirst(BaseFilter.Fields.includePercentage));
+        boolean includeTotal = BooleanUtil.safeValueOf(queryParams.getFirst(BaseFilter.Fields.includeTotal));
+        boolean includeAll = BooleanUtil.safeValueOf(queryParams.getFirst(TicketBucketFilter.Fields.includeAll));
+        boolean includeNone = BooleanUtil.safeValueOf(queryParams.getFirst(TicketBucketFilter.Fields.includeNone));
+
+        List<ULong> stages = queryParams.getOrDefault(TicketBucketFilter.Fields.stageIds, List.of()).stream()
+                .map(ULongUtil::valueOf)
+                .toList();
+
+        if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
+
+        Map<ULong, IdAndValue<ULong, String>> clientFilterMap = clientMapById.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        client -> IdAndValue.of(
+                                client.getKey(),
+                                client.getValue().get(Client.Fields.name).toString()),
+                        (a, b) -> b));
+
+        TicketBucketFilter filter = (TicketBucketFilter) new TicketBucketFilter()
+                .setStageIds(stages)
+                .setClientIds(clientMapById.keySet().stream().toList())
+                .setClients(clientFilterMap.values().stream().toList())
+                .setIncludeAll(includeAll)
+                .setIncludeNone(includeNone)
+                .setIncludeZero(includeZero)
+                .setIncludePercentage(includePercentage)
+                .setIncludeTotal(includeTotal);
+
+        return FlatMapUtil.flatMapMono(
+                () -> ticketBucketService.getTicketPerClientIdStatusCount(access, filter), statusCounts -> {
+                    Map<ULong, StatusEntityCount> status = statusCounts.stream()
+                            .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
+
+                    String ticketKey = ticketBucketService.getEntityKey();
+
+                    partners.forEach(partner -> {
+                        StatusEntityCount count = status.get(partner.getClientId());
+                        Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
+                        if (count != null && clientMap != null) clientMap.put(ticketKey, count.toMap());
+                    });
+
+                    return Mono.just(clientMapById.values());
+                });
     }
 
     private Query updateQueryCondition(Query query, AbstractCondition condition) {
