@@ -200,7 +200,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_DEFAULT</code>.
      * Flag to tell weather for this stage this is default rule or not.
      */
-    public EntityProcessorProductStageRulesRecord setIsDefault(Byte value) {
+    public EntityProcessorProductStageRulesRecord setIsDefault(Boolean value) {
         set(9, value);
         return this;
     }
@@ -210,8 +210,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_DEFAULT</code>.
      * Flag to tell weather for this stage this is default rule or not.
      */
-    public Byte getIsDefault() {
-        return (Byte) get(9);
+    public Boolean getIsDefault() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -219,7 +219,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.BREAK_AT_FIRST_MATCH</code>.
      * Flag to check if execution should break at first match.
      */
-    public EntityProcessorProductStageRulesRecord setBreakAtFirstMatch(Byte value) {
+    public EntityProcessorProductStageRulesRecord setBreakAtFirstMatch(Boolean value) {
         set(10, value);
         return this;
     }
@@ -229,8 +229,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.BREAK_AT_FIRST_MATCH</code>.
      * Flag to check if execution should break at first match.
      */
-    public Byte getBreakAtFirstMatch() {
-        return (Byte) get(10);
+    public Boolean getBreakAtFirstMatch() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -238,7 +238,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_SIMPLE</code>.
      * Flag to tell weather for this is a simple rule or not.
      */
-    public EntityProcessorProductStageRulesRecord setIsSimple(Byte value) {
+    public EntityProcessorProductStageRulesRecord setIsSimple(Boolean value) {
         set(11, value);
         return this;
     }
@@ -248,8 +248,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_SIMPLE</code>.
      * Flag to tell weather for this is a simple rule or not.
      */
-    public Byte getIsSimple() {
-        return (Byte) get(11);
+    public Boolean getIsSimple() {
+        return (Boolean) get(11);
     }
 
     /**
@@ -257,7 +257,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_COMPLEX</code>.
      * Flag to tell weather for this is a complex rule or not.
      */
-    public EntityProcessorProductStageRulesRecord setIsComplex(Byte value) {
+    public EntityProcessorProductStageRulesRecord setIsComplex(Boolean value) {
         set(12, value);
         return this;
     }
@@ -267,8 +267,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_COMPLEX</code>.
      * Flag to tell weather for this is a complex rule or not.
      */
-    public Byte getIsComplex() {
-        return (Byte) get(12);
+    public Boolean getIsComplex() {
+        return (Boolean) get(12);
     }
 
     /**
@@ -333,7 +333,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this product rule config.
      */
-    public EntityProcessorProductStageRulesRecord setTempActive(Byte value) {
+    public EntityProcessorProductStageRulesRecord setTempActive(Boolean value) {
         set(16, value);
         return this;
     }
@@ -343,8 +343,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.TEMP_ACTIVE</code>.
      * Temporary active flag for this product rule config.
      */
-    public Byte getTempActive() {
-        return (Byte) get(16);
+    public Boolean getTempActive() {
+        return (Boolean) get(16);
     }
 
     /**
@@ -352,7 +352,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_ACTIVE</code>.
      * Flag to check if this product rule config is active or not.
      */
-    public EntityProcessorProductStageRulesRecord setIsActive(Byte value) {
+    public EntityProcessorProductStageRulesRecord setIsActive(Boolean value) {
         set(17, value);
         return this;
     }
@@ -362,8 +362,8 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
      * <code>entity_processor.entity_processor_product_stage_rules.IS_ACTIVE</code>.
      * Flag to check if this product rule config is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(17);
+    public Boolean getIsActive() {
+        return (Boolean) get(17);
     }
 
     /**
@@ -465,7 +465,7 @@ public class EntityProcessorProductStageRulesRecord extends UpdatableRecordImpl<
     /**
      * Create a detached, initialised EntityProcessorProductStageRulesRecord
      */
-    public EntityProcessorProductStageRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, UInteger order, Byte isDefault, Byte breakAtFirstMatch, Byte isSimple, Byte isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductStageRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong stageId, UInteger order, Boolean isDefault, Boolean breakAtFirstMatch, Boolean isSimple, Boolean isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES);
 
         setId(id);

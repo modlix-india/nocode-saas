@@ -121,7 +121,7 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
      * <code>entity_processor.entity_processor_notes.HAS_ATTACHMENT</code>.
      * Whether this note has attachments.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Whether this note has attachments.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Whether this note has attachments.");
 
     /**
      * The column
@@ -161,14 +161,14 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this note.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this note.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_notes.IS_ACTIVE</code>. Flag to
      * check if this note is active or not.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this note is active or not.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this note is active or not.");
 
     /**
      * The column

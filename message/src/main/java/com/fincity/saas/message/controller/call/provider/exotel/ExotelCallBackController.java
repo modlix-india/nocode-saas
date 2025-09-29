@@ -1,18 +1,16 @@
 package com.fincity.saas.message.controller.call.provider.exotel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
+import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
+import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
+import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fincity.saas.message.model.request.call.provider.exotel.ExotelCallStatusCallback;
-import com.fincity.saas.message.model.request.call.provider.exotel.ExotelPassThruCallback;
-import com.fincity.saas.message.model.response.call.provider.exotel.ExotelCallStatusCallbackResponse;
-import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
-
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -37,7 +35,7 @@ public class ExotelCallBackController {
     public Mono<ExotelCallStatusCallbackResponse> handleExotelCallback(ServerWebExchange exchange) {
         MediaType contentType = exchange.getRequest().getHeaders().getContentType();
 
-        if (contentType != null && contentType.toString().equals(MediaType.APPLICATION_JSON_VALUE)) {
+        if (contentType != null && MediaType.APPLICATION_JSON.isCompatibleWith(contentType)) {
             return exchange.getRequest()
                     .getBody()
                     .next()
@@ -45,13 +43,24 @@ public class ExotelCallBackController {
                     .flatMap(exotelCallService::processCallStatusCallback)
                     .map(result -> ExotelCallStatusCallbackResponse.success())
                     .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));
-        } else {
+        }
+        if (contentType != null && MediaType.APPLICATION_FORM_URLENCODED.isCompatibleWith(contentType)) {
             return exchange.getFormData()
-                    .map(ExotelCallStatusCallback::of)
+                    .map(ExotelCallStatusCallback::ofForm)
                     .flatMap(exotelCallService::processCallStatusCallback)
                     .map(result -> ExotelCallStatusCallbackResponse.success())
                     .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));
         }
+
+        if (contentType != null && MediaType.MULTIPART_FORM_DATA.isCompatibleWith(contentType)) {
+            return exchange.getMultipartData()
+                    .map(ExotelCallStatusCallback::ofMultiPart)
+                    .flatMap(exotelCallService::processCallStatusCallback)
+                    .map(result -> ExotelCallStatusCallbackResponse.success())
+                    .onErrorResume(e -> Mono.just(ExotelCallStatusCallbackResponse.error(e.getMessage())));
+        }
+
+        return Mono.just(ExotelCallStatusCallbackResponse.error("Unsupported Content-Type: " + contentType));
     }
 
     @PostMapping(

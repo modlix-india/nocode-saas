@@ -19,6 +19,10 @@ public abstract class AbstractCondition implements Serializable {
 
     public abstract boolean isEmpty();
 
+    public boolean isNonEmpty() {
+        return !isEmpty();
+    }
+
     public abstract Flux<FilterCondition> findConditionWithField(String fieldName);
 
     public abstract Flux<FilterCondition> findConditionWithPrefix(String prefix);

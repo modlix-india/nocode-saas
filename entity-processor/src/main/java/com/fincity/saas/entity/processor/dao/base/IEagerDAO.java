@@ -209,15 +209,14 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
     private Map<String, Field<?>> getAliasedFields(Table<?> table, String tableAlias) {
         return EagerDAOCache.getTableAliasedFieldsCache(Tuples.of(table, tableAlias), tuple -> {
-            Map<String, Field<?>> map = new LinkedHashMap<>();
-            Arrays.stream(tuple.getT1().fields()).forEach(field -> {
-                String fieldName = field.getName();
-                String aliasedFieldName = tuple.getT2() + "." + fieldName;
-                map.put(
-                        aliasedFieldName,
-                        DSL.field(DSL.name(tuple.getT2(), fieldName)).as(aliasedFieldName));
-            });
-            return map;
+            Table<?> aliasedTable = tuple.getT1().as(tuple.getT2());
+
+            return Arrays.stream(aliasedTable.fields())
+                    .collect(Collectors.toMap(
+                            field -> tuple.getT2() + "." + field.getName(),
+                            field -> field.as(tuple.getT2() + "." + field.getName()),
+                            (a, b) -> b,
+                            LinkedHashMap::new));
         });
     }
 

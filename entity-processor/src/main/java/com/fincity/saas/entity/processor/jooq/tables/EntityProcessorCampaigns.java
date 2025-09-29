@@ -130,14 +130,14 @@ public class EntityProcessorCampaigns extends TableImpl<EntityProcessorCampaigns
      * <code>entity_processor.entity_processor_campaigns.TEMP_ACTIVE</code>.
      * Temporary active flag for this campaign.
      */
-    public final TableField<EntityProcessorCampaignsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this campaign.");
+    public final TableField<EntityProcessorCampaignsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this campaign.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_campaigns.IS_ACTIVE</code>. Flag
      * to check if this campaign is active or not.
      */
-    public final TableField<EntityProcessorCampaignsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this campaign is active or not.");
+    public final TableField<EntityProcessorCampaignsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this campaign is active or not.");
 
     /**
      * The column

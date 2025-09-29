@@ -394,7 +394,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Setter for <code>message.message_whatsapp_messages.IS_OUTBOUND</code>.
      * Indicates whether the message is outbound.
      */
-    public MessageWhatsappMessagesRecord setIsOutbound(Byte value) {
+    public MessageWhatsappMessagesRecord setIsOutbound(Boolean value) {
         set(21, value);
         return this;
     }
@@ -403,8 +403,8 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Getter for <code>message.message_whatsapp_messages.IS_OUTBOUND</code>.
      * Indicates whether the message is outbound.
      */
-    public Byte getIsOutbound() {
-        return (Byte) get(21);
+    public Boolean getIsOutbound() {
+        return (Boolean) get(21);
     }
 
     /**
@@ -483,7 +483,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Setter for <code>message.message_whatsapp_messages.IS_ACTIVE</code>. Flag
      * to check if this message is active or not.
      */
-    public MessageWhatsappMessagesRecord setIsActive(Byte value) {
+    public MessageWhatsappMessagesRecord setIsActive(Boolean value) {
         set(26, value);
         return this;
     }
@@ -492,8 +492,8 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
      * Getter for <code>message.message_whatsapp_messages.IS_ACTIVE</code>. Flag
      * to check if this message is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(26);
+    public Boolean getIsActive() {
+        return (Boolean) get(26);
     }
 
     /**
@@ -587,7 +587,7 @@ public class MessageWhatsappMessagesRecord extends UpdatableRecordImpl<MessageWh
     /**
      * Create a detached, initialised MessageWhatsappMessagesRecord
      */
-    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Byte isOutbound, Message message, FileDetail mediaFileDetail, IMessage inMessage, MessageResponse messageResponse, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public MessageWhatsappMessagesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String messageId, ULong whatsappPhoneNumberId, Short fromDialCode, String from, Short toDialCode, String to, String customerWaId, Short customerDialCode, String customerPhoneNumber, MessageType messageType, MessageStatus messageStatus, LocalDateTime sentTime, LocalDateTime deliveredTime, LocalDateTime readTime, LocalDateTime failedTime, String failureReason, Boolean isOutbound, Message message, FileDetail mediaFileDetail, IMessage inMessage, MessageResponse messageResponse, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES);
 
         setId(id);
