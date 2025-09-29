@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 import lombok.Getter;
 import org.springframework.util.Assert;
 
@@ -54,7 +55,7 @@ public final class DatePair implements Comparable<DatePair> {
         };
     }
 
-    public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, V defaultValue) {
+    public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
         Assert.notNull(timePeriod, "Time period must not be null");
 
         NavigableMap<DatePair, V> valueMap = new TreeMap<>();
@@ -64,7 +65,7 @@ public final class DatePair implements Comparable<DatePair> {
             LocalDate periodEnd = getEndDate(current, timePeriod);
             LocalDate actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-            valueMap.put(DatePair.of(current, actualEnd), defaultValue);
+            valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
 
             current = periodEnd.plusDays(1);
 
