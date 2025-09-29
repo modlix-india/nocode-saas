@@ -228,6 +228,7 @@ public class ClientController
                 .readPageFilterInternal(pageable, query.getCondition())
                 .flatMap(page ->
                         this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
+                .switchIfEmpty(Mono.just(Page.empty()))
                 .map(ResponseEntity::ok);
     }
 }
