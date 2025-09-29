@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.jooq.Condition;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.springframework.stereotype.Component;
@@ -32,6 +31,8 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsRecord, Ticket> {
+
+    private static final String NO_STAGE = "No Stage";
 
     protected TicketBucketDAO() {
         super(Ticket.class, ENTITY_PROCESSOR_TICKETS, ENTITY_PROCESSOR_TICKETS.ID);
@@ -139,29 +140,25 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
                         .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
-                (abstractCondition, conditions) -> {
-                    Condition condition = conditions;
-
-                    return Flux.from(this.dslContext
-                                    .select(
-                                            ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID,
-                                            ENTITY_PROCESSOR_STAGES.NAME,
-                                            DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
-                                    .from(ENTITY_PROCESSOR_TICKETS)
-                                    .leftJoin(ENTITY_PROCESSOR_STAGES)
-                                    .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
-                                    .where(conditions)
-                                    .groupBy(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID, ENTITY_PROCESSOR_STAGES.NAME))
-                            .map(rec -> {
-                                String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                                if (stageName == null) stageName = "No Stage";
-                                return new PerValueCount()
-                                        .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID))
-                                        .setMapValue(stageName)
-                                        .setCount(rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
-                                                .longValue());
-                            });
-                });
+                (abstractCondition, conditions) -> Flux.from(this.dslContext
+                                .select(
+                                        ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID,
+                                        ENTITY_PROCESSOR_STAGES.NAME,
+                                        DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                .from(ENTITY_PROCESSOR_TICKETS)
+                                .leftJoin(ENTITY_PROCESSOR_STAGES)
+                                .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
+                                .where(conditions)
+                                .groupBy(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID, ENTITY_PROCESSOR_STAGES.NAME))
+                        .map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = NO_STAGE;
+                            return new PerValueCount()
+                                    .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID))
+                                    .setMapValue(stageName)
+                                    .setCount(rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                            .longValue());
+                        }));
     }
 
     public Flux<PerDateCount> getTicketPerAssignedUserStageSourceDateCount(
@@ -170,35 +167,31 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
                         .flux(),
                 abstractCondition -> super.filter(abstractCondition).flux(),
-                (abstractCondition, conditions) -> {
-                    Condition condition = conditions;
-
-                    return Flux.from(this.dslContext
-                                    .select(
-                                            ENTITY_PROCESSOR_STAGES.NAME,
-                                            ENTITY_PROCESSOR_TICKETS.SOURCE,
-                                            DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE),
-                                            DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
-                                    .from(ENTITY_PROCESSOR_TICKETS)
-                                    .leftJoin(ENTITY_PROCESSOR_STAGES)
-                                    .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
-                                    .where(conditions)
-                                    .groupBy(
-                                            ENTITY_PROCESSOR_TICKETS.SOURCE,
-                                            ENTITY_PROCESSOR_STAGES.NAME,
+                (abstractCondition, conditions) -> Flux.from(this.dslContext
+                                .select(
+                                        ENTITY_PROCESSOR_STAGES.NAME,
+                                        ENTITY_PROCESSOR_TICKETS.SOURCE,
+                                        DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE),
+                                        DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                .from(ENTITY_PROCESSOR_TICKETS)
+                                .leftJoin(ENTITY_PROCESSOR_STAGES)
+                                .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
+                                .where(conditions)
+                                .groupBy(
+                                        ENTITY_PROCESSOR_TICKETS.SOURCE,
+                                        ENTITY_PROCESSOR_STAGES.NAME,
+                                        DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE)))
+                        .map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = NO_STAGE;
+                            return new PerDateCount()
+                                    .setDate(rec.get(
                                             DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE)))
-                            .map(rec -> {
-                                String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                                if (stageName == null) stageName = "No Stage";
-                                return new PerDateCount()
-                                        .setDate(rec.get(
-                                                DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE)))
-                                        .setMapValue(stageName)
-                                        .setGroupedValue(rec.get(ENTITY_PROCESSOR_TICKETS.SOURCE))
-                                        .setCount(rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
-                                                .longValue());
-                            });
-                });
+                                    .setMapValue(stageName)
+                                    .setGroupedValue(rec.get(ENTITY_PROCESSOR_TICKETS.SOURCE))
+                                    .setCount(rec.get(DSL.count(ENTITY_PROCESSOR_TICKETS.ID))
+                                            .longValue());
+                        }));
     }
 
     public Flux<PerValueCount> getTicketPerCreatedByStageCount(
@@ -220,7 +213,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                 .groupBy(ENTITY_PROCESSOR_TICKETS.CREATED_BY, ENTITY_PROCESSOR_STAGES.NAME))
                         .map(rec -> {
                             String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                            if (stageName == null) stageName = "No Stage";
+                            if (stageName == null) stageName = NO_STAGE;
                             return new PerValueCount()
                                     .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.CREATED_BY))
                                     .setMapValue(stageName)
@@ -248,7 +241,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                 .groupBy(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, ENTITY_PROCESSOR_STAGES.NAME))
                         .map(rec -> {
                             String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                            if (stageName == null) stageName = "No Stage";
+                            if (stageName == null) stageName = NO_STAGE;
                             return new PerValueCount()
                                     .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
                                     .setMapValue(stageName)
@@ -275,7 +268,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                 .groupBy(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, ENTITY_PROCESSOR_STAGES.NAME))
                         .map(rec -> {
                             String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                            if (stageName == null) stageName = "No Stage";
+                            if (stageName == null) stageName = NO_STAGE;
                             return new PerValueCount()
                                     .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID))
                                     .setMapValue(stageName)

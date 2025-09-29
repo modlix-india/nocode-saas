@@ -7,7 +7,6 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
-import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.time.LocalDateTime;
@@ -32,28 +31,29 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
     protected abstract Map<String, String> getBucketFilterFieldMappings();
 
-    public Mono<AbstractCondition> createBucketConditions(
-            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+    public <T extends BaseFilter<T>> Mono<AbstractCondition> createBucketConditions(
+            ProcessorAccess access, T ticketBucketFilter) {
         return this.addBucketConditions(null, access, ticketBucketFilter);
     }
 
-    public Mono<AbstractCondition> createBucketConditions(
-            AbstractCondition condition, ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+    public <T extends BaseFilter<T>> Mono<AbstractCondition> createBucketConditions(
+            AbstractCondition condition, ProcessorAccess access, T ticketBucketFilter) {
         return this.addBucketConditions(condition, access, ticketBucketFilter);
     }
 
-    private Mono<AbstractCondition> addBucketConditions(
-            AbstractCondition baseCondition, ProcessorAccess access, TicketBucketFilter filter) {
+    private <T extends BaseFilter<T>> Mono<AbstractCondition> addBucketConditions(
+            AbstractCondition baseCondition, ProcessorAccess access, T filter) {
 
         Map<String, String> fieldMappings = this.getBucketFilterFieldMappings();
 
-        if (filter == null) filter = new TicketBucketFilter();
-
         return Mono.zip(
-                        this.getAccessConditions(access, filter, fieldMappings)
+                        this.getBaseAccessConditions(access, fieldMappings)
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()),
                         this.getDateConditions(filter, fieldMappings)
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()),
+                        this.getFilterAccessConditions(filter, fieldMappings)
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()))
                 .map(condTuple -> {
@@ -61,6 +61,7 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
                     condTuple.getT1().ifPresent(conditions::add);
                     condTuple.getT2().ifPresent(conditions::add);
+                    condTuple.getT3().ifPresent(conditions::add);
 
                     if (baseCondition != null && !baseCondition.isEmpty()) conditions.add(baseCondition);
 
@@ -70,16 +71,42 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                 });
     }
 
-    private Mono<AbstractCondition> getAccessConditions(
-            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
+    private <T extends BaseFilter<T>> Mono<AbstractCondition> getFilterAccessConditions(
+            T filter, Map<String, String> fieldMappings) {
 
-        return Mono.zipDelayError(
-                        this.getAppCodeCondition(access).map(Optional::of).defaultIfEmpty(Optional.empty()),
-                        this.getClientCodeCondition(access).map(Optional::of).defaultIfEmpty(Optional.empty()),
-                        this.getUserConditions(access, filter, fieldMappings)
+        if (filter == null
+                || filter.getAssignedUserIds() == null
+                        && filter.getClientIds() == null
+                        && filter.getCreatedByIds() == null) return Mono.empty();
+
+        return Mono.zip(
+                        this.makeIn(fieldMappings.get(BaseFilter.Fields.assignedUserIds), filter.getAssignedUserIds())
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()),
-                        this.getClientIdCondition(access, filter, fieldMappings)
+                        this.makeIn(fieldMappings.get(BaseFilter.Fields.clientIds), filter.getClientIds())
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()),
+                        this.makeIn(fieldMappings.get(BaseFilter.Fields.createdByIds), filter.getCreatedByIds())
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()))
+                .map(tuple -> {
+                    List<AbstractCondition> conds = new ArrayList<>();
+                    tuple.getT1().ifPresent(conds::add);
+                    tuple.getT2().ifPresent(conds::add);
+                    tuple.getT3().ifPresent(conds::add);
+                    return ComplexCondition.and(conds);
+                });
+    }
+
+    private Mono<AbstractCondition> getBaseAccessConditions(ProcessorAccess access, Map<String, String> fieldMappings) {
+
+        return Mono.zip(
+                        this.getAppCodeCondition(access).map(Optional::of).defaultIfEmpty(Optional.empty()),
+                        this.getClientCodeCondition(access).map(Optional::of).defaultIfEmpty(Optional.empty()),
+                        this.getUserConditions(access, fieldMappings)
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty()),
+                        this.getClientIdCondition(access, fieldMappings)
                                 .map(Optional::of)
                                 .defaultIfEmpty(Optional.empty()))
                 .map(condTuple -> {
@@ -111,23 +138,19 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
                 FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getEffectiveClientCode()));
     }
 
-    private Mono<AbstractCondition> getUserConditions(
-            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
+    private Mono<AbstractCondition> getUserConditions(ProcessorAccess access, Map<String, String> fieldMappings) {
 
         if (access.isOutsideUser())
             return this.makeIn(
                     fieldMappings.get(BaseFilter.Fields.createdByIds),
-                    filter.filterCreatedByIds(access.getUserInherit().getSubOrg())
-                            .getCreatedByIds());
+                    access.getUserInherit().getSubOrg());
 
         return this.makeIn(
                 fieldMappings.get(BaseFilter.Fields.assignedUserIds),
-                filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
-                        .getAssignedUserIds());
+                access.getUserInherit().getSubOrg());
     }
 
-    private Mono<AbstractCondition> getClientIdCondition(
-            ProcessorAccess access, TicketBucketFilter filter, Map<String, String> fieldMappings) {
+    private Mono<AbstractCondition> getClientIdCondition(ProcessorAccess access, Map<String, String> fieldMappings) {
 
         if (access.isOutsideUser())
             return Mono.just(FilterCondition.make(
@@ -138,11 +161,11 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
 
         return this.makeIn(
                 fieldMappings.get(BaseFilter.Fields.clientIds),
-                filter.filterClientIds(access.getUserInherit().getManagingClientIds())
-                        .getClientIds());
+                access.getUserInherit().getManagingClientIds());
     }
 
-    private Mono<AbstractCondition> getDateConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
+    private <T extends BaseFilter<T>> Mono<AbstractCondition> getDateConditions(
+            T filter, Map<String, String> fieldMappings) {
 
         LocalDateTime startDate = filter.getStartDate();
         LocalDateTime endDate = filter.getEndDate();
