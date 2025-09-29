@@ -5,13 +5,15 @@ import org.jooq.EnumType;
 
 @Getter
 public enum LeadSource implements EnumType {
-    WEBSITE("WEBSITE"),
-    SOCIAL_MEDIA("SOCIAL_MEDIA");
+    WEBSITE("WEBSITE", "Website"),
+    SOCIAL_MEDIA("SOCIAL_MEDIA", "Social Media");
 
     private final String literal;
+    private final String name;
 
-    LeadSource(String literal) {
+    LeadSource(String literal, String name) {
         this.literal = literal;
+        this.name = name;
     }
 
     public static LeadSource lookupLiteral(String literal) {
@@ -25,6 +27,11 @@ public enum LeadSource implements EnumType {
 
     @Override
     public String getName() {
-        return null;
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return this.name;
     }
 }
