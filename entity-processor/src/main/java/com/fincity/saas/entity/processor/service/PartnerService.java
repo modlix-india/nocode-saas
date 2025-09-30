@@ -371,7 +371,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .setIncludeTotal(includeTotal);
 
         return FlatMapUtil.flatMapMono(
-                () -> ticketBucketService.getTicketPerClientIdStageCount(access, filter), statusCounts -> {
+                () -> ticketBucketService.getTicketPerClientIdStatusCount(access, filter), statusCounts -> {
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
@@ -428,7 +428,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .setIncludeTotal(includeTotal);
 
         return FlatMapUtil.flatMapMono(
-                () -> ticketBucketService.getTicketPerCreatedByStageCount(access, filter), statusCounts -> {
+                () -> ticketBucketService.getTicketPerCreatedByStatusCount(access, filter), statusCounts -> {
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
