@@ -20,6 +20,8 @@ public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements S
 
     private List<IdAndValue<String, CountPercentage>> perCount;
 
+    public abstract String getName();
+
     public T setTotalCount(CountPercentage totalCount) {
         this.totalCount = totalCount;
         return (T) this;
