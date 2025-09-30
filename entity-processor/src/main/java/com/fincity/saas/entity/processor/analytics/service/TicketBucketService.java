@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.service.base.BaseAnalyticsService;
@@ -17,6 +18,8 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,29 +36,30 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
         return EntitySeries.TICKET;
     }
 
-    public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
+    public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStageCount(
             Pageable pageable, TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> super.resolveAssignedUsers(access, filter),
-                        this::resolveStages,
-                        (access, aFilter, sFilter) -> this.dao
-                                .getTicketPerAssignedUserStageCount(access, sFilter)
-                                .collectList(),
-                        (access, aFilter, sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
-                                        perStageCount,
-                                        sFilter.getBaseFieldData().getAssignedUsers(),
-                                        sFilter.getFieldData().getStages(),
-                                        sFilter.isIncludeZero(),
-                                        sFilter.isIncludePercentage(),
-                                        sFilter.isIncludeTotal(),
-                                        sFilter.isIncludeNone())
-                                .collectList(),
-                        (access, aFilter, sFilter, perStageCount, perStatusCount) ->
-                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
-                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveAssignedUsers(access, f),
+                        this.dao::getTicketPerAssignedUserStageCount,
+                        sFilter -> sFilter.getBaseFieldData().getAssignedUsers(),
+                        sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStatusCount"));
+                        Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStageCount"));
+    }
+
+    public Mono<List<StatusEntityCount>> getTicketPerCreatedByStageCount(
+            ProcessorAccess access, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        access,
+                        filter,
+                        this.dao::getTicketPerCreatedByStageCount,
+                        sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
+                        sFilter -> sFilter.getFieldData().getStages())
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "TicketBucketService.getTicketPerCreatedByStageCount[ProcessorAccess, TicketBucketFilter]"));
     }
 
     public Flux<DateStatusCount> getTicketPerAssignedUserStageSourceDateCount(TicketBucketFilter filter) {
@@ -75,123 +79,140 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 sFilter.isIncludePercentage(),
                                 sFilter.isIncludeTotal(),
                                 sFilter.isIncludeNone()))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStageSourceDateCount"));
+    }
+
+    public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
+            Pageable pageable, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveAssignedUsers(access, f),
+                        this.dao::getTicketPerAssignedUserStatusCount,
+                        sFilter -> sFilter.getBaseFieldData().getAssignedUsers(),
+                        sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStatusCount"));
     }
 
+    public Mono<Page<StatusEntityCount>> getTicketPerCreatedByStageCount(Pageable pageable, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveCreatedBys(access, f),
+                        this.dao::getTicketPerCreatedByStageCount,
+                        sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
+                        sFilter -> sFilter.getFieldData().getStages())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStageCount"));
+    }
+
     public Mono<Page<StatusEntityCount>> getTicketPerCreatedByStatusCount(
             Pageable pageable, TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> super.resolveCreatedBys(access, filter),
-                        this::resolveStages,
-                        (access, cbFilter, sFilter) -> this.dao
-                                .getTicketPerCreatedByStageCount(access, sFilter)
-                                .collectList(),
-                        (access, cbFilter, sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
-                                        perStageCount,
-                                        sFilter.getBaseFieldData().getCreatedBys(),
-                                        sFilter.getFieldData().getStages(),
-                                        cbFilter.isIncludeZero(),
-                                        cbFilter.isIncludePercentage(),
-                                        cbFilter.isIncludeTotal(),
-                                        cbFilter.isIncludeNone())
-                                .collectList(),
-                        (access, cbFilter, sFilter, perStageCount, perStatusCount) ->
-                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
-                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveCreatedBys(access, f),
+                        this.dao::getTicketPerCreatedByStatusCount,
+                        sFilter -> sFilter.getBaseFieldData().getCreatedBys(),
+                        sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStatusCount"));
     }
 
-    public Mono<List<StatusEntityCount>> getTicketPerCreatedByStatusCount(
+    public Mono<Page<StatusEntityCount>> getTicketPerClientIdStageCount(Pageable pageable, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveClients(access, f),
+                        this.dao::getTicketPerClientIdStageCount,
+                        sFilter -> sFilter.getBaseFieldData().getClients(),
+                        sFilter -> sFilter.getFieldData().getStages())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStageCount"));
+    }
+
+    public Mono<List<StatusEntityCount>> getTicketPerClientIdStageCount(
             ProcessorAccess access, TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapMono(
-                        () -> resolveStages(access, filter),
-                        sFilter -> this.dao
-                                .getTicketPerCreatedByStageCount(access, sFilter)
-                                .collectList(),
-                        (sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
-                                        perStageCount,
-                                        sFilter.getBaseFieldData().getCreatedBys(),
-                                        sFilter.getFieldData().getStages(),
-                                        sFilter.isIncludeZero(),
-                                        sFilter.isIncludePercentage(),
-                                        sFilter.isIncludeTotal(),
-                                        sFilter.isIncludeNone())
-                                .collectList())
-                .switchIfEmpty(Mono.just(List.of()))
+        return this.getTicketCountByGroupAndJoin(
+                        access,
+                        filter,
+                        this.dao::getTicketPerClientIdStageCount,
+                        sFilter -> sFilter.getBaseFieldData().getClients(),
+                        sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME,
-                        "TicketBucketService.getTicketPerCreatedByStatusCount[ProcessorAccess, TicketBucketFilter]"));
+                        "TicketBucketService.getTicketPerClientIdStageCount[ProcessorAccess, TicketBucketFilter]"));
     }
 
     public Mono<Page<StatusEntityCount>> getTicketPerClientIdStatusCount(Pageable pageable, TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> super.resolveClients(access, filter),
-                        this::resolveStages,
-                        (access, cFilter, sFilter) -> this.dao
-                                .getTicketPerClientIdStageCount(access, sFilter)
-                                .collectList(),
-                        (access, cFilter, sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
-                                        perStageCount,
-                                        sFilter.getBaseFieldData().getClients(),
-                                        sFilter.getFieldData().getStages(),
-                                        sFilter.isIncludeZero(),
-                                        sFilter.isIncludePercentage(),
-                                        sFilter.isIncludeTotal(),
-                                        sFilter.isIncludeNone())
-                                .collectList(),
-                        (access, cFilter, sFilter, perStageCount, perStatusCount) ->
-                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
-                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> super.resolveClients(access, f),
+                        this.dao::getTicketPerClientIdStatusCount,
+                        sFilter -> sFilter.getBaseFieldData().getClients(),
+                        sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdStatusCount"));
     }
 
-    public Mono<List<StatusEntityCount>> getTicketPerClientIdStatusCount(
-            ProcessorAccess access, TicketBucketFilter filter) {
+    public Mono<Page<StatusEntityCount>> getTicketPerProjectStageCount(Pageable pageable, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> this.resolveProducts(access, f),
+                        this.dao::getTicketPerProjectStageCount,
+                        sFilter -> sFilter.getFieldData().getProducts(),
+                        sFilter -> sFilter.getFieldData().getStages())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProjectStageCount"));
+    }
+
+    public Mono<Page<StatusEntityCount>> getTicketPerProjectStatusCount(Pageable pageable, TicketBucketFilter filter) {
+        return this.getTicketCountByGroupAndJoin(
+                        pageable,
+                        filter,
+                        access -> f -> this.resolveProducts(access, f),
+                        this.dao::getTicketPerProjectStatusCount,
+                        sFilter -> sFilter.getFieldData().getProducts(),
+                        sFilter -> sFilter.getFieldData().getStages())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProjectStatusCount"));
+    }
+
+    private Mono<Page<StatusEntityCount>> getTicketCountByGroupAndJoin(
+            Pageable pageable,
+            TicketBucketFilter filter,
+            Function<ProcessorAccess, Function<TicketBucketFilter, Mono<TicketBucketFilter>>> resolver,
+            BiFunction<ProcessorAccess, TicketBucketFilter, Flux<PerValueCount>> daoMethod,
+            Function<TicketBucketFilter, List<IdAndValue<ULong, String>>> baseFieldExtractor,
+            Function<TicketBucketFilter, List<IdAndValue<ULong, String>>> stageExtractor) {
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> resolver.apply(access).apply(filter),
+                        (access, resolvedFilter) -> this.getTicketCountByGroupAndJoin(
+                                access, resolvedFilter, daoMethod, baseFieldExtractor, stageExtractor),
+                        (access, resolvedFilter, statusCounts) -> ReactivePaginationUtil.toPage(statusCounts, pageable))
+                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable));
+    }
+
+    private Mono<List<StatusEntityCount>> getTicketCountByGroupAndJoin(
+            ProcessorAccess access,
+            TicketBucketFilter filter,
+            BiFunction<ProcessorAccess, TicketBucketFilter, Flux<PerValueCount>> daoMethod,
+            Function<TicketBucketFilter, List<IdAndValue<ULong, String>>> baseFieldExtractor,
+            Function<TicketBucketFilter, List<IdAndValue<ULong, String>>> stageExtractor) {
+
         return FlatMapUtil.flatMapMono(
                         () -> resolveStages(access, filter),
-                        sFilter -> this.dao
-                                .getTicketPerClientIdStageCount(access, sFilter)
-                                .collectList(),
+                        sFilter -> daoMethod.apply(access, sFilter).collectList(),
                         (sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
                                         perStageCount,
-                                        sFilter.getBaseFieldData().getClients(),
-                                        sFilter.getFieldData().getStages(),
+                                        baseFieldExtractor.apply(sFilter),
+                                        stageExtractor.apply(sFilter),
                                         sFilter.isIncludeZero(),
                                         sFilter.isIncludePercentage(),
                                         sFilter.isIncludeTotal(),
                                         sFilter.isIncludeNone())
                                 .collectList())
-                .switchIfEmpty(Mono.just(List.of()))
-                .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME,
-                        "TicketBucketService.getTicketPerClientIdStatusCount[ProcessorAccess, TicketBucketFilter]"));
-    }
-
-    public Mono<Page<StatusEntityCount>> getTicketPerProductIdStatusCount(
-            Pageable pageable, TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.resolveProducts(access, filter),
-                        this::resolveStages,
-                        (access, pFilter, sFilter) -> this.dao
-                                .getTicketPerProjectStageCount(access, sFilter)
-                                .collectList(),
-                        (access, pFilter, sFilter, perStageCount) -> ReportUtil.toStatusCountsGroupedIds(
-                                        perStageCount,
-                                        sFilter.getFieldData().getProducts(),
-                                        sFilter.getFieldData().getStages(),
-                                        sFilter.isIncludeZero(),
-                                        sFilter.isIncludePercentage(),
-                                        sFilter.isIncludeTotal(),
-                                        sFilter.isIncludeNone())
-                                .collectList(),
-                        (access, pFilter, sFilter, perStageCount, perStatusCount) ->
-                                ReactivePaginationUtil.toPage(perStatusCount, pageable))
-                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductIdStatusCount"));
+                .switchIfEmpty(Mono.just(List.of()));
     }
 
     private Mono<TicketBucketFilter> resolveProducts(ProcessorAccess access, TicketBucketFilter filter) {
