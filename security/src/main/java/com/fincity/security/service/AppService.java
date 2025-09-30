@@ -520,6 +520,27 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
     }
 
+    public Mono<List<ULong>> getAppIdsForAdditionalAppRegistration(String urlAppCode, String urlClientCode, Client client) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        () -> this.getAppByCode(urlAppCode),
+
+                        app -> this.clientService.getClientLevelType(client.getId(), app.getId()),
+
+                        (app, levelType) -> this.clientService.getClientBy(urlClientCode).map(Client::getId),
+
+                        (app, levelType, urlClientId) -> this.appRegistrationDao.getAppIdsForRegistrationForAdditionalRegistration(
+                                app.getId(),
+                                app.getClientId(),
+                                urlClientId,
+                                client.getTypeCode(),
+                                levelType,
+                                client.getBusinessType())
+                )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppIdsForAdditionalAppRegistration"));
+    }
+
     public Mono<Boolean> addClientAccessAfterRegistration(String urlAppCode, ULong urlClientId, Client client) {
 
         return FlatMapUtil.flatMapMono(
