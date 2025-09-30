@@ -15,6 +15,7 @@ public class AppRegistrationAccess extends AbstractAppRegistration {
 
     private ULong allowAppId;
     private boolean writeAccess;
+    private boolean register;
 
     // Extras required for UI
     private App allowApp;

@@ -3,15 +3,16 @@ spring:
     name: notification
   freemarker:
     check-template-location: false
-  r2dbc:
+  datasource:
     url: ${notification.db.url}
     username: ${notification.db.username}
     password: ${notification.db.password}
-    pool:
-      initial-size: 2
-      max-size: 4
-      max-idle-time: 30m
-      validation-query: SELECT 1
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  hikari:
+    minimum-idle: 2
+    maximum-pool-size: 4
+    idle-timeout: 1800000   # 30 minutes in ms
+    connection-test-query: SELECT 1
   flyway:
     enabled: true
     driver-class-name: com.mysql.cj.jdbc.Driver
