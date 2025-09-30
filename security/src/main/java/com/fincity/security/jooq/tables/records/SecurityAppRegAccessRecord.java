@@ -119,11 +119,26 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
     }
 
     /**
+     * Setter for <code>security.security_app_reg_access.REGISTER</code>.
+     */
+    public SecurityAppRegAccessRecord setRegister(Byte value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_app_reg_access.REGISTER</code>.
+     */
+    public Byte getRegister() {
+        return (Byte) get(6);
+    }
+
+    /**
      * Setter for <code>security.security_app_reg_access.LEVEL</code>. Access
      * level
      */
     public SecurityAppRegAccessRecord setLevel(SecurityAppRegAccessLevel value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -132,7 +147,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * level
      */
     public SecurityAppRegAccessLevel getLevel() {
-        return (SecurityAppRegAccessLevel) get(6);
+        return (SecurityAppRegAccessLevel) get(7);
     }
 
     /**
@@ -140,7 +155,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * Business type
      */
     public SecurityAppRegAccessRecord setBusinessType(String value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -149,7 +164,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * Business type
      */
     public String getBusinessType() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
@@ -157,7 +172,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * of the user who created this row
      */
     public SecurityAppRegAccessRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -166,7 +181,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -174,7 +189,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * when this row is created
      */
     public SecurityAppRegAccessRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -183,7 +198,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -209,7 +224,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
     /**
      * Create a detached, initialised SecurityAppRegAccessRecord
      */
-    public SecurityAppRegAccessRecord(ULong id, ULong clientId, String clientType, ULong appId, ULong allowAppId, Byte writeAccess, SecurityAppRegAccessLevel level, String businessType, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityAppRegAccessRecord(ULong id, ULong clientId, String clientType, ULong appId, ULong allowAppId, Byte writeAccess, Byte register, SecurityAppRegAccessLevel level, String businessType, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityAppRegAccess.SECURITY_APP_REG_ACCESS);
 
         setId(id);
@@ -218,6 +233,7 @@ public class SecurityAppRegAccessRecord extends UpdatableRecordImpl<SecurityAppR
         setAppId(appId);
         setAllowAppId(allowAppId);
         setWriteAccess(writeAccess);
+        setRegister(register);
         setLevel(level);
         setBusinessType(businessType);
         setCreatedBy(createdBy);

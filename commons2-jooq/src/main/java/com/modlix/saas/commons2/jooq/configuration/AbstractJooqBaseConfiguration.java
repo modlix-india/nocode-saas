@@ -7,7 +7,6 @@ import org.jooq.impl.DSL;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,19 +20,11 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import javax.sql.DataSource;
+
 import lombok.Getter;
 
 @Getter
 public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
-
-    @Value("${spring.datasource.url}")
-    protected String url;
-
-    @Value("${spring.datasource.username}")
-    protected String username;
-
-    @Value("${spring.datasource.password}")
-    protected String password;
 
     protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
         super(objectMapper);
