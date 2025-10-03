@@ -4897,6 +4897,11 @@ CREATE TABLE `notification`.`notification_preference`
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
+-- V60__Adding Registration prop to App Reg object.sql (security)
+
+ALTER TABLE `security`.`security_app_reg_access`
+	ADD COLUMN `REGISTER` tinyint(1) NOT NULL DEFAULT '0' AFTER `WRITE_ACCESS`;
+
 
 -- Add scripts from the project above this line and seed data below this line.
 
