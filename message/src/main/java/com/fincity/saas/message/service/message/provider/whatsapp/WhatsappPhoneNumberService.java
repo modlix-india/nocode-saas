@@ -7,8 +7,8 @@ import com.fincity.saas.message.enums.MessageSeries;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
+import com.fincity.saas.message.model.message.whatsapp.data.FbPagingData;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
-import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
@@ -166,7 +166,8 @@ public class WhatsappPhoneNumberService
                 .switchIfEmpty(this.getByAccountId(messageAccess, whatsappBusinessAccountId));
     }
 
-    private Mono<Tuple2<String, PhoneNumbers>> getPhoneNumbers(String connectionName, MessageAccess messageAccess) {
+    private Mono<Tuple2<String, FbPagingData<PhoneNumber>>> getPhoneNumbers(
+            String connectionName, MessageAccess messageAccess) {
         return FlatMapUtil.flatMapMono(
                 () -> super.messageConnectionService.getCoreDocument(
                         messageAccess.getAppCode(), messageAccess.getClientCode(), connectionName),
@@ -190,7 +191,7 @@ public class WhatsappPhoneNumberService
     }
 
     private Flux<WhatsappPhoneNumber> savePhoneNumbers(
-            String whatsappBusinessAccountId, PhoneNumbers phoneNumbers, MessageAccess messageAccess) {
+            String whatsappBusinessAccountId, FbPagingData<PhoneNumber> phoneNumbers, MessageAccess messageAccess) {
         return Flux.fromIterable(phoneNumbers.getData())
                 .flatMap(phoneNumber -> this.savePhoneNumber(whatsappBusinessAccountId, phoneNumber, messageAccess));
     }

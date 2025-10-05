@@ -456,13 +456,14 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.messageConnectionService.getCoreDocument(
-                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        (access, connection) -> super.isValidConnection(connection),
-                        (access, connection, vConn) -> this.getWhatsappBusinessAccountId(connection),
-                        (access, connection, vConn, businessAccountId) -> this.getWhatsappPhoneNumber(
+                        access -> this.messageConnectionService
+                                .getCoreDocument(
+                                        access.getAppCode(), access.getClientCode(), request.getConnectionName())
+                                .flatMap(super::isValidConnection),
+                        (access, connection) -> this.getWhatsappBusinessAccountId(connection),
+                        (access, connection, businessAccountId) -> this.getWhatsappPhoneNumber(
                                 request.getWhatsappPhoneNumberId(), access, businessAccountId),
-                        (access, connection, vConn, businessAccountId, phoneNumber) ->
+                        (access, connection, businessAccountId, phoneNumber) ->
                                 this.customerServiceWindowService.getCustomerServiceWindowStatus(
                                         access, phoneNumber, request.getCustomerNumber()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.getCswStatus"));
@@ -475,15 +476,16 @@ public class WhatsappMessageService
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.readIdentityWithAccess(access, request.getMessageId()),
-                        (access, message) -> this.messageConnectionService.getCoreDocument(
-                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        (access, message, connection) -> super.isValidConnection(connection),
-                        (access, message, connection, cValid) -> this.getWhatsappBusinessAccountId(connection),
-                        (access, message, connection, cValid, businessAccountId) -> this.getWhatsappPhoneNumber(
+                        (access, message) -> this.messageConnectionService
+                                .getCoreDocument(
+                                        access.getAppCode(), access.getClientCode(), request.getConnectionName())
+                                .flatMap(super::isValidConnection),
+                        (access, message, connection) -> this.getWhatsappBusinessAccountId(connection),
+                        (access, message, connection, businessAccountId) -> this.getWhatsappPhoneNumber(
                                 request.getWhatsappPhoneNumberId(), access, businessAccountId),
-                        (access, message, connection, cValid, businessAccountId, phoneNumber) ->
+                        (access, message, connection, businessAccountId, phoneNumber) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
-                        (access, message, connection, cValid, businessAccountId, phoneNumber, api) -> Mono.zip(
+                        (access, message, connection, businessAccountId, phoneNumber, api) -> Mono.zip(
                                         api.markMessageAsRead(
                                                 phoneNumber.getPhoneNumberId(),
                                                 new ReadMessage().setMessageId(message.getMessageId())),
@@ -509,14 +511,14 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.messageConnectionService.getCoreDocument(
-                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        (access, connection) -> super.isValidConnection(connection),
-                        (access, connection, cValid) ->
-                                this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
-                        (access, connection, cValid, api) ->
+                        access -> this.messageConnectionService
+                                .getCoreDocument(
+                                        access.getAppCode(), access.getClientCode(), request.getConnectionName())
+                                .flatMap(super::isValidConnection),
+                        (access, connection) -> this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
+                        (access, connection, api) ->
                                 this.readIdentityWithAccess(access, request.getWhatsappMessageId()),
-                        (access, connection, cValid, api, whatsappMessage) -> {
+                        (access, connection, api, whatsappMessage) -> {
                             boolean hasMedia = whatsappMessage.isOutbound()
                                     ? whatsappMessage.getMessage().getType().isMediaFile()
                                     : whatsappMessage.getInMessage().getType().isMediaFile();
