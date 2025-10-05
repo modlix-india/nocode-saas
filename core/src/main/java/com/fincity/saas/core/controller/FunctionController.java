@@ -13,6 +13,7 @@ import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.Cor
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.saas.commons.core.service.NotificationService;
+import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.email.EmailService;
 import com.fincity.saas.commons.core.service.connection.rest.RestService;
@@ -62,7 +63,8 @@ public class FunctionController
             EmailService emailService,
             TemplateConversionService templateConversionService,
             Gson gson,
-            NotificationService notificationService
+            NotificationService notificationService,
+            AIService aiService
     ) {
         this.coreFunRepo = new CoreFunctionRepository(
                 new CoreFunctionRepositoryBuilder()
@@ -76,6 +78,7 @@ public class FunctionController
                         .setEmailService(emailService)
                         .setTemplateConversionService(templateConversionService)
                         .setNotificationService(notificationService)
+                        .setAiService(aiService)
                         .setGson(gson)
         );
         this.gson = gson;

@@ -14,7 +14,12 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 
+import org.jooq.Record;
+import org.jooq.RecordMapper;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,8 +27,11 @@ import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.util.Map;
+
 @Service
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
+
 
     protected ConnectionService() {
         super(Connection.class);
@@ -113,5 +121,15 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                 }
 
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.readInternalConnection"));
+    }
+
+    public Mono<Map<String, Connection>> getNotificationConnections(String connectionName, String appCode, String clientCode, ULong triggerUserId, String urlClientCode) {
+        return Mono.empty();
+//        return FlatMapUtil.flatMapMono(
+//                        SecurityContextUtil::getUsersContextAuthentication,
+//                        auth -> Mono.empty()
+//                )
+//                .contextWrite(ReactiveSecurityContextHolder
+//                        .withSecurityContext(Mono.just(new SecurityContextImpl(newCA))));
     }
 }
