@@ -29,7 +29,7 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
     @Serial
     private static final long serialVersionUID = 1234567890123456789L;
 
-    private String whatsappBusinessAccountId;
+    private ULong whatsappBusinessAccountId;
     private String templateId;
     private String templateName;
     private Boolean allowCategoryChange;
@@ -69,7 +69,7 @@ public class WhatsappTemplate extends BaseUpdatableDto<WhatsappTemplate> {
     }
 
     public static WhatsappTemplate of(
-            String whatsappBusinessAccountId,
+            ULong whatsappBusinessAccountId,
             MessageTemplate messageTemplate,
             Template template,
             FileDetail fileDetail) {

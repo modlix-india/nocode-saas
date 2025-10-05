@@ -9,6 +9,9 @@ import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.Throughput;
 import java.io.Serial;
+
+import org.jooq.types.ULong;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -25,7 +28,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     @Serial
     private static final long serialVersionUID = 9214491312043215338L;
 
-    private String whatsappBusinessAccountId;
+    private ULong whatsappBusinessAccountId;
     private String displayPhoneNumber;
     private QualityRatingType qualityRating;
     private String verifiedName;
@@ -35,6 +38,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private PlatformType platformType;
     private Throughput throughput;
     private Boolean isDefault = Boolean.FALSE;
+    private ULong productId;
     private WebhookConfig webhookConfig;
 
     public WhatsappPhoneNumber() {
@@ -56,7 +60,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
         this.webhookConfig = whatsappPhoneNumber.webhookConfig;
     }
 
-    public static WhatsappPhoneNumber of(String whatsappBusinessAccountId, PhoneNumber phoneNumber) {
+    public static WhatsappPhoneNumber of(ULong whatsappBusinessAccountId, PhoneNumber phoneNumber) {
         return new WhatsappPhoneNumber()
                 .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
                 .setDisplayPhoneNumber(phoneNumber.getDisplayPhoneNumber())

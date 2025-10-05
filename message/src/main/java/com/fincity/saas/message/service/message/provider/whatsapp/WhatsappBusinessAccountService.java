@@ -62,6 +62,13 @@ public class WhatsappBusinessAccountService
         return super.isValidConnection(connection);
     }
 
+    protected Mono<WhatsappBusinessAccount> getBusinessAccount(MessageAccess access, String id) {
+        return super.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> super.findByUniqueField(access, id),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), id));
+    }
+
     public Mono<WhatsappBusinessAccount> syncBusinessAccount(String connectionName) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
