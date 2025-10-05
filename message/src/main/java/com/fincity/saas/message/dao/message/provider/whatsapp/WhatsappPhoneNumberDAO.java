@@ -10,6 +10,8 @@ import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
+
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -39,7 +41,7 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess messageAccess, String whatsappBusinessAccountId) {
+    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess messageAccess, ULong whatsappBusinessAccountId) {
 
         if (whatsappBusinessAccountId == null) return Mono.empty();
 
@@ -60,7 +62,7 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
     }
 
     public Mono<WhatsappPhoneNumber> getByAccountAndPhoneNumberId(
-            MessageAccess messageAccess, String whatsappBusinessAccountId, String phoneNumberId) {
+            MessageAccess messageAccess, ULong whatsappBusinessAccountId, String phoneNumberId) {
 
         if (whatsappBusinessAccountId == null) return Mono.empty();
 

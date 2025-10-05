@@ -15,6 +15,8 @@ import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
+
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -148,7 +150,7 @@ public class WhatsappPhoneNumberService
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), phoneNumberId));
     }
 
-    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess access, String whatsappBusinessAccountId) {
+    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess access, ULong whatsappBusinessAccountId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getByAccountId(access, whatsappBusinessAccountId),
@@ -156,7 +158,7 @@ public class WhatsappPhoneNumberService
     }
 
     public Mono<WhatsappPhoneNumber> getByAccountAndPhoneNumberId(
-            MessageAccess access, String whatsappBusinessAccountId, String phoneNumberId) {
+            MessageAccess access, ULong whatsappBusinessAccountId, String phoneNumberId) {
         return this.cacheService
                 .cacheValueOrGet(
                         this.getCacheName(),

@@ -1,11 +1,24 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
+import java.nio.ByteBuffer;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappMessageDAO;
 import com.fincity.saas.message.dto.message.Message;
+import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
@@ -41,17 +54,7 @@ import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.util.PhoneUtil;
-import java.nio.ByteBuffer;
-import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -69,8 +72,7 @@ public class WhatsappMessageService
     private final WhatsappPhoneNumberService whatsappPhoneNumberService;
     private final WhatsappCswService customerServiceWindowService;
 
-    @Value("${meta.webhook.verify-token:null}")
-    private String verifyToken;
+    private WhatsappBusinessAccountService businessAccountService;
 
     @Autowired
     public WhatsappMessageService(
@@ -80,6 +82,11 @@ public class WhatsappMessageService
         this.whatsappApiFactory = whatsappApiFactory;
         this.whatsappPhoneNumberService = whatsappPhoneNumberService;
         this.customerServiceWindowService = customerServiceWindowService;
+    }
+
+    @Autowired
+    public void setBusinessAccountService(WhatsappBusinessAccountService businessAccountService) {
+        this.businessAccountService = businessAccountService;
     }
 
     @Override
@@ -184,20 +191,20 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                         () -> super.isValidConnection(connection),
-                        vConn -> this.getWhatsappBusinessAccountId(connection),
-                        (vConn, businessAccountId) ->
-                                this.getWhatsappPhoneNumber(whatsappPhoneNumberId, access, businessAccountId),
-                        (vConn, businessAccountId, phoneNumberId) ->
+                        vConn -> this.getWhatsappBusinessAccount(access, connection),
+                        (vConn, businessAccount) ->
+                                this.getWhatsappPhoneNumber(whatsappPhoneNumberId, access, businessAccount.getId()),
+                        (vConn, businessAccount, phoneNumberId) ->
                                 this.validateCustomerServiceWindow(access, phoneNumberId, whatsappMessage),
-                        (vConn, businessAccountId, phoneNumberId, validated) ->
+                        (vConn, businessAccount, phoneNumberId, validated) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
-                        (vConn, businessAccountId, phoneNumberId, validated, api) ->
+                        (vConn, businessAccount, phoneNumberId, validated, api) ->
                                 api.sendMessage(phoneNumberId.getPhoneNumberId(), whatsappMessage.getMessage()),
-                        (vConn, businessAccountId, phoneNumberId, validated, api, response) -> this.createInternal(
-                                access, whatsappMessage.update(businessAccountId, phoneNumberId.getId(), response)),
-                        (vConn, businessAccountId, phoneNumberId, validated, api, response, created) ->
+                        (vConn, businessAccount, phoneNumberId, validated, api, response) -> this.createInternal(
+                                access, whatsappMessage.update(businessAccount.getId(), phoneNumberId.getId(), response)),
+                        (vConn, businessAccount, phoneNumberId, validated, api, response, created) ->
                                 this.toMessage(created).map(msg -> msg.setConnectionName(connection.getName())),
-                        (vConn, businessAccountId, phoneNumberId, validated, api, response, created, msg) ->
+                        (vConn, businessAccount, phoneNumberId, validated, api, response, created, msg) ->
                                 super.messageService
                                         .createInternal(access, msg)
                                         .flatMap(msgCreated -> this.messageEventService
@@ -213,17 +220,19 @@ public class WhatsappMessageService
         return SUBSCRIBE.equals(mode) && verifyToken.equals(token) ? Mono.just(challenge) : Mono.empty();
     }
 
-    private Mono<String> getWhatsappBusinessAccountId(Connection connection) {
-        String businessAccountId = (String)
-                connection.getConnectionDetails().getOrDefault(WhatsappMessage.Fields.whatsappBusinessAccountId, null);
+    private Mono<WhatsappBusinessAccount> getWhatsappBusinessAccount(MessageAccess access, Connection connection) {
+        String businessAccountId = (String) connection
+                .getConnectionDetails()
+                .getOrDefault(WhatsappPhoneNumber.Fields.whatsappBusinessAccountId, null);
 
-        if (businessAccountId == null) return super.throwMissingParam(WhatsappMessage.Fields.whatsappBusinessAccountId);
+        if (businessAccountId == null)
+            return super.throwMissingParam(WhatsappPhoneNumber.Fields.whatsappBusinessAccountId);
 
-        return Mono.just(businessAccountId);
+        return this.businessAccountService.getBusinessAccount(access, businessAccountId);
     }
 
     private Mono<WhatsappPhoneNumber> getWhatsappPhoneNumber(
-            Identity whatsappPhoneNumberId, MessageAccess access, String businessAccountId) {
+            Identity whatsappPhoneNumberId, MessageAccess access, ULong businessAccountId) {
         if (whatsappPhoneNumberId != null && !whatsappPhoneNumberId.isNull())
             return whatsappPhoneNumberService
                     .readIdentityWithAccessEmpty(access, whatsappPhoneNumberId)
@@ -232,7 +241,7 @@ public class WhatsappMessageService
         return this.getAccountWhatsappPhoneNumber(access, businessAccountId);
     }
 
-    private Mono<WhatsappPhoneNumber> getAccountWhatsappPhoneNumber(MessageAccess access, String businessAccountId) {
+    private Mono<WhatsappPhoneNumber> getAccountWhatsappPhoneNumber(MessageAccess access, ULong businessAccountId) {
         return whatsappPhoneNumberService
                 .getByAccountId(access, businessAccountId)
                 .switchIfEmpty(super.throwMissingParam(WhatsappMessage.Fields.whatsappPhoneNumberId));
@@ -343,7 +352,7 @@ public class WhatsappMessageService
             IMetadata metadata,
             IContact contact,
             IMessage message,
-            String whatsappBusinessAccountId,
+            ULong whatsappBusinessAccountId,
             ULong whatsappPhoneNumberId) {
 
         PhoneNumber from = PhoneNumber.ofWhatsapp(message.getFrom());
@@ -460,10 +469,10 @@ public class WhatsappMessageService
                                 .getCoreDocument(
                                         access.getAppCode(), access.getClientCode(), request.getConnectionName())
                                 .flatMap(super::isValidConnection),
-                        (access, connection) -> this.getWhatsappBusinessAccountId(connection),
-                        (access, connection, businessAccountId) -> this.getWhatsappPhoneNumber(
-                                request.getWhatsappPhoneNumberId(), access, businessAccountId),
-                        (access, connection, businessAccountId, phoneNumber) ->
+                        this::getWhatsappBusinessAccount,
+                        (access, connection, businessAccount) -> this.getWhatsappPhoneNumber(
+                                request.getWhatsappPhoneNumberId(), access, businessAccount.getId()),
+                        (access, connection, businessAccount, phoneNumber) ->
                                 this.customerServiceWindowService.getCustomerServiceWindowStatus(
                                         access, phoneNumber, request.getCustomerNumber()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.getCswStatus"));
@@ -475,17 +484,18 @@ public class WhatsappMessageService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.readIdentityWithAccess(access, request.getMessageId()),
-                        (access, message) -> this.messageConnectionService
+                        access -> this.messageConnectionService
                                 .getCoreDocument(
                                         access.getAppCode(), access.getClientCode(), request.getConnectionName())
                                 .flatMap(super::isValidConnection),
-                        (access, message, connection) -> this.getWhatsappBusinessAccountId(connection),
-                        (access, message, connection, businessAccountId) -> this.getWhatsappPhoneNumber(
-                                request.getWhatsappPhoneNumberId(), access, businessAccountId),
-                        (access, message, connection, businessAccountId, phoneNumber) ->
+                        this::getWhatsappBusinessAccount,
+                        (access, connection, businessAccount) ->
+                                this.readIdentityWithAccess(access, request.getMessageId()),
+                        (access, connection, businessAccount, message) -> this.getWhatsappPhoneNumber(
+                                request.getWhatsappPhoneNumberId(), access, businessAccount.getId()),
+                        (access, connection, businessAccount, message, phoneNumber) ->
                                 this.whatsappApiFactory.newBusinessCloudApiFromConnection(connection),
-                        (access, message, connection, businessAccountId, phoneNumber, api) -> Mono.zip(
+                        (access, connection, businessAccount, message, phoneNumber, api) -> Mono.zip(
                                         api.markMessageAsRead(
                                                 phoneNumber.getPhoneNumberId(),
                                                 new ReadMessage().setMessageId(message.getMessageId())),
