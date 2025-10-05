@@ -121,6 +121,14 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId);
     }
 
+    public Mono<Response> overridePhoneNumberWebhook(String phoneNumberId, WebhookConfig webhookConfig) {
+        return apiService.overridePhoneNumberWebhook(apiVersion.getValue(), phoneNumberId, webhookConfig);
+    }
+
+    public Mono<PhoneNumberWebhookConfig> retrievePhoneNumberWebhookConfig(String phoneNumberId) {
+        return apiService.retrievePhoneNumberWebhookConfig(apiVersion.getValue(), phoneNumberId);
+    }
+
     public Mono<Response> requestCode(String phoneNumberId, RequestCode requestCode) {
         return apiService.requestCode(apiVersion.getValue(), phoneNumberId, requestCode);
     }
