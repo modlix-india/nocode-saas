@@ -1,12 +1,5 @@
 package com.fincity.saas.message.service.message.provider;
 
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
@@ -25,7 +18,12 @@ import com.fincity.saas.message.service.message.MessageService;
 import com.fincity.saas.message.service.message.MessageWebhookService;
 import com.fincity.saas.message.service.message.event.MessageEventService;
 import com.fincity.saas.message.util.PhoneUtil;
-
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractMessageService<
@@ -43,8 +41,10 @@ public abstract class AbstractMessageService<
     protected MessageService messageService;
     protected MessageWebhookService messageWebhookService;
     protected IFeignFileService fileService;
+
     @Value("${meta.webhook.verify-token:null}")
     protected String verifyToken;
+
     @Value("${app.base-url:http://localhost:8080}")
     private String appBaseUrl;
 

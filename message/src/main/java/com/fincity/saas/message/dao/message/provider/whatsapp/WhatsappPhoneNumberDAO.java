@@ -10,7 +10,6 @@ import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
-
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;

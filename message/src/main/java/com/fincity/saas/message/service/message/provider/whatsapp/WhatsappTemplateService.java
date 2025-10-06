@@ -105,9 +105,9 @@ public class WhatsappTemplateService
                         (access, validationResult, connection) -> this.getBusinessManagementApi(connection),
                         (access, validationResult, connection, api) ->
                                 this.getWhatsappBusinessAccount(access, connection),
-                        (access, validationResult, connection, api, businessAccount) ->
-                                api.createMessageTemplate(
-                                        businessAccount.getWhatsappBusinessAccountId(), whatsappTemplateRequest.getMessageTemplate()),
+                        (access, validationResult, connection, api, businessAccount) -> api.createMessageTemplate(
+                                businessAccount.getWhatsappBusinessAccountId(),
+                                whatsappTemplateRequest.getMessageTemplate()),
                         (access, validationResult, connection, api, businessAccount, apiTemplate) ->
                                 super.createInternal(
                                         access,
@@ -132,8 +132,8 @@ public class WhatsappTemplateService
                                 access.getAppCode(),
                                 access.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
-                        (access, nameValidationResult, connection) -> super.readIdentityWithAccess(
-                                access, whatsappTemplateRequest.getWhatsappTemplateId()),
+                        (access, nameValidationResult, connection) ->
+                                super.readIdentityWithAccess(access, whatsappTemplateRequest.getWhatsappTemplateId()),
                         (access, nameValidationResult, connection, existingTemplate) ->
                                 this.validateTemplateEditRules(existingTemplate),
                         (access, nameValidationResult, connection, existingTemplate, validationResult) ->
@@ -173,13 +173,13 @@ public class WhatsappTemplateService
                                 access.getAppCode(),
                                 access.getClientCode(),
                                 whatsappTemplateRequest.getConnectionName()),
-                        (access, connection) -> super.readIdentityWithAccess(
-                                access, whatsappTemplateRequest.getWhatsappTemplateId()),
+                        (access, connection) ->
+                                super.readIdentityWithAccess(access, whatsappTemplateRequest.getWhatsappTemplateId()),
                         (access, connection, existingTemplate) -> this.getBusinessManagementApi(connection),
                         (access, connection, existingTemplate, api) ->
                                 this.getWhatsappBusinessAccount(access, connection),
-                        (access, connection, existingTemplate, api, businessAccount) ->
-                                api.retrieveTemplates(businessAccount.getWhatsappBusinessAccountId(), existingTemplate.getTemplateName()),
+                        (access, connection, existingTemplate, api, businessAccount) -> api.retrieveTemplates(
+                                businessAccount.getWhatsappBusinessAccountId(), existingTemplate.getTemplateName()),
                         (access, connection, existingTemplate, api, businessAccount, retrievedTemplates) -> {
                             if (retrievedTemplates.getData() == null
                                     || retrievedTemplates.getData().isEmpty())

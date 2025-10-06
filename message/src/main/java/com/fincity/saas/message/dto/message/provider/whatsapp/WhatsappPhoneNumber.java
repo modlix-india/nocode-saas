@@ -9,14 +9,12 @@ import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.Throughput;
 import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -38,7 +36,6 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private PlatformType platformType;
     private Throughput throughput;
     private Boolean isDefault = Boolean.FALSE;
-    private ULong productId;
     private WebhookConfig webhookConfig;
 
     public WhatsappPhoneNumber() {
