@@ -9,6 +9,7 @@ import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceServic
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mq.notifications.NotificationQueObject;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.data.CircularLinkedList;
 import com.fincity.saas.commons.util.data.DoublePointerNode;
@@ -129,7 +130,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                         },
                         (ca, actualTuple, hasUserAccess) -> {
 
-                            if (!hasUserAccess) return Mono.empty();
+                            if (!BooleanUtil.safeValueOf(hasUserAccess)) return Mono.empty();
 
                             this.nextRoutingKey = nextRoutingKey.getNext();
                             return Mono.just(new NotificationQueObject()
@@ -152,7 +153,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                                 .toString());
                                         return Mono.just(q);
                                     }))
-                                    .flatMap(q -> Mono.fromCallable(() -> {
+                                    .<Boolean>flatMap(q -> Mono.fromCallable(() -> {
                                         amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), q);
                                         return true;
                                     }));
