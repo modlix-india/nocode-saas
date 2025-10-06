@@ -1,4 +1,4 @@
-package com.fincity.saas.message.model.response.call.provider.exotel;
+package com.fincity.saas.entity.processor.oserver.message.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -16,7 +16,7 @@ import lombok.experimental.FieldNameConstants;
 public class ExotelConnectAppletResponse implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 5952437367251012984L;
+    private static final long serialVersionUID = 4830547103225809929L;
 
     @JsonProperty("fetch_after_attempt")
     private Boolean fetchAfterAttempt;

@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
@@ -19,6 +20,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
@@ -394,6 +396,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
     }
 
+    public Mono<Ticket> readByPhoneNumber(ProcessorAccess access, PhoneNumber phoneNumber) {
+        return this.dao.readByNumber(access, phoneNumber.getCountryCode(), phoneNumber.getNumber());
+    }
+
     private Mono<Owner> setOwner(ProcessorAccess access, Ticket ticket) {
         return this.ownerService
                 .getOrCreateTicketOwner(access, ticket)
@@ -431,15 +437,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Mono<ProductComm> getTicketProductComm(
-            Identity ticketId, String connectionName, ConnectionType connectionType) {
+            Identity ticketId, ConnectionType connectionType, ConnectionSubType connectionSubType) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.readIdentityWithAccess(access, ticketId),
                         (access, ticket) -> this.productCommService.getProductComm(
                                 access,
                                 ticket.getProductId(),
-                                connectionName,
                                 connectionType,
+                                connectionSubType,
                                 ticket.getSource(),
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
