@@ -8,6 +8,7 @@ import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccount;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
@@ -54,6 +55,11 @@ public class Message extends SchemaImpl {
     public final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
 
     /**
+     * The table <code>message.message_whatsapp_business_account</code>.
+     */
+    public final MessageWhatsappBusinessAccount MESSAGE_WHATSAPP_BUSINESS_ACCOUNT = MessageWhatsappBusinessAccount.MESSAGE_WHATSAPP_BUSINESS_ACCOUNT;
+
+    /**
      * The table <code>message.message_whatsapp_messages</code>.
      */
     public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
@@ -88,6 +94,7 @@ public class Message extends SchemaImpl {
             MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
             MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS,
             MessageMessages.MESSAGE_MESSAGES,
+            MessageWhatsappBusinessAccount.MESSAGE_WHATSAPP_BUSINESS_ACCOUNT,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
             MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER,
             MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES

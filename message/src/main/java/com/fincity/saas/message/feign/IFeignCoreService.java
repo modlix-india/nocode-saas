@@ -13,12 +13,12 @@ public interface IFeignCoreService {
 
     String CONNECTION_PATH = "/api/core/connections/internal";
 
-    @GetMapping(CONNECTION_PATH)
+    @GetMapping(CONNECTION_PATH + "/{name}")
     Mono<Connection> getConnection(
-            @RequestParam String urlClientCode,
-            @RequestParam String connectionName,
+            @PathVariable("name") String connectionName,
             @RequestParam String appCode,
             @RequestParam String clientCode,
+            @RequestParam String urlClientCode,
             @RequestParam String connectionType);
 
     @GetMapping(CONNECTION_PATH + "/oauth2/token/{connectionName}")

@@ -8,6 +8,7 @@ import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccount;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
@@ -38,6 +39,11 @@ public class Tables {
      * The table <code>message.message_messages</code>.
      */
     public static final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
+
+    /**
+     * The table <code>message.message_whatsapp_business_account</code>.
+     */
+    public static final MessageWhatsappBusinessAccount MESSAGE_WHATSAPP_BUSINESS_ACCOUNT = MessageWhatsappBusinessAccount.MESSAGE_WHATSAPP_BUSINESS_ACCOUNT;
 
     /**
      * The table <code>message.message_whatsapp_messages</code>.

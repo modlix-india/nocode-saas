@@ -27,6 +27,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String PHONE_NUMBER_REQUIRED = "phone_number_required";
 
     public static final String INVALID_CONNECTION_TYPE = "invalid_connection_type";
+    public static final String META_APP_NOT_CONNECTED = "meta_app_not_connected";
     public static final String URL_CREATION_ERROR = "url_creation_error";
     public static final String MISSING_CALL_PARAMETERS = "missing_call_parameters";
     public static final String MISSING_MESSAGE_PARAMETERS = "missing_message_parameters";

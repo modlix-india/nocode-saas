@@ -37,6 +37,13 @@ public class ReportUtil {
     private static final ULong TOTAL_ID = ULong.MIN;
     private static final int PARALLEL_THRESHOLD = Math.max(100, ForkJoinPool.getCommonPoolParallelism() * 4);
 
+    private static final Comparator<StatusNameCount> statusNameComparator =
+            Comparator.comparing(StatusNameCount::getName);
+
+    private static final Comparator<StatusNameCount> statusNameTotalComparator = Comparator.comparing(
+                    (StatusNameCount status) -> TOTAL.equalsIgnoreCase(status.getName()) ? 0 : 1)
+            .thenComparing(statusNameComparator);
+
     public static Flux<DateStatusCount> toDateStatusCounts(
             DatePair totalDatePair,
             TimePeriod timePeriod,
@@ -96,20 +103,13 @@ public class ReportUtil {
                             .map(statusCounts -> {
                                 List<StatusNameCount> processed =
                                         includePercentage ? addPercentage(statusCounts, includeTotal) : statusCounts;
-                                processed.sort(getComparator(includeTotal));
+                                processed.sort(includeTotal ? statusNameTotalComparator : statusNameComparator);
                                 return new DateStatusCount()
                                         .setDatePair(entry.getKey())
                                         .setStatusCount(processed);
                             });
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
-    }
-
-    private static Comparator<StatusNameCount> getComparator(boolean includeTotal) {
-        if (includeTotal)
-            return Comparator.comparing((StatusNameCount status) -> TOTAL.equalsIgnoreCase(status.getName()) ? 0 : 1)
-                    .thenComparing(StatusNameCount::getName);
-        return Comparator.comparing(StatusNameCount::getName);
     }
 
     private static <T extends BaseStatusCount<T>> List<T> addPercentage(List<T> statusCountList, boolean includeTotal) {

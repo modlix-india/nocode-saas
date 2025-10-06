@@ -20,10 +20,10 @@ public abstract class BaseConnectionService extends AbstractCoreService<Connecti
             String appCode, String urlClientCode, String clientCode, String documentName) {
         return super.coreService
                 .getConnection(
-                        urlClientCode,
                         documentName,
                         appCode,
                         clientCode,
+                        urlClientCode,
                         getConnectionType().name())
                 .switchIfEmpty(super.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

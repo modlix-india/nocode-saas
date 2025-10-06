@@ -5,13 +5,16 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.t
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.PlatformType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.QualityRatingType;
+import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.model.message.whatsapp.phone.Throughput;
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -20,7 +23,10 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
 
-    private String whatsappBusinessAccountId;
+    @Serial
+    private static final long serialVersionUID = 9214491312043215338L;
+
+    private ULong whatsappBusinessAccountId;
     private String displayPhoneNumber;
     private QualityRatingType qualityRating;
     private String verifiedName;
@@ -30,6 +36,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
     private PlatformType platformType;
     private Throughput throughput;
     private Boolean isDefault = Boolean.FALSE;
+    private WebhookConfig webhookConfig;
 
     public WhatsappPhoneNumber() {
         super();
@@ -47,9 +54,10 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
         this.platformType = whatsappPhoneNumber.platformType;
         this.throughput = whatsappPhoneNumber.throughput;
         this.isDefault = whatsappPhoneNumber.isDefault;
+        this.webhookConfig = whatsappPhoneNumber.webhookConfig;
     }
 
-    public static WhatsappPhoneNumber of(String whatsappBusinessAccountId, PhoneNumber phoneNumber) {
+    public static WhatsappPhoneNumber of(ULong whatsappBusinessAccountId, PhoneNumber phoneNumber) {
         return new WhatsappPhoneNumber()
                 .setWhatsappBusinessAccountId(whatsappBusinessAccountId)
                 .setDisplayPhoneNumber(phoneNumber.getDisplayPhoneNumber())

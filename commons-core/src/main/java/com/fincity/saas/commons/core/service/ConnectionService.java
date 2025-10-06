@@ -3,6 +3,7 @@ package com.fincity.saas.commons.core.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.enums.ConnectionType;
+import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -16,18 +17,13 @@ import com.fincity.saas.commons.util.StringUtil;
 
 import org.jooq.Record;
 import org.jooq.RecordMapper;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
-
-import java.util.Map;
 
 @Service
 public class ConnectionService extends AbstractOverridableDataService<Connection, ConnectionRepository> {
@@ -90,6 +86,7 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.read"));
     }
 
+    // Only being used for oauth connections
     public Mono<Connection> readInternalConnection(
             String name, String appCode, String clientCode, ConnectionType type) {
 
@@ -123,13 +120,33 @@ public class ConnectionService extends AbstractOverridableDataService<Connection
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.readInternalConnection"));
     }
 
-    public Mono<Map<String, Connection>> getNotificationConnections(String connectionName, String appCode, String clientCode, ULong triggerUserId, String urlClientCode) {
-        return Mono.empty();
-//        return FlatMapUtil.flatMapMono(
-//                        SecurityContextUtil::getUsersContextAuthentication,
-//                        auth -> Mono.empty()
-//                )
-//                .contextWrite(ReactiveSecurityContextHolder
-//                        .withSecurityContext(Mono.just(new SecurityContextImpl(newCA))));
+    public Mono<NotificationConnectionDetails> getNotificationConnections(String connectionName, String appCode, String urlClientCode, String clientCode) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.readInternal(connectionName, appCode, urlClientCode, clientCode).map(ObjectWithUniqueID::getObject).filter(conn -> conn.getConnectionType() == ConnectionType.NOTIFICATION),
+
+                nConn -> {
+                    if (nConn.getConnectionDetails() == null || nConn.getConnectionDetails().isEmpty())
+                        return Mono.empty();
+
+                    String mailConnectionName = StringUtil.safeValueOf(nConn.getConnectionDetails().get("mail"));
+                    boolean inApp = nConn.getConnectionDetails().containsKey("inapp");
+
+                    if (mailConnectionName == null || mailConnectionName.isEmpty())
+                        return Mono.just(new NotificationConnectionDetails(inApp, null));
+
+                    return this.readInternal(mailConnectionName, appCode, urlClientCode, clientCode).map(ObjectWithUniqueID::getObject)
+                            .filter(conn -> conn.getConnectionType() == ConnectionType.MAIL
+                            ).map(conn -> new NotificationConnectionDetails(inApp, conn))
+                            .defaultIfEmpty(new NotificationConnectionDetails(inApp, null));
+                }
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ConnectionService.getNotificationConnections"));
+    }
+
+    public Mono<Connection> getConnection(String connectionName, String appCode, String urlClientCode, String clientCode, ConnectionType connectionType) {
+
+        return this.readInternal(connectionName, appCode, urlClientCode, clientCode)
+                .map(ObjectWithUniqueID::getObject)
+                .filter(conn -> conn.getConnectionType() == connectionType);
     }
 }
