@@ -13,33 +13,45 @@ import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.security.feign.IFeignSecurityService;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 import com.modlix.saas.commons2.security.util.SecurityContextUtil;
-import com.modlix.saas.commons2.util.Tuples;
-import com.modlix.saas.commons2.util.Tuples.Tuple2;
+import com.modlix.saas.commons2.service.CacheService;
 import com.modlix.saas.notification.jooq.tables.NotificationPreference;
 import com.modlix.saas.notification.jooq.tables.records.NotificationPreferenceRecord;
 
 @Service
 public class NotificationPreferenceService {
 
+    public static final String CACHE_NAME_NOTIFICATION_PREFERENCE = "notificationPreference";
+
     private final DSLContext dslContext;
     
     private final IFeignSecurityService securityService;
 
-    public NotificationPreferenceService(IFeignSecurityService securityService, DSLContext dslContext) {
+    private final CacheService cacheService;
+
+    public NotificationPreferenceService(IFeignSecurityService securityService, DSLContext dslContext, CacheService cacheService) {
         this.dslContext = dslContext;
         this.securityService = securityService;
+        this.cacheService = cacheService;
     }
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> getNotificationPreference(String appCode, BigInteger userId) {
 
-        NotificationPreferenceRecord pref = this.getNotificationPreferenceRecord(appCode, userId).getT2();
+        ULong validatedUserId = getValidatedUserId(userId);
+
+        NotificationPreferenceRecord pref = this.getNotificationPreferenceRecord(appCode, validatedUserId);
 
         return pref != null && pref.getPreference() != null ? (Map<String, Object>) pref.getPreference() : Map.of();
     }
 
-    private Tuple2<ULong,NotificationPreferenceRecord> getNotificationPreferenceRecord(String appCode, BigInteger userId) {
+    private NotificationPreferenceRecord getNotificationPreferenceRecord(String appCode, ULong userId) {
+       
+       return this.dslContext.selectFrom(NotificationPreference.NOTIFICATION_PREFERENCE)
+            .where(NotificationPreference.NOTIFICATION_PREFERENCE.USER_ID.eq(userId))
+            .and(NotificationPreference.NOTIFICATION_PREFERENCE.APP_CODE.eq(appCode)).fetchOne();
+    }
 
+    private ULong getValidatedUserId(BigInteger userId) {
         ULong ulongUserId = null;
         if (userId == null) {
             ulongUserId = ULong.valueOf(SecurityContextUtil.getUsersContextUser().getId());
@@ -51,23 +63,22 @@ public class NotificationPreferenceService {
             }
             ulongUserId = ULong.valueOf(userId);
         }
-
-       return Tuples.of(ulongUserId, this.dslContext.selectFrom(NotificationPreference.NOTIFICATION_PREFERENCE)
-            .where(NotificationPreference.NOTIFICATION_PREFERENCE.USER_ID.eq(ulongUserId))
-            .and(NotificationPreference.NOTIFICATION_PREFERENCE.APP_CODE.eq(appCode)).fetchOne());
+        return ulongUserId;
     }
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> setNotificationPreference(String appCode, BigInteger userId, Map<String, Object> preference) {
 
-        Tuple2<ULong,NotificationPreferenceRecord> tuple = this.getNotificationPreferenceRecord(appCode, userId);
-        NotificationPreferenceRecord pref = tuple.getT2();
+        ULong validatedUserId = getValidatedUserId(userId);
+        this.cacheService.evict(CACHE_NAME_NOTIFICATION_PREFERENCE, appCode, validatedUserId);
+
+        NotificationPreferenceRecord pref = this.getNotificationPreferenceRecord(appCode, validatedUserId);
 
         ContextAuthentication auth = SecurityContextUtil.getUsersContextAuthentication();
 
         if (pref == null) {
             pref = this.dslContext.newRecord(NotificationPreference.NOTIFICATION_PREFERENCE);
-            pref.setUserId(tuple.getT1());
+            pref.setUserId(validatedUserId);
             pref.setAppCode(appCode);
             pref.setPreference(preference);
             pref.setCreatedBy(ULong.valueOf(auth.getUser().getId()));
@@ -91,5 +102,14 @@ public class NotificationPreferenceService {
         }
 
         return pref.getPreference();
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getInternalNotificationPreferecene(String appCode, ULong userId) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_NOTIFICATION_PREFERENCE, 
+        () -> {
+            NotificationPreferenceRecord pref = this.getNotificationPreferenceRecord(appCode, userId);
+            return pref != null && pref.getPreference() != null ? (Map<String, Object>) pref.getPreference() : Map.of();
+        }, appCode, userId);
     }
 }
