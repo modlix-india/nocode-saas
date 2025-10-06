@@ -39,6 +39,10 @@ public class PhoneNumber implements Serializable {
         return of(null, "+" + phoneNumber);
     }
 
+    public String getLandlineNumber() {
+        return 0 + number.substring(1).substring(countryCode.toString().length());
+    }
+
     public static class PhoneNumberDeserializer extends JsonDeserializer<PhoneNumber> {
         @Override
         public PhoneNumber deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {

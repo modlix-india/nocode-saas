@@ -41,6 +41,11 @@ public final class SetterUtil {
             Predicate<E> matchPredicate,
             Consumer<E> setter) {
         String value = map.getFirst(key);
+        parseEnum(value, enumClass, matchPredicate, setter);
+    }
+
+    public static <E extends Enum<E>> void parseEnum(
+            String value, Class<E> enumClass, Predicate<E> matchPredicate, Consumer<E> setter) {
         if (value == null) return;
 
         for (E constant : enumClass.getEnumConstants()) {

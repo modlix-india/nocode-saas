@@ -183,7 +183,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
      * to tell, is the task Completed
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_COMPLETED = createField(DSL.name("IS_COMPLETED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Completed");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_COMPLETED = createField(DSL.name("IS_COMPLETED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell, is the task Completed");
 
     /**
      * The column
@@ -197,7 +197,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
      * to tell, is the task Cancelled
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_CANCELLED = createField(DSL.name("IS_CANCELLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Cancelled");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_CANCELLED = createField(DSL.name("IS_CANCELLED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell, is the task Cancelled");
 
     /**
      * The column
@@ -211,14 +211,14 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
      * Message
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_DELAYED = createField(DSL.name("IS_DELAYED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Error Message");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_DELAYED = createField(DSL.name("IS_DELAYED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Error Message");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> HAS_REMINDER = createField(DSL.name("HAS_REMINDER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Whether this task has a reminder set.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> HAS_REMINDER = createField(DSL.name("HAS_REMINDER"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Whether this task has a reminder set.");
 
     /**
      * The column
@@ -232,14 +232,14 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.TEMP_ACTIVE</code>.
      * Temporary active flag for this task.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this task.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this task.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tasks.IS_ACTIVE</code>. Flag to
      * check if this task is active or not.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this task is active or not.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this task is active or not.");
 
     /**
      * The column

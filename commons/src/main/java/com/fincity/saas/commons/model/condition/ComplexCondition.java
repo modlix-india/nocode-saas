@@ -26,8 +26,16 @@ public class ComplexCondition extends AbstractCondition {
         return new ComplexCondition().setConditions(List.of(conditions)).setOperator(ComplexConditionOperator.AND);
     }
 
+    public static ComplexCondition and(List<AbstractCondition> conditions) {
+        return new ComplexCondition().setConditions(List.copyOf(conditions)).setOperator(ComplexConditionOperator.AND);
+    }
+
     public static ComplexCondition or(AbstractCondition... conditions) {
         return new ComplexCondition().setConditions(List.of(conditions)).setOperator(ComplexConditionOperator.OR);
+    }
+
+    public static ComplexCondition or(List<AbstractCondition> conditions) {
+        return new ComplexCondition().setConditions(List.copyOf(conditions)).setOperator(ComplexConditionOperator.OR);
     }
 
     @Override

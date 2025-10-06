@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.model.request.ProductPartnerUpdateReque
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -125,5 +126,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                             .count();
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
+    }
+
+    public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
+        return this.dao.getAllProducts(access, productIds);
     }
 }

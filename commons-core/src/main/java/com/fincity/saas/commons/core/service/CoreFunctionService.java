@@ -19,6 +19,7 @@ import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.commons.core.kirun.repository.CoreSchemaRepository;
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
+import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
 import com.fincity.saas.commons.core.service.connection.email.EmailService;
 import com.fincity.saas.commons.core.service.connection.rest.RestService;
@@ -114,6 +115,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private AIService aiService;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -133,7 +137,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                         .setTemplateConversionService(templateConversionService)
                         .setGson(gson)
                         .setObjectMapper(objectMapper)
-                        .setNotificationService(notificationService)));
+                        .setNotificationService(notificationService)
+                        .setAiService(aiService)
+                ));
     }
 
     @Override

@@ -96,6 +96,11 @@ public class SecurityAppRegAccess extends TableImpl<SecurityAppRegAccessRecord> 
     public final TableField<SecurityAppRegAccessRecord, Byte> WRITE_ACCESS = createField(DSL.name("WRITE_ACCESS"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
 
     /**
+     * The column <code>security.security_app_reg_access.REGISTER</code>.
+     */
+    public final TableField<SecurityAppRegAccessRecord, Byte> REGISTER = createField(DSL.name("REGISTER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
+
+    /**
      * The column <code>security.security_app_reg_access.LEVEL</code>. Access
      * level
      */

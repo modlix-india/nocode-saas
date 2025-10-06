@@ -191,7 +191,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Setter for <code>entity_processor.entity_processor_partners.DNC</code>.
      * Do Not Call flag for this partner.
      */
-    public EntityProcessorPartnersRecord setDnc(Byte value) {
+    public EntityProcessorPartnersRecord setDnc(Boolean value) {
         set(9, value);
         return this;
     }
@@ -200,8 +200,8 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * Getter for <code>entity_processor.entity_processor_partners.DNC</code>.
      * Do Not Call flag for this partner.
      */
-    public Byte getDnc() {
-        return (Byte) get(9);
+    public Boolean getDnc() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -209,7 +209,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_partners.TEMP_ACTIVE</code>.
      * Temporary active flag for this partner.
      */
-    public EntityProcessorPartnersRecord setTempActive(Byte value) {
+    public EntityProcessorPartnersRecord setTempActive(Boolean value) {
         set(10, value);
         return this;
     }
@@ -219,8 +219,8 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_partners.TEMP_ACTIVE</code>.
      * Temporary active flag for this partner.
      */
-    public Byte getTempActive() {
-        return (Byte) get(10);
+    public Boolean getTempActive() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -228,7 +228,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_partners.IS_ACTIVE</code>. Flag
      * to check if this partner is active or not.
      */
-    public EntityProcessorPartnersRecord setIsActive(Byte value) {
+    public EntityProcessorPartnersRecord setIsActive(Boolean value) {
         set(11, value);
         return this;
     }
@@ -238,8 +238,8 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_partners.IS_ACTIVE</code>. Flag
      * to check if this partner is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(11);
+    public Boolean getIsActive() {
+        return (Boolean) get(11);
     }
 
     /**
@@ -341,7 +341,7 @@ public class EntityProcessorPartnersRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorPartnersRecord
      */
-    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Byte dnc, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorPartnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong clientId, ULong managerId, PartnerVerificationStatus partnerVerificationStatus, Boolean dnc, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
 
         setId(id);

@@ -74,10 +74,17 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
     public final TableField<EntityIntegrationsRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code");
 
     /**
-     * The column <code>entity_collector.entity_integrations.APP_CODE</code>.
-     * App Code
+     * The column <code>entity_collector.entity_integrations.IN_APP_CODE</code>.
+     * in-app code
      */
-    public final TableField<EntityIntegrationsRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code");
+    public final TableField<EntityIntegrationsRecord, String> IN_APP_CODE = createField(DSL.name("IN_APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "in-app code");
+
+    /**
+     * The column
+     * <code>entity_collector.entity_integrations.OUT_APP_CODE</code>. out-app
+     * Code
+     */
+    public final TableField<EntityIntegrationsRecord, String> OUT_APP_CODE = createField(DSL.name("OUT_APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "out-app Code");
 
     /**
      * The column

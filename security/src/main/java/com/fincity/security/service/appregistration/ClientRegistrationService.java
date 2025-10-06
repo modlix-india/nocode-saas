@@ -4,7 +4,6 @@ import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
 
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,6 +57,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
@@ -175,7 +175,7 @@ public class ClientRegistrationService {
         if (registrationRequest.getPassType() == null)
             return this.regError("Type of password for app is required");
 
-        Mono<RegistrationResponse> monoResponse = FlatMapUtil.flatMapMono(
+        Mono<Tuple3<RegistrationResponse, Client, User>> monoResponse = FlatMapUtil.flatMapMono(
 
                 () -> SecurityContextUtil.getUsersContextAuthentication().flatMap(context -> {
                     if (context.isAuthenticated())
@@ -217,17 +217,38 @@ public class ClientRegistrationService {
                  res) -> {
 
                     if (safeIsBlank(subDomain))
-                        return Mono.just(res);
+                        return Mono.just(Tuples.of(res, client, userTuple.getT1()));
 
                     res.setRedirectURL(subDomain);
 
                     return this.clientUrlService.createForRegistration(
                                     new ClientUrl().setAppCode(ca.getUrlAppCode())
                                             .setUrlPattern(subDomain).setClientId(client.getId()))
-                            .<RegistrationResponse>map(e -> res);
-                });
+                            .<Tuple3<RegistrationResponse, Client, User>>map(e -> Tuples.of(res, client, userTuple.getT1()));
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register (Part 1)"));
 
-        return monoResponse.contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register"));
+        return FlatMapUtil.flatMapMono(
+                        () -> monoResponse,
+                        tup -> this.autoAddRegObjectsFromOtherApps(tup.getT2(), tup.getT3()).map(x -> tup.getT1())
+                )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register (Part 2)"));
+    }
+
+    private Mono<Boolean> autoAddRegObjectsFromOtherApps(Client client, User user) {
+        return FlatMapUtil.flatMapMono(
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.appService.getAppIdsForAdditionalAppRegistration(ca.getUrlAppCode(), ca.getUrlClientCode(), client),
+
+                (ca, appIds) -> Flux.fromIterable(appIds).flatMap(appId -> this.appService.getAppById(appId).map(App::getAppCode))
+                        .flatMap(appCode -> this.addFilesAccessPath(ca, client, appCode)).reduce(Boolean.TRUE, (e1, e2) -> e1 && e2),
+
+                (ca, appIds, filesAdded) -> this.clientService.getClientBy(ca.getUrlClientCode()).map(Client::getId),
+
+                (ca, appIds, filesAdded, urlClientId) -> Flux.fromIterable(appIds).flatMap(appId -> this.appService.getAppById(appId).map(App::getClientId).map(acid -> Tuples.of(appId, acid)))
+                        .flatMap(ids -> this.userService.addRegistrationObjects(ids.getT1(), ids.getT2(), urlClientId, client, user.getId())).reduce(Boolean.TRUE, (e1, e2) -> e1 && e2)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.autoAddRegObjectsFromOtherApps"));
     }
 
     private Mono<String> getUrlPrefix(ServerHttpRequest request, ContextAuthentication ca) {
@@ -475,9 +496,8 @@ public class ClientRegistrationService {
     }
 
     /**
-     * We will not verify client if regProp is
-     * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION}
-     * or
+     * We will not verify a client if regProp is
+     * {@code AppService.APP_PROP_REG_TYPE_NO_VERIFICATION} or
      * We have an authenticated client. In this client will be registered under this
      * client.
      */
@@ -679,18 +699,18 @@ public class ClientRegistrationService {
                         ca -> this.appRegistrationIntegrationTokenService
                                 .verifyIntegrationState(registrationRequest.getSocialRegisterState()),
 
-                        (ca, appRegIntgToken) -> {
-                            if (!appRegIntgToken.getUsername().equals(registrationRequest.getUserName())
-                                    && !appRegIntgToken.getUsername().equals(registrationRequest.getEmailId()))
+                        (ca, appRegIntegrationToken) -> {
+                            if (!appRegIntegrationToken.getUsername().equals(registrationRequest.getUserName())
+                                    && !appRegIntegrationToken.getUsername().equals(registrationRequest.getEmailId()))
                                 return this.regError("Username and EmailId should not be changed");
 
                             return Mono.just(Boolean.TRUE);
                         },
-                        (ca, appRegIntgToken, emailChecked) -> {
+                        (ca, appRegIntegrationToken, emailChecked) -> {
 
                             LocalDateTime twoMinutesAgo = LocalDateTime.now().minusMinutes(2);
 
-                            if (appRegIntgToken.getCreatedAt().isBefore(twoMinutesAgo))
+                            if (appRegIntegrationToken.getCreatedAt().isBefore(twoMinutesAgo))
                                 return this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.SESSION_EXPIRED);
@@ -711,7 +731,7 @@ public class ClientRegistrationService {
 
                         (ca, app) -> this.appRegistrationIntegrationService.getIntegration(platform),
 
-                        (ca, app, appRegIntg) -> {
+                        (ca, app, appRegIntegration) -> {
 
                             String state = UUID.randomUUID().toString();
 
@@ -721,11 +741,11 @@ public class ClientRegistrationService {
 
                             String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
 
-                            return switch (appRegIntg.getPlatform()) {
+                            return switch (appRegIntegration.getPlatform()) {
                                 case GOOGLE -> this.appRegistrationIntegrationService
-                                        .redirectToGoogleAuthConsent(appRegIntg, state, callBackURL, request);
+                                        .redirectToGoogleAuthConsent(appRegIntegration, state, callBackURL, request);
                                 case META -> this.appRegistrationIntegrationService
-                                        .redirectToMetaAuthConsent(appRegIntg, state, callBackURL, request);
+                                        .redirectToMetaAuthConsent(appRegIntegration, state, callBackURL, request);
                                 default -> this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
@@ -751,36 +771,36 @@ public class ClientRegistrationService {
                         (ca, app) -> this.appRegistrationIntegrationTokenService
                                 .verifyIntegrationState(request.getQueryParams().getFirst("state")),
 
-                        (ca, app, appRegIntgToken) -> this.appRegistrationIntegrationService
-                                .read(appRegIntgToken.getIntegrationId()),
+                        (ca, app, appRegIntegrationToken) -> this.appRegistrationIntegrationService
+                                .read(appRegIntegrationToken.getIntegrationId()),
 
-                        (ca, app, appRegIntgToken, appRegIntg) -> {
+                        (ca, app, appRegIntegrationToken, appRegIntegration) -> {
 
                             String callBackURL = urlPrefix + SOCIAL_CALLBACK_URI;
 
-                            return switch (appRegIntg.getPlatform()) {
+                            return switch (appRegIntegration.getPlatform()) {
                                 case GOOGLE -> this.appRegistrationIntegrationService
-                                        .getGoogleUserToken(appRegIntg, appRegIntgToken, callBackURL, request);
+                                        .getGoogleUserToken(appRegIntegration, appRegIntegrationToken, callBackURL, request);
                                 case META -> this.appRegistrationIntegrationService.getMetaUserToken(
-                                        appRegIntg, appRegIntgToken, callBackURL, request);
+                                        appRegIntegration, appRegIntegrationToken, callBackURL, request);
                                 default -> this.securityMessageResourceService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.UNSUPPORTED_PLATFORM);
                             };
                         },
 
-                        (ca, app, appRegIntgToken, appRegIntg, registerRequest) -> {
+                        (ca, app, appRegIntegrationToken, appRegIntegration, registerRequest) -> {
 
-                            String redirectUrl = appRegIntgToken
+                            String redirectUrl = appRegIntegrationToken
                                     .getRequestParam()
                                     .getOrDefault("signup", "false")
                                     .equals("true")
-                                    ? appRegIntg.getSignupUri()
-                                    : appRegIntg.getLoginUri();
+                                    ? appRegIntegration.getSignupUri()
+                                    : appRegIntegration.getLoginUri();
 
                             UriComponentsBuilder uriBuilder = UriComponentsBuilder
                                     .fromUri(URI.create(urlPrefix + redirectUrl))
-                                    .queryParam("sessionId", appRegIntgToken.getState())
+                                    .queryParam("sessionId", appRegIntegrationToken.getState())
                                     .queryParam("userName", registerRequest.getUserName())
                                     .queryParam("emailId", registerRequest.getEmailId())
                                     .queryParamIfPresent("phoneNumber", Optional.ofNullable(registerRequest.getPhoneNumber()))
@@ -789,7 +809,7 @@ public class ClientRegistrationService {
                                     .queryParamIfPresent("middleName", Optional.ofNullable(registerRequest.getMiddleName()))
                                     .queryParamIfPresent("localeCode", Optional.ofNullable(registerRequest.getLocaleCode()));
 
-                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
+                            return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
 
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.registerWSocialCallback"));
@@ -806,28 +826,28 @@ public class ClientRegistrationService {
         return FlatMapUtil.flatMapMono(
                         () -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
                                 request.getQueryParams().getFirst("state")),
-                        appRegIntgToken ->
-                                this.appRegistrationIntegrationService.read(appRegIntgToken.getIntegrationId()),
-                        (appRegIntgToken, appRegIntg) -> {
+                        appRegIntegrationToken ->
+                                this.appRegistrationIntegrationService.read(appRegIntegrationToken.getIntegrationId()),
+                        (appRegIntegrationToken, appRegIntegration) -> {
 
-                            String redirectUrl = appRegIntgToken
+                            String redirectUrl = appRegIntegrationToken
                                     .getRequestParam()
                                     .getOrDefault("signup", "false")
                                     .equals("true")
-                                    ? appRegIntg.getSignupUri()
-                                    : appRegIntg.getLoginUri();
+                                    ? appRegIntegration.getSignupUri()
+                                    : appRegIntegration.getLoginUri();
 
                             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUri(URI.create(urlPrefix + redirectUrl))
                                     .queryParam("error", "access_denied");
 
-                            return fillDefaultSocialCallbackResponse(appRegIntgToken, uriBuilder, response);
+                            return fillDefaultSocialCallbackResponse(appRegIntegrationToken, uriBuilder, response);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.invalidSocialCallback"));
     }
 
-    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntgToken, UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
+    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntegrationToken, UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
 
-        appRegIntgToken.getRequestParam().forEach((key, value) -> {
+        appRegIntegrationToken.getRequestParam().forEach((key, value) -> {
             if (value != null) {
                 uriBuilder.queryParam(key, value.toString());
             }
@@ -860,7 +880,7 @@ public class ClientRegistrationService {
 
                 (ca, user, client, auth, subDomain) -> this.createRegistrationEvents(ca, client, subDomain,
                                 user, auth.getAccessToken(), user.getInputPass(passType), request)
-                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.envokeRegistrationEvents")));
+                        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.evokeRegistrationEvents")));
     }
 
     public Mono<Boolean> registerApp(String appCode, ULong clientId, ULong userId) {

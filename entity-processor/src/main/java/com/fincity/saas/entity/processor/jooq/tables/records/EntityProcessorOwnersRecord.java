@@ -244,7 +244,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_owners.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorOwnersRecord setTempActive(Byte value) {
+    public EntityProcessorOwnersRecord setTempActive(Boolean value) {
         set(12, value);
         return this;
     }
@@ -254,8 +254,8 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_owners.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(12);
+    public Boolean getTempActive() {
+        return (Boolean) get(12);
     }
 
     /**
@@ -263,7 +263,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_owners.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public EntityProcessorOwnersRecord setIsActive(Byte value) {
+    public EntityProcessorOwnersRecord setIsActive(Boolean value) {
         set(13, value);
         return this;
     }
@@ -273,8 +273,8 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
      * <code>entity_processor.entity_processor_owners.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(13);
+    public Boolean getIsActive() {
+        return (Boolean) get(13);
     }
 
     /**
@@ -395,7 +395,7 @@ public class EntityProcessorOwnersRecord extends UpdatableRecordImpl<EntityProce
     /**
      * Create a detached, initialised EntityProcessorOwnersRecord
      */
-    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, Short dialCode, String phoneNumber, String email, String source, String subSource, Byte tempActive, Byte isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorOwnersRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, Short dialCode, String phoneNumber, String email, String source, String subSource, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS);
 
         setId(id);

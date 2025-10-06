@@ -45,6 +45,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
 
     private Map<String, NotificationTemplate> channelTemplates;
     private Map<String, String> channelConnections;
+    private Map<String, Boolean> channelEnabled;
 
     // This is used in cloning using reflection.
     @SuppressWarnings("unused")
@@ -58,6 +59,7 @@ public class Notification extends AbstractOverridableDTO<Notification> {
         this.channelTemplates = CloneUtil.cloneMapObject(notification.channelTemplates);
         this.channelConnections = CloneUtil.cloneMapObject(notification.channelConnections);
         this.variableSchema = CloneUtil.cloneMapObject(notification.variableSchema);
+        this.channelEnabled = CloneUtil.cloneMapObject(notification.channelEnabled);
     }
 
     @SuppressWarnings("unchecked")
@@ -70,10 +72,12 @@ public class Notification extends AbstractOverridableDTO<Notification> {
                         () -> DifferenceApplicator.apply(this.channelTemplates, base.channelTemplates),
                         ch -> DifferenceApplicator.apply(this.channelConnections, base.channelConnections),
                         (ch, conn) -> DifferenceApplicator.apply(this.variableSchema, base.variableSchema),
-                        (ch, conn, varSchema) -> {
+                        (ch, conn, varSchema) -> DifferenceApplicator.apply(this.channelEnabled, base.channelEnabled),
+                        (ch, conn, varSchema, chanEnabled) -> {
                             this.channelTemplates = (Map<String, NotificationTemplate>) ch;
                             this.channelConnections = (Map<String, String>) conn;
                             this.variableSchema = (Map<String, Object>) varSchema;
+                            this.channelEnabled = (Map<String, Boolean>) chanEnabled;
 
                             if (this.notificationType == null)
                                 this.notificationType = base.notificationType;
@@ -98,10 +102,12 @@ public class Notification extends AbstractOverridableDTO<Notification> {
                         obj -> DifferenceExtractor.extract(obj.channelTemplates, base.channelTemplates),
                         (obj, ch) -> DifferenceExtractor.extract(obj.channelConnections, base.channelConnections),
                         (obj, ch, conn) -> DifferenceExtractor.extract(obj.variableSchema, base.variableSchema),
-                        (obj, ch, conn, varSchema) -> {
+                        (obj, ch, conn, varSchema) -> DifferenceExtractor.extract(obj.channelEnabled, base.channelEnabled),
+                        (obj, ch, conn, varSchema, chanEnabled) -> {
                             obj.channelTemplates = (Map<String, NotificationTemplate>) ch;
                             obj.channelConnections = (Map<String, String>) conn;
                             obj.variableSchema = (Map<String, Object>) varSchema;
+                            obj.channelEnabled = (Map<String, Boolean>) chanEnabled;
 
                             if (obj.notificationType == null)
                                 obj.notificationType = base.notificationType;

@@ -478,6 +478,16 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 users -> this.fillDetails(users, queryParams));
     }
 
+    public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                                .setField("clientId")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))
+                        .collectList(),
+                users -> this.fillDetails(users, queryParams));
+    }
+
     @PreAuthorize("hasAuthority('Authorities.User_READ')")
     @Override
     public Mono<Page<User>> readPageFilter(Pageable pageable, AbstractCondition condition) {
@@ -1056,20 +1066,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                             return this.setPassword(createdUser.getId(), createdUser.getId(), password, passwordType);
                         },
                         (userExists, createdUser, passSet) -> {
-                            Mono<Boolean> roleUser = FlatMapUtil.flatMapMono(
-                                            SecurityContextUtil::getUsersContextAuthentication,
-                                            ca -> this.addDefaultRoles(
-                                                    appId, appClientId, urlClientId, client, createdUser.getId()),
-                                            (ca, rolesAdded) -> this.addDefaultProfiles(
-                                                    appId, appClientId, urlClientId, client, createdUser.getId()),
-                                            (ca, rolesAdded, profilesAdded) -> this.addDesignation(
-                                                    appId, appClientId, urlClientId, client, createdUser.getId()))
-                                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"));
+                            Mono<Boolean> roleUser = this.addRegistrationObjects(appId, appClientId, urlClientId, client, createdUser.getId());
 
                             return roleUser.map(x -> createdUser);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.createForRegistration"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
+    }
+
+    public Mono<Boolean> addRegistrationObjects(ULong appId, ULong appClientId, ULong urlClientId, Client client, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> this.addDefaultRoles(
+                                appId, appClientId, urlClientId, client, userId),
+                        (ca, rolesAdded) -> this.addDefaultProfiles(
+                                appId, appClientId, urlClientId, client, userId),
+                        (ca, rolesAdded, profilesAdded) -> this.addDesignation(
+                                appId, appClientId, urlClientId, client, userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.addRegistrationObjects"));
     }
 
     public Mono<Boolean> addDesignation(

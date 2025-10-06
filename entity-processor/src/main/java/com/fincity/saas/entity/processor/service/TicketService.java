@@ -5,11 +5,13 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
@@ -17,6 +19,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
@@ -40,7 +43,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ActivityService activityService;
     private final TaskService taskService;
     private final NoteService noteService;
+    private final CampaignService campaignService;
     private final PartnerService partnerService;
+    private final ProductCommService productCommService;
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -50,7 +55,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ActivityService activityService,
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
-            @Lazy PartnerService partnerService) {
+            @Lazy CampaignService campaignService,
+            @Lazy PartnerService partnerService,
+            ProductCommService productCommService) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -58,7 +65,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
+        this.campaignService = campaignService;
         this.partnerService = partnerService;
+        this.productCommService = productCommService;
     }
 
     @Override
@@ -377,7 +386,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .flatMap(existing -> {
                     if (existing.getId() != null)
                         return this.activityService
-                                .acReInquiry(existing, ticketRequest)
+                                .acReInquiry(access, existing, null, ticketRequest)
                                 .then(super.throwDuplicateError(access, existing));
                     return Mono.just(Boolean.FALSE);
                 })
@@ -419,5 +428,83 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .updateAll(tickets)
                 .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
+    }
+
+    public Mono<ProductComm> getTicketProductComm(
+            Identity ticketId, String connectionName, ConnectionType connectionType) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.readIdentityWithAccess(access, ticketId),
+                        (access, ticket) -> this.productCommService.getProductComm(
+                                access,
+                                ticket.getProductId(),
+                                connectionName,
+                                connectionType,
+                                ticket.getSource(),
+                                ticket.getSubSource()))
+                .switchIfEmpty(Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    public Mono<Ticket> createForCampaign(CampaignTicketRequest campaignTicketRequest) {
+
+        ProcessorAccess access = ProcessorAccess.of(
+                campaignTicketRequest.getAppCode(), campaignTicketRequest.getClientCode(), true, null, null);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.campaignService.readByCampaignId(
+                                access,
+                                campaignTicketRequest.getCampaignDetails().getCampaignId()),
+                        (campaign) -> this.productService.readById(campaign.getProductId()),
+                        (campaign, product) ->
+                                Mono.just(Ticket.of(campaignTicketRequest).setCampaignId(campaign.getId())),
+                        (campaign, product, ticket) ->
+                                Mono.just(TicketRequest.of(campaignTicketRequest, campaign.getId(), product.getId())),
+                        (campaign, product, ticket, ticketRequest) -> this.checkDuplicate(access, ticketRequest),
+                        (campaign, product, ticket, ticketRequest, isDuplicate) ->
+                                Mono.just(ticket.setProductId(product.getId())),
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket) ->
+                                super.createInternal(access, pTicket),
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created) ->
+                                this.createNote(access, ticketRequest, created),
+                        (campaign, product, ticket, ticketRequest, isDuplicate, pTicket, created, noteCreated) ->
+                                this.activityService
+                                        .acCreate(created, null, access)
+                                        .thenReturn(created))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TicketService.createForCampaign[CampaignTicketRequest]"));
+    }
+
+    public Mono<Ticket> createForWebsite(CampaignTicketRequest cTicketRequest, String productCode) {
+
+        if (cTicketRequest.getCampaignDetails() != null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.WEBSITE_ENTITY_DATA_INVALID);
+
+        ProcessorAccess access =
+                ProcessorAccess.of(cTicketRequest.getAppCode(), cTicketRequest.getClientCode(), true, null, null);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.productService.readByCode(productCode),
+                        product -> {
+                            TicketRequest ticket = TicketRequest.of(cTicketRequest, product.getId(), null);
+
+                            if (ticket.getSource() == null) ticket.setSource("Website");
+
+                            return Mono.just(ticket);
+                        },
+                        (product, ticketRequest) -> Mono.just(Ticket.of(ticketRequest)),
+                        (product, ticketRequest, ticket) -> this.checkDuplicate(access, ticketRequest),
+                        (product, ticketRequest, ticket, isDuplicate) ->
+                                Mono.just(ticket.setProductId(product.getId())),
+                        (product, ticketRequest, ticket, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                        (product, ticketRequest, ticket, isDuplicate, pTicket, created) ->
+                                this.createNote(access, ticketRequest, created),
+                        (product, ticketRequest, ticket, isDuplicate, pTicket, created, noteCreated) ->
+                                this.activityService
+                                        .acCreate(created, null, access)
+                                        .thenReturn(created))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
     }
 }

@@ -2,6 +2,7 @@ package com.modlix.saas.commons2.jackson;
 
 import java.io.IOException;
 import java.io.Serial;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
@@ -44,6 +45,29 @@ public class CommonsSerializationModule extends SimpleModule {
                     throws IOException {
 
                 gen.writeNumber(value.toEpochSecond(ZoneOffset.UTC));
+            }
+        });
+
+        this.addDeserializer(LocalDate.class, new StdDeserializer<>(LocalDate.class) {
+
+            @Serial
+            private static final long serialVersionUID = 6093594359209614047L;
+
+            @Override
+            public LocalDate deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+                return LocalDateTime.ofEpochSecond(p.getLongValue(), 0, ZoneOffset.UTC).toLocalDate();
+            }
+        });
+
+        this.addSerializer(LocalDate.class, new StdSerializer<>(LocalDate.class) {
+
+            @Serial
+            private static final long serialVersionUID = 5805361827446435744L;
+
+            @Override
+            public void serialize(LocalDate value, JsonGenerator gen, SerializerProvider provider)
+                    throws IOException {
+                gen.writeNumber(value.atStartOfDay().toEpochSecond(ZoneOffset.UTC));
             }
         });
 

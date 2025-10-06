@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.ProductCommDAO;
 import com.fincity.saas.entity.processor.dto.ProductComm;
@@ -15,6 +16,7 @@ import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 @Service
 public class ProductCommService
@@ -49,6 +51,12 @@ public class ProductCommService
     protected Mono<Boolean> evictCache(ProductComm entity) {
         return Mono.zip(
                 super.evictCache(entity),
+                this.evictProductCommCache(entity),
+                (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
+    }
+
+    private Mono<Boolean> evictProductCommCache(ProductComm entity) {
+        return Mono.zip(
                 super.cacheService.evict(
                         this.getCacheName(),
                         super.getCacheKey(
@@ -56,16 +64,22 @@ public class ProductCommService
                                 entity.getClientCode(),
                                 entity.getProductId(),
                                 entity.getConnectionName(),
-                                entity.getConnectionType())),
+                                entity.getConnectionType(),
+                                entity.getSource(),
+                                entity.getSubSource())),
+                this.evictDefaultCache(entity),
                 (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
     }
 
-    private Mono<Boolean> evictDefaultCache(
-            ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
+    private Mono<Boolean> evictDefaultCache(ProductComm entity) {
         return super.cacheService.evict(
                 this.getCacheName(),
                 super.getCacheKey(
-                        access.getAppCode(), access.getClientCode(), productId, connectionName, connectionType.name()));
+                        entity.getAppCode(),
+                        entity.getClientCode(),
+                        entity.getProductId(),
+                        entity.getConnectionName(),
+                        entity.getConnectionType()));
     }
 
     @Override
@@ -147,21 +161,23 @@ public class ProductCommService
 
     @Override
     protected Mono<ProductComm> updatableEntity(ProductComm entity) {
-        return super.updatableEntity(entity).flatMap(existing -> {
-            existing.setDialCode(entity.getDialCode());
-            existing.setPhoneNumber(entity.getPhoneNumber());
-            existing.setEmail(entity.getEmail());
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setDialCode(entity.getDialCode());
+                    existing.setPhoneNumber(entity.getPhoneNumber());
+                    existing.setEmail(entity.getEmail());
 
-            if (entity.isDefault()) {
-                existing.setSource(null);
-                existing.setSubSource(null);
-            } else {
-                existing.setSource(entity.getSource());
-                existing.setSubSource(entity.getSubSource());
-            }
+                    if (entity.isDefault()) {
+                        existing.setSource(null);
+                        existing.setSubSource(null);
+                    } else {
+                        existing.setSource(entity.getSource());
+                        existing.setSubSource(entity.getSubSource());
+                    }
 
-            return Mono.just(existing);
-        });
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));
     }
 
     public Mono<ProductComm> create(ProductCommRequest productCommRequest) {
@@ -175,63 +191,105 @@ public class ProductCommService
         if (!productCommRequest.isValid()) return super.throwMissingParam("Communication Medium objects");
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> productService.readIdentityWithAccess(access, productCommRequest.getProductId()),
-                (access, product) -> this.connectionServices
-                        .getService(productCommRequest.getConnectionType())
-                        .getCoreDocument(
-                                access.getAppCode(), access.getClientCode(), productCommRequest.getConnectionName()),
-                (access, product, connection) -> {
-                    if (Boolean.TRUE.equals(productCommRequest.isDefault()))
-                        return this.updateDefault(access, productCommRequest)
-                                .switchIfEmpty(super.createInternal(
-                                        access, ProductComm.of(productCommRequest, product.getId(), connection)));
-                    return super.createInternal(
-                            access, ProductComm.of(productCommRequest, product.getId(), connection));
-                });
+                        super::hasAccess,
+                        access -> productService.readIdentityWithAccess(access, productCommRequest.getProductId()),
+                        (access, product) -> this.connectionServices
+                                .getService(productCommRequest.getConnectionType())
+                                .getCoreDocument(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        productCommRequest.getConnectionName()),
+                        (access, product, connection) -> {
+                            if (Boolean.TRUE.equals(productCommRequest.isDefault()))
+                                return this.updateDefault(access, productCommRequest)
+                                        .switchIfEmpty(super.createInternal(
+                                                access,
+                                                ProductComm.of(productCommRequest, product.getId(), connection)));
+                            return super.createInternal(
+                                    access, ProductComm.of(productCommRequest, product.getId(), connection));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));
     }
 
     public Mono<ProductComm> updateDefault(ProcessorAccess access, ProductCommRequest productCommRequest) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.getDefault(
-                        access,
-                        productCommRequest.getProductId().getULongId(),
-                        productCommRequest.getConnectionName(),
-                        productCommRequest.getConnectionType()),
-                defaultComm -> {
-                    defaultComm = switch (productCommRequest.getConnectionType()) {
-                        case MAIL ->
-                            defaultComm.setEmail(productCommRequest.getEmail().getAddress());
-                        case TEXT, CALL ->
-                            defaultComm.setPhoneNumber(
-                                    productCommRequest.getPhoneNumber().getNumber());
-                        default -> defaultComm;
-                    };
-
-                    return super.updateInternal(access, defaultComm);
-                },
-                (defaultComm, updated) -> this.evictDefaultCache(
+                        () -> this.getDefault(
                                 access,
                                 productCommRequest.getProductId().getULongId(),
                                 productCommRequest.getConnectionName(),
-                                productCommRequest.getConnectionType())
-                        .thenReturn(updated));
+                                productCommRequest.getConnectionType()),
+                        defaultComm -> {
+                            defaultComm = switch (productCommRequest.getConnectionType()) {
+                                case MAIL ->
+                                    defaultComm.setEmail(
+                                            productCommRequest.getEmail().getAddress());
+                                case TEXT, CALL ->
+                                    defaultComm.setPhoneNumber(
+                                            productCommRequest.getPhoneNumber().getNumber());
+                                default -> defaultComm;
+                            };
+
+                            return super.updateInternal(access, defaultComm);
+                        },
+                        (defaultComm, updated) -> this.evictCache(updated).thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updateDefault"));
+    }
+
+    public Mono<ProductComm> getProductComm(
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            String source,
+            String subSource) {
+        return this.getProductCommInternal(access, productId, connectionName, connectionType, source, subSource)
+                .switchIfEmpty(this.getDefault(access, productId, connectionName, connectionType))
+                .switchIfEmpty(Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.getProductComm"));
     }
 
     public Mono<ProductComm> getDefault(Identity productId, String connectionName, ConnectionType connectionType) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess, access -> this.getDefault(access, productId, connectionName, connectionType));
+                        super::hasAccess, access -> this.getDefault(access, productId, connectionName, connectionType))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "ProductCommService.getDefault[Identity, String, ConnectionType]"));
     }
 
     public Mono<ProductComm> getDefault(
             ProcessorAccess access, Identity productId, String connectionName, ConnectionType connectionType) {
-        return this.getDefaultInternal(access, productId.getULongId(), connectionName, connectionType);
+        return this.getDefaultInternal(access, productId.getULongId(), connectionName, connectionType)
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "ProductCommService.getDefault[ProcessorAccess, Identity, String, ConnectionType]"));
     }
 
     public Mono<ProductComm> getDefault(
             ProcessorAccess access, ULong productId, String connectionName, ConnectionType connectionType) {
-        return this.getDefaultInternal(access, productId, connectionName, connectionType);
+        return this.getDefaultInternal(access, productId, connectionName, connectionType)
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "ProductCommService.getDefault[ProcessorAccess, ULong, String, ConnectionType]"));
+    }
+
+    private Mono<ProductComm> getProductCommInternal(
+            ProcessorAccess access,
+            ULong productId,
+            String connectionName,
+            ConnectionType connectionType,
+            String source,
+            String subSource) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getProductComm(access, productId, connectionName, connectionType, source, subSource),
+                super.getCacheKey(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        productId,
+                        connectionName,
+                        connectionType.name(),
+                        source,
+                        subSource));
     }
 
     private Mono<ProductComm> getDefaultInternal(

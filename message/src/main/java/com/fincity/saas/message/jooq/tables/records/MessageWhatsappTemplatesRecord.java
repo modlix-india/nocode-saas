@@ -171,7 +171,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
      * Indicates whether category change is allowed for this template.
      */
-    public MessageWhatsappTemplatesRecord setAllowCategoryChange(Byte value) {
+    public MessageWhatsappTemplatesRecord setAllowCategoryChange(Boolean value) {
         set(8, value);
         return this;
     }
@@ -181,8 +181,8 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * <code>message.message_whatsapp_templates.ALLOW_CATEGORY_CHANGE</code>.
      * Indicates whether category change is allowed for this template.
      */
-    public Byte getAllowCategoryChange() {
-        return (Byte) get(8);
+    public Boolean getAllowCategoryChange() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -456,7 +456,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Setter for <code>message.message_whatsapp_templates.IS_ACTIVE</code>.
      * Indicates whether this row is active.
      */
-    public MessageWhatsappTemplatesRecord setIsActive(Byte value) {
+    public MessageWhatsappTemplatesRecord setIsActive(Boolean value) {
         set(24, value);
         return this;
     }
@@ -465,8 +465,8 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * Getter for <code>message.message_whatsapp_templates.IS_ACTIVE</code>.
      * Indicates whether this row is active.
      */
-    public Byte getIsActive() {
-        return (Byte) get(24);
+    public Boolean getIsActive() {
+        return (Boolean) get(24);
     }
 
     // -------------------------------------------------------------------------
@@ -492,7 +492,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     /**
      * Create a detached, initialised MessageWhatsappTemplatesRecord
      */
-    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Byte allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, FileDetail headerFileDetail, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Byte isActive) {
+    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Boolean allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, FileDetail headerFileDetail, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean isActive) {
         super(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES);
 
         setId(id);
