@@ -16,8 +16,7 @@ public interface IFeignCoreService {
             @PathVariable("name") String connectionName,
             @RequestParam String appCode,
             @RequestParam String clientCode,
-            @RequestParam String urlClientCode,
-            @RequestParam String connectionType);
+            @RequestParam String urlClientCode);
 
     @GetMapping("/api/core/notifications/internal/{name}")
     public CoreNotification getNotification(
