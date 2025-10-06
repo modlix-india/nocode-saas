@@ -8,6 +8,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -23,7 +24,7 @@ import reactor.core.publisher.Mono;
 
 public abstract class BaseAnalyticsService<
                 R extends UpdatableRecord<R>, D extends AbstractDTO<ULong, ULong>, O extends BaseAnalyticsDAO<R, D>>
-        extends AbstractJOOQDataService<R, ULong, D, O> implements IProcessorAccessService {
+        extends AbstractJOOQDataService<R, ULong, D, O> implements IProcessorAccessService, IEntitySeries {
 
     @Getter
     protected IFeignSecurityService securityService;

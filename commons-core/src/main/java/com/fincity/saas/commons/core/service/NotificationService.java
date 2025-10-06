@@ -2,7 +2,6 @@ package com.fincity.saas.commons.core.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Notification;
-import com.fincity.saas.commons.core.enums.ConnectionType;
 import com.fincity.saas.commons.core.repository.NotificationRepository;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -39,14 +38,11 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
 
     private DoublePointerNode<String> nextRoutingKey;
 
-    private final ConnectionService connectionService;
-
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(NotificationService.class);
 
-    protected NotificationService(AmqpTemplate amqpTemplate, ConnectionService connectionService) {
+    protected NotificationService(AmqpTemplate amqpTemplate) {
         super(Notification.class);
         this.amqpTemplate = amqpTemplate;
-        this.connectionService = connectionService;
     }
 
     @PostConstruct
@@ -130,34 +126,34 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                 }
                             }
                         },
-                        (ca, actualTuple, hasUserAccess) -> hasUserAccess ? this.connectionService.readInternalConnection(connectionName, actualTuple.getT1(), actualTuple.getT2(), ConnectionType.NOTIFICATION) : Mono.empty(),
-                        (ca, actualTuple, hasUserAccess, connection) -> {
-                            if (hasUserAccess) {
-                                this.nextRoutingKey = nextRoutingKey.getNext();
-                                return Mono.just(new NotificationQueObject()
-                                                .setAppCode(actualTuple.getT1())
-                                                .setClientCode(actualTuple.getT2())
-                                                .setTargetId(targetId)
-                                                .setTargetType(targetType)
-                                                .setTargetCode(targetCode)
-                                                .setFilterAuthorization(filterAuthorization)
-                                                .setNotificationName(notificationName)
-                                                .setPayload(payload)
-                                        )
-                                        .flatMap(q -> Mono.deferContextual(cv -> {
-                                            if (!cv.hasKey(LogUtil.DEBUG_KEY))
-                                                return Mono.just(q);
-                                            q.setXDebug(cv.get(LogUtil.DEBUG_KEY)
-                                                    .toString());
+                        (ca, actualTuple, hasUserAccess) -> {
+
+                            if (!hasUserAccess) return Mono.empty();
+
+                            this.nextRoutingKey = nextRoutingKey.getNext();
+                            return Mono.just(new NotificationQueObject()
+                                            .setAppCode(actualTuple.getT1())
+                                            .setClientCode(actualTuple.getT2())
+                                            .setTargetId(targetId)
+                                            .setTargetType(targetType)
+                                            .setTargetCode(targetCode)
+                                            .setClientCode(ca.getUrlClientCode())
+                                            .setTriggeredUserId(ca.getUser().getId())
+                                            .setFilterAuthorization(filterAuthorization)
+                                            .setNotificationName(notificationName)
+                                            .setConnectionName(connectionName)
+                                            .setPayload(payload))
+                                    .flatMap(q -> Mono.deferContextual(cv -> {
+                                        if (!cv.hasKey(LogUtil.DEBUG_KEY))
                                             return Mono.just(q);
-                                        }))
-                                        .flatMap(q -> Mono.fromCallable(() -> {
-                                            amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), q);
-                                            return true;
-                                        }));
-                            }
-                            logger.error("User does not have access to send notification for parameters (id, code, type) ({}, {}, {}) with context : {}", targetId, targetCode, targetType, ca);
-                            return Mono.just(false);
+                                        q.setXDebug(cv.get(LogUtil.DEBUG_KEY)
+                                                .toString());
+                                        return Mono.just(q);
+                                    }))
+                                    .flatMap(q -> Mono.fromCallable(() -> {
+                                        amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), q);
+                                        return true;
+                                    }));
                         }
                 )
                 .contextWrite(

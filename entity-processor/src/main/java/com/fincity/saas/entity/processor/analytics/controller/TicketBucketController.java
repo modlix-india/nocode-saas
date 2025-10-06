@@ -24,13 +24,13 @@ public class TicketBucketController
         extends BaseAnalyticsController<EntityProcessorTicketsRecord, Ticket, TicketBucketDAO, TicketBucketService> {
 
     @PostMapping("/stage-counts/assigned-users")
-    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerAssignedUserStatusCount(
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerAssignedUserStageCount(
             Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
         TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
-                .getTicketPerAssignedUserStatusCount(pageable, effectiveFilter)
+                .getTicketPerAssignedUserStageCount(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
     }
 
@@ -43,7 +43,29 @@ public class TicketBucketController
         return this.service.getTicketPerAssignedUserStageSourceDateCount(effectiveFilter);
     }
 
+    @PostMapping("/status-counts/assigned-users")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerAssignedUserStatusCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerAssignedUserStatusCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
     @PostMapping("/stage-counts/created-bys")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerCreatedByStageCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerCreatedByStageCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/status-counts/created-bys")
     public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerCreatedByStatusCount(
             Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
@@ -55,6 +77,17 @@ public class TicketBucketController
     }
 
     @PostMapping("/stage-counts/clients")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerClientIdStageCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerClientIdStageCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/status-counts/clients")
     public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerClientIdStatusCount(
             Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
@@ -66,13 +99,24 @@ public class TicketBucketController
     }
 
     @PostMapping("/stage-counts/products")
-    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerProductIdStatusCount(
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerProductIdStageCount(
             Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
         TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
         return this.service
-                .getTicketPerProductIdStatusCount(pageable, effectiveFilter)
+                .getTicketPerProjectStageCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/status-counts/products")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerProjectStatusCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerProjectStatusCount(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
     }
 }
