@@ -9,6 +9,7 @@ import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp;
 import com.fincity.saas.message.model.message.whatsapp.business.WebhookOverride;
+import com.fincity.saas.message.model.message.whatsapp.data.FbData;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
@@ -93,7 +94,7 @@ public class WhatsappBusinessAccountService
                 (access, waba, connection, api) -> this.createWebhookOverride(access)
                         .flatMap(wo -> api.overrideBusinessWebhook(waba.getWhatsappBusinessAccountId(), wo)
                                 .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId()))),
-                (access, waba, connection, api, subscribedApps) -> {
+                (MessageAccess access, WhatsappBusinessAccount waba, Connection connection, WhatsappBusinessManagementApi api, FbData<SubscribedApp> subscribedApps) -> {
                     String facebookAppId =
                             (String) connection.getConnectionDetails().get(KEY_META_APP_ID);
 

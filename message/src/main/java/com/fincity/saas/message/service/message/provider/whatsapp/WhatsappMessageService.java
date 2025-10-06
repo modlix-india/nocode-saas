@@ -498,7 +498,7 @@ public class WhatsappMessageService
                                                 phoneNumber.getPhoneNumberId(),
                                                 new ReadMessage().setMessageId(message.getMessageId())),
                                         this.markConversationAsRead(access, message))
-                                .map(Tuple2::getT1))
+                                .<Response>map(Tuple2::getT1))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "WhatsappMessageService.markMessageAsRead"));
     }
 
