@@ -1,6 +1,7 @@
 package com.fincity.saas.message.dao.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
@@ -30,10 +31,11 @@ public abstract class BaseProviderDAO<R extends UpdatableRecord<R>, D extends Ba
     public Mono<D> findByUniqueField(MessageAccess access, String id) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.messageAccessCondition(FilterCondition.make(AbstractDTO.Fields.id, id), access),
-                this::filter,
-                (pCondition, jCondition) -> Mono.from(
-                                this.dslContext.selectFrom(this.table).where(jCondition))
+                () -> this.messageAccessCondition(null, access), this::filter, (pCondition, jCondition) -> Mono.from(
+                                this.dslContext
+                                        .selectFrom(this.table)
+                                        .where(jCondition)
+                                        .and(uniqueProviderField.eq(id)))
                         .map(e -> e.into(this.pojoClass)));
     }
 }
