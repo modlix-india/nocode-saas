@@ -194,11 +194,30 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_comms.CONNECTION_SUB_TYPE</code>.
+     * Sub Type of the connection used for the productComm.
+     */
+    public EntityProcessorProductCommsRecord setConnectionSubType(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_comms.CONNECTION_SUB_TYPE</code>.
+     * Sub Type of the connection used for the productComm.
+     */
+    public String getConnectionSubType() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_comms.PRODUCT_ID</code>.
      * Product ID for which this Comm is created.
      */
     public EntityProcessorProductCommsRecord setProductId(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -208,7 +227,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Product ID for which this Comm is created.
      */
     public ULong getProductId() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -217,7 +236,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Dial code of the phone number this Product Comm has.
      */
     public EntityProcessorProductCommsRecord setDialCode(Short value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -227,7 +246,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Dial code of the phone number this Product Comm has.
      */
     public Short getDialCode() {
-        return (Short) get(10);
+        return (Short) get(11);
     }
 
     /**
@@ -236,7 +255,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Phone number related to this Product Comm.
      */
     public EntityProcessorProductCommsRecord setPhoneNumber(String value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -246,7 +265,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Phone number related to this Product Comm.
      */
     public String getPhoneNumber() {
-        return (String) get(11);
+        return (String) get(12);
     }
 
     /**
@@ -255,7 +274,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * related to this Product Comm.
      */
     public EntityProcessorProductCommsRecord setEmail(String value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -265,7 +284,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * related to this Product Comm.
      */
     public String getEmail() {
-        return (String) get(12);
+        return (String) get(13);
     }
 
     /**
@@ -274,7 +293,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * of source form where we get this Product Comm.
      */
     public EntityProcessorProductCommsRecord setSource(String value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -284,7 +303,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * of source form where we get this Product Comm.
      */
     public String getSource() {
-        return (String) get(13);
+        return (String) get(14);
     }
 
     /**
@@ -293,7 +312,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Name of sub source of source form where we get this Product Comm.
      */
     public EntityProcessorProductCommsRecord setSubSource(String value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -303,7 +322,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Name of sub source of source form where we get this Product Comm.
      */
     public String getSubSource() {
-        return (String) get(14);
+        return (String) get(15);
     }
 
     /**
@@ -312,7 +331,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is default or not.
      */
     public EntityProcessorProductCommsRecord setIsDefault(Boolean value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -322,7 +341,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is default or not.
      */
     public Boolean getIsDefault() {
-        return (Boolean) get(15);
+        return (Boolean) get(16);
     }
 
     /**
@@ -331,7 +350,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Product Comm.
      */
     public EntityProcessorProductCommsRecord setTempActive(Boolean value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -341,7 +360,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Temporary active flag for this Product Comm.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(16);
+        return (Boolean) get(17);
     }
 
     /**
@@ -350,7 +369,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is active or not.
      */
     public EntityProcessorProductCommsRecord setIsActive(Boolean value) {
-        set(17, value);
+        set(18, value);
         return this;
     }
 
@@ -360,7 +379,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Flag to check if this Product Comm is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(17);
+        return (Boolean) get(18);
     }
 
     /**
@@ -369,7 +388,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Id of client who created this product.
      */
     public EntityProcessorProductCommsRecord setClientId(ULong value) {
-        set(18, value);
+        set(19, value);
         return this;
     }
 
@@ -379,7 +398,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Id of client who created this product.
      */
     public ULong getClientId() {
-        return (ULong) get(18);
+        return (ULong) get(19);
     }
 
     /**
@@ -388,7 +407,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public EntityProcessorProductCommsRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(20, value);
         return this;
     }
 
@@ -398,7 +417,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(20);
     }
 
     /**
@@ -407,7 +426,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public EntityProcessorProductCommsRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(21, value);
         return this;
     }
 
@@ -417,7 +436,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(21);
     }
 
     /**
@@ -426,7 +445,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public EntityProcessorProductCommsRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(22, value);
         return this;
     }
 
@@ -436,7 +455,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(22);
     }
 
     /**
@@ -445,7 +464,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public EntityProcessorProductCommsRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(23, value);
         return this;
     }
 
@@ -455,7 +474,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(23);
     }
 
     // -------------------------------------------------------------------------
@@ -481,7 +500,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
     /**
      * Create a detached, initialised EntityProcessorProductCommsRecord
      */
-    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, String connectionName, String connectionType, ULong productId, Short dialCode, String phoneNumber, String email, String source, String subSource, Boolean isDefault, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductCommsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, String connectionName, String connectionType, String connectionSubType, ULong productId, Short dialCode, String phoneNumber, String email, String source, String subSource, Boolean isDefault, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS);
 
         setId(id);
@@ -493,6 +512,7 @@ public class EntityProcessorProductCommsRecord extends UpdatableRecordImpl<Entit
         setVersion(version);
         setConnectionName(connectionName);
         setConnectionType(connectionType);
+        setConnectionSubType(connectionSubType);
         setProductId(productId);
         setDialCode(dialCode);
         setPhoneNumber(phoneNumber);
