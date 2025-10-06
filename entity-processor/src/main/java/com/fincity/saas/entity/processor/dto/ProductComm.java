@@ -24,6 +24,7 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
 
     private String connectionName;
     private String connectionType;
+    private String connectionSubType;
     private ULong productId;
     private Integer dialCode = PhoneUtil.getDefaultCallingCode();
     private String phoneNumber;
@@ -40,6 +41,7 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
         super(productComm);
         this.connectionName = productComm.connectionName;
         this.connectionType = productComm.connectionType;
+        this.connectionSubType = productComm.connectionSubType;
         this.productId = productComm.productId;
         this.dialCode = productComm.dialCode;
         this.phoneNumber = productComm.phoneNumber;
@@ -53,12 +55,19 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
         ProductComm productComm = new ProductComm()
                 .setConnectionName(connection.getName())
                 .setConnectionType(connection.getConnectionType().name())
+                .setConnectionSubType(connection.getConnectionSubType().name())
                 .setProductId(productId)
-                .setDefault(productCommRequest.isDefault())
                 .setName(productCommRequest.getName());
 
-        if (Boolean.FALSE.equals(productCommRequest.isDefault()))
-            productComm.setSource(productCommRequest.getSource()).setSubSource(productCommRequest.getSubSource());
+        // App-level (no product) default will always be true
+        if (productId == null) {
+            productComm.setDefault(true);
+            productComm.setSource(null).setSubSource(null);
+        } else {
+            productComm.setDefault(productCommRequest.isDefault());
+            if (Boolean.FALSE.equals(productCommRequest.isDefault()))
+                productComm.setSource(productCommRequest.getSource()).setSubSource(productCommRequest.getSubSource());
+        }
 
         return switch (connection.getConnectionType()) {
             case TEXT, CALL ->
