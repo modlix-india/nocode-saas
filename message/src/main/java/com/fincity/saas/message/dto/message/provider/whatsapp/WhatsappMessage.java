@@ -33,7 +33,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
     @Serial
     private static final long serialVersionUID = 85222336061195313L;
 
-    private String whatsappBusinessAccountId;
+    private ULong whatsappBusinessAccountId;
     private String messageId;
 
     private ULong whatsappPhoneNumberId;
@@ -115,7 +115,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
             IMetadata metadata,
             IContact contact,
             IMessage message,
-            String whatsappBusinessAccountId,
+            ULong whatsappBusinessAccountId,
             ULong whatsappPhoneNumberId) {
 
         PhoneNumber from = PhoneNumber.ofWhatsapp(message.getFrom());
@@ -143,7 +143,7 @@ public class WhatsappMessage extends BaseUpdatableDto<WhatsappMessage> {
                 .setInMessage(message);
     }
 
-    public WhatsappMessage update(String businessAccountId, ULong whatsappPhoneNumberId, MessageResponse response) {
+    public WhatsappMessage update(ULong businessAccountId, ULong whatsappPhoneNumberId, MessageResponse response) {
         this.setWhatsappBusinessAccountId(businessAccountId);
         this.setWhatsappPhoneNumberId(whatsappPhoneNumberId);
         this.setCustomerWaId(response.getContacts().getFirst().getWaId());

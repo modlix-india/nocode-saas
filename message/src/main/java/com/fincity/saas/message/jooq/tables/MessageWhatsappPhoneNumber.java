@@ -4,6 +4,7 @@
 package com.fincity.saas.message.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
@@ -12,7 +13,9 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.t
 import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccount.MessageWhatsappBusinessAccountPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
+import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -21,11 +24,16 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -99,7 +107,7 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
      * <code>message.message_whatsapp_phone_number.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
      * WhatsApp Business Account ID.
      */
-    public final TableField<MessageWhatsappPhoneNumberRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
+    public final TableField<MessageWhatsappPhoneNumberRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "WhatsApp Business Account ID.");
 
     /**
      * The column
@@ -156,6 +164,13 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
      * Throughput level for message sending.
      */
     public final TableField<MessageWhatsappPhoneNumberRecord, LevelType> THROUGHPUT_LEVEL_TYPE = createField(DSL.name("THROUGHPUT_LEVEL_TYPE"), SQLDataType.VARCHAR(14), this, "Throughput level for message sending.", new EnumConverter<String, LevelType>(String.class, LevelType.class));
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_phone_number.WEBHOOK_CONFIG</code>. Phone
+     * Number webhook config
+     */
+    public final TableField<MessageWhatsappPhoneNumberRecord, WebhookConfig> WEBHOOK_CONFIG = createField(DSL.name("WEBHOOK_CONFIG"), SQLDataType.JSON, this, "Phone Number webhook config", new JSONtoClassConverter<JSON, WebhookConfig>(JSON.class, WebhookConfig.class));
 
     /**
      * The column <code>message.message_whatsapp_phone_number.IS_DEFAULT</code>.
@@ -225,6 +240,39 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
         this(DSL.name("message_whatsapp_phone_number"), null);
     }
 
+    public <O extends Record> MessageWhatsappPhoneNumber(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumberRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumberRecord> parentPath) {
+        super(path, childPath, parentPath, MESSAGE_WHATSAPP_PHONE_NUMBER);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class MessageWhatsappPhoneNumberPath extends MessageWhatsappPhoneNumber implements Path<MessageWhatsappPhoneNumberRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> MessageWhatsappPhoneNumberPath(Table<O> path, ForeignKey<O, MessageWhatsappPhoneNumberRecord> childPath, InverseForeignKey<O, MessageWhatsappPhoneNumberRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private MessageWhatsappPhoneNumberPath(Name alias, Table<MessageWhatsappPhoneNumberRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public MessageWhatsappPhoneNumberPath as(String alias) {
+            return new MessageWhatsappPhoneNumberPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public MessageWhatsappPhoneNumberPath as(Name alias) {
+            return new MessageWhatsappPhoneNumberPath(alias, this);
+        }
+
+        @Override
+        public MessageWhatsappPhoneNumberPath as(Table<?> alias) {
+            return new MessageWhatsappPhoneNumberPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
@@ -248,6 +296,24 @@ public class MessageWhatsappPhoneNumber extends TableImpl<MessageWhatsappPhoneNu
     @Override
     public List<UniqueKey<MessageWhatsappPhoneNumberRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBER_UK1_WHATSAPP_PHONE_NUMBER_CODE, Keys.KEY_MESSAGE_WHATSAPP_PHONE_NUMBER_UK2_WHATSAPP_PHONE_NUMBER_PHONE_NUMBER_ID);
+    }
+
+    @Override
+    public List<ForeignKey<MessageWhatsappPhoneNumberRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID);
+    }
+
+    private transient MessageWhatsappBusinessAccountPath _messageWhatsappBusinessAccount;
+
+    /**
+     * Get the implicit join path to the
+     * <code>message.message_whatsapp_business_account</code> table.
+     */
+    public MessageWhatsappBusinessAccountPath messageWhatsappBusinessAccount() {
+        if (_messageWhatsappBusinessAccount == null)
+            _messageWhatsappBusinessAccount = new MessageWhatsappBusinessAccountPath(this, Keys.FK1_WHATSAPP_PHONE_NUMBERS_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
+
+        return _messageWhatsappBusinessAccount;
     }
 
     @Override

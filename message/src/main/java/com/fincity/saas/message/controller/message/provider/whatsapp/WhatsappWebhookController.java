@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/message/whatsapp/webhooks")
+@RequestMapping("/api/message/webhooks/whatsapp")
 public class WhatsappWebhookController {
 
     private final WhatsappMessageService whatsappMessageService;

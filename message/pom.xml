@@ -358,6 +358,20 @@
                                             <includeExpression>.*\.EXOTEL_CONNECT_APPLET_REQUEST</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.SUBSCRIBED_APP</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.WEBHOOK_CONFIG</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus</userType>
                                             <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
