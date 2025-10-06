@@ -460,13 +460,13 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         if (condition == null || condition.isEmpty())
             return Mono.<AbstractCondition>just(FilterCondition.make(User.Fields.clientId, partner.getClientId())
-                            .setMatchOperator(FilterConditionOperator.EQUALS))
+                            .setOperator(FilterConditionOperator.EQUALS))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
 
         return Mono.<AbstractCondition>just(ComplexCondition.and(
                         condition,
                         FilterCondition.make(User.Fields.clientId, partner.getClientId())
-                                .setMatchOperator(FilterConditionOperator.EQUALS)))
+                                .setOperator(FilterConditionOperator.EQUALS)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
     }
 

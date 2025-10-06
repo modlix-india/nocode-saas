@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
 import org.springframework.http.ResponseEntity;
@@ -48,10 +49,10 @@ public class TicketController
     @GetMapping(REQ_PATH_ID + "/product-comms")
     public Mono<ResponseEntity<ProductComm>> getTicketProductComm(
             @PathVariable(PATH_VARIABLE_ID) Identity identity,
-            @RequestParam("connectionName") String connectionName,
-            @RequestParam("connectionType") ConnectionType connectionType) {
+            @RequestParam("connectionType") ConnectionType connectionType,
+            @RequestParam("connectionSubType") ConnectionSubType connectionSubType) {
         return this.service
-                .getTicketProductComm(identity, connectionName, connectionType)
+                .getTicketProductComm(identity, connectionType, connectionSubType)
                 .map(ResponseEntity::ok);
     }
 }
