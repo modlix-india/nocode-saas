@@ -55,6 +55,17 @@ public class WhatsappBusinessAccountService
     }
 
     @Override
+    protected Mono<Boolean> evictCache(WhatsappBusinessAccount entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(), entity.getClientCode(), entity.getWhatsappBusinessAccountId())),
+                (baseEvicted, acCcEvicted) -> baseEvicted && acCcEvicted);
+    }
+
+    @Override
     protected Mono<Connection> isValidConnection(Connection connection) {
 
         String facebookAppId = (String) connection.getConnectionDetails().getOrDefault(KEY_META_APP_ID, null);
@@ -62,6 +73,10 @@ public class WhatsappBusinessAccountService
         if (facebookAppId == null || facebookAppId.isEmpty()) return this.throwMissingParam(KEY_META_APP_ID);
 
         return super.isValidConnection(connection);
+    }
+
+    public Mono<WhatsappBusinessAccount> getBusinessAccount(String id) {
+        return super.hasAccess().flatMap(access -> this.getBusinessAccount(access, id));
     }
 
     protected Mono<WhatsappBusinessAccount> getBusinessAccount(MessageAccess access, String id) {

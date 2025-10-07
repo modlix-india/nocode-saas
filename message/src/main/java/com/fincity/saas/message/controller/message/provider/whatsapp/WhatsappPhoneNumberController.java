@@ -7,6 +7,7 @@ import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersR
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappPhoneNumberService;
 import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +42,12 @@ public class WhatsappPhoneNumberController
     public Mono<ResponseEntity<WhatsappPhoneNumber>> setDefault(
             @PathVariable(PATH_VARIABLE_ID) final Identity identity) {
         return this.service.setDefault(identity).map(ResponseEntity::ok);
+    }
+
+    @PatchMapping("/product" + "/{" + PATH_VARIABLE_ID + "}")
+    public Mono<ResponseEntity<WhatsappPhoneNumber>> setProductId(
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam("productId") final long productId) {
+        return this.service.setProductId(identity, ULong.valueOf(productId)).map(ResponseEntity::ok);
     }
 
     @PutMapping("/status")
