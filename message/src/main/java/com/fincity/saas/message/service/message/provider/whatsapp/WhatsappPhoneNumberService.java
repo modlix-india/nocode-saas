@@ -1,10 +1,12 @@
 package com.fincity.saas.message.service.message.provider.whatsapp;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumberDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
+import com.fincity.saas.message.feign.IFeignEntityProcessorService;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
@@ -12,11 +14,13 @@ import com.fincity.saas.message.model.message.whatsapp.data.FbPagingData;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.AbstractMessageService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.WhatsappApiFactory;
 import com.fincity.saas.message.service.message.provider.whatsapp.business.WhatsappBusinessManagementApi;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -33,6 +37,7 @@ public class WhatsappPhoneNumberService
 
     private final WhatsappApiFactory whatsappApiFactory;
     private WhatsappBusinessAccountService businessAccountService;
+    private IFeignEntityProcessorService entityProcessorService;
 
     @Autowired
     public WhatsappPhoneNumberService(WhatsappApiFactory whatsappApiFactory) {
@@ -42,6 +47,11 @@ public class WhatsappPhoneNumberService
     @Autowired
     public void setBusinessAccountService(WhatsappBusinessAccountService businessAccountService) {
         this.businessAccountService = businessAccountService;
+    }
+
+    @Autowired
+    public void setEntityProcessorService(IFeignEntityProcessorService entityProcessorService) {
+        this.entityProcessorService = entityProcessorService;
     }
 
     @Override
@@ -139,6 +149,32 @@ public class WhatsappPhoneNumberService
                                     this.updateDefault(defaultPhoneNumber, Boolean.FALSE))
                             .map(Tuple2::getT1);
                 });
+    }
+
+    public Mono<WhatsappPhoneNumber> setProductId(Identity phoneNumber, ULong productId) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> super.readIdentityWithAccess(access, phoneNumber).flatMap(this::checkProductAssignment),
+                (access, whatsappPhoneNumber) -> this.entityProcessorService.getProductInternal(
+                        access.getAppCode(), access.getClientCode(), productId.toBigInteger()),
+                (access, whatsappPhoneNumber, product) -> {
+                    whatsappPhoneNumber.setProductId(productId);
+                    return super.updateInternal(whatsappPhoneNumber);
+                });
+    }
+
+    private Mono<WhatsappPhoneNumber> checkProductAssignment(WhatsappPhoneNumber whatsappPhoneNumber) {
+        if (Boolean.TRUE.equals(whatsappPhoneNumber.getIsDefault()))
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.PRODUCT_TO_DEFAULT);
+
+        if (whatsappPhoneNumber.getProductId() != null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.PRODUCT_ALREADY_ASSIGNED);
+
+        return Mono.just(whatsappPhoneNumber);
     }
 
     public Flux<WhatsappPhoneNumber> updatePhoneNumbersStatus(String connectionName) {
