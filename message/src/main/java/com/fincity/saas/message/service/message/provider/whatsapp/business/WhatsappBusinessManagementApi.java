@@ -1,5 +1,6 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.business;
 
+import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
 import com.fincity.saas.message.model.message.whatsapp.business.BusinessAccount;
 import com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp;
@@ -17,10 +18,12 @@ import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.AbstractWhatsappApi;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -111,14 +114,24 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
     }
 
     public Mono<PhoneNumber> retrievePhoneNumber(String phoneNumberId, String... fields) {
-        Objects.requireNonNull(fields, "Fields cannot be null");
-        Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("fields", String.join(",", fields));
-        return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, queryParams);
+
+        if (fields == null)
+            return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, new HashMap<>());
+
+        return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, this.createFieldQueryParam(fields));
     }
 
     public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(String whatsappBusinessAccountId) {
-        return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId);
+        return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId, new HashMap<>());
+    }
+
+    public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(String whatsappBusinessAccountId, String... fields) {
+
+        if (fields == null)
+            return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId, new HashMap<>());
+
+        return apiService.retrievePhoneNumbers(
+                apiVersion.getValue(), whatsappBusinessAccountId, this.createFieldQueryParam(fields));
     }
 
     public Mono<Response> overridePhoneNumberWebhook(String phoneNumberId, WebhookConfig webhookConfig) {
@@ -138,14 +151,30 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
     }
 
     public Mono<FbData<CommerceDataItem>> getWhatsappCommerceSettings(String phoneNumberId, String... fields) {
-        Objects.requireNonNull(fields, "Fields cannot be null");
-        Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("fields", String.join(",", fields));
-        return apiService.getWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, queryParams);
+
+        if (fields == null)
+            return apiService.getWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, new HashMap<>());
+
+        return apiService.getWhatsappCommerceSettings(
+                apiVersion.getValue(), phoneNumberId, this.createFieldQueryParam(fields));
     }
 
     public Mono<Response> updateWhatsappCommerceSettings(String phoneNumberId, CommerceDataItem commerceDataItem) {
         return apiService.updateWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, commerceDataItem);
+    }
+
+    private Map<String, String> createFieldQueryParam(String... fields) {
+        Objects.requireNonNull(fields, "Fields cannot be null");
+        Map<String, String> queryParams = new HashMap<>();
+
+        String joinedFields = Arrays.stream(fields)
+                .filter(Objects::nonNull)
+                .map(Case.SNAKE.getConverter())
+                .collect(Collectors.joining(","));
+
+        queryParams.put("fields", joinedFields);
+
+        return queryParams;
     }
 
     private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient, MessageResourceService msgService)
@@ -289,7 +318,7 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
 
         @Override
         public Mono<PhoneNumber> retrievePhoneNumber(
-                String apiVersion, String phoneNumberId, Map<String, Object> queryParams) {
+                String apiVersion, String phoneNumberId, Map<String, String> queryParams) {
             return webClient
                     .get()
                     .uri(uriBuilder -> {
@@ -306,13 +335,14 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
 
         @Override
         public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(
-                String apiVersion, String whatsappBusinessAccountId) {
+                String apiVersion, String whatsappBusinessAccountId, Map<String, String> queryParams) {
             return webClient
                     .get()
-                    .uri(
-                            "/{api-version}/{whatsapp-business-account-ID}/phone_numbers",
-                            apiVersion,
-                            whatsappBusinessAccountId)
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{whatsapp-business-account-ID}/phone_numbers");
+                        queryParams.forEach(uriBuilder::queryParam);
+                        return uriBuilder.build(apiVersion, whatsappBusinessAccountId);
+                    })
                     .retrieve()
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),

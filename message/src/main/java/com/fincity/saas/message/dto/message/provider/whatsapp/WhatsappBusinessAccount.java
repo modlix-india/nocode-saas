@@ -45,4 +45,12 @@ public class WhatsappBusinessAccount extends BaseUpdatableDto<WhatsappBusinessAc
                 .setTimezoneId(businessAccount.getTimezoneId())
                 .setMessageTemplateNamespace(businessAccount.getMessageTemplateNamespace());
     }
+
+    public WhatsappBusinessAccount update(BusinessAccount businessAccount) {
+        this.name = businessAccount.getName();
+        this.currency = businessAccount.getCurrency();
+        this.timezoneId = businessAccount.getTimezoneId();
+        this.messageTemplateNamespace = businessAccount.getMessageTemplateNamespace();
+        return this;
+    }
 }

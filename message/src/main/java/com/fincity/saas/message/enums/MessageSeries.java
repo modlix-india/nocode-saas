@@ -3,14 +3,16 @@ package com.fincity.saas.message.enums;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_EXOTEL_CALLS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_MESSAGES;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_MESSAGES;
-import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBER;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBERS;
 import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_TEMPLATES;
 
 import com.fincity.saas.message.dto.call.Call;
 import com.fincity.saas.message.dto.call.provider.exotel.ExotelCall;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.MessageWebhook;
+import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappTemplate;
@@ -31,8 +33,14 @@ public enum MessageSeries implements EnumType {
             "Whatsapp Phone Number",
             4,
             "whatsapp_phone_number",
-            MESSAGE_WHATSAPP_PHONE_NUMBER),
-    WHATSAPP_TEMPLATE("WHATSAPP_TEMPLATE", "Whatsapp Template", 6, "whatsapp_template", MESSAGE_WHATSAPP_TEMPLATES);
+            MESSAGE_WHATSAPP_PHONE_NUMBERS),
+    WHATSAPP_TEMPLATE("WHATSAPP_TEMPLATE", "Whatsapp Template", 6, "whatsapp_template", MESSAGE_WHATSAPP_TEMPLATES),
+    WHATSAPP_BUSINESS_ACCOUNT(
+            "WHATSAPP_BUSINESS_ACCOUNT",
+            "Whatsapp Business Account",
+            7,
+            "whatsapp_business_account",
+            MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS);
 
     private final String literal;
     private final String displayName;
@@ -72,6 +80,7 @@ public enum MessageSeries implements EnumType {
             case WHATSAPP_MESSAGE -> WhatsappMessage.class;
             case WHATSAPP_PHONE_NUMBER -> WhatsappPhoneNumber.class;
             case WHATSAPP_TEMPLATE -> WhatsappTemplate.class;
+            case WHATSAPP_BUSINESS_ACCOUNT -> WhatsappBusinessAccount.class;
         };
     }
 }

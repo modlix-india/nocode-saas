@@ -3,7 +3,7 @@ package com.fincity.saas.message.controller.message.provider.whatsapp;
 import com.fincity.saas.message.controller.base.BaseUpdatableController;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappBusinessAccountDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountsRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.service.message.provider.whatsapp.WhatsappBusinessAccountService;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/message/whatsapp/business-accounts")
 public class WhatsappBusinessAccountController
         extends BaseUpdatableController<
-                MessageWhatsappBusinessAccountRecord,
+                MessageWhatsappBusinessAccountsRecord,
                 WhatsappBusinessAccount,
                 WhatsappBusinessAccountDAO,
                 WhatsappBusinessAccountService> {
