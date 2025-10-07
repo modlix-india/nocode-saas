@@ -70,10 +70,7 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
     }
 
     public Mono<ProductComm> getProductComm(
-            ProcessorAccess access,
-            ConnectionType connectionType,
-            ConnectionSubType connectionSubType,
-            String email) {
+            ProcessorAccess access, ConnectionType connectionType, ConnectionSubType connectionSubType, String email) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getProductCommEmailCondition(access, connectionType, connectionSubType, email),
                 super::filter,
@@ -119,10 +116,7 @@ public class ProductCommDAO extends BaseProcessorDAO<EntityProcessorProductComms
     }
 
     private Mono<AbstractCondition> getProductCommEmailCondition(
-            ProcessorAccess access,
-            ConnectionType connectionType,
-            ConnectionSubType connectionSubType,
-            String email) {
+            ProcessorAccess access, ConnectionType connectionType, ConnectionSubType connectionSubType, String email) {
         AbstractCondition emailCondition = FilterCondition.make(ProductComm.Fields.email, email);
 
         AbstractCondition connectionTypeCondition = ComplexCondition.and(

@@ -1,6 +1,7 @@
 package com.fincity.saas.message.dto.message.provider.whatsapp;
 
 import com.fincity.saas.message.dto.base.BaseUpdatableDto;
+import com.fincity.saas.message.eager.relations.resolvers.field.ProductFieldResolver;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.CodeVerificationStatus;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.MessagingLimitTier;
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.NameStatusType;
@@ -47,6 +48,7 @@ public class WhatsappPhoneNumber extends BaseUpdatableDto<WhatsappPhoneNumber> {
 
     public WhatsappPhoneNumber() {
         super();
+        this.relationsResolverMap.put(ProductFieldResolver.class, Fields.productId);
     }
 
     public WhatsappPhoneNumber(WhatsappPhoneNumber whatsappPhoneNumber) {
