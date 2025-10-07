@@ -46,8 +46,8 @@ public class WhatsappPhoneNumberController
 
     @PatchMapping("/product" + "/{" + PATH_VARIABLE_ID + "}")
     public Mono<ResponseEntity<WhatsappPhoneNumber>> setProductId(
-            @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam("productId") final long productId) {
-        return this.service.setProductId(identity, ULong.valueOf(productId)).map(ResponseEntity::ok);
+            @PathVariable(PATH_VARIABLE_ID) final Identity identity, @RequestParam("productId") final ULong productId) {
+        return this.service.setProductId(identity, productId).map(ResponseEntity::ok);
     }
 
     @PutMapping("/status")
