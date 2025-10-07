@@ -1,7 +1,5 @@
 package com.fincity.saas.entity.processor.controller;
 
-import java.util.List;
-
 import com.fincity.saas.entity.processor.controller.base.BaseProcessorController;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
@@ -11,7 +9,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductPartnerUpdateRequest;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.service.ProductService;
-
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
