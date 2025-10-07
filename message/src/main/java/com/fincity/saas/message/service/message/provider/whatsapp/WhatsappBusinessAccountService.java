@@ -4,11 +4,13 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappBusinessAccountDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountsRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
+import com.fincity.saas.message.model.message.whatsapp.business.BusinessAccount;
 import com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp;
 import com.fincity.saas.message.model.message.whatsapp.business.WebhookOverride;
+import com.fincity.saas.message.model.message.whatsapp.data.FbData;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.MessageResourceService;
@@ -23,7 +25,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class WhatsappBusinessAccountService
         extends AbstractMessageService<
-                MessageWhatsappBusinessAccountRecord, WhatsappBusinessAccount, WhatsappBusinessAccountDAO> {
+                MessageWhatsappBusinessAccountsRecord, WhatsappBusinessAccount, WhatsappBusinessAccountDAO> {
 
     private static final String KEY_META_APP_ID = "metaAppId";
     private static final String WHATSAPP_BUSINESS_ACCOUNT_PROVIDER_URI = "/whatsapp/account/business";
@@ -79,7 +81,7 @@ public class WhatsappBusinessAccountService
                 (access, connection, api) -> this.getWhatsappBusinessAccountId(connection),
                 (access, connection, api, businessAccountId) -> api.getBusinessAccount(businessAccountId),
                 (access, connection, api, businessAccountId, businessAccount) ->
-                        super.createInternal(access, WhatsappBusinessAccount.of(businessAccountId, businessAccount)));
+                        this.saveBusinessAccount(access, businessAccount, businessAccountId));
     }
 
     public Mono<WhatsappBusinessAccount> overrideWebhook(String connectionName, Identity whatsappBusinessAccountId) {
@@ -93,7 +95,11 @@ public class WhatsappBusinessAccountService
                 (access, waba, connection, api) -> this.createWebhookOverride(access)
                         .flatMap(wo -> api.overrideBusinessWebhook(waba.getWhatsappBusinessAccountId(), wo)
                                 .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId()))),
-                (access, waba, connection, api, subscribedApps) -> {
+                (MessageAccess access,
+                        WhatsappBusinessAccount waba,
+                        Connection connection,
+                        WhatsappBusinessManagementApi api,
+                        FbData<SubscribedApp> subscribedApps) -> {
                     String facebookAppId =
                             (String) connection.getConnectionDetails().get(KEY_META_APP_ID);
 
@@ -124,6 +130,18 @@ public class WhatsappBusinessAccountService
             return super.throwMissingParam(WhatsappBusinessAccount.Fields.whatsappBusinessAccountId);
 
         return Mono.just(businessAccountId);
+    }
+
+    private Mono<WhatsappBusinessAccount> saveBusinessAccount(
+            MessageAccess access, BusinessAccount businessAccount, String businessAccountId) {
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.findByUniqueField(access, businessAccountId),
+                        whatsappBusinessAccount -> super.update(whatsappBusinessAccount.update(businessAccount)),
+                        (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
+                                this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
+                .switchIfEmpty(Mono.defer(() ->
+                        super.createInternal(access, WhatsappBusinessAccount.of(businessAccountId, businessAccount))));
     }
 
     private Mono<WhatsappBusinessManagementApi> getBusinessManagementApi(Connection connection) {

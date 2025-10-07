@@ -42,9 +42,10 @@ public interface WhatsappBusinessManagementApiService {
     Mono<FbPagingData<Template>> retrieveTemplates(
             String apiVersion, String whatsappBusinessAccountId, Map<String, Object> filters);
 
-    Mono<PhoneNumber> retrievePhoneNumber(String apiVersion, String phoneNumberId, Map<String, Object> queryParams);
+    Mono<PhoneNumber> retrievePhoneNumber(String apiVersion, String phoneNumberId, Map<String, String> queryParams);
 
-    Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(String apiVersion, String whatsappBusinessAccountId);
+    Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(
+            String apiVersion, String whatsappBusinessAccountId, Map<String, String> queryParams);
 
     Mono<Response> overridePhoneNumberWebhook(String apiVersion, String phoneNumberId, WebhookConfig webhookConfig);
 
