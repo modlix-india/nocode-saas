@@ -5,25 +5,22 @@ import lombok.Getter;
 import org.jooq.EnumType;
 
 @Getter
-public enum NameStatusType implements EnumType {
-    APPROVED("APPROVED", "APPROVED"),
-    AVAILABLE_WITHOUT_REVIEW("AVAILABLE_WITHOUT_REVIEW", "AVAILABLE_WITHOUT_REVIEW"),
-    DECLINED("DECLINED", "DECLINED"),
-    EXPIRED("EXPIRED", "EXPIRED"),
-    NON_EXISTS("NON_EXISTS", "NON_EXISTS"),
-    NONE("NONE", "NONE"),
-    PENDING_REVIEW("PENDING_REVIEW", "PENDING_REVIEW");
+public enum Score implements EnumType {
+    GREEN("GREEN", "GREEN"),
+    YELLOW("YELLOW", "YELLOW"),
+    RED("RED", "RED"),
+    UNKNOWN("UNKNOWN", "UNKNOWN");
 
     private final String literal;
     private final String value;
 
-    NameStatusType(String literal, String value) {
+    Score(String literal, String value) {
         this.literal = literal;
         this.value = value;
     }
 
-    public static NameStatusType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(NameStatusType.class, literal);
+    public static Score lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(Score.class, literal);
     }
 
     @JsonValue

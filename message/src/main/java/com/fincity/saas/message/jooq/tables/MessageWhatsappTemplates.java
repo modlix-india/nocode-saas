@@ -12,7 +12,7 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.Templat
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccount.MessageWhatsappBusinessAccountPath;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
@@ -316,17 +316,17 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
         return Arrays.asList(Keys.FK1_WHATSAPP_TEMPLATES_WHATSAPP_BUSINESS_ACCOUNT_ID);
     }
 
-    private transient MessageWhatsappBusinessAccountPath _messageWhatsappBusinessAccount;
+    private transient MessageWhatsappBusinessAccountsPath _messageWhatsappBusinessAccounts;
 
     /**
      * Get the implicit join path to the
-     * <code>message.message_whatsapp_business_account</code> table.
+     * <code>message.message_whatsapp_business_accounts</code> table.
      */
-    public MessageWhatsappBusinessAccountPath messageWhatsappBusinessAccount() {
-        if (_messageWhatsappBusinessAccount == null)
-            _messageWhatsappBusinessAccount = new MessageWhatsappBusinessAccountPath(this, Keys.FK1_WHATSAPP_TEMPLATES_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
+    public MessageWhatsappBusinessAccountsPath messageWhatsappBusinessAccounts() {
+        if (_messageWhatsappBusinessAccounts == null)
+            _messageWhatsappBusinessAccounts = new MessageWhatsappBusinessAccountsPath(this, Keys.FK1_WHATSAPP_TEMPLATES_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
 
-        return _messageWhatsappBusinessAccount;
+        return _messageWhatsappBusinessAccounts;
     }
 
     @Override

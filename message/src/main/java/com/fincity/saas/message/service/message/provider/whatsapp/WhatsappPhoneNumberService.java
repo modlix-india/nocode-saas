@@ -5,7 +5,7 @@ import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappPhoneNumbe
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.enums.MessageSeries;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.message.whatsapp.data.FbPagingData;
@@ -25,7 +25,7 @@ import reactor.util.function.Tuples;
 
 @Service
 public class WhatsappPhoneNumberService
-        extends AbstractMessageService<MessageWhatsappPhoneNumberRecord, WhatsappPhoneNumber, WhatsappPhoneNumberDAO> {
+        extends AbstractMessageService<MessageWhatsappPhoneNumbersRecord, WhatsappPhoneNumber, WhatsappPhoneNumberDAO> {
 
     public static final String WHATSAPP_PHONE_NUMBER_PROVIDER_URI = "/whatsapp/phone";
 
@@ -80,14 +80,18 @@ public class WhatsappPhoneNumberService
     @Override
     protected Mono<WhatsappPhoneNumber> updatableEntity(WhatsappPhoneNumber entity) {
         return super.updatableEntity(entity).flatMap(uEntity -> {
+            uEntity.setProductId(entity.getProductId());
             uEntity.setQualityRating(entity.getQualityRating());
+            uEntity.setQualityScore(entity.getQualityScore());
             uEntity.setVerifiedName(entity.getVerifiedName());
             uEntity.setCodeVerificationStatus(entity.getCodeVerificationStatus());
             uEntity.setNameStatus(entity.getNameStatus());
             uEntity.setPlatformType(entity.getPlatformType());
             uEntity.setThroughput(entity.getThroughput());
+            uEntity.setStatus(entity.getStatus());
+            uEntity.setMessagingLimitTier(entity.getMessagingLimitTier());
             uEntity.setIsDefault(entity.getIsDefault());
-
+            uEntity.setWebhookConfig(entity.getWebhookConfig());
             return Mono.just(uEntity);
         });
     }
@@ -137,6 +141,36 @@ public class WhatsappPhoneNumberService
                 });
     }
 
+    public Flux<WhatsappPhoneNumber> updatePhoneNumbersStatus(String connectionName) {
+        return FlatMapUtil.flatMapFlux(
+                () -> super.hasAccess().flux(),
+                access -> this.getPhoneNumbers(
+                                connectionName,
+                                access,
+                                PhoneNumber.Fields.status,
+                                PhoneNumber.Fields.qualityScore,
+                                PhoneNumber.Fields.messagingLimitTier,
+                                PhoneNumber.Fields.nameStatus)
+                        .flux(),
+                (access, phoneNumbers) -> this.updatePhoneNumbersStatus(phoneNumbers.getT2(), access));
+    }
+
+    public Mono<WhatsappPhoneNumber> updatePhoneNumberStatus(String connectionName, Identity whatsappPhoneNumberId) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> super.readIdentityWithAccess(access, whatsappPhoneNumberId),
+                (access, whatsappPhoneNumber) -> this.getPhoneNumber(
+                        connectionName,
+                        access,
+                        whatsappPhoneNumber.getPhoneNumberId(),
+                        PhoneNumber.Fields.status,
+                        PhoneNumber.Fields.qualityScore,
+                        PhoneNumber.Fields.messagingLimitTier,
+                        PhoneNumber.Fields.nameStatus),
+                (access, whatsappPhoneNumber, phoneNumber) ->
+                        this.updatePhoneNumberStatus(phoneNumber.getT2(), access));
+    }
+
     private Mono<WhatsappPhoneNumber> updateDefault(WhatsappPhoneNumber whatsappPhoneNumber, Boolean isDefault) {
         return super.update(whatsappPhoneNumber.setIsDefault(isDefault))
                 .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
@@ -168,26 +202,26 @@ public class WhatsappPhoneNumberService
     }
 
     private Mono<Tuple2<WhatsappBusinessAccount, FbPagingData<PhoneNumber>>> getPhoneNumbers(
-            String connectionName, MessageAccess access) {
+            String connectionName, MessageAccess access, String... fields) {
         return FlatMapUtil.flatMapMono(
                 () -> super.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), connectionName),
                 connection -> getWhatsappBusinessAccount(access, connection),
                 (connection, businessAccount) -> this.getBusinessManagementApi(connection),
                 (connection, businessAccount, api) ->
-                        api.retrievePhoneNumbers(businessAccount.getWhatsappBusinessAccountId()),
+                        api.retrievePhoneNumbers(businessAccount.getWhatsappBusinessAccountId(), fields),
                 (connection, businessAccount, api, phoneNumbers) ->
                         Mono.just(Tuples.of(businessAccount, phoneNumbers)));
     }
 
     private Mono<Tuple2<WhatsappBusinessAccount, PhoneNumber>> getPhoneNumber(
-            String connectionName, MessageAccess access, String phoneNumberId) {
+            String connectionName, MessageAccess access, String phoneNumberId, String... fields) {
         return FlatMapUtil.flatMapMono(
                 () -> super.messageConnectionService.getCoreDocument(
                         access.getAppCode(), access.getClientCode(), connectionName),
                 connection -> getWhatsappBusinessAccount(access, connection),
                 (connection, businessAccount) -> this.getBusinessManagementApi(connection),
-                (connection, businessAccount, api) -> api.retrievePhoneNumber(phoneNumberId),
+                (connection, businessAccount, api) -> api.retrievePhoneNumber(phoneNumberId, fields),
                 (connection, businessAccount, api, phoneNumber) -> Mono.just(Tuples.of(businessAccount, phoneNumber)));
     }
 
@@ -209,6 +243,21 @@ public class WhatsappPhoneNumberService
                                 this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
                 .switchIfEmpty(Mono.defer(() -> super.createInternal(
                         access, WhatsappPhoneNumber.of(whatsappBusinessAccount.getId(), phoneNumber))));
+    }
+
+    private Flux<WhatsappPhoneNumber> updatePhoneNumbersStatus(
+            FbPagingData<PhoneNumber> phoneNumbers, MessageAccess access) {
+        return Flux.fromIterable(phoneNumbers.getData())
+                .flatMap(phoneNumber -> this.updatePhoneNumberStatus(phoneNumber, access));
+    }
+
+    private Mono<WhatsappPhoneNumber> updatePhoneNumberStatus(PhoneNumber phoneNumber, MessageAccess access) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.dao.getByPhoneNumberId(access, phoneNumber.getId()),
+                whatsappPhoneNumber -> super.update(whatsappPhoneNumber.updateStatus(phoneNumber)),
+                (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
+                        this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber));
     }
 
     private Mono<WhatsappBusinessAccount> getWhatsappBusinessAccount(MessageAccess access, Connection connection) {

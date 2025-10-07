@@ -5,25 +5,24 @@ import lombok.Getter;
 import org.jooq.EnumType;
 
 @Getter
-public enum NameStatusType implements EnumType {
-    APPROVED("APPROVED", "APPROVED"),
-    AVAILABLE_WITHOUT_REVIEW("AVAILABLE_WITHOUT_REVIEW", "AVAILABLE_WITHOUT_REVIEW"),
-    DECLINED("DECLINED", "DECLINED"),
-    EXPIRED("EXPIRED", "EXPIRED"),
-    NON_EXISTS("NON_EXISTS", "NON_EXISTS"),
-    NONE("NONE", "NONE"),
-    PENDING_REVIEW("PENDING_REVIEW", "PENDING_REVIEW");
+public enum MessagingLimitTier implements EnumType {
+    TIER_50("TIER_50", "TIER_50"),
+    TIER_250("TIER_250", "TIER_250"),
+    TIER_1K("TIER_1K", "TIER_1K"),
+    TIER_10K("TIER_10K", "TIER_10K"),
+    TIER_100K("TIER_100K", "TIER_100K"),
+    TIER_UNLIMITED("TIER_UNLIMITED", "TIER_UNLIMITED");
 
     private final String literal;
     private final String value;
 
-    NameStatusType(String literal, String value) {
+    MessagingLimitTier(String literal, String value) {
         this.literal = literal;
         this.value = value;
     }
 
-    public static NameStatusType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(NameStatusType.class, literal);
+    public static MessagingLimitTier lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(MessagingLimitTier.class, literal);
     }
 
     @JsonValue
