@@ -10,7 +10,7 @@ public class FilterUtil {
 
         if (mandatory == null || mandatory.isEmpty()) return List.of();
 
-        if (current == null) return mandatory;
+        if (current == null || current.isEmpty()) return mandatory;
 
         return mandatory.stream().filter(current::contains).toList();
     }
