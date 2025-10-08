@@ -184,17 +184,17 @@ public class ClientRegistrationService {
                     return Mono.just(context);
                 }),
 
-                ca -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+                (ContextAuthentication ca) -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
                         ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
                 (ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
 
-                (ca, policy, subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+                (ContextAuthentication ca, AbstractPolicy policy, String subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
                         ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
 
                 (ca, policy, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
 
-                (ca, policy, subDomain, regProp, client) -> this.registerUser(
+                (ContextAuthentication ca, AbstractPolicy policy, String subDomain, String regProp, Client client) -> this.registerUser(
                         ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest, client,
                         policy),
 

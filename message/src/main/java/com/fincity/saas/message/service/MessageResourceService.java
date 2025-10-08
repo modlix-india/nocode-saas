@@ -27,6 +27,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String PHONE_NUMBER_REQUIRED = "phone_number_required";
 
     public static final String INVALID_CONNECTION_TYPE = "invalid_connection_type";
+    public static final String META_APP_NOT_CONNECTED = "meta_app_not_connected";
     public static final String URL_CREATION_ERROR = "url_creation_error";
     public static final String MISSING_CALL_PARAMETERS = "missing_call_parameters";
     public static final String MISSING_MESSAGE_PARAMETERS = "missing_message_parameters";
@@ -54,6 +55,8 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String TEMPLATE_NOT_FOUND_IN_WHATSAPP = "template_not_found_in_whatsapp";
     public static final String INVALID_MESSAGE_TYPE_MEDIA = "invalid_message_type_media";
     public static final String WEBHOOK_CONFIG_NOT_DONE = "webhook_config_not_done";
+    public static final String PRODUCT_TO_DEFAULT = "product_to_default";
+    public static final String PRODUCT_ALREADY_ASSIGNED = "product_already_assigned";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

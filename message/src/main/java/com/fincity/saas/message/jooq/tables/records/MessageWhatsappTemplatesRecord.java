@@ -118,7 +118,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
      * WhatsApp Business Account ID.
      */
-    public MessageWhatsappTemplatesRecord setWhatsappBusinessAccountId(String value) {
+    public MessageWhatsappTemplatesRecord setWhatsappBusinessAccountId(ULong value) {
         set(5, value);
         return this;
     }
@@ -128,8 +128,8 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
      * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
      * WhatsApp Business Account ID.
      */
-    public String getWhatsappBusinessAccountId() {
-        return (String) get(5);
+    public ULong getWhatsappBusinessAccountId() {
+        return (ULong) get(5);
     }
 
     /**
@@ -492,7 +492,7 @@ public class MessageWhatsappTemplatesRecord extends UpdatableRecordImpl<MessageW
     /**
      * Create a detached, initialised MessageWhatsappTemplatesRecord
      */
-    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, String whatsappBusinessAccountId, String templateId, String templateName, Boolean allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, FileDetail headerFileDetail, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean isActive) {
+    public MessageWhatsappTemplatesRecord(ULong id, String appCode, String clientCode, ULong userId, String code, ULong whatsappBusinessAccountId, String templateId, String templateName, Boolean allowCategoryChange, Category category, SubCategory subCategory, ULong messageSendTtlSeconds, ParameterFormat parameterFormat, String language, TemplateStatus status, TemplateRejectedReason rejectedReason, Category previousCategory, Integer monthlyEditCount, FileDetail headerFileDetail, ComponentList components, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, Boolean isActive) {
         super(MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES);
 
         setId(id);

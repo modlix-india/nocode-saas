@@ -8,8 +8,9 @@ import com.fincity.saas.message.jooq.tables.MessageCalls;
 import com.fincity.saas.message.jooq.tables.MessageExotelCalls;
 import com.fincity.saas.message.jooq.tables.MessageMessageWebhooks;
 import com.fincity.saas.message.jooq.tables.MessageMessages;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappMessages;
-import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumber;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappPhoneNumbers;
 import com.fincity.saas.message.jooq.tables.MessageWhatsappTemplates;
 
 import java.util.Arrays;
@@ -54,6 +55,11 @@ public class Message extends SchemaImpl {
     public final MessageMessages MESSAGE_MESSAGES = MessageMessages.MESSAGE_MESSAGES;
 
     /**
+     * The table <code>message.message_whatsapp_business_accounts</code>.
+     */
+    public final MessageWhatsappBusinessAccounts MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS = MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS;
+
+    /**
      * The table <code>message.message_whatsapp_messages</code>.
      */
     public final MessageWhatsappMessages MESSAGE_WHATSAPP_MESSAGES = MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES;
@@ -61,7 +67,7 @@ public class Message extends SchemaImpl {
     /**
      * WhatsApp Business phone numbers
      */
-    public final MessageWhatsappPhoneNumber MESSAGE_WHATSAPP_PHONE_NUMBER = MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER;
+    public final MessageWhatsappPhoneNumbers MESSAGE_WHATSAPP_PHONE_NUMBERS = MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS;
 
     /**
      * WhatsApp message templates
@@ -88,8 +94,9 @@ public class Message extends SchemaImpl {
             MessageExotelCalls.MESSAGE_EXOTEL_CALLS,
             MessageMessageWebhooks.MESSAGE_MESSAGE_WEBHOOKS,
             MessageMessages.MESSAGE_MESSAGES,
+            MessageWhatsappBusinessAccounts.MESSAGE_WHATSAPP_BUSINESS_ACCOUNTS,
             MessageWhatsappMessages.MESSAGE_WHATSAPP_MESSAGES,
-            MessageWhatsappPhoneNumber.MESSAGE_WHATSAPP_PHONE_NUMBER,
+            MessageWhatsappPhoneNumbers.MESSAGE_WHATSAPP_PHONE_NUMBERS,
             MessageWhatsappTemplates.MESSAGE_WHATSAPP_TEMPLATES
         );
     }

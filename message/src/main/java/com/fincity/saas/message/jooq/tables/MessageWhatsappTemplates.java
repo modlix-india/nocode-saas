@@ -12,6 +12,7 @@ import com.fincity.saas.message.enums.message.provider.whatsapp.business.Templat
 import com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappTemplatesRecord;
 import com.fincity.saas.message.model.message.whatsapp.templates.ComponentList;
 import com.fincity.saas.message.oserver.files.model.FileDetail;
@@ -23,11 +24,15 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -99,7 +104,7 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
      * <code>message.message_whatsapp_templates.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
      * WhatsApp Business Account ID.
      */
-    public final TableField<MessageWhatsappTemplatesRecord, String> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.VARCHAR(255).nullable(false), this, "WhatsApp Business Account ID.");
+    public final TableField<MessageWhatsappTemplatesRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "WhatsApp Business Account ID.");
 
     /**
      * The column <code>message.message_whatsapp_templates.TEMPLATE_ID</code>.
@@ -253,6 +258,39 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
         this(DSL.name("message_whatsapp_templates"), null);
     }
 
+    public <O extends Record> MessageWhatsappTemplates(Table<O> path, ForeignKey<O, MessageWhatsappTemplatesRecord> childPath, InverseForeignKey<O, MessageWhatsappTemplatesRecord> parentPath) {
+        super(path, childPath, parentPath, MESSAGE_WHATSAPP_TEMPLATES);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class MessageWhatsappTemplatesPath extends MessageWhatsappTemplates implements Path<MessageWhatsappTemplatesRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> MessageWhatsappTemplatesPath(Table<O> path, ForeignKey<O, MessageWhatsappTemplatesRecord> childPath, InverseForeignKey<O, MessageWhatsappTemplatesRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private MessageWhatsappTemplatesPath(Name alias, Table<MessageWhatsappTemplatesRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(String alias) {
+            return new MessageWhatsappTemplatesPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(Name alias) {
+            return new MessageWhatsappTemplatesPath(alias, this);
+        }
+
+        @Override
+        public MessageWhatsappTemplatesPath as(Table<?> alias) {
+            return new MessageWhatsappTemplatesPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Message.MESSAGE;
@@ -271,6 +309,24 @@ public class MessageWhatsappTemplates extends TableImpl<MessageWhatsappTemplates
     @Override
     public List<UniqueKey<MessageWhatsappTemplatesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK1_MESSAGE_WHATSAPP_TEMPLATES_CODE, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_ACCOUNT_ID_NAME, Keys.KEY_MESSAGE_WHATSAPP_TEMPLATES_UK2_MESSAGE_WHATSAPP_TEMPLATES_TEMPLATE_ID);
+    }
+
+    @Override
+    public List<ForeignKey<MessageWhatsappTemplatesRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_WHATSAPP_TEMPLATES_WHATSAPP_BUSINESS_ACCOUNT_ID);
+    }
+
+    private transient MessageWhatsappBusinessAccountsPath _messageWhatsappBusinessAccounts;
+
+    /**
+     * Get the implicit join path to the
+     * <code>message.message_whatsapp_business_accounts</code> table.
+     */
+    public MessageWhatsappBusinessAccountsPath messageWhatsappBusinessAccounts() {
+        if (_messageWhatsappBusinessAccounts == null)
+            _messageWhatsappBusinessAccounts = new MessageWhatsappBusinessAccountsPath(this, Keys.FK1_WHATSAPP_TEMPLATES_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
+
+        return _messageWhatsappBusinessAccounts;
     }
 
     @Override

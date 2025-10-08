@@ -1,6 +1,6 @@
 package com.fincity.saas.message.dao.message.provider.whatsapp;
 
-import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBER;
+import static com.fincity.saas.message.jooq.Tables.MESSAGE_WHATSAPP_PHONE_NUMBERS;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -8,20 +8,21 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.message.dao.base.BaseProviderDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumberRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappPhoneNumbersRecord;
 import com.fincity.saas.message.model.common.MessageAccess;
+import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhoneNumberRecord, WhatsappPhoneNumber> {
+public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhoneNumbersRecord, WhatsappPhoneNumber> {
 
     protected WhatsappPhoneNumberDAO() {
         super(
                 WhatsappPhoneNumber.class,
-                MESSAGE_WHATSAPP_PHONE_NUMBER,
-                MESSAGE_WHATSAPP_PHONE_NUMBER.ID,
-                MESSAGE_WHATSAPP_PHONE_NUMBER.PHONE_NUMBER_ID);
+                MESSAGE_WHATSAPP_PHONE_NUMBERS,
+                MESSAGE_WHATSAPP_PHONE_NUMBERS.ID,
+                MESSAGE_WHATSAPP_PHONE_NUMBERS.PHONE_NUMBER_ID);
     }
 
     public Mono<WhatsappPhoneNumber> getByPhoneNumberId(MessageAccess messageAccess, String phoneNumberId) {
@@ -39,7 +40,7 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess messageAccess, String whatsappBusinessAccountId) {
+    public Mono<WhatsappPhoneNumber> getByAccountId(MessageAccess messageAccess, ULong whatsappBusinessAccountId) {
 
         if (whatsappBusinessAccountId == null) return Mono.empty();
 
@@ -60,7 +61,7 @@ public class WhatsappPhoneNumberDAO extends BaseProviderDAO<MessageWhatsappPhone
     }
 
     public Mono<WhatsappPhoneNumber> getByAccountAndPhoneNumberId(
-            MessageAccess messageAccess, String whatsappBusinessAccountId, String phoneNumberId) {
+            MessageAccess messageAccess, ULong whatsappBusinessAccountId, String phoneNumberId) {
 
         if (whatsappBusinessAccountId == null) return Mono.empty();
 

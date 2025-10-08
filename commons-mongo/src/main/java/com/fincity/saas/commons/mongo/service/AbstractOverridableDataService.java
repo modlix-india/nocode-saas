@@ -743,7 +743,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
     }
 
-    private Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode, String clientCode) {
+    protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode, String clientCode) {
         // Just one complexity point is not a reason to break this function
 
         return FlatMapUtil.flatMapMonoWithNull(

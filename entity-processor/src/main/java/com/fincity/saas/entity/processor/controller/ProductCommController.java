@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.ProductCommService;
 import org.springframework.http.ResponseEntity;
@@ -31,10 +32,10 @@ public class ProductCommController
     @GetMapping("/default")
     public Mono<ResponseEntity<ProductComm>> getDefaultNumber(
             @RequestParam("productId") Identity productId,
-            @RequestParam("connectionName") String connectionName,
-            @RequestParam("connectionType") ConnectionType connectionType) {
+            @RequestParam("connectionType") ConnectionType connectionType,
+            @RequestParam("connectionSubType") ConnectionSubType connectionSubType) {
         return this.service
-                .getDefault(productId, connectionName, connectionType)
+                .getDefault(productId, connectionType, connectionSubType)
                 .map(ResponseEntity::ok);
     }
 }
