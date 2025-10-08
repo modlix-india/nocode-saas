@@ -28,7 +28,6 @@ import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.google.gson.JsonElement;
@@ -206,13 +205,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
-    public Mono<Void> acReInquiry(Ticket ticket, TicketRequest ticketRequest) {
+    public Mono<Void> acReInquiry(Ticket ticket, String source, String subSource) {
         return super.hasAccess()
-                .flatMap(access -> this.acReInquiry(access, ticket, null, ticketRequest))
+                .flatMap(access -> this.acReInquiry(access, ticket, null, source, subSource))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }
 
-    public Mono<Void> acReInquiry(ProcessorAccess access, Ticket ticket, String comment, TicketRequest ticketRequest) {
+    public Mono<Void> acReInquiry(
+            ProcessorAccess access, Ticket ticket, String comment, String source, String subSource) {
         return this.createActivityInternal(
                         ActivityAction.RE_INQUIRY,
                         null,
@@ -221,13 +221,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 Activity.Fields.ticketId,
                                 ticket.getId(),
                                 Ticket.Fields.source,
-                                ticketRequest.getSubSource() != null
-                                        ? Map.of(
-                                                Ticket.Fields.source,
-                                                ticketRequest.getSource(),
-                                                Ticket.Fields.subSource,
-                                                ticketRequest.getSubSource())
-                                        : Map.of(Ticket.Fields.source, ticketRequest.getSource())),
+                                subSource != null
+                                        ? Map.of(Ticket.Fields.source, source, Ticket.Fields.subSource, subSource)
+                                        : Map.of(Ticket.Fields.source, source)),
                         access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }

@@ -26,6 +26,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String IDENTITY_WRONG = "identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
     public static final String PRODUCT_TEMPLATE_FORBIDDEN_ACCESS = "product_template_forbidden_access";
+    public static final String TICKET_ASSIGNMENT_MISSING = "ticket_assignment_missing";
     public static final String OWNER_NOT_CREATED = "owner_not_created";
     public static final String DUPLICATE_ENTITY = "duplicate_entity";
     public static final String DUPLICATE_ENTITY_OUTSIDE_USER = "duplicate_entity_outside_user";
@@ -52,6 +53,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String MISSING_PARAMETERS = "missing_parameters";
     public static final String INVALID_PARAMETERS = "invalid_parameters";
     public static final String WEBSITE_ENTITY_DATA_INVALID = "website_entity_data_invalid";
+    public static final String UNKNOWN_EXOTEL_CALLER_ID = "unknown_exotel_caller_id";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

@@ -90,11 +90,17 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         return new Ticket()
                 .setPhoneNumber(
                         campaignTicketRequest.getLeadDetails().getPhone() != null
-                                ? campaignTicketRequest.getLeadDetails().getPhone()
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getPhone()
+                                        .getNumber()
                                 : null)
                 .setEmail(
                         campaignTicketRequest.getLeadDetails().getEmail() != null
-                                ? campaignTicketRequest.getLeadDetails().getEmail()
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getEmail()
+                                        .getAddress()
                                 : null)
                 .setSource(campaignTicketRequest.getLeadDetails().getSource())
                 .setSubSource(
