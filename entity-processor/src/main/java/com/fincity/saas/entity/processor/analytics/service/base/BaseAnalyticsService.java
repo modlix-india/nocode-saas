@@ -15,7 +15,10 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.ProductService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
+import com.fincity.saas.entity.processor.util.FilterUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
+import java.math.BigInteger;
+import java.util.List;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -58,12 +61,18 @@ public abstract class BaseAnalyticsService<
 
     public Mono<TicketBucketFilter> resolveCreatedBys(ProcessorAccess access, TicketBucketFilter filter) {
 
+        List<BigInteger> createdBysIds =
+                FilterUtil.intersectLists(
+                                filter.getCreatedByIds(),
+                                access.getUserInherit().getManagingClientIds())
+                        .stream()
+                        .map(ULong::toBigInteger)
+                        .toList();
+
+        if (createdBysIds.isEmpty()) return Mono.empty();
+
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientUserInternal(
-                        access.getUserInherit().getManagingClientIds().stream()
-                                .map(ULong::toBigInteger)
-                                .toList(),
-                        null),
+                () -> securityService.getClientUserInternal(createdBysIds, null),
                 userList -> Mono.just(filter.filterCreatedByIds(userList.stream()
                                 .map(User::getId)
                                 .map(ULongUtil::valueOf)
@@ -78,12 +87,18 @@ public abstract class BaseAnalyticsService<
 
     public Mono<TicketBucketFilter> resolveAssignedUsers(ProcessorAccess access, TicketBucketFilter filter) {
 
+        List<BigInteger> assignedUsersIds =
+                FilterUtil.intersectLists(
+                                filter.getAssignedUserIds(),
+                                access.getUserInherit().getSubOrg())
+                        .stream()
+                        .map(ULong::toBigInteger)
+                        .toList();
+
+        if (assignedUsersIds.isEmpty()) return Mono.empty();
+
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getUserInternal(
-                        access.getUserInherit().getSubOrg().stream()
-                                .map(ULong::toBigInteger)
-                                .toList(),
-                        null),
+                () -> securityService.getUserInternal(assignedUsersIds, null),
                 userList -> Mono.just(
                         filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
                                 .setAssignedUsers(userList.stream()
@@ -96,12 +111,17 @@ public abstract class BaseAnalyticsService<
 
     public Mono<TicketBucketFilter> resolveClients(ProcessorAccess access, TicketBucketFilter filter) {
 
+        List<BigInteger> clientIds =
+                FilterUtil.intersectLists(
+                                filter.getClientIds(), access.getUserInherit().getManagingClientIds())
+                        .stream()
+                        .map(ULong::toBigInteger)
+                        .toList();
+
+        if (clientIds.isEmpty()) return Mono.empty();
+
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientInternal(
-                        access.getUserInherit().getManagingClientIds().stream()
-                                .map(ULong::toBigInteger)
-                                .toList(),
-                        null),
+                () -> securityService.getClientInternal(clientIds, null),
                 clientList -> Mono.just(filter.filterClientIds(
                                 access.getUserInherit().getManagingClientIds())
                         .setClients(clientList.stream()
