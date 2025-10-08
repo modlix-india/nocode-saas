@@ -30,7 +30,7 @@ public abstract class AbstractMessageService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseProviderDAO<R, D>>
         extends BaseUpdatableService<R, D, O> implements IMessageService<D> {
 
-    private static final String WEBHOOK_URI = "/api/message/webhook";
+    private static final String WEBHOOK_URI = "/api/message/webhooks";
 
     private static final String SYSTEM = "SYSTEM";
 
