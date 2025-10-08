@@ -138,6 +138,7 @@ public abstract class AbstractMessageService<
     private Mono<String> buildWebhookUrl(String appCode, String clientCode) {
         return this.securityService
                 .getAppUrl(appCode, clientCode.equals(SYSTEM) ? null : clientCode)
+                .switchIfEmpty(this.securityService.getAppUrl(appCode, SYSTEM))
                 .map(appUrl -> this.buildUrl(appUrl, appCode, clientCode, this.getProviderUri()))
                 .switchIfEmpty(Mono.just(this.buildUrl(
                         this.appBaseUrl,

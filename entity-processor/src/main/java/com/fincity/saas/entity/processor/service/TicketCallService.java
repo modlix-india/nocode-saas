@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -11,6 +12,7 @@ import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppl
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
 import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -26,11 +28,17 @@ public class TicketCallService {
 
     private final IFeignMessageService messageService;
 
+    private final ProcessorMessageResourceService msgService;
+
     public TicketCallService(
-            TicketService ticketService, ProductCommService productCommService, IFeignMessageService messageService) {
+            TicketService ticketService,
+            ProductCommService productCommService,
+            IFeignMessageService messageService,
+            ProcessorMessageResourceService msgService) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
         this.messageService = messageService;
+        this.msgService = msgService;
     }
 
     public Mono<ExotelConnectAppletResponse> incomingExotelCall(
@@ -45,10 +53,14 @@ public class TicketCallService {
         PhoneNumber callerId = PhoneNumber.of(exotelRequest.getTo());
 
         return FlatMapUtil.flatMapMono(
-                        () -> ticketService.readByPhoneNumber(access, from),
-                        ticket -> productCommService.getByPhoneNumber(
-                                access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId),
-                        (ticket, productComm) -> messageService.connectCall(
+                        () -> productCommService
+                                .getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId)
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
+                                        callerId.getNumber())),
+                        productComm -> ticketService.getTicket(access, productComm.getProductId(), from, null),
+                        (productComm, ticket) -> messageService.connectCall(
                                 appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
                                         .setProviderIncomingRequest(request.getQueryParams())
                                         .setConnectionName(productComm.getConnectionName())
@@ -59,7 +71,12 @@ public class TicketCallService {
     private Mono<ExotelConnectAppletResponse> incomingExotelCallNewTicket(
             ProcessorAccess access, PhoneNumber from, PhoneNumber callerId, ServerHttpRequest request) {
         return FlatMapUtil.flatMapMono(
-                () -> productCommService.getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId),
+                () -> productCommService
+                        .getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId)
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
+                                callerId.getNumber())),
                 productComm -> this.createExotelTicket(access, productComm.getProductId(), from),
                 (productComm, ticket) -> messageService.connectCall(
                         access.getAppCode(), access.getClientCode(), (IncomingCallRequest) new IncomingCallRequest()
@@ -72,6 +89,7 @@ public class TicketCallService {
         return ticketService.createInternal(
                 access,
                 new Ticket()
+                        .setName("New Customer")
                         .setDialCode(from.getCountryCode())
                         .setPhoneNumber(from.getNumber())
                         .setProductId(productId)

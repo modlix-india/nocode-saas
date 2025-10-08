@@ -307,8 +307,6 @@ public class WhatsappMessageService
     private Mono<Message> processIncomingMessage(
             MessageAccess access, IMessage iMessage, IMetadata metadata, IContact contact) {
 
-        logger.info("Processing incoming message: {} from {}", iMessage.getId(), iMessage.getFrom());
-
         String phoneNumberId = metadata != null ? metadata.getPhoneNumberId() : null;
         if (phoneNumberId == null) {
             logger.error("Phone number ID is null for incoming message: {}", iMessage.getId());
@@ -381,28 +379,28 @@ public class WhatsappMessageService
     }
 
     private Mono<Void> processStatusUpdates(MessageAccess access, List<IStatus> statuses) {
-        logger.info("Processing {} status updates", statuses.size());
         return Flux.fromIterable(statuses)
                 .flatMap(status -> this.processStatusUpdate(access, status))
                 .then();
     }
 
     private Mono<Void> processStatusUpdate(MessageAccess access, IStatus status) {
-        logger.info("Processing status update for message: {} - status: {}", status.getId(), status.getStatus());
 
-        return this.dao
-                .findByUniqueField(status.getId())
-                .flatMap(whatsappMessage -> this.updateMessageStatus(access, whatsappMessage, status))
-                .doOnSuccess(updated -> {
-                    if (updated != null) {
-                        logger.info("Updated message status: {} -> {}", status.getId(), status.getStatus());
-                    }
-                })
-                .then()
-                .onErrorResume(error -> {
-                    logger.error("Failed to update message status for {}: {}", status.getId(), error.getMessage());
-                    return Mono.empty();
-                });
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao
+                                .findByUniqueField(status.getId())
+                                .switchIfEmpty(super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        MessageResourceService.IDENTITY_WRONG,
+                                        this.getMessageSeries().getDisplayName(),
+                                        status.getId())),
+                        whatsappMessage -> this.updateMessageStatus(access, whatsappMessage, status)
+                                .onErrorResume(error -> super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        MessageResourceService.UNABLE_TO_UPDATE,
+                                        this.getMessageSeries().getDisplayName(),
+                                        status.getId())))
+                .then();
     }
 
     private Mono<WhatsappMessage> updateMessageStatus(

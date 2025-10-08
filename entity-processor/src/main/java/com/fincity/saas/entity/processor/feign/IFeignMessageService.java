@@ -14,7 +14,7 @@ public interface IFeignMessageService {
     String MESSAGE_PATH = "/api/message";
     String EXOTEL_CALL_PATH = MESSAGE_PATH + "/call/exotel";
 
-    @PostMapping(EXOTEL_CALL_PATH)
+    @PostMapping(EXOTEL_CALL_PATH + "/connect")
     Mono<ExotelConnectAppletResponse> connectCall(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
