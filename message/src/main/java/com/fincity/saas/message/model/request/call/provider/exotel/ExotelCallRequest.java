@@ -44,7 +44,7 @@ public class ExotelCallRequest implements Serializable, IClassConvertor {
     private String waitUrl;
 
     @JsonProperty("Record")
-    private Boolean doRecord = Boolean.FALSE;
+    private Boolean doRecord = Boolean.TRUE;
 
     @JsonProperty("RecordingChannels")
     private String recordingChannels = ExotelRecordingChannel.getDefault().getExotelName();

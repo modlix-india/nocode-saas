@@ -56,7 +56,7 @@ public final class SetterUtil {
         }
     }
 
-    public static void setIfPresent(Map<String, Object> map, String key, Consumer<String> setter) {
+    public static void setIfPresent(Map<String, String> map, String key, Consumer<String> setter) {
         Object value = map.get(key);
         if (value != null) setter.accept(value.toString());
     }

@@ -53,34 +53,18 @@ public class TicketCallService {
         PhoneNumber callerId = PhoneNumber.of(exotelRequest.getTo());
 
         return FlatMapUtil.flatMapMono(
-                        () -> productCommService
-                                .getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId)
-                                .switchIfEmpty(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
-                                        callerId.getNumber())),
-                        productComm -> ticketService.getTicket(access, productComm.getProductId(), from, null),
-                        (productComm, ticket) -> messageService.connectCall(
-                                appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
-                                        .setProviderIncomingRequest(request.getQueryParams())
-                                        .setConnectionName(productComm.getConnectionName())
-                                        .setUserId(ticket.getAssignedUserId())))
-                .switchIfEmpty(this.incomingExotelCallNewTicket(access, from, callerId, request));
-    }
-
-    private Mono<ExotelConnectAppletResponse> incomingExotelCallNewTicket(
-            ProcessorAccess access, PhoneNumber from, PhoneNumber callerId, ServerHttpRequest request) {
-        return FlatMapUtil.flatMapMono(
                 () -> productCommService
                         .getByPhoneNumber(access, CALL_CONNECTION, ConnectionSubType.EXOTEL, callerId)
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.UNKNOWN_EXOTEL_CALLER_ID,
                                 callerId.getNumber())),
-                productComm -> this.createExotelTicket(access, productComm.getProductId(), from),
-                (productComm, ticket) -> messageService.connectCall(
-                        access.getAppCode(), access.getClientCode(), (IncomingCallRequest) new IncomingCallRequest()
-                                .setProviderIncomingRequest(request.getQueryParams())
+                productComm -> ticketService
+                        .getTicket(access, productComm.getProductId(), from, null)
+                        .switchIfEmpty(this.createExotelTicket(access, productComm.getProductId(), from)),
+                (productComm, ticket) ->
+                        messageService.connectCall(appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
+                                .setProviderIncomingRequest(request.getQueryParams().toSingleValueMap())
                                 .setConnectionName(productComm.getConnectionName())
                                 .setUserId(ticket.getAssignedUserId())));
     }
