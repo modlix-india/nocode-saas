@@ -2,6 +2,7 @@ package com.fincity.saas.message.model.response.call.provider.exotel;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.enums.call.provider.exotel.option.ExotelRecordingChannel;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
@@ -28,10 +29,10 @@ public class ExotelConnectAppletResponse implements Serializable {
     private String outgoingPhoneNumber;
 
     @JsonProperty("record")
-    private Boolean doRecord;
+    private Boolean doRecord = Boolean.TRUE;
 
     @JsonProperty("recording_channels")
-    private String recordingChannels;
+    private String recordingChannels = ExotelRecordingChannel.getDefault().getExotelName();
 
     @JsonProperty("max_ringing_duration")
     private Long maxRingingDuration;
@@ -58,7 +59,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class Destination implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 5091482682110407956L;
 
         @JsonProperty("numbers")
         private List<String> numbers;
@@ -71,7 +72,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class MusicOnHold implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 8379959166685956808L;
 
         @JsonProperty("type")
         private String type;
@@ -87,7 +88,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class ParallelRinging implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 4891403240234238306L;
 
         @JsonProperty("activate")
         private Boolean activate;
@@ -103,7 +104,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class StartCallPlayback implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 5776548202725238737L;
 
         @JsonProperty("playback_to")
         private String playbackTo;

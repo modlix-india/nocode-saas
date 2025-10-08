@@ -1,10 +1,10 @@
 package com.fincity.saas.message.model.request.call.provider.exotel;
 
 import static com.fincity.saas.message.util.SetterUtil.parseLong;
-import static com.fincity.saas.message.util.SetterUtil.setIfPresent;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fincity.saas.message.util.SetterUtil;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
@@ -75,25 +75,25 @@ public class ExotelConnectAppletRequest implements Serializable {
     @JsonProperty("RecordingUrl")
     private String recordingUrl;
 
-    public static ExotelConnectAppletRequest of(Map<String, Object> map) {
+    public static ExotelConnectAppletRequest of(Map<String, String> map) {
         ExotelConnectAppletRequest req = new ExotelConnectAppletRequest();
 
-        setIfPresent(map, "CallSid", req::setCallSid);
-        setIfPresent(map, "CallFrom", req::setCallFrom);
-        setIfPresent(map, "CallTo", req::setCallTo);
-        setIfPresent(map, "Direction", req::setDirection);
-        setIfPresent(map, "Created", req::setCreated);
-        setIfPresent(map, "StartTime", req::setStartTime);
-        setIfPresent(map, "EndTime", req::setEndTime);
-        setIfPresent(map, "CallType", req::setCallType);
-        setIfPresent(map, "DialWhomNumber", req::setDialWhomNumber);
-        setIfPresent(map, "flow_id", req::setFlowId);
-        setIfPresent(map, "From", req::setFrom);
-        setIfPresent(map, "To", req::setTo);
-        setIfPresent(map, "CurrentTime", req::setCurrentTime);
-        setIfPresent(map, "DialCallStatus", req::setDialCallStatus);
-        setIfPresent(map, "CustomField", req::setCustomField);
-        setIfPresent(map, "RecordingUrl", req::setRecordingUrl);
+        SetterUtil.setIfPresent(map, "CallSid", req::setCallSid);
+        SetterUtil.setIfPresent(map, "CallFrom", req::setCallFrom);
+        SetterUtil.setIfPresent(map, "CallTo", req::setCallTo);
+        SetterUtil.setIfPresent(map, "Direction", req::setDirection);
+        SetterUtil.setIfPresent(map, "Created", req::setCreated);
+        SetterUtil.setIfPresent(map, "StartTime", req::setStartTime);
+        SetterUtil.setIfPresent(map, "EndTime", req::setEndTime);
+        SetterUtil.setIfPresent(map, "CallType", req::setCallType);
+        SetterUtil.setIfPresent(map, "DialWhomNumber", req::setDialWhomNumber);
+        SetterUtil.setIfPresent(map, "flow_id", req::setFlowId);
+        SetterUtil.setIfPresent(map, "From", req::setFrom);
+        SetterUtil.setIfPresent(map, "To", req::setTo);
+        SetterUtil.setIfPresent(map, "CurrentTime", req::setCurrentTime);
+        SetterUtil.setIfPresent(map, "DialCallStatus", req::setDialCallStatus);
+        SetterUtil.setIfPresent(map, "CustomField", req::setCustomField);
+        SetterUtil.setIfPresent(map, "RecordingUrl", req::setRecordingUrl);
 
         Object digitObj = map.get("digits");
         if (digitObj != null) {

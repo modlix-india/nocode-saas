@@ -4,9 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public interface INoteRequest {
 
-    NoteRequest getNoteRequest();
+    default NoteRequest getNoteRequest() {
+        return null;
+    }
 
-    String getComment();
+    default String getComment() {
+        return null;
+    }
 
     @JsonIgnore
     default boolean hasNote() {

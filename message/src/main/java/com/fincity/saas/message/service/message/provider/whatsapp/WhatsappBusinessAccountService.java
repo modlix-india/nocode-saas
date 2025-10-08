@@ -66,6 +66,19 @@ public class WhatsappBusinessAccountService
     }
 
     @Override
+    protected Mono<WhatsappBusinessAccount> updatableEntity(WhatsappBusinessAccount entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setName(entity.getName());
+            existing.setCurrency(entity.getCurrency());
+            existing.setTimezoneId(entity.getTimezoneId());
+            existing.setMessageTemplateNamespace(entity.getMessageTemplateNamespace());
+            existing.setSubscribedApp(entity.getSubscribedApp());
+
+            return Mono.just(existing);
+        });
+    }
+
+    @Override
     protected Mono<Connection> isValidConnection(Connection connection) {
 
         String facebookAppId = (String) connection.getConnectionDetails().getOrDefault(KEY_META_APP_ID, null);
