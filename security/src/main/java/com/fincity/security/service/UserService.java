@@ -465,7 +465,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<User> readById(ULong userId, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readInternal(userId),
-                user -> this.fillDetails(List.of(user), queryParams).map(List::getFirst));
+                user -> queryParams != null ? this.fillDetails(List.of(user), queryParams).map(List::getFirst) : Mono.just(user));
     }
 
     public Mono<List<User>> readByIds(List<ULong> userIds, MultiValueMap<String, String> queryParams) {
@@ -475,7 +475,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 .setOperator(FilterConditionOperator.IN)
                                 .setMultiValue(userIds))
                         .collectList(),
-                users -> this.fillDetails(users, queryParams));
+                users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
     public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {

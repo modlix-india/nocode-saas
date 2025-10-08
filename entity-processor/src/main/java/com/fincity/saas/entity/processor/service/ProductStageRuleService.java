@@ -92,11 +92,12 @@ public class ProductStageRuleService
                         () -> this.getRuleWithOrder(
                                 access.getAppCode(), access.getEffectiveClientCode(), entityId, stageId),
                         productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
-                        (productRule, eRule) -> super.update(eRule).flatMap(rule -> {
-                            ULong assignedUserId = rule.getLastAssignedUserId();
+                        (productRule, eRule) -> super.update(eRule),
+                        (productRule, eRule, uRule) -> {
+                            ULong assignedUserId = uRule.getLastAssignedUserId();
                             if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
                             return Mono.just(assignedUserId);
-                        }))
+                        })
                 .switchIfEmpty(this.getUserAssignmentFromTemplate(access, entityId, stageId, tokenPrefix, userId, data))
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));

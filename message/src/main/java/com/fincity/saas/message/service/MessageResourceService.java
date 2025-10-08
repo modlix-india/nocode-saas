@@ -42,6 +42,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String INVALID_USER_ACCESS = "invalid_user_access";
     public static final String IDENTITY_MISSING = "identity_missing";
     public static final String IDENTITY_WRONG = "identity_wrong";
+    public static final String UNABLE_TO_UPDATE = "unable_to_update";
 
     public static final String UNABLE_TO_FETCH_INTERNAL_RESOURCE = "unable_to_fetch_internal_resource";
 

@@ -86,13 +86,14 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
                 .setExotelCallRequest(request);
     }
 
-    public static ExotelCall ofInbound(ExotelConnectAppletRequest request, PhoneNumber to) {
+    public static ExotelCall ofInbound(ExotelConnectAppletRequest request, PhoneNumber to, String accountSid) {
 
         PhoneNumber from = PhoneNumber.of(request.getFrom());
         PhoneNumber callerId = PhoneNumber.of(request.getCallTo());
 
         return new ExotelCall()
                 .setSid(request.getCallSid())
+                .setAccountSid(accountSid)
                 .setDirection(ExotelDirection.INBOUND.name())
                 .setFromDialCode(from.getCountryCode())
                 .setFrom(from.getNumber())

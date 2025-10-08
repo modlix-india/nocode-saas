@@ -209,7 +209,7 @@ public abstract class BaseUpdatableService<
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
             existing.setActive(entity.isActive());
             return Mono.just(existing);
         });
