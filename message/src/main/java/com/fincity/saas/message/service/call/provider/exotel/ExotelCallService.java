@@ -195,7 +195,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
             return Mono.empty();
         }
 
-        Map<String, Object> providerRequest = request.getProviderIncomingRequest();
+        Map<String, String> providerRequest = request.getProviderIncomingRequest();
 
         if (providerRequest == null || providerRequest.isEmpty()) {
             logger.error("Missing required parameter: provider information");
@@ -210,9 +210,10 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         () -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
                         connection -> super.getUserIdAndPhone(request.getUserId()),
-                        (connection, user) -> Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue())),
+                        (connection, user) -> Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
+                                connection.getConnectionDetails().getOrDefault("accountSid", ""))),
                         (connection, user, exotelCall) -> {
-                            Mono<ExotelCall> exotelCreated = this.createInternal(access, exotelCall);
+                            Mono<ExotelCall> exotelCreated = this.createInternal(access, user.getId(), exotelCall);
 
                             Mono<Call> callCreated = this.toCall(exotelCall)
                                     .map(call -> call.setConnectionName(connection.getName()))
@@ -230,7 +231,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                                     tuple.getT1())
                                             .thenReturn(tuple.getT3()));
                         })
-                .cast(ExotelConnectAppletResponse.class)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.connectCall"));
     }
 
@@ -244,20 +244,30 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     }
 
     private void applyConnectionDetailsToResponse(ExotelConnectAppletResponse response, Map<String, Object> details) {
-        response.setFetchAfterAttempt(super.getConnectionDetail(
-                details, ExotelConnectAppletResponse.Fields.fetchAfterAttempt, Boolean.class));
-        response.setDoRecord(
-                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.doRecord, Boolean.class));
-        response.setMaxRingingDuration(
-                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.maxRingingDuration, Long.class));
-        response.setMaxConversationDuration(super.getConnectionDetail(
-                details, ExotelConnectAppletResponse.Fields.maxConversationDuration, Long.class));
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.fetchAfterAttempt, Boolean.class),
+                response::setFetchAfterAttempt);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.doRecord, Boolean.class),
+                response::setDoRecord);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(details, ExotelConnectAppletResponse.Fields.maxRingingDuration, Long.class),
+                response::setMaxRingingDuration);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(
+                        details, ExotelConnectAppletResponse.Fields.maxConversationDuration, Long.class),
+                response::setMaxConversationDuration);
 
         ExotelConnectAppletResponse.ParallelRinging parallelRinging = new ExotelConnectAppletResponse.ParallelRinging();
-        parallelRinging.setActivate(super.getConnectionDetail(
-                details, ExotelConnectAppletResponse.ParallelRinging.Fields.activate, Boolean.class));
-        parallelRinging.setMaxParallelAttempts(super.getConnectionDetail(
-                details, ExotelConnectAppletResponse.ParallelRinging.Fields.maxParallelAttempts, Integer.class));
+
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(
+                        details, ExotelConnectAppletResponse.ParallelRinging.Fields.activate, Boolean.class),
+                parallelRinging::setActivate);
+        SetterUtil.setIfPresent(
+                super.getConnectionDetail(
+                        details, ExotelConnectAppletResponse.ParallelRinging.Fields.maxParallelAttempts, Integer.class),
+                parallelRinging::setMaxParallelAttempts);
 
         response.setParallelRinging(parallelRinging);
     }

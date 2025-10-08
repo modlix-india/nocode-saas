@@ -95,6 +95,11 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 (baseEvicted, rulesEvicted) -> baseEvicted && rulesEvicted);
     }
 
+    @Override
+    protected Mono<ULong> getLoggedInUserId() {
+        return Mono.empty();
+    }
+
     private Mono<Boolean> evictRulesCache(String appCode, String clientCode, ULong entityId, ULong stageId) {
         return Mono.zip(
                 this.cacheService.evict(this.getCacheName(), this.getCacheKey(appCode, clientCode, entityId, stageId)),

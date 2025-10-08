@@ -119,9 +119,13 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.justOrEmpty(
-                        ca.isAuthenticated() ? ULong.valueOf(ca.getUser().getId()) : null));
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.justOrEmpty(
+                                ca.isAuthenticated()
+                                        ? ULong.valueOf(ca.getUser().getId())
+                                        : null))
+                .switchIfEmpty(Mono.empty())
+                .onErrorResume(e -> Mono.empty());
     }
 
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
@@ -267,7 +271,7 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.read(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
             if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
@@ -461,15 +465,15 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.MISSING_PARAMETERS,
-                this.getEntityName(),
-                paramName);
+                paramName,
+                this.getEntityName());
     }
 
     protected <T> Mono<T> throwInvalidParam(String paramName) {
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
-                this.getEntityName(),
-                paramName);
+                paramName,
+                this.getEntityName());
     }
 }

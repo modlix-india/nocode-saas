@@ -48,13 +48,6 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(e -> e.into(this.pojoClass));
     }
 
-    public Mono<Ticket> readByNumber(ProcessorAccess access, Integer dialCode, String number) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(this.getOwnerIdentifierConditions(access, null, dialCode, number, null)))
-                .map(e -> e.into(this.pojoClass));
-    }
-
     private List<Condition> getOwnerIdentifierConditions(
             ProcessorAccess access, ULong productId, Integer dialCode, String number, String email) {
 
