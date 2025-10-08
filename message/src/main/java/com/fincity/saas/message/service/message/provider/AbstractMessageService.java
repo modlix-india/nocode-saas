@@ -121,11 +121,11 @@ public abstract class AbstractMessageService<
     }
 
     protected Mono<String> getWebhookUrl(String appCode, String clientCode) {
-        return buildWebhookUrl(appCode, clientCode != null ? clientCode : SYSTEM);
+        return this.buildWebhookUrl(appCode, clientCode != null ? clientCode : SYSTEM);
     }
 
     protected Mono<String> getWebhookAppUrl(String appCode) {
-        return buildWebhookUrl(appCode, SYSTEM);
+        return this.buildWebhookUrl(appCode, SYSTEM);
     }
 
     protected Mono<IdAndValue<ULong, PhoneNumber>> getUserIdAndPhone(ULong userId) {
