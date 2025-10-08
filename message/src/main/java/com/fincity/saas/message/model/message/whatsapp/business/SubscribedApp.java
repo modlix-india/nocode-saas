@@ -18,6 +18,6 @@ public final class SubscribedApp implements Serializable {
     @JsonProperty("whatsapp_business_api_data")
     private BusinessApiData businessApiData;
 
-    @JsonProperty("override_call_back_url")
+    @JsonProperty("override_callback_uri")
     private String overrideCallBackUrl;
 }
