@@ -147,6 +147,6 @@ public abstract class AbstractMessageService<
     }
 
     private String buildUrl(String baseUrl, String appCode, String clientCode, String provider) {
-        return baseUrl + "/" + appCode + "/" + clientCode + PAGE_URI + WEBHOOK_URI + provider;
+        return baseUrl + "/" + appCode + "/" + clientCode + PAGE_URI + WEBHOOK_URI + "/" + provider;
     }
 }
