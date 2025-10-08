@@ -16,7 +16,7 @@ import lombok.experimental.FieldNameConstants;
 public class ExotelConnectAppletResponse implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 5952437367251012984L;
 
     @JsonProperty("fetch_after_attempt")
     private Boolean fetchAfterAttempt;

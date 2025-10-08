@@ -11,6 +11,7 @@ import com.fincity.saas.message.jooq.Indexes;
 import com.fincity.saas.message.jooq.Keys;
 import com.fincity.saas.message.jooq.Message;
 import com.fincity.saas.message.jooq.tables.MessageMessages.MessageMessagesPath;
+import com.fincity.saas.message.jooq.tables.MessageWhatsappBusinessAccounts.MessageWhatsappBusinessAccountsPath;
 import com.fincity.saas.message.jooq.tables.records.MessageWhatsappMessagesRecord;
 import com.fincity.saas.message.model.message.whatsapp.messages.response.MessageResponse;
 import com.fincity.saas.message.model.message.whatsapp.webhook.IMessage;
@@ -98,6 +99,13 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
      * Code to identify this row.
      */
     public final TableField<MessageWhatsappMessagesRecord, String> CODE = createField(DSL.name("CODE"), SQLDataType.CHAR(22).nullable(false), this, "Unique Code to identify this row.");
+
+    /**
+     * The column
+     * <code>message.message_whatsapp_messages.WHATSAPP_BUSINESS_ACCOUNT_ID</code>.
+     * WhatsApp Business Account ID.
+     */
+    public final TableField<MessageWhatsappMessagesRecord, ULong> WHATSAPP_BUSINESS_ACCOUNT_ID = createField(DSL.name("WHATSAPP_BUSINESS_ACCOUNT_ID"), SQLDataType.BIGINTUNSIGNED, this, "WhatsApp Business Account ID.");
 
     /**
      * The column <code>message.message_whatsapp_messages.MESSAGE_ID</code>.
@@ -347,6 +355,24 @@ public class MessageWhatsappMessages extends TableImpl<MessageWhatsappMessagesRe
     @Override
     public List<UniqueKey<MessageWhatsappMessagesRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.KEY_MESSAGE_WHATSAPP_MESSAGES_UK1_WHATSAPP_MESSAGES_CODE);
+    }
+
+    @Override
+    public List<ForeignKey<MessageWhatsappMessagesRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.FK1_WHATSAPP_MESSAGES_WHATSAPP_BUSINESS_ACCOUNT_ID);
+    }
+
+    private transient MessageWhatsappBusinessAccountsPath _messageWhatsappBusinessAccounts;
+
+    /**
+     * Get the implicit join path to the
+     * <code>message.message_whatsapp_business_accounts</code> table.
+     */
+    public MessageWhatsappBusinessAccountsPath messageWhatsappBusinessAccounts() {
+        if (_messageWhatsappBusinessAccounts == null)
+            _messageWhatsappBusinessAccounts = new MessageWhatsappBusinessAccountsPath(this, Keys.FK1_WHATSAPP_MESSAGES_WHATSAPP_BUSINESS_ACCOUNT_ID, null);
+
+        return _messageWhatsappBusinessAccounts;
     }
 
     private transient MessageMessagesPath _messageMessages;

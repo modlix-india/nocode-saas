@@ -44,7 +44,7 @@ public class ProductDAO extends BaseProcessorDAO<EntityProcessorProductsRecord, 
                         productIds != null
                                 ? new FilterCondition()
                                         .setField(AbstractDTO.Fields.id)
-                                        .setMatchOperator(FilterConditionOperator.IN)
+                                        .setOperator(FilterConditionOperator.IN)
                                         .setMultiValue(productIds)
                                 : null,
                         access),

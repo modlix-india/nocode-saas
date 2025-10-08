@@ -10,8 +10,9 @@ public enum NameStatusType implements EnumType {
     AVAILABLE_WITHOUT_REVIEW("AVAILABLE_WITHOUT_REVIEW", "AVAILABLE_WITHOUT_REVIEW"),
     DECLINED("DECLINED", "DECLINED"),
     EXPIRED("EXPIRED", "EXPIRED"),
-    PENDING_REVIEW("PENDING_REVIEW", "PENDING_REVIEW"),
-    NONE("NONE", "NONE");
+    NON_EXISTS("NON_EXISTS", "NON_EXISTS"),
+    NONE("NONE", "NONE"),
+    PENDING_REVIEW("PENDING_REVIEW", "PENDING_REVIEW");
 
     private final String literal;
     private final String value;
@@ -21,13 +22,13 @@ public enum NameStatusType implements EnumType {
         this.value = value;
     }
 
+    public static NameStatusType lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(NameStatusType.class, literal);
+    }
+
     @JsonValue
     public String getValue() {
         return value;
-    }
-
-    public static NameStatusType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(NameStatusType.class, literal);
     }
 
     @Override

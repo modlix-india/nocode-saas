@@ -358,6 +358,34 @@
                                             <includeExpression>.*\.EXOTEL_CONNECT_APPLET_REQUEST</includeExpression>
                                         </forcedType>
                                         <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.SUBSCRIBED_APP</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.WEBHOOK_CONFIG</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.phone.Throughput</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.THROUGHPUT</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.model.message.whatsapp.phone.QualityScore</userType>
+                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <includeTypes>JSON</includeTypes>
+                                            <genericConverter>true</genericConverter>
+                                            <includeExpression>.*\.QUALITY_SCORE</includeExpression>
+                                        </forcedType>
+                                        <forcedType>
                                             <userType>com.fincity.saas.message.enums.call.provider.exotel.ExotelCallStatus</userType>
                                             <includeExpression>.*\.EXOTEL_CALL_STATUS|.*\.LEG1_STATUS|.*\.LEG2_STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
@@ -401,7 +429,7 @@
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.TemplateStatus</userType>
-                                            <includeExpression>.*\.STATUS</includeExpression>
+                                            <includeExpression>MESSAGE_WHATSAPP_TEMPLATES\.STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
@@ -424,8 +452,14 @@
                                             <enumConverter>true</enumConverter>
                                         </forcedType>
                                         <forcedType>
-                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.LevelType</userType>
-                                            <includeExpression>.*\.THROUGHPUT_LEVEL_TYPE</includeExpression>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.MessagingLimitTier</userType>
+                                            <includeExpression>.*\.MESSAGING_LIMIT_TIER</includeExpression>
+                                            <includeTypes>ENUM</includeTypes>
+                                            <enumConverter>true</enumConverter>
+                                        </forcedType>
+                                        <forcedType>
+                                            <userType>com.fincity.saas.message.enums.message.provider.whatsapp.business.phone.type.Status</userType>
+                                            <includeExpression>MESSAGE_WHATSAPP_PHONE_NUMBERS\.STATUS</includeExpression>
                                             <includeTypes>ENUM</includeTypes>
                                             <enumConverter>true</enumConverter>
                                         </forcedType>

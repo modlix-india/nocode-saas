@@ -1,12 +1,14 @@
 package com.fincity.saas.core.controller;
 
 import com.fincity.saas.commons.core.document.Connection;
+
 import com.fincity.saas.commons.core.enums.ConnectionType;
+import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
 import com.fincity.saas.commons.core.repository.ConnectionRepository;
 import com.fincity.saas.commons.core.service.ConnectionService;
 import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-import org.jooq.types.ULong;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -56,13 +58,23 @@ public class ConnectionController
     }
 
     @GetMapping("/internal/notification/{name}")
-    public Mono<ResponseEntity<Map<String, Connection>>> getNotificationConnections(
+    public Mono<ResponseEntity<NotificationConnectionDetails>> getNotificationConnections(
             @PathVariable("name") String connectionName,
             @RequestParam String appCode,
             @RequestParam String clientCode,
-            @RequestParam ULong triggerUserId,
             @RequestParam String urlClientCode) {
-        return this.service.getNotificationConnections(connectionName, appCode, clientCode, triggerUserId, urlClientCode)
+        return this.service.getNotificationConnections(connectionName, appCode, urlClientCode, clientCode)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/{name}")
+    public Mono<ResponseEntity<Connection>> getNotificationConnections(
+            @PathVariable("name") String connectionName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam String urlClientCode,
+            @RequestParam ConnectionType connectionType) {
+        return this.service.getConnection(connectionName, appCode, urlClientCode, clientCode, connectionType)
                 .map(ResponseEntity::ok);
     }
 }

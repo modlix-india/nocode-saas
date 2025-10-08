@@ -1,22 +1,30 @@
 package com.fincity.saas.message.service.message.provider.whatsapp.business;
 
+import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.message.configuration.message.whatsapp.ApiVersion;
+import com.fincity.saas.message.model.message.whatsapp.business.BusinessAccount;
+import com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp;
+import com.fincity.saas.message.model.message.whatsapp.business.WebhookConfig;
+import com.fincity.saas.message.model.message.whatsapp.business.WebhookOverride;
 import com.fincity.saas.message.model.message.whatsapp.config.CommerceDataItem;
-import com.fincity.saas.message.model.message.whatsapp.config.GraphCommerceSettings;
+import com.fincity.saas.message.model.message.whatsapp.data.FbData;
+import com.fincity.saas.message.model.message.whatsapp.data.FbPagingData;
 import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumber;
-import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumbers;
+import com.fincity.saas.message.model.message.whatsapp.phone.PhoneNumberWebhookConfig;
 import com.fincity.saas.message.model.message.whatsapp.phone.RequestCode;
 import com.fincity.saas.message.model.message.whatsapp.phone.VerifyCode;
 import com.fincity.saas.message.model.message.whatsapp.response.Response;
 import com.fincity.saas.message.model.message.whatsapp.templates.MessageTemplate;
-import com.fincity.saas.message.model.message.whatsapp.templates.response.MessageTemplates;
 import com.fincity.saas.message.model.message.whatsapp.templates.response.Template;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.message.provider.whatsapp.api.AbstractWhatsappApi;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -52,6 +60,18 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         return new WhatsappBusinessManagementApiServiceImpl(webClient, messageResourceService);
     }
 
+    public Mono<BusinessAccount> getBusinessAccount(String whatsappBusinessAccountId) {
+        return apiService.getBusinessAccount(apiVersion.getValue(), whatsappBusinessAccountId);
+    }
+
+    public Mono<Response> overrideBusinessWebhook(String whatsappBusinessAccountId, WebhookOverride webhookOverride) {
+        return apiService.overrideBusinessWebhook(apiVersion.getValue(), whatsappBusinessAccountId, webhookOverride);
+    }
+
+    public Mono<FbData<SubscribedApp>> getSubscribedApp(String whatsappBusinessAccountId) {
+        return apiService.getSubscribedApp(apiVersion.getValue(), whatsappBusinessAccountId);
+    }
+
     public Mono<Template> createMessageTemplate(String whatsappBusinessAccountId, MessageTemplate messageTemplate) {
         return apiService.createMessageTemplate(apiVersion.getValue(), whatsappBusinessAccountId, messageTemplate);
     }
@@ -66,23 +86,23 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         return apiService.deleteMessageTemplate(apiVersion.getValue(), whatsappBusinessAccountId, name);
     }
 
-    public Mono<MessageTemplates> retrieveTemplates(String whatsappBusinessAccountId) {
+    public Mono<FbPagingData<Template>> retrieveTemplates(String whatsappBusinessAccountId) {
         return apiService.retrieveTemplates(apiVersion.getValue(), whatsappBusinessAccountId);
     }
 
-    public Mono<MessageTemplates> retrieveTemplates(String whatsappBusinessAccountId, int limit) {
+    public Mono<FbPagingData<Template>> retrieveTemplates(String whatsappBusinessAccountId, int limit) {
         Map<String, Object> filters = new HashMap<>();
         filters.put("limit", Optional.of(limit));
         return apiService.retrieveTemplates(apiVersion.getValue(), whatsappBusinessAccountId, filters);
     }
 
-    public Mono<MessageTemplates> retrieveTemplates(String whatsappBusinessAccountId, String templateName) {
+    public Mono<FbPagingData<Template>> retrieveTemplates(String whatsappBusinessAccountId, String templateName) {
         Map<String, Object> filters = new HashMap<>();
         filters.put("name", templateName);
         return apiService.retrieveTemplates(apiVersion.getValue(), whatsappBusinessAccountId, filters);
     }
 
-    public Mono<MessageTemplates> retrieveTemplates(String whatsappBusinessAccountId, int limit, String after) {
+    public Mono<FbPagingData<Template>> retrieveTemplates(String whatsappBusinessAccountId, int limit, String after) {
         Map<String, Object> filters = new HashMap<>();
         filters.put("limit", Optional.of(limit));
         filters.put("after", after);
@@ -94,14 +114,32 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
     }
 
     public Mono<PhoneNumber> retrievePhoneNumber(String phoneNumberId, String... fields) {
-        Objects.requireNonNull(fields, "Fields cannot be null");
-        Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("fields", String.join(",", fields));
-        return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, queryParams);
+
+        if (fields == null)
+            return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, new HashMap<>());
+
+        return apiService.retrievePhoneNumber(apiVersion.getValue(), phoneNumberId, this.createFieldQueryParam(fields));
     }
 
-    public Mono<PhoneNumbers> retrievePhoneNumbers(String whatsappBusinessAccountId) {
-        return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId);
+    public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(String whatsappBusinessAccountId) {
+        return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId, new HashMap<>());
+    }
+
+    public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(String whatsappBusinessAccountId, String... fields) {
+
+        if (fields == null)
+            return apiService.retrievePhoneNumbers(apiVersion.getValue(), whatsappBusinessAccountId, new HashMap<>());
+
+        return apiService.retrievePhoneNumbers(
+                apiVersion.getValue(), whatsappBusinessAccountId, this.createFieldQueryParam(fields));
+    }
+
+    public Mono<Response> overridePhoneNumberWebhook(String phoneNumberId, WebhookConfig webhookConfig) {
+        return apiService.overridePhoneNumberWebhook(apiVersion.getValue(), phoneNumberId, webhookConfig);
+    }
+
+    public Mono<PhoneNumberWebhookConfig> retrievePhoneNumberWebhookConfig(String phoneNumberId) {
+        return apiService.retrievePhoneNumberWebhookConfig(apiVersion.getValue(), phoneNumberId);
     }
 
     public Mono<Response> requestCode(String phoneNumberId, RequestCode requestCode) {
@@ -112,15 +150,31 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         return apiService.verifyCode(apiVersion.getValue(), phoneNumberId, verifyCode);
     }
 
-    public Mono<GraphCommerceSettings> getWhatsappCommerceSettings(String phoneNumberId, String... fields) {
-        Objects.requireNonNull(fields, "Fields cannot be null");
-        Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("fields", String.join(",", fields));
-        return apiService.getWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, queryParams);
+    public Mono<FbData<CommerceDataItem>> getWhatsappCommerceSettings(String phoneNumberId, String... fields) {
+
+        if (fields == null)
+            return apiService.getWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, new HashMap<>());
+
+        return apiService.getWhatsappCommerceSettings(
+                apiVersion.getValue(), phoneNumberId, this.createFieldQueryParam(fields));
     }
 
     public Mono<Response> updateWhatsappCommerceSettings(String phoneNumberId, CommerceDataItem commerceDataItem) {
         return apiService.updateWhatsappCommerceSettings(apiVersion.getValue(), phoneNumberId, commerceDataItem);
+    }
+
+    private Map<String, String> createFieldQueryParam(String... fields) {
+        Objects.requireNonNull(fields, "Fields cannot be null");
+        Map<String, String> queryParams = new HashMap<>();
+
+        String joinedFields = Arrays.stream(fields)
+                .filter(Objects::nonNull)
+                .map(Case.SNAKE.getConverter())
+                .collect(Collectors.joining(","));
+
+        queryParams.put("fields", joinedFields);
+
+        return queryParams;
     }
 
     private record WhatsappBusinessManagementApiServiceImpl(WebClient webClient, MessageResourceService msgService)
@@ -128,6 +182,51 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
 
         private Mono<Throwable> handleWhatsappApiError(ClientResponse clientResponse) {
             return AbstractWhatsappApi.handleWhatsappApiError(clientResponse, this.msgService);
+        }
+
+        @Override
+        public Mono<BusinessAccount> getBusinessAccount(String apiVersion, String whatsappBusinessAccountId) {
+            return webClient
+                    .get()
+                    .uri("/{api-version}/{whatsapp-business-account-ID}", apiVersion, whatsappBusinessAccountId)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(BusinessAccount.class);
+        }
+
+        @Override
+        public Mono<FbData<SubscribedApp>> getSubscribedApp(String apiVersion, String whatsappBusinessAccountId) {
+            return webClient
+                    .get()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/subscribed_apps",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(new ParameterizedTypeReference<FbData<SubscribedApp>>() {});
+        }
+
+        @Override
+        public Mono<Response> overrideBusinessWebhook(
+                String apiVersion, String whatsappBusinessAccountId, WebhookOverride webhookOverride) {
+            return webClient
+                    .post()
+                    .uri(
+                            "/{api-version}/{whatsapp-business-account-ID}/subscribed_apps",
+                            apiVersion,
+                            whatsappBusinessAccountId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(webhookOverride)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(Response.class);
         }
 
         @Override
@@ -186,7 +285,7 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<MessageTemplates> retrieveTemplates(String apiVersion, String whatsappBusinessAccountId) {
+        public Mono<FbPagingData<Template>> retrieveTemplates(String apiVersion, String whatsappBusinessAccountId) {
             return webClient
                     .get()
                     .uri(
@@ -197,11 +296,11 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
-                    .bodyToMono(MessageTemplates.class);
+                    .bodyToMono(new ParameterizedTypeReference<FbPagingData<Template>>() {});
         }
 
         @Override
-        public Mono<MessageTemplates> retrieveTemplates(
+        public Mono<FbPagingData<Template>> retrieveTemplates(
                 String apiVersion, String whatsappBusinessAccountId, Map<String, Object> filters) {
             return webClient
                     .get()
@@ -214,12 +313,12 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
-                    .bodyToMono(MessageTemplates.class);
+                    .bodyToMono(new ParameterizedTypeReference<FbPagingData<Template>>() {});
         }
 
         @Override
         public Mono<PhoneNumber> retrievePhoneNumber(
-                String apiVersion, String phoneNumberId, Map<String, Object> queryParams) {
+                String apiVersion, String phoneNumberId, Map<String, String> queryParams) {
             return webClient
                     .get()
                     .uri(uriBuilder -> {
@@ -235,18 +334,52 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<PhoneNumbers> retrievePhoneNumbers(String apiVersion, String whatsappBusinessAccountId) {
+        public Mono<FbPagingData<PhoneNumber>> retrievePhoneNumbers(
+                String apiVersion, String whatsappBusinessAccountId, Map<String, String> queryParams) {
             return webClient
                     .get()
-                    .uri(
-                            "/{api-version}/{whatsapp-business-account-ID}/phone_numbers",
-                            apiVersion,
-                            whatsappBusinessAccountId)
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{whatsapp-business-account-ID}/phone_numbers");
+                        queryParams.forEach(uriBuilder::queryParam);
+                        return uriBuilder.build(apiVersion, whatsappBusinessAccountId);
+                    })
                     .retrieve()
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
-                    .bodyToMono(PhoneNumbers.class);
+                    .bodyToMono(new ParameterizedTypeReference<FbPagingData<PhoneNumber>>() {});
+        }
+
+        @Override
+        public Mono<Response> overridePhoneNumberWebhook(
+                String apiVersion, String phoneNumberId, WebhookConfig webhookConfig) {
+            return webClient
+                    .post()
+                    .uri("/{api-version}/{phone-number-ID}", apiVersion, phoneNumberId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(webhookConfig)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(Response.class);
+        }
+
+        @Override
+        public Mono<PhoneNumberWebhookConfig> retrievePhoneNumberWebhookConfig(
+                String apiVersion, String phoneNumberId) {
+            return webClient
+                    .get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/{api-version}/{phone-number-ID}");
+                        uriBuilder.queryParam("fields", "webhook_configuration");
+                        return uriBuilder.build(apiVersion, phoneNumberId);
+                    })
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(),
+                            this::handleWhatsappApiError)
+                    .bodyToMono(PhoneNumberWebhookConfig.class);
         }
 
         @Override
@@ -278,7 +411,7 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
         }
 
         @Override
-        public Mono<GraphCommerceSettings> getWhatsappCommerceSettings(
+        public Mono<FbData<CommerceDataItem>> getWhatsappCommerceSettings(
                 String apiVersion, String phoneNumberId, Map<String, String> queryParams) {
             return webClient
                     .get()
@@ -291,7 +424,7 @@ public class WhatsappBusinessManagementApi extends AbstractWhatsappApi {
                     .onStatus(
                             status -> status.is4xxClientError() || status.is5xxServerError(),
                             this::handleWhatsappApiError)
-                    .bodyToMono(GraphCommerceSettings.class);
+                    .bodyToMono(new ParameterizedTypeReference<FbData<CommerceDataItem>>() {});
         }
 
         @Override

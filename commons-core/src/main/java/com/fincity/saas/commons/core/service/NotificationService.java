@@ -4,10 +4,12 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.document.Notification;
 import com.fincity.saas.commons.core.repository.NotificationRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mongo.service.AbstractOverridableDataService;
 import com.fincity.saas.commons.mq.notifications.NotificationQueObject;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.data.CircularLinkedList;
 import com.fincity.saas.commons.util.data.DoublePointerNode;
@@ -128,12 +130,13 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                         },
                         (ca, actualTuple, hasUserAccess) -> {
 
-                            if (!hasUserAccess) return Mono.empty();
+                            if (!BooleanUtil.safeValueOf(hasUserAccess)) return Mono.empty();
 
                             this.nextRoutingKey = nextRoutingKey.getNext();
                             return Mono.just(new NotificationQueObject()
                                             .setAppCode(actualTuple.getT1())
                                             .setClientCode(actualTuple.getT2())
+                                            .setUrlClientCode(ca.getUrlClientCode())
                                             .setTargetId(targetId)
                                             .setTargetType(targetType)
                                             .setTargetCode(targetCode)
@@ -150,7 +153,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                                 .toString());
                                         return Mono.just(q);
                                     }))
-                                    .flatMap(q -> Mono.fromCallable(() -> {
+                                    .<Boolean>flatMap(q -> Mono.fromCallable(() -> {
                                         amqpTemplate.convertAndSend(exchange, nextRoutingKey.getItem(), q);
                                         return true;
                                     }));
@@ -158,5 +161,10 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                 )
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "NotificationService.processAndSendNotification"));
+    }
+
+    public Mono<Notification> getNotification(String notificationName, String appCode, String urlClientCode, String clientCode) {
+
+        return this.readInternal(notificationName, appCode, urlClientCode, clientCode).map(ObjectWithUniqueID::getObject);
     }
 }

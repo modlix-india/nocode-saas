@@ -127,10 +127,17 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_product_comms.CONNECTION_SUB_TYPE</code>.
+     * Sub Type of the connection used for the productComm.
+     */
+    public final TableField<EntityProcessorProductCommsRecord, String> CONNECTION_SUB_TYPE = createField(DSL.name("CONNECTION_SUB_TYPE"), SQLDataType.CHAR(50).nullable(false), this, "Sub Type of the connection used for the productComm.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_product_comms.PRODUCT_ID</code>.
      * Product ID for which this Comm is created.
      */
-    public final TableField<EntityProcessorProductCommsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product ID for which this Comm is created.");
+    public final TableField<EntityProcessorProductCommsRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product ID for which this Comm is created.");
 
     /**
      * The column
@@ -312,7 +319,7 @@ public class EntityProcessorProductComms extends TableImpl<EntityProcessorProduc
 
     @Override
     public List<UniqueKey<EntityProcessorProductCommsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK1_PRODUCT_COMMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK2_PRODUCT_COMMS_AC_CC_P_C_CT_S_SS);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK1_PRODUCT_COMMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK2_PRODUCT_COMMS_AC_CC_CT_CST_PH, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_COMMS_UK3_PRODUCT_COMMS_AC_CC_CT_CST_E);
     }
 
     @Override

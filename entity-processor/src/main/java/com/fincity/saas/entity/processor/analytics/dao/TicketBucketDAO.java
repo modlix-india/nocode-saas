@@ -107,7 +107,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     private Mono<AbstractCondition> ticketFilterCondition() {
         return Mono.just(new FilterCondition()
                 .setField(BaseUpdatableDto.Fields.isActive)
-                .setMatchOperator(FilterConditionOperator.IS_TRUE));
+                .setOperator(FilterConditionOperator.IS_TRUE));
     }
 
     private Mono<AbstractCondition> getSourceConditions(TicketBucketFilter filter, Map<String, String> fieldMappings) {
