@@ -357,8 +357,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                     createdUser.getId(), CREATE, getSoxObjectName(), "User created");
                             return this.setPasswordEntities(createdUser, pass);
                         },
-                        (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) -> this.evictOwnerCache(
-                                        passSet.getClientId(), passSet.getId())
+                        (ca, user, isValid, pass, passValid, isAvailable, createdUser, passSet) -> Mono.zip(this.evictOwnerCache(
+                                        passSet.getClientId(), ULong.valueOf(ca.getUser().getId())), this.evictOwnerCache(passSet.getClientId(), passSet.getReportingTo()))
                                 .<User>map(evicted -> passSet))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.create"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_CREATE, "User"));
