@@ -42,6 +42,8 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
+import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -1409,5 +1411,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
         return userFlux.collectList();
+    }
+
+    public Mono<List<NotificationUser>> getUsersForNotification(UsersListRequest request) {
+        return this.dao.getUsersForNotification(request.getUserIds(), request.getAppCode(), request.getClientId(), request.getClientCode());
     }
 }
