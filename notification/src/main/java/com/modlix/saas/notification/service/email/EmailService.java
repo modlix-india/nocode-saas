@@ -1,16 +1,15 @@
 package com.modlix.saas.notification.service.email;
 
-import jakarta.annotation.PostConstruct;
-
-import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
+
+import com.modlix.saas.commons2.security.model.NotificationUser;
+import com.modlix.saas.notification.model.CoreNotification;
+import com.modlix.saas.notification.model.NotificationConnectionDetails;
+
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class EmailService {
@@ -31,44 +30,9 @@ public class EmailService {
         this.services.put("SMTP", smtpService);
     }
 
-    public Boolean sendEmail(
-            String appCode,
-            String clientCode,
-            String address,
-            String templateName,
-            Map<String, Object> templateData) {
-        return this.sendEmail(appCode, clientCode, addresses, templateName, null, templateData);
-    }
+    public Boolean sendEmail(NotificationUser user, NotificationConnectionDetails connection, CoreNotification notification, Map<String, Object> payload) {
 
-    public Mono<Boolean> sendEmail(
-            String appCode,
-            String clientCode,
-            List<String> addresses,
-            String templateName,
-            String connectionName,
-            Map<String, Object> templateData) {
-        return FlatMapUtil.flatMapMono(
-                        () -> SecurityContextUtil.resolveAppAndClientCode(appCode, clientCode),
-                        actup -> connectionService
-                                .read(connectionName, actup.getT1(), actup.getT2(), ConnectionType.MAIL)
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                                        connectionName)),
-                        (actup, conn) -> Mono.justOrEmpty(this.services.get(conn.getConnectionSubType()))
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                                        conn.getConnectionSubType())),
-                        (actup, conn, mailService) -> templateService
-                                .read(templateName, actup.getT1(), actup.getT2())
-                                .map(ObjectWithUniqueID::getObject)
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        CoreMessageResourceService.TEMPLATE_DETAILS_MISSING,
-                                        templateName)),
-                        (actup, conn, mailService, template) ->
-                                mailService.sendMail(addresses, template, templateData, conn))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "EmailService.sendEmail"));
+        return this.services.get(connection.getMail().getConnectionSubType())
+                    .sendMail(user, connection, notification, payload);
     }
 }

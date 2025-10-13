@@ -1,14 +1,19 @@
 package com.modlix.saas.notification.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
+
 import com.modlix.saas.commons2.mq.notifications.NotificationQueObject;
 import com.modlix.saas.commons2.security.feign.IFeignSecurityService;
-import com.modlix.saas.commons2.security.util.LogUtil;
+import com.modlix.saas.commons2.security.model.NotificationUser;
+import com.modlix.saas.commons2.security.model.UsersListRequest;
 import com.modlix.saas.notification.feign.IFeignCoreService;
-import com.modlix.saas.notification.model.NotificationConnectionDetails;
 import com.modlix.saas.notification.model.CoreNotification;
+import com.modlix.saas.notification.model.NotificationConnectionDetails;
 import com.modlix.saas.notification.service.email.EmailService;
-
-import org.springframework.stereotype.Service;
 
 @Service
 public class NotificationSendService {
@@ -17,6 +22,10 @@ public class NotificationSendService {
 
     private static final String NOTIFICATION_CHANNEL_IN_APP = "inapp";
     private static final String NOTIFICATION_CHANNEL_EMAIL = "email";
+
+    public static final String USER_ID = "User Id";
+    public static final String CLIENT_ID = "Client Id";
+    public static final String CLIENT_CODE = "Client Code";
 
     private final IFeignCoreService coreService;
 
@@ -55,6 +64,34 @@ public class NotificationSendService {
             return;
         }
 
-        
+        List<NotificationUser> users;
+        UsersListRequest request = new UsersListRequest();
+
+
+        if (qob.getTargetType().equals(USER_ID)) {
+            request.setUserIds(List.of(qob.getTargetId().longValue()));
+        } else if (qob.getTargetType().equals(CLIENT_ID)) {
+            request.setClientId(qob.getTargetId().longValue());
+        } else if (qob.getTargetType().equals(CLIENT_CODE)) {
+            request.setClientCode(qob.getTargetCode());
+        }
+        request.setAppCode(qob.getAppCode());
+        users = this.securityService.getUsersForNotification(request);
+
+        if (users.isEmpty()) {
+            logger.error("Users not found: {}", qob);
+            return;
+        }
+
+        if (isEmail) {
+
+            for (NotificationUser user : users) {
+                this.emailService.sendEmail(user, connection, notification, qob.getPayload());
+            }
+        }
+
+        if (isInApp) {
+
+        }
     }
 }

@@ -1,12 +1,12 @@
-package com.fincity.saas.commons.core.service.connection.email;
+package com.modlix.saas.notification.service.email;
 
-import com.fincity.saas.commons.core.document.Connection;
-import com.fincity.saas.commons.core.document.Template;
-import java.util.List;
 import java.util.Map;
-import reactor.core.publisher.Mono;
+
+import com.modlix.saas.commons2.security.model.NotificationUser;
+import com.modlix.saas.notification.model.CoreNotification;
+import com.modlix.saas.notification.model.NotificationConnectionDetails;
 
 public interface IAppEmailService {
-    Mono<Boolean> sendMail(
-            List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection);
+    Boolean sendMail(
+            NotificationUser user, NotificationConnectionDetails connection, CoreNotification notification, Map<String, Object> payload);
 }

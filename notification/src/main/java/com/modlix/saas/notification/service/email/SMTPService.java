@@ -1,12 +1,15 @@
-package com.fincity.saas.commons.core.service.connection.email;
+package com.modlix.saas.notification.service.email;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.core.document.Connection;
-import com.fincity.saas.commons.core.document.Template;
-import com.fincity.saas.commons.core.service.CoreMessageResourceService;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
+import java.util.Map;
+import java.util.Properties;
+
+import org.springframework.stereotype.Service;
+
+import com.modlix.saas.commons2.security.model.NotificationUser;
+import com.modlix.saas.commons2.util.StringUtil;
+import com.modlix.saas.notification.model.CoreNotification;
+import com.modlix.saas.notification.model.NotificationConnectionDetails;
+
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
@@ -15,93 +18,68 @@ import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
-import reactor.util.function.Tuples;
 
 @Service
 public class SMTPService extends AbstractEmailService implements IAppEmailService {
 
     @SuppressWarnings("unchecked")
-    @Override
-    public Mono<Boolean> sendMail(
-            List<String> toAddresses, Template template, Map<String, Object> templateData, Connection connection) {
-        if (connection.getConnectionDetails() == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-                    CoreMessageResourceService.MAIL_SEND_ERROR,
-                    "Connection details are missing");
+    public Boolean sendMail(NotificationUser user, NotificationConnectionDetails notificationConnection, CoreNotification notification, Map<String, Object> payload) {
+
+        if (user == null || user.getEmailId() == null || user.getEmailId().isBlank() || "NONE".equalsIgnoreCase(user.getEmailId()) 
+            || user.getEmailId().indexOf('@') == -1)
+            return false;
+        
+        Map<String, Object> connectionDetails = notificationConnection.getMail().getConnectionDetails();
+        if (connectionDetails == null || connectionDetails.isEmpty())
+            return false;
 
         Map<String, Object> connProps =
-                (Map<String, Object>) connection.getConnectionDetails().get("mailProps");
-
+                (Map<String, Object>) connectionDetails.get("mailProps");
         if (connProps == null || connProps.isEmpty())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-                    CoreMessageResourceService.MAIL_SEND_ERROR,
-                    "Connection Properties with 'mail.' are missing");
+            return false;
 
-        if (StringUtil.safeIsBlank(connection.getConnectionDetails().get("username"))
-                || StringUtil.safeIsBlank(connection.getConnectionDetails().get("password")))
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
-                    CoreMessageResourceService.MAIL_SEND_ERROR,
-                    "Connection username/password is missing");
+        String userName = StringUtil.safeValueOf(connectionDetails.get("username"));
+        String password = StringUtil.safeValueOf(connectionDetails.get("password"));
 
-        return FlatMapUtil.flatMapMono(
-                        () -> Mono.just(
-                                Tuples.of(toAddresses == null ? List.of() : toAddresses, template, templateData)),
-                        tup -> this.getProcessedEmailDetails(toAddresses, template, templateData),
-                        (tup, details) -> Mono.just(connection),
-                        (tup, details, conn) -> {
-                            try {
-                                Properties props = new Properties();
-                                props.putAll(connProps);
+        if (StringUtil.safeIsBlank(userName)
+                || StringUtil.safeIsBlank(password))
+            return false; 
 
-                                String user = StringUtil.safeValueOf(
-                                        connection.getConnectionDetails().get("username"));
-                                String password = StringUtil.safeValueOf(
-                                        connection.getConnectionDetails().get("password"));
+        String fromAddress = StringUtil.safeValueOf(connectionDetails.get("fromAddress"));
 
-                                Session session = Session.getInstance(props, new Authenticator() {
-                                    @Override
-                                    protected PasswordAuthentication getPasswordAuthentication() {
-                                        return new PasswordAuthentication(user, password);
-                                    }
-                                });
+        if (StringUtil.safeIsBlank(fromAddress))
+            return false;
 
-                                MimeMessage message = new MimeMessage(session);
+        String language = this.getLanguage(notification, payload);
 
-                                message.setFrom(new InternetAddress(details.getFrom()));
+        Map<String, String> template = this.getProcessedTemplate(language, notification.getChannelTemplates().get(EMAIL_TEMPLATE_NAME), payload);
 
-                                details.getTo().forEach(e -> {
-                                    try {
-                                        message.addRecipient(Message.RecipientType.TO, new InternetAddress(e));
-                                    } catch (MessagingException e1) {
-                                        logger.error("Error while adding : {}", e, e1);
-                                    }
-                                });
-                                message.setSubject(details.getSubject());
-                                message.setContent(details.getBody(), "text/html");
+        if (template == null || template.isEmpty())
+            return false;
 
-                                Transport.send(message, message.getAllRecipients());
+        Properties props = new Properties();
+        props.putAll(connProps);
 
-                                return Mono.just(true);
-                            } catch (MessagingException mex) {
-                                logger.error("Error while sending : {}", mex.getMessage(), mex);
+        Session session = Session.getInstance(props, new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(userName, password);
+            }
+        });
 
-                                return this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg, mex),
-                                        CoreMessageResourceService.MAIL_SEND_ERROR,
-                                        mex.getMessage());
-                            }
-                        })
-                .map(e -> true)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SMTPService.sendMail"));
+        MimeMessage message = new MimeMessage(session);
+
+        try {
+            message.setFrom(new InternetAddress(fromAddress));
+            message.addRecipient(Message.RecipientType.TO, new InternetAddress(user.getEmailId()));
+            message.setSubject(template.get("subject"));
+            message.setContent(template.get("body"), "text/html");
+
+            Transport.send(message, message.getAllRecipients());
+        } catch (MessagingException e) {
+            logger.error("Error while adding : {}", user.getEmailId(), e);
+        }
+        
+        return true;
     }
 }
