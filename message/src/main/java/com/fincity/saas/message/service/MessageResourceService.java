@@ -42,6 +42,7 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String INVALID_USER_ACCESS = "invalid_user_access";
     public static final String IDENTITY_MISSING = "identity_missing";
     public static final String IDENTITY_WRONG = "identity_wrong";
+    public static final String UNABLE_TO_UPDATE = "unable_to_update";
 
     public static final String UNABLE_TO_FETCH_INTERNAL_RESOURCE = "unable_to_fetch_internal_resource";
 
@@ -55,6 +56,8 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String TEMPLATE_NOT_FOUND_IN_WHATSAPP = "template_not_found_in_whatsapp";
     public static final String INVALID_MESSAGE_TYPE_MEDIA = "invalid_message_type_media";
     public static final String WEBHOOK_CONFIG_NOT_DONE = "webhook_config_not_done";
+    public static final String PRODUCT_TO_DEFAULT = "product_to_default";
+    public static final String PRODUCT_ALREADY_ASSIGNED = "product_already_assigned";
 
     protected MessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

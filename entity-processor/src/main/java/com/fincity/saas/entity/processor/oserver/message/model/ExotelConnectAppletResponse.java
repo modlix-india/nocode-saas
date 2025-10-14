@@ -58,7 +58,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class Destination implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 101979893024305026L;
 
         @JsonProperty("numbers")
         private List<String> numbers;
@@ -71,7 +71,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class MusicOnHold implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 3121355956788865540L;
 
         @JsonProperty("type")
         private String type;
@@ -87,7 +87,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class ParallelRinging implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 5781160802675214831L;
 
         @JsonProperty("activate")
         private Boolean activate;
@@ -103,7 +103,7 @@ public class ExotelConnectAppletResponse implements Serializable {
     public static class StartCallPlayback implements Serializable {
 
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 4704144612816198881L;
 
         @JsonProperty("playback_to")
         private String playbackTo;

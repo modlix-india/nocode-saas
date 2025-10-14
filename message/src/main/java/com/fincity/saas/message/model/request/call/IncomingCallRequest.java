@@ -16,5 +16,5 @@ public class IncomingCallRequest extends BaseMessageRequest implements Serializa
     @Serial
     private static final long serialVersionUID = 4574664927812256563L;
 
-    private Map<String, Object> providerIncomingRequest;
+    private Map<String, String> providerIncomingRequest;
 }

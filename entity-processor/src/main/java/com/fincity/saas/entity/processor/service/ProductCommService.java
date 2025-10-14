@@ -1,8 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -19,7 +16,8 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -211,7 +209,6 @@ public class ProductCommService
     protected Mono<ProductComm> updatableEntity(ProductComm entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
-                    existing.setConnectionName(entity.getConnectionName());
                     existing.setDialCode(entity.getDialCode());
                     existing.setPhoneNumber(entity.getPhoneNumber());
                     existing.setEmail(entity.getEmail());
@@ -391,13 +388,11 @@ public class ProductCommService
     private Mono<ProductComm> getDefaultAppInternal(
             ProcessorAccess access, ConnectionType connectionType, ConnectionSubType connectionSubType) {
 
-        return this.dao.getDefaultAppProductComm(access, connectionType, connectionSubType);
-        //        return this.cacheService.cacheValueOrGet(
-        //                this.getCacheName(),
-        //                () -> this.dao.getDefaultAppProductComm(access, connectionType, connectionSubType),
-        //                super.getCacheKey(
-        //                        access.getAppCode(), access.getClientCode(), connectionType.name(),
-        // connectionSubType.name()));
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getDefaultAppProductComm(access, connectionType, connectionSubType),
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), connectionType.name(), connectionSubType.name()));
     }
 
     private Mono<ProductComm> getDefaultInternal(

@@ -4,9 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.dao.message.provider.whatsapp.WhatsappBusinessAccountDAO;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
-import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountRecord;
+import com.fincity.saas.message.jooq.tables.records.MessageWhatsappBusinessAccountsRecord;
 import com.fincity.saas.message.model.common.Identity;
 import com.fincity.saas.message.model.common.MessageAccess;
+import com.fincity.saas.message.model.message.whatsapp.business.BusinessAccount;
 import com.fincity.saas.message.model.message.whatsapp.business.SubscribedApp;
 import com.fincity.saas.message.model.message.whatsapp.business.WebhookOverride;
 import com.fincity.saas.message.model.message.whatsapp.data.FbData;
@@ -24,7 +25,7 @@ import reactor.core.publisher.Mono;
 @Service
 public class WhatsappBusinessAccountService
         extends AbstractMessageService<
-                MessageWhatsappBusinessAccountRecord, WhatsappBusinessAccount, WhatsappBusinessAccountDAO> {
+                MessageWhatsappBusinessAccountsRecord, WhatsappBusinessAccount, WhatsappBusinessAccountDAO> {
 
     private static final String KEY_META_APP_ID = "metaAppId";
     private static final String WHATSAPP_BUSINESS_ACCOUNT_PROVIDER_URI = "/whatsapp/account/business";
@@ -54,6 +55,30 @@ public class WhatsappBusinessAccountService
     }
 
     @Override
+    protected Mono<Boolean> evictCache(WhatsappBusinessAccount entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(), entity.getClientCode(), entity.getWhatsappBusinessAccountId())),
+                (baseEvicted, acCcEvicted) -> baseEvicted && acCcEvicted);
+    }
+
+    @Override
+    protected Mono<WhatsappBusinessAccount> updatableEntity(WhatsappBusinessAccount entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setName(entity.getName());
+            existing.setCurrency(entity.getCurrency());
+            existing.setTimezoneId(entity.getTimezoneId());
+            existing.setMessageTemplateNamespace(entity.getMessageTemplateNamespace());
+            existing.setSubscribedApp(entity.getSubscribedApp());
+
+            return Mono.just(existing);
+        });
+    }
+
+    @Override
     protected Mono<Connection> isValidConnection(Connection connection) {
 
         String facebookAppId = (String) connection.getConnectionDetails().getOrDefault(KEY_META_APP_ID, null);
@@ -61,6 +86,10 @@ public class WhatsappBusinessAccountService
         if (facebookAppId == null || facebookAppId.isEmpty()) return this.throwMissingParam(KEY_META_APP_ID);
 
         return super.isValidConnection(connection);
+    }
+
+    public Mono<WhatsappBusinessAccount> getBusinessAccount(String id) {
+        return super.hasAccess().flatMap(access -> this.getBusinessAccount(access, id));
     }
 
     protected Mono<WhatsappBusinessAccount> getBusinessAccount(MessageAccess access, String id) {
@@ -80,7 +109,7 @@ public class WhatsappBusinessAccountService
                 (access, connection, api) -> this.getWhatsappBusinessAccountId(connection),
                 (access, connection, api, businessAccountId) -> api.getBusinessAccount(businessAccountId),
                 (access, connection, api, businessAccountId, businessAccount) ->
-                        super.createInternal(access, WhatsappBusinessAccount.of(businessAccountId, businessAccount)));
+                        this.saveBusinessAccount(access, businessAccount, businessAccountId));
     }
 
     public Mono<WhatsappBusinessAccount> overrideWebhook(String connectionName, Identity whatsappBusinessAccountId) {
@@ -94,7 +123,11 @@ public class WhatsappBusinessAccountService
                 (access, waba, connection, api) -> this.createWebhookOverride(access)
                         .flatMap(wo -> api.overrideBusinessWebhook(waba.getWhatsappBusinessAccountId(), wo)
                                 .then(api.getSubscribedApp(waba.getWhatsappBusinessAccountId()))),
-                (MessageAccess access, WhatsappBusinessAccount waba, Connection connection, WhatsappBusinessManagementApi api, FbData<SubscribedApp> subscribedApps) -> {
+                (MessageAccess access,
+                        WhatsappBusinessAccount waba,
+                        Connection connection,
+                        WhatsappBusinessManagementApi api,
+                        FbData<SubscribedApp> subscribedApps) -> {
                     String facebookAppId =
                             (String) connection.getConnectionDetails().get(KEY_META_APP_ID);
 
@@ -125,6 +158,18 @@ public class WhatsappBusinessAccountService
             return super.throwMissingParam(WhatsappBusinessAccount.Fields.whatsappBusinessAccountId);
 
         return Mono.just(businessAccountId);
+    }
+
+    private Mono<WhatsappBusinessAccount> saveBusinessAccount(
+            MessageAccess access, BusinessAccount businessAccount, String businessAccountId) {
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.findByUniqueField(access, businessAccountId),
+                        whatsappBusinessAccount -> super.update(whatsappBusinessAccount.update(businessAccount)),
+                        (whatsappPhoneNumber, uWhatsappPhoneNumber) ->
+                                this.evictCache(uWhatsappPhoneNumber).map(evicted -> whatsappPhoneNumber))
+                .switchIfEmpty(Mono.defer(() ->
+                        super.createInternal(access, WhatsappBusinessAccount.of(businessAccountId, businessAccount))));
     }
 
     private Mono<WhatsappBusinessManagementApi> getBusinessManagementApi(Connection connection) {
