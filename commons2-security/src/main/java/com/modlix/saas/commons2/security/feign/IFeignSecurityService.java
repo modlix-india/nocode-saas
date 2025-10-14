@@ -1,11 +1,8 @@
 package com.modlix.saas.commons2.security.feign;
 
-import com.modlix.saas.commons2.model.Query;
-import com.modlix.saas.commons2.security.dto.App;
-import com.modlix.saas.commons2.security.dto.Client;
-import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
-import com.modlix.saas.commons2.security.model.User;
-import com.modlix.saas.commons2.util.Tuples.Tuple2;
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.data.domain.Page;
@@ -18,9 +15,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
+import com.modlix.saas.commons2.model.Query;
+import com.modlix.saas.commons2.security.dto.App;
+import com.modlix.saas.commons2.security.dto.Client;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.model.NotificationUser;
+import com.modlix.saas.commons2.security.model.User;
+import com.modlix.saas.commons2.security.model.UsersListRequest;
+import com.modlix.saas.commons2.util.Tuples.Tuple2;
 
 @FeignClient(name = "security")
 public interface IFeignSecurityService {
@@ -204,4 +206,7 @@ public interface IFeignSecurityService {
     @PostMapping(value = "${security.feign.readUserPageFilterInternal:/api/security/users/internal/query}")
     Page<User> readUserPageFilterInternal(
             @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
+
+    @PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
+    List<NotificationUser> getUsersForNotification(@RequestBody UsersListRequest request);
 }

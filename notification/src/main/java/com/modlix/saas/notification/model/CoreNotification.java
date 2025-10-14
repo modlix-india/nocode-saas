@@ -24,6 +24,7 @@ public class CoreNotification implements Serializable {
     private Map<String, NotificationTemplate> channelTemplates;
     private Map<String, String> channelConnections;
     private Map<String, Boolean> channelEnabled;
+    private String name;
 
     @Data
     @Accessors(chain = true)

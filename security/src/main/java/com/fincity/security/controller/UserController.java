@@ -25,9 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.UserDAO;
-import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -300,5 +301,10 @@ public class UserController
                 .flatMap(page ->
                         this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/notification")
+    public Mono<ResponseEntity<List<NotificationUser>>> getUsersForNotification(@RequestBody UsersListRequest request) {
+        return this.service.getUsersForNotification(request).map(ResponseEntity::ok);
     }
 }
