@@ -13,12 +13,12 @@ import static com.fincity.security.jooq.tables.SecurityUser.SECURITY_USER;
 import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.security.jooq.tables.*;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -35,13 +35,21 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.SecurityProfile;
+import com.fincity.security.jooq.tables.SecurityProfileUser;
+import com.fincity.security.jooq.tables.SecurityUser;
+import com.fincity.security.jooq.tables.SecurityV2UserRole;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationIdentifierType;
 import com.fincity.security.model.AuthenticationPasswordType;
@@ -665,5 +673,39 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                                 codeCondition
                         ))
         );
+    }
+
+    public Mono<List<NotificationUser>> getUsersForNotification(List<Long> userIds, String appCode, Long clientId, String clientCode) {
+
+        if (appCode == null) return Mono.just(List.of());
+        
+        var query = this.dslContext.select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID).from(SECURITY_USER)
+                    .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER).on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                    .leftJoin(SecurityProfile.SECURITY_PROFILE).on(SecurityProfile.SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                    .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
+
+        Condition condition = DSL.trueCondition();        
+
+        if (clientCode != null) {
+            query = query.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID));
+            condition = condition.and(SECURITY_CLIENT.CODE.eq(clientCode));
+        } else if (clientId != null) {
+            condition = condition.and(SECURITY_USER.CLIENT_ID.eq(ULongUtil.valueOf(clientId)));
+        } else if (userIds != null && !userIds.isEmpty()) {
+            if (userIds.size() == 1) {
+                condition = condition.and(SECURITY_USER.ID.eq(ULongUtil.valueOf(userIds.get(0))));
+            } else {
+            condition = condition.and(SECURITY_USER.ID.in(userIds.stream().map(ULongUtil::valueOf).toList()));
+            }
+        }
+
+        condition = condition.and(SECURITY_APP.APP_CODE.eq(appCode));
+
+        return Flux.from(query.where(condition))
+                .map(r -> new NotificationUser()
+                        .setId(r.getValue(SECURITY_USER.ID).longValue())
+                        .setClientId(r.getValue(SECURITY_USER.CLIENT_ID).longValue())
+                        .setEmailId(r.getValue(SECURITY_USER.EMAIL_ID)))
+                .collectList();
     }
 }
