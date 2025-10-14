@@ -75,7 +75,6 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
         this.setAppCode(baseUpdatableDto.getAppCode());
         this.setClientCode(baseUpdatableDto.getClientCode());
-        this.setFields(baseUpdatableDto.getFields());
 
         this.code = baseUpdatableDto.code;
         this.name = baseUpdatableDto.name;

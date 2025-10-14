@@ -106,15 +106,6 @@ public abstract class BaseProcessorService<
         return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
-    @Override
-    public Mono<Integer> delete(ULong id) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.read(id),
-                super::deleteInternal,
-                (ca, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
-    }
-
     protected <T> Mono<T> throwDuplicateError(ProcessorAccess access, D existing) {
 
         if (access.isOutsideUser())

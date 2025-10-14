@@ -184,29 +184,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                 });
     }
 
-    public Mono<Map<Integer, D>> getRuleWithOrder(Identity entityId, List<ULong> stageIds) {
-        return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> this.getEntityId(access, entityId),
-                        (access, entity) -> this.getRuleWithOrder(access, entity, stageIds))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleService.getRuleWithOrder"));
-    }
-
-    private Mono<Map<Integer, D>> getRuleWithOrder(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.getStageIds(access, entityId, stageIds),
-                allStages -> Mono.zip(
-                        this.getRules(access.getAppCode(), access.getClientCode(), entityId.getULongId(), allStages),
-                        this.getDefault(access.getAppCode(), access.getClientCode(), entityId.getULongId())),
-                (allStages, rules) -> {
-                    Map<Integer, D> rulesMap = rules.getT1().stream()
-                            .collect(Collectors.toMap(Rule::getOrder, Function.identity(), (a, b) -> b));
-                    rulesMap.put(0, rules.getT2());
-
-                    return Mono.just(rulesMap);
-                });
-    }
-
     protected Mono<Map<Integer, D>> getRuleWithOrder(String appCode, String clientCode, ULong entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
@@ -297,7 +274,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                         super::hasAccess,
                         access -> this.getEntityId(access, entityId),
                         (access, entity) ->
-                                this.getRuleWithOrder(access, entity, null).switchIfEmpty(Mono.just(Map.of())),
+                                this.getRuleWithOrder(access, entity).switchIfEmpty(Mono.just(Map.of())),
                         (access, entity, rules) -> {
                             if (rules.isEmpty()) return Mono.just(Boolean.TRUE);
 
@@ -329,6 +306,21 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
                                 })
                                 .collectMap(Map.Entry::getKey, Map.Entry::getValue))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleService.createWithOrder"));
+    }
+
+    private Mono<Map<Integer, D>> getRuleWithOrder(ProcessorAccess access, Identity entityId) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getStageIds(access, entityId, null),
+                allStages -> Mono.zip(
+                        this.getRules(access.getAppCode(), access.getClientCode(), entityId.getULongId(), allStages),
+                        this.getDefault(access.getAppCode(), access.getClientCode(), entityId.getULongId())),
+                (allStages, rules) -> {
+                    Map<Integer, D> rulesMap = rules.getT1().stream()
+                            .collect(Collectors.toMap(Rule::getOrder, Function.identity(), (a, b) -> b));
+                    rulesMap.put(0, rules.getT2());
+
+                    return Mono.just(rulesMap);
+                });
     }
 
     public Mono<Map<Integer, D>> updateOrder(Map<Integer, Identity> rules) {

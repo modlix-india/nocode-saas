@@ -258,17 +258,6 @@ public abstract class BaseUpdatableService<
     }
 
     @Override
-    public Mono<D> update(ULong key, Map<String, Object> fields) {
-        return super.update(key, fields)
-                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
-    public Mono<D> update(D entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
@@ -362,32 +351,6 @@ public abstract class BaseUpdatableService<
 
         return this.readByCode(identity.getCode())
                 .map(entity -> identity.setId(entity.getId().toBigInteger()));
-    }
-
-    public Mono<Identity> checkAndUpdateIdentity(Identity identity) {
-
-        if (identity == null || identity.isNull()) return this.identityMissingError();
-
-        if (identity.isId())
-            return this.readById(ULongUtil.valueOf(identity.getId()))
-                    .map(entity -> identity)
-                    .switchIfEmpty(this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            ProcessorMessageResourceService.IDENTITY_WRONG,
-                            this.getEntityName(),
-                            identity.getId()));
-
-        return this.readByCode(identity.getCode())
-                .map(entity -> identity.setId(entity.getId().toBigInteger()))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
-                        identity.getCode()));
-    }
-
-    public Mono<Identity> checkAndUpdateIdentityWithAccess(Identity identity) {
-        return this.hasAccess().flatMap(access -> this.checkAndUpdateIdentityWithAccess(access, identity));
     }
 
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {

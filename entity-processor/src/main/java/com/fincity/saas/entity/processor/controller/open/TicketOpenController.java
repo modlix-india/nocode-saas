@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("api/entity/processor/open/tickets")
+@RequestMapping("api/entity/processor/open/tickets/form/{code}")
 public class TicketOpenController {
 
     public static final String REQ_PATH = "/req";
