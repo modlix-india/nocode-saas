@@ -77,22 +77,23 @@ public abstract class AbstractTemplateService {
     }
 
     protected String processFreeMarker(String name, String template, Map<String, Object> templateData) {
-        
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                Writer out = new OutputStreamWriter(baos)) {
+             Writer out = new OutputStreamWriter(baos)) {
             freemarker.template.Template temp = new freemarker.template.Template(name, template, CONFIGURATION);
             temp.process(templateData, out);
             return baos.toString(StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
-        
+
     }
 
     protected String getLanguage(CoreNotification template, Map<String, Object> templateData) {
         boolean isBlankExpression = StringUtil.safeIsBlank(template.getLanguageExpression());
 
-        if (isBlankExpression && StringUtil.safeIsBlank(template.getDefaultLanguage())) return "";
+        if (isBlankExpression)
+            return StringUtil.safeIsBlank(template.getDefaultLanguage()) ? "" : template.getDefaultLanguage();
 
         String lang = processFreeMarker("language", template.getLanguageExpression(), templateData);
         return lang == null || lang.isBlank() ? template.getDefaultLanguage() : lang;
