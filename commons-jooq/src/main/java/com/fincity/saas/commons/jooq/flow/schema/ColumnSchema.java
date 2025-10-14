@@ -22,7 +22,7 @@ import static java.util.Map.entry;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 @FieldNameConstants
-public class ColumnSchema extends Schema {
+public class ColumnSchema extends AbstractRDBMSSchema {
 
     public static final Schema COLUMN_SCHEMA = new Schema()
             .setNamespace(Namespaces.SYSTEM)

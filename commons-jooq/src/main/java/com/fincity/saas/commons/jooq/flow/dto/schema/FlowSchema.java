@@ -3,10 +3,9 @@ package com.fincity.saas.commons.jooq.flow.dto.schema;
 import java.io.Serial;
 import java.io.Serializable;
 
-import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.flow.schema.AbstractRDBMSSchema;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
 import lombok.Data;
@@ -30,16 +29,7 @@ public class FlowSchema<I extends Serializable, U extends Serializable> extends 
 
     private String appCode;
     private String clientCode;
-    private String serverPrefix;
-    private String tableName;
-    private String fieldName;
-    private Schema fieldSchema;
-    private boolean signed;
-    private boolean isUnsigned;
-    private boolean isNullable;
-    private boolean isUnique;
-    private ULong relationFieldId;
-    private String comment;
+    private AbstractRDBMSSchema tableSchema;
 
     public FlowSchema() {
         super();

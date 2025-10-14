@@ -14,6 +14,7 @@ import lombok.experimental.FieldNameConstants;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,7 @@ import static java.util.Map.entry;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class TableSchema extends Schema {
+public class TableSchema extends AbstractRDBMSSchema {
 
     public static final Schema TABLE_SCHEMA = new Schema()
             .setNamespace(Namespaces.SYSTEM)
@@ -49,7 +50,7 @@ public class TableSchema extends Schema {
 
     private String tableName;
     private String tableDescription;
-    private Map<String, ColumnSchema> columns = new HashMap<>();
+    private Map<String, ColumnSchema> columns = new LinkedHashMap<>();
     private List<KeySchema> keys = new ArrayList<>();
     private Boolean isAudited = Boolean.FALSE;
     private Boolean isSoftDelete = Boolean.FALSE;
@@ -69,7 +70,7 @@ public class TableSchema extends Schema {
     }
 
     public TableSchema replaceColumn(ColumnSchema columnSchema) {
-        this.columns.remove(columnSchema.getName(), columnSchema);
+        this.columns.put(columnSchema.getName(), columnSchema);
         return this;
     }
 
