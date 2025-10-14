@@ -31,13 +31,16 @@ public class NotificationSendService {
 
     private final IFeignSecurityService securityService;
 
+    private final InAppNotificationService inAppService;
+
     private final EmailService emailService;
 
-    public NotificationSendService(IFeignSecurityService securityService, IFeignCoreService coreService, EmailService emailService) {
+    public NotificationSendService(IFeignSecurityService securityService, IFeignCoreService coreService, EmailService emailService, InAppNotificationService inAppService) {
 
         this.securityService = securityService;
         this.coreService = coreService;
         this.emailService = emailService;
+        this.inAppService = inAppService;
     }
 
     public void sendNotification(NotificationQueObject qob) {
@@ -84,14 +87,13 @@ public class NotificationSendService {
         }
 
         if (isEmail) {
-
             for (NotificationUser user : users) {
                 this.emailService.sendEmail(user, connection, notification, qob.getPayload());
             }
         }
 
-        if (isInApp) {
+        if (!isInApp) return;
 
-        }
+        this.inAppService.sendInApp(users, notification, qob.getAppCode(), qob.getPayload());
     }
 }
