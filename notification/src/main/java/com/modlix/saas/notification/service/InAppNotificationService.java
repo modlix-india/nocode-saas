@@ -43,10 +43,12 @@ public class InAppNotificationService extends AbstractTemplateService {
 
     private final ObjectMapper objectMapper;
 
-    private static record NotificationEventRecord(ULong id, ULong userId, String appCode, String notificationName, String title, String message, String mimeUrl, String notificationType) {
-       public static NotificationEventRecord fromRecord(NotificationInappRecord record) {
-        return new NotificationEventRecord(record.getId(), record.getUserId(), record.getAppCode(), record.getNotificationName(), record.getTitle(), record.getMessage(), record.getMimeUrl(), record.getNotificationType());
-       }
+    private static record NotificationEventRecord(ULong id, ULong userId, String appCode, String notificationName,
+                                                  String title, String message, String mimeUrl,
+                                                  String notificationType) {
+        public static NotificationEventRecord fromRecord(NotificationInappRecord record) {
+            return new NotificationEventRecord(record.getId(), record.getUserId(), record.getAppCode(), record.getNotificationName(), record.getTitle(), record.getMessage(), record.getMimeUrl(), record.getNotificationType());
+        }
     }
 
     public InAppNotificationService(DSLContext dslContext, ObjectMapper objectMapper) {
