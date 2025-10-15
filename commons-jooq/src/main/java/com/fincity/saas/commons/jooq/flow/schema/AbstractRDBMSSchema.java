@@ -8,7 +8,7 @@ public abstract class AbstractRDBMSSchema extends Schema {
         super();
     }
 
-	protected AbstractRDBMSSchema(Schema schema) {
+    protected AbstractRDBMSSchema(Schema schema) {
         super(schema);
     }
 }

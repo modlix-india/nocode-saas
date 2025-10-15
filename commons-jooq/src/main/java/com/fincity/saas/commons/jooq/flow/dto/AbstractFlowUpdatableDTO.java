@@ -1,11 +1,9 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.google.gson.JsonElement;
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Map;
-
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -26,5 +24,5 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
     private String appCode;
     private String clientCode;
 
-    private Map<String, Object> flowFields;
+    private JsonElement fields;
 }

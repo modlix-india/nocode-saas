@@ -7,17 +7,14 @@ import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.schema.enums.IndexDirection;
 import com.fincity.saas.commons.jooq.flow.schema.enums.KeyType;
 import com.fincity.saas.commons.jooq.flow.schema.enums.ReferenceType;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.experimental.Accessors;
-import lombok.experimental.FieldNameConstants;
-
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static java.util.Map.entry;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -30,22 +27,22 @@ public class KeySchema extends AbstractRDBMSSchema {
             .setName("KeySchema")
             .setType(Type.of(SchemaType.OBJECT))
             .setProperties(Map.ofEntries(
-                    entry(Fields.keyType, Schema.ofString(Fields.keyType).setEnums(KeyType.getKeyType())),
-                    entry(Fields.columns, Schema.ofArray(Fields.columns, Schema.ofString(Fields.columns))),
-                    entry(
+                    Map.entry(Fields.keyType, Schema.ofString(Fields.keyType).setEnums(KeyType.getKeyType())),
+                    Map.entry(Fields.columns, Schema.ofArray(Fields.columns, Schema.ofString(Fields.columns))),
+                    Map.entry(
                             Fields.columnDirections,
                             Schema.ofArray(
                                     Fields.columnDirections,
                                     Schema.ofString(Fields.columnDirections)
                                             .setEnums(IndexDirection.getIndexDirection()))),
-                    entry(Fields.referencedTable, Schema.ofString(Fields.referencedTable)),
-                    entry(
+                    Map.entry(Fields.referencedTable, Schema.ofString(Fields.referencedTable)),
+                    Map.entry(
                             Fields.referencedColumns,
                             Schema.ofArray(Fields.referencedColumns, Schema.ofString("column"))),
-                    entry(
+                    Map.entry(
                             Fields.onDelete,
                             Schema.ofString(Fields.onDelete).setEnums(ReferenceType.getReferenceTypes())),
-                    entry(
+                    Map.entry(
                             Fields.onUpdate,
                             Schema.ofString(Fields.onUpdate).setEnums(ReferenceType.getReferenceTypes()))))
             .setRequired(List.of(Fields.keyType, Fields.columns, "name"));

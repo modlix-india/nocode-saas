@@ -7,16 +7,13 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.schema.enums.CommonSqlType;
 import com.google.gson.JsonPrimitive;
+import java.io.Serial;
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
-import java.io.Serial;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Map.entry;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -29,33 +26,33 @@ public class ColumnSchema extends AbstractRDBMSSchema {
             .setName("ColumnSchema")
             .setType(Type.of(SchemaType.OBJECT))
             .setProperties(Map.ofEntries(
-                    entry(
+                    Map.entry(
                             Fields.commonSqlType,
                             Schema.ofString(Fields.commonSqlType).setEnums(CommonSqlType.getCommonSqlType())),
-                    entry(
+                    Map.entry(
                             Fields.primaryKey,
                             Schema.ofBoolean(Fields.primaryKey).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(
+                    Map.entry(
                             Fields.autoIncrement,
                             Schema.ofBoolean(Fields.autoIncrement).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(
+                    Map.entry(
                             Fields.unique,
                             Schema.ofBoolean(Fields.unique).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(
+                    Map.entry(
                             Fields.indexed,
                             Schema.ofBoolean(Fields.indexed).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(Fields.foreignKey, KeySchema.KEY_SCHEMA),
-                    entry(Fields.precision, Schema.ofInteger(Fields.precision)),
-                    entry(Fields.scale, Schema.ofInteger(Fields.scale)),
-                    entry(Fields.columnDefinition, Schema.ofString(Fields.columnDefinition)),
-                    entry(
+                    Map.entry(Fields.foreignKey, KeySchema.KEY_SCHEMA),
+                    Map.entry(Fields.precision, Schema.ofInteger(Fields.precision)),
+                    Map.entry(Fields.scale, Schema.ofInteger(Fields.scale)),
+                    Map.entry(Fields.columnDefinition, Schema.ofString(Fields.columnDefinition)),
+                    Map.entry(
                             Fields.isNullable,
                             Schema.ofBoolean(Fields.isNullable).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(
+                    Map.entry(
                             Fields.isUnsigned,
                             Schema.ofBoolean(Fields.isUnsigned).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(Fields.comment, Schema.ofString(Fields.comment)),
-                    entry(Fields.afterColumn, Schema.ofString(Fields.afterColumn))))
+                    Map.entry(Fields.comment, Schema.ofString(Fields.comment)),
+                    Map.entry(Fields.afterColumn, Schema.ofString(Fields.afterColumn))))
             .setRequired(List.of("name", "type", Fields.commonSqlType));
 
     @Serial

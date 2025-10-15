@@ -1,15 +1,5 @@
 package com.fincity.saas.commons.jooq.configuration;
 
-import java.util.List;
-
-import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
-import org.jooq.types.UInteger;
-import org.jooq.types.ULong;
-import org.jooq.types.UShort;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.configuration.AbstractBaseConfiguration;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
@@ -19,14 +9,21 @@ import com.fincity.saas.commons.jooq.jackson.JSONSerializationModule;
 import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
 import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import io.r2dbc.spi.ConnectionFactoryOptions.Builder;
+import java.util.List;
 import lombok.Getter;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
+import org.jooq.types.UShort;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 
 @Getter
 public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfiguration {
@@ -39,7 +36,6 @@ public abstract class AbstractJooqBaseConfiguration extends AbstractBaseConfigur
 
     @Value("${spring.r2dbc.password}")
     protected String password;
-
 
     protected AbstractJooqBaseConfiguration(ObjectMapper objectMapper) {
         super(objectMapper);

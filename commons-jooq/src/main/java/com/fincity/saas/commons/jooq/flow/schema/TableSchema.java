@@ -6,19 +6,15 @@ import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.schema.enums.KeyType;
 import com.google.gson.JsonPrimitive;
+import java.io.Serial;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.FieldNameConstants;
-
-import java.io.Serial;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Map.entry;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -31,16 +27,16 @@ public class TableSchema extends AbstractRDBMSSchema {
             .setName("TableSchema")
             .setType(Type.of(SchemaType.OBJECT))
             .setProperties(Map.ofEntries(
-                    entry(Fields.tableName, Schema.ofString(Fields.tableName)),
-                    entry(Fields.tableDescription, Schema.ofString(Fields.tableDescription)),
-                    entry(
+                    Map.entry(Fields.tableName, Schema.ofString(Fields.tableName)),
+                    Map.entry(Fields.tableDescription, Schema.ofString(Fields.tableDescription)),
+                    Map.entry(
                             Fields.columns,
                             Schema.ofObject(Fields.columns).setAllOf(List.of(ColumnSchema.COLUMN_SCHEMA))),
-                    entry(Fields.keys, Schema.ofArray(Fields.keys, KeySchema.KEY_SCHEMA)),
-                    entry(
+                    Map.entry(Fields.keys, Schema.ofArray(Fields.keys, KeySchema.KEY_SCHEMA)),
+                    Map.entry(
                             Fields.isAudited,
                             Schema.ofBoolean(Fields.isAudited).setDefaultValue(new JsonPrimitive(Boolean.FALSE))),
-                    entry(
+                    Map.entry(
                             Fields.isSoftDelete,
                             Schema.ofBoolean(Fields.isSoftDelete).setDefaultValue(new JsonPrimitive(Boolean.FALSE)))))
             .setRequired(List.of(Fields.tableName));
@@ -65,11 +61,6 @@ public class TableSchema extends AbstractRDBMSSchema {
     }
 
     public TableSchema addColumn(ColumnSchema columnSchema) {
-        this.columns.put(columnSchema.getName(), columnSchema);
-        return this;
-    }
-
-    public TableSchema replaceColumn(ColumnSchema columnSchema) {
         this.columns.put(columnSchema.getName(), columnSchema);
         return this;
     }

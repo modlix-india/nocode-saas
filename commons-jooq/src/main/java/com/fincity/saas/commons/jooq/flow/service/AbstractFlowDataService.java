@@ -1,12 +1,10 @@
 package com.fincity.saas.commons.jooq.flow.service;
 
-import java.io.Serializable;
-
-import org.jooq.UpdatableRecord;
-
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowDAO;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowDTO;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
+import java.io.Serializable;
+import org.jooq.UpdatableRecord;
 
 public class AbstractFlowDataService<
                 R extends UpdatableRecord<R>,
