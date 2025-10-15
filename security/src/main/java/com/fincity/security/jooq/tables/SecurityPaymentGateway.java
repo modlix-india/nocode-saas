@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
@@ -13,13 +14,13 @@ import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.InverseForeignKey;
-import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -83,7 +84,7 @@ public class SecurityPaymentGateway extends TableImpl<SecurityPaymentGatewayReco
      * <code>security.security_payment_gateway.PAYMENT_GATEWAY_DETAILS</code>.
      * Payment gateway details
      */
-    public final TableField<SecurityPaymentGatewayRecord, JSON> PAYMENT_GATEWAY_DETAILS = createField(DSL.name("PAYMENT_GATEWAY_DETAILS"), SQLDataType.JSON.nullable(false), this, "Payment gateway details");
+    public final TableField<SecurityPaymentGatewayRecord, Map> PAYMENT_GATEWAY_DETAILS = createField(DSL.name("PAYMENT_GATEWAY_DETAILS"), SQLDataType.JSON.nullable(false), this, "Payment gateway details", new JSONMysqlMapConvertor());
 
     private SecurityPaymentGateway(Name alias, Table<SecurityPaymentGatewayRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

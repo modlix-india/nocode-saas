@@ -321,7 +321,7 @@ CREATE TABLE `security`.`security_payment` (
   `PAYMENT_STATUS` enum('PENDING','PAID','FAILED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'Payment status',
   `PAYMENT_METHOD` enum('CASHFREE', 'RAZORPAY', 'STRIPE', 'OTHER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OTHER' COMMENT 'Payment method',
   `PAYMENT_REFERENCE` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Payment reference or trasaction id',
-  `PAYMENT_RESPONSE` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Payment response or error message',
+  `PAYMENT_RESPONSE` json DEFAULT NULL COMMENT 'Payment response or error message',
   `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
   `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
   `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',

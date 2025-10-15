@@ -7,7 +7,8 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 
-import org.jooq.JSON;
+import java.util.Map;
+
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -77,7 +78,7 @@ public class SecurityPaymentGatewayRecord extends UpdatableRecordImpl<SecurityPa
      * <code>security.security_payment_gateway.PAYMENT_GATEWAY_DETAILS</code>.
      * Payment gateway details
      */
-    public SecurityPaymentGatewayRecord setPaymentGatewayDetails(JSON value) {
+    public SecurityPaymentGatewayRecord setPaymentGatewayDetails(Map value) {
         set(3, value);
         return this;
     }
@@ -87,8 +88,8 @@ public class SecurityPaymentGatewayRecord extends UpdatableRecordImpl<SecurityPa
      * <code>security.security_payment_gateway.PAYMENT_GATEWAY_DETAILS</code>.
      * Payment gateway details
      */
-    public JSON getPaymentGatewayDetails() {
-        return (JSON) get(3);
+    public Map getPaymentGatewayDetails() {
+        return (Map) get(3);
     }
 
     // -------------------------------------------------------------------------
@@ -114,7 +115,7 @@ public class SecurityPaymentGatewayRecord extends UpdatableRecordImpl<SecurityPa
     /**
      * Create a detached, initialised SecurityPaymentGatewayRecord
      */
-    public SecurityPaymentGatewayRecord(ULong id, ULong clientId, SecurityPaymentGatewayPaymentGateway paymentGateway, JSON paymentGatewayDetails) {
+    public SecurityPaymentGatewayRecord(ULong id, ULong clientId, SecurityPaymentGatewayPaymentGateway paymentGateway, Map paymentGatewayDetails) {
         super(SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY);
 
         setId(id);

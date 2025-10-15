@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.JSONMysqlMapConvertor;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityPaymentPaymentMethod;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -106,7 +108,7 @@ public class SecurityPayment extends TableImpl<SecurityPaymentRecord> {
      * The column <code>security.security_payment.PAYMENT_RESPONSE</code>.
      * Payment response or error message
      */
-    public final TableField<SecurityPaymentRecord, String> PAYMENT_RESPONSE = createField(DSL.name("PAYMENT_RESPONSE"), SQLDataType.CLOB, this, "Payment response or error message");
+    public final TableField<SecurityPaymentRecord, Map> PAYMENT_RESPONSE = createField(DSL.name("PAYMENT_RESPONSE"), SQLDataType.JSON, this, "Payment response or error message", new JSONMysqlMapConvertor());
 
     /**
      * The column <code>security.security_payment.CREATED_BY</code>. ID of the
