@@ -28,6 +28,8 @@ import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPi
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
+import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
+import com.fincity.security.jooq.tables.SecurityPlanApp.SecurityPlanAppPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
@@ -501,6 +503,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
         return _securityPermission;
     }
 
+    private transient SecurityPlanAppPath _securityPlanApp;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_plan_app</code> table
+     */
+    public SecurityPlanAppPath securityPlanApp() {
+        if (_securityPlanApp == null)
+            _securityPlanApp = new SecurityPlanAppPath(this, null, Keys.FK2_PLAN_APP_APP_ID.getInverseKey());
+
+        return _securityPlanApp;
+    }
+
     private transient SecurityProfilePath _securityProfile;
 
     /**
@@ -588,6 +603,14 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      */
     public SecurityClientPath fk1ClientPinPolClientId() {
         return securityClientPinPolicy().securityClient();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_plan</code> table
+     */
+    public SecurityPlanPath securityPlan() {
+        return securityPlanApp().securityPlan();
     }
 
     @Override

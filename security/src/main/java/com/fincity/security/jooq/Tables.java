@@ -25,15 +25,24 @@ import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
+import com.fincity.security.jooq.tables.SecurityClientPlan;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
+import com.fincity.security.jooq.tables.SecurityInvoice;
+import com.fincity.security.jooq.tables.SecurityInvoiceItem;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
+import com.fincity.security.jooq.tables.SecurityPayment;
+import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPermission;
+import com.fincity.security.jooq.tables.SecurityPlan;
+import com.fincity.security.jooq.tables.SecurityPlanApp;
+import com.fincity.security.jooq.tables.SecurityPlanCycle;
+import com.fincity.security.jooq.tables.SecurityPlanLimit;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.SecurityProfileRole;
@@ -165,6 +174,11 @@ public class Tables {
     public static final SecurityClientPinPolicy SECURITY_CLIENT_PIN_POLICY = SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY;
 
     /**
+     * The table <code>security.security_client_plan</code>.
+     */
+    public static final SecurityClientPlan SECURITY_CLIENT_PLAN = SecurityClientPlan.SECURITY_CLIENT_PLAN;
+
+    /**
      * The table <code>security.security_client_type</code>.
      */
     public static final SecurityClientType SECURITY_CLIENT_TYPE = SecurityClientType.SECURITY_CLIENT_TYPE;
@@ -183,6 +197,16 @@ public class Tables {
      * The table <code>security.security_designation</code>.
      */
     public static final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
+
+    /**
+     * The table <code>security.security_invoice</code>.
+     */
+    public static final SecurityInvoice SECURITY_INVOICE = SecurityInvoice.SECURITY_INVOICE;
+
+    /**
+     * The table <code>security.security_invoice_item</code>.
+     */
+    public static final SecurityInvoiceItem SECURITY_INVOICE_ITEM = SecurityInvoiceItem.SECURITY_INVOICE_ITEM;
 
     /**
      * The table <code>security.security_one_time_token</code>.
@@ -205,9 +229,39 @@ public class Tables {
     public static final SecurityPastPins SECURITY_PAST_PINS = SecurityPastPins.SECURITY_PAST_PINS;
 
     /**
+     * The table <code>security.security_payment</code>.
+     */
+    public static final SecurityPayment SECURITY_PAYMENT = SecurityPayment.SECURITY_PAYMENT;
+
+    /**
+     * The table <code>security.security_payment_gateway</code>.
+     */
+    public static final SecurityPaymentGateway SECURITY_PAYMENT_GATEWAY = SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY;
+
+    /**
      * The table <code>security.security_permission</code>.
      */
     public static final SecurityPermission SECURITY_PERMISSION = SecurityPermission.SECURITY_PERMISSION;
+
+    /**
+     * The table <code>security.security_plan</code>.
+     */
+    public static final SecurityPlan SECURITY_PLAN = SecurityPlan.SECURITY_PLAN;
+
+    /**
+     * The table <code>security.security_plan_app</code>.
+     */
+    public static final SecurityPlanApp SECURITY_PLAN_APP = SecurityPlanApp.SECURITY_PLAN_APP;
+
+    /**
+     * The table <code>security.security_plan_cycle</code>.
+     */
+    public static final SecurityPlanCycle SECURITY_PLAN_CYCLE = SecurityPlanCycle.SECURITY_PLAN_CYCLE;
+
+    /**
+     * The table <code>security.security_plan_limit</code>.
+     */
+    public static final SecurityPlanLimit SECURITY_PLAN_LIMIT = SecurityPlanLimit.SECURITY_PLAN_LIMIT;
 
     /**
      * The table <code>security.security_profile</code>.
