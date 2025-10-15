@@ -10,10 +10,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
-import com.fincity.security.dto.*;
-import com.fincity.security.model.*;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -42,13 +38,25 @@ import com.fincity.saas.commons.security.service.IAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.AppRegistrationIntegrationTokenDao;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.OneTimeToken;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserAccess;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
+import com.fincity.security.model.AuthenticationIdentifierType;
+import com.fincity.security.model.AuthenticationPasswordType;
+import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
+import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.model.otp.OtpGenerationRequestInternal;
 import com.fincity.security.model.otp.OtpVerificationRequest;
 import com.fincity.security.service.appregistration.AppRegistrationIntegrationTokenService;
@@ -563,7 +571,7 @@ public class AuthenticationService implements IAuthenticationService {
                 .build());
 
         if (isCookie)
-            response.addCookie(ResponseCookie.from("Authentication", token.getT1())
+            response.addCookie(ResponseCookie.from(HttpHeaders.AUTHORIZATION, token.getT1())
                     .path("/")
                     .maxAge(Duration.ofMinutes(timeInMinutes))
                     .build());
@@ -835,6 +843,7 @@ public class AuthenticationService implements IAuthenticationService {
 
     public Mono<AuthenticationResponse> refreshToken(ServerHttpRequest request, ServerHttpResponse response) {
 
+        
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> {
@@ -867,8 +876,23 @@ public class AuthenticationService implements IAuthenticationService {
                                     .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
                                     .setManagedClientCode(mc.getCode())
                                     .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null));
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
+                },
+
+                (ca, client, revoked, authResponse) -> {
+
+                    HttpCookie cookie = request.getCookies().getFirst(HttpHeaders.AUTHORIZATION);
+
+                    if (cookie != null && StringUtil.safeIsBlank(cookie.getValue()) && authResponse.getAccessTokenExpiryAt() != null){
+                        response.addCookie(ResponseCookie.from(HttpHeaders.AUTHORIZATION, cookie.getValue())
+                                .path("/")
+                                .maxAge(Duration.ofMillis(authResponse.getAccessTokenExpiryAt().toInstant(ZoneOffset.UTC).toEpochMilli() - System.currentTimeMillis()))
+                                .build());
+                    }
+
+                    return Mono.just(authResponse);
+                }
+                
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationService.refreshToken"));
     }
 
     private Mono<AuthenticationResponse> generateNewToken(
