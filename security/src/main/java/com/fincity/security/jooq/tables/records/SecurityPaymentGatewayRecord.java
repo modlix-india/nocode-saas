@@ -7,6 +7,7 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.jooq.Record1;
@@ -92,6 +93,74 @@ public class SecurityPaymentGatewayRecord extends UpdatableRecordImpl<SecurityPa
         return (Map) get(3);
     }
 
+    /**
+     * Setter for <code>security.security_payment_gateway.CREATED_BY</code>. ID
+     * of the user who created this row
+     */
+    public SecurityPaymentGatewayRecord setCreatedBy(ULong value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment_gateway.CREATED_BY</code>. ID
+     * of the user who created this row
+     */
+    public ULong getCreatedBy() {
+        return (ULong) get(4);
+    }
+
+    /**
+     * Setter for <code>security.security_payment_gateway.CREATED_AT</code>.
+     * Time when this row is created
+     */
+    public SecurityPaymentGatewayRecord setCreatedAt(LocalDateTime value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment_gateway.CREATED_AT</code>.
+     * Time when this row is created
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(5);
+    }
+
+    /**
+     * Setter for <code>security.security_payment_gateway.UPDATED_BY</code>. ID
+     * of the user who updated this row
+     */
+    public SecurityPaymentGatewayRecord setUpdatedBy(ULong value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment_gateway.UPDATED_BY</code>. ID
+     * of the user who updated this row
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(6);
+    }
+
+    /**
+     * Setter for <code>security.security_payment_gateway.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public SecurityPaymentGatewayRecord setUpdatedAt(LocalDateTime value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_payment_gateway.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(7);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -115,13 +184,17 @@ public class SecurityPaymentGatewayRecord extends UpdatableRecordImpl<SecurityPa
     /**
      * Create a detached, initialised SecurityPaymentGatewayRecord
      */
-    public SecurityPaymentGatewayRecord(ULong id, ULong clientId, SecurityPaymentGatewayPaymentGateway paymentGateway, Map paymentGatewayDetails) {
+    public SecurityPaymentGatewayRecord(ULong id, ULong clientId, SecurityPaymentGatewayPaymentGateway paymentGateway, Map paymentGatewayDetails, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY);
 
         setId(id);
         setClientId(clientId);
         setPaymentGateway(paymentGateway);
         setPaymentGatewayDetails(paymentGatewayDetails);
+        setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
     }
 }

@@ -11,6 +11,7 @@ import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -85,6 +86,30 @@ public class SecurityPaymentGateway extends TableImpl<SecurityPaymentGatewayReco
      * Payment gateway details
      */
     public final TableField<SecurityPaymentGatewayRecord, Map> PAYMENT_GATEWAY_DETAILS = createField(DSL.name("PAYMENT_GATEWAY_DETAILS"), SQLDataType.JSON.nullable(false), this, "Payment gateway details", new JSONMysqlMapConvertor());
+
+    /**
+     * The column <code>security.security_payment_gateway.CREATED_BY</code>. ID
+     * of the user who created this row
+     */
+    public final TableField<SecurityPaymentGatewayRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+
+    /**
+     * The column <code>security.security_payment_gateway.CREATED_AT</code>.
+     * Time when this row is created
+     */
+    public final TableField<SecurityPaymentGatewayRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+
+    /**
+     * The column <code>security.security_payment_gateway.UPDATED_BY</code>. ID
+     * of the user who updated this row
+     */
+    public final TableField<SecurityPaymentGatewayRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_payment_gateway.UPDATED_AT</code>.
+     * Time when this row is updated
+     */
+    public final TableField<SecurityPaymentGatewayRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityPaymentGateway(Name alias, Table<SecurityPaymentGatewayRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
