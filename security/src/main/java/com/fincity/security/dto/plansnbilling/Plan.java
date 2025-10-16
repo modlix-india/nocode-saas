@@ -6,6 +6,7 @@ import java.util.List;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.dto.App;
 import com.fincity.security.jooq.enums.SecurityPlanStatus;
 
 import lombok.Data;
@@ -28,7 +29,7 @@ public class Plan extends AbstractUpdatableDTO<ULong, ULong> {
     private String features;
     private SecurityPlanStatus status;
 
-    private List<ULong> apps;
+    private List<App> apps;
     private List<PlanCycle> cycles;
     private List<PlanLimit> limits;
 }
