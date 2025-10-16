@@ -1,16 +1,15 @@
 package com.modlix.saas.commons2.jooq.gson;
 
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 
 public abstract class AbstractListAdapter<T> extends TypeAdapter<List<T>> implements Serializable {
 
@@ -84,4 +83,3 @@ public abstract class AbstractListAdapter<T> extends TypeAdapter<List<T>> implem
         }
     }
 }
-

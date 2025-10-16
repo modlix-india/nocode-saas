@@ -8,6 +8,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -130,12 +131,12 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
     }
 
     private Mono<AbstractCondition> getAppCodeCondition(ProcessorAccess access) {
-        return Mono.just(FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode()));
+        return Mono.just(FilterCondition.make(BaseUpdatableDto.Fields.appCode, access.getAppCode()));
     }
 
     private Mono<AbstractCondition> getClientCodeCondition(ProcessorAccess access) {
         return Mono.just(
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getEffectiveClientCode()));
+                FilterCondition.make(BaseUpdatableDto.Fields.clientCode, access.getEffectiveClientCode()));
     }
 
     private Mono<AbstractCondition> getUserConditions(ProcessorAccess access, Map<String, String> fieldMappings) {

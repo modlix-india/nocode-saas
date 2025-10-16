@@ -1,15 +1,21 @@
 package com.modlix.saas.commons2.jooq.dao;
 
+import com.modlix.saas.commons2.configuration.service.AbstractMessageService;
+import com.modlix.saas.commons2.exception.GenericException;
+import com.modlix.saas.commons2.model.condition.AbstractCondition;
+import com.modlix.saas.commons2.model.condition.ComplexCondition;
+import com.modlix.saas.commons2.model.condition.ComplexConditionOperator;
+import com.modlix.saas.commons2.model.condition.FilterCondition;
+import com.modlix.saas.commons2.model.condition.FilterConditionOperator;
+import com.modlix.saas.commons2.model.dto.AbstractDTO;
+import com.modlix.saas.commons2.util.Tuples.Tuple2;
 import java.io.Serializable;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import com.modlix.saas.commons2.util.Tuples.Tuple2;
+import lombok.Getter;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
@@ -32,17 +38,6 @@ import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.modlix.saas.commons2.configuration.service.AbstractMessageService;
-import com.modlix.saas.commons2.exception.GenericException;
-import com.modlix.saas.commons2.model.condition.AbstractCondition;
-import com.modlix.saas.commons2.model.condition.ComplexCondition;
-import com.modlix.saas.commons2.model.condition.ComplexConditionOperator;
-import com.modlix.saas.commons2.model.condition.FilterCondition;
-import com.modlix.saas.commons2.model.condition.FilterConditionOperator;
-import com.modlix.saas.commons2.model.dto.AbstractDTO;
-
-import lombok.Getter;
 
 @Getter
 @Transactional
@@ -81,10 +76,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = getSelectJointStep();
         Condition filterCondition = filter(condition);
 
-        SelectJoinStep<Record> selectJoinStep = (SelectJoinStep<Record>) selectJoinStepTuple.getT1()
-                .where(filterCondition);
-        SelectJoinStep<Record1<Integer>> countJoinStep = (SelectJoinStep<Record1<Integer>>) selectJoinStepTuple.getT2()
-                .where(filterCondition);
+        SelectJoinStep<Record> selectJoinStep =
+                (SelectJoinStep<Record>) selectJoinStepTuple.getT1().where(filterCondition);
+        SelectJoinStep<Record1<Integer>> countJoinStep =
+                (SelectJoinStep<Record1<Integer>>) selectJoinStepTuple.getT2().where(filterCondition);
 
         return list(pageable, new Tuple2<>(selectJoinStep, countJoinStep));
     }
@@ -106,8 +101,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
             selectJoinStep.orderBy(orderBy);
         }
 
-        List<D> recordsList = dslContext.fetch(
-                        selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
+        List<D> recordsList = dslContext
+                .fetch(selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(e -> e.into(this.pojoClass));
 
         return PageableExecutionUtils.getPage(recordsList, pageable, () -> recordsCount);
@@ -121,8 +116,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
             selectJoinStep.where(condition);
         }
 
-        return dslContext.fetch(selectJoinStep)
-                .map(e -> e.into(this.pojoClass));
+        return dslContext.fetch(selectJoinStep).map(e -> e.into(this.pojoClass));
     }
 
     public D readById(I id) {
@@ -130,8 +124,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     protected String convertToJOOQFieldName(String fieldName) {
-        return fieldName.replaceAll("([A-Z])", "_$1")
-                .toUpperCase();
+        return fieldName.replaceAll("([A-Z])", "_$1").toUpperCase();
     }
 
     public D create(D pojo) {
@@ -141,11 +134,17 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         R rec = dslContext.newRecord(this.table);
         rec.from(pojo);
 
-        I id = dslContext.insertInto(this.table).set(rec).returning(this.idField)
+        I id = dslContext
+                .insertInto(this.table)
+                .set(rec)
+                .returning(this.idField)
                 .fetchOne()
                 .get(0, this.idField.getType());
 
-        return dslContext.selectFrom(this.table).where(this.idField.eq(id)).limit(1)
+        return dslContext
+                .selectFrom(this.table)
+                .where(this.idField.eq(id))
+                .limit(1)
                 .fetchOne()
                 .into(this.pojoClass);
     }
@@ -166,10 +165,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     public Condition filter(AbstractCondition condition) {
 
-        if (condition == null)
-            return DSL.noCondition();
+        if (condition == null) return DSL.noCondition();
 
-        Condition result = (condition instanceof ComplexCondition cc ? this.complexConditionFilter(cc)
+        Condition result = (condition instanceof ComplexCondition cc
+                ? this.complexConditionFilter(cc)
                 : this.filterConditionFilter((FilterCondition) condition));
 
         return condition.isNegate() ? result.not() : result;
@@ -182,25 +181,26 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         Field field = this.getField(fc.getField()); // NOSONAR
         // Field has to be a raw type because we are generalising
 
-        if (field == null)
-            return DSL.noCondition();
+        if (field == null) return DSL.noCondition();
 
         if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
-            return field
-                    .between(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-                            : this.fieldValue(field, fc.getValue()))
-                    .and(fc.isToValueField() ? (Field<?>) this.getField(fc.getField())
-                            : this.fieldValue(field, fc.getToValue()));
+            return field.between(
+                            fc.isValueField()
+                                    ? (Field<?>) this.getField(fc.getField())
+                                    : this.fieldValue(field, fc.getValue()))
+                    .and(
+                            fc.isToValueField()
+                                    ? (Field<?>) this.getField(fc.getField())
+                                    : this.fieldValue(field, fc.getToValue()));
         }
 
-        if (fc.getOperator() == FilterConditionOperator.EQUALS ||
-                fc.getOperator() == FilterConditionOperator.GREATER_THAN ||
-                fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL ||
-                fc.getOperator() == FilterConditionOperator.LESS_THAN ||
-                fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
+        if (fc.getOperator() == FilterConditionOperator.EQUALS
+                || fc.getOperator() == FilterConditionOperator.GREATER_THAN
+                || fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL
+                || fc.getOperator() == FilterConditionOperator.LESS_THAN
+                || fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
             if (fc.isValueField()) {
-                if (fc.getField() == null)
-                    return DSL.noCondition();
+                if (fc.getField() == null) return DSL.noCondition();
                 return switch (fc.getOperator()) {
                     case EQUALS -> field.eq(this.getField(fc.getField()));
                     case GREATER_THAN -> field.gt(this.getField(fc.getField()));
@@ -211,8 +211,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 };
             }
 
-            if (fc.getValue() == null)
-                return DSL.noCondition();
+            if (fc.getValue() == null) return DSL.noCondition();
             Object v = this.fieldValue(field, fc.getValue());
             return switch (fc.getOperator()) {
                 case EQUALS -> field.eq(this.fieldValue(field, v));
@@ -225,13 +224,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         }
 
         return switch (fc.getOperator()) {
-
             case IS_FALSE -> field.isFalse();
             case IS_TRUE -> field.isTrue();
             case IS_NULL -> field.isNull();
             case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-            case LIKE -> field.like(fc.getValue()
-                    .toString());
+            case LIKE -> field.like(fc.getValue().toString());
             case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
             default -> DSL.noCondition();
         };
@@ -239,11 +236,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
 
-        if (values != null && !values.isEmpty())
-            return values;
+        if (values != null && !values.isEmpty()) return values;
 
-        if (obValue == null)
-            return List.of();
+        if (obValue == null) return List.of();
 
         int from = 0;
         String iValue = obValue.toString().trim();
@@ -252,16 +247,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         for (int i = 0; i <= iValue.length(); i++) { // NOSONAR
             // Having multiple continue statements is not confusing
 
-            if (i < iValue.length() && iValue.charAt(i) != ',')
-                continue;
+            if (i < iValue.length() && iValue.charAt(i) != ',') continue;
 
-            if (i > 0 && iValue.charAt(i - 1) == '\\')
-                continue;
+            if (i > 0 && iValue.charAt(i - 1) == '\\') continue;
 
             String str = iValue.substring(from, i).trim();
 
-            if (str.isEmpty())
-                continue;
+            if (str.isEmpty()) continue;
 
             obj.add(this.fieldValue(field, str));
             from = i + 1;
@@ -272,28 +264,25 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected Object fieldValue(Field<?> field, Object value) {
 
-        if (value == null)
-            return null;
+        if (value == null) return null;
 
         DataType<?> dt = field.getDataType();
 
-        if (dt.isString() || dt.isJSON() || dt.isEnum())
-            return value.toString();
+        if (dt.isString() || dt.isJSON() || dt.isEnum()) return value.toString();
 
         if (dt.isNumeric()) {
 
-            if (value instanceof Number)
-                return value;
+            if (value instanceof Number) return value;
 
-            if (dt.hasPrecision())
-                return Double.valueOf(value.toString());
+            if (dt.hasPrecision()) return Double.valueOf(value.toString());
 
             return Long.valueOf(value.toString());
         }
 
         if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
-            return value.equals("now") ? LocalDateTime.now()
+            return value.equals("now")
+                    ? LocalDateTime.now()
                     : LocalDateTime.ofEpochSecond(Long.parseLong(value.toString()), 0, ZoneOffset.UTC);
         }
 
@@ -302,28 +291,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected Condition complexConditionFilter(ComplexCondition cc) {
 
-        if (cc.getConditions() == null || cc.getConditions()
-                .isEmpty())
-            return DSL.noCondition();
+        if (cc.getConditions() == null || cc.getConditions().isEmpty()) return DSL.noCondition();
 
-        List<Condition> conditions = cc.getConditions()
-                .stream()
-                .map(this::filter)
-                .toList();
+        List<Condition> conditions =
+                cc.getConditions().stream().map(this::filter).toList();
 
         return cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conditions) : DSL.or(conditions);
     }
 
     protected Record getRecordById(I id) {
 
-        Record record = getSelectJointStep()
-                .getT1()
-                .where(idField.eq(id))
-                .fetchOne();
+        Record record = getSelectJointStep().getT1().where(idField.eq(id)).fetchOne();
 
         if (record == null) {
-            String msg = messageResourceService.getDefaultLocaleMessage(OBJECT_NOT_FOUND,
-                    this.pojoClass.getSimpleName(), id);
+            String msg = messageResourceService.getDefaultLocaleMessage(
+                    OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id);
             throw new GenericException(HttpStatus.NOT_FOUND, msg);
         }
 
@@ -331,10 +313,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     protected Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> getSelectJointStep() {
-        return new Tuple2<>(dslContext.select(Arrays.asList(table.fields()))
-                .from(table),
-                dslContext.select(DSL.count())
-                        .from(table));
+        return new Tuple2<>(
+                dslContext.select(Arrays.asList(table.fields())).from(table),
+                dslContext.select(DSL.count()).from(table));
     }
 
     public Class<D> getPojoClass() {

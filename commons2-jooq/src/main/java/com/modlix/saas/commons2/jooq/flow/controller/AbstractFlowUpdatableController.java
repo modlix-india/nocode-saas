@@ -1,4 +1,3 @@
 package com.modlix.saas.commons2.jooq.flow.controller;
 
-public class AbstractFlowUpdatableController {
-}
+public class AbstractFlowUpdatableController {}

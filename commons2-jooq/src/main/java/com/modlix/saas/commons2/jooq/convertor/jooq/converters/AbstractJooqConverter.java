@@ -30,8 +30,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
 
     @Override
     public U from(T databaseObject) {
-        if (databaseObject == null)
-            return null;
+        if (databaseObject == null) return null;
 
         try {
             String data = this.toData(databaseObject);
@@ -44,8 +43,7 @@ public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U
 
     @Override
     public T to(U userObject) {
-        if (userObject == null)
-            return this.valueIfNull();
+        if (userObject == null) return this.valueIfNull();
 
         try {
             String jsonString = objectMapper().writeValueAsString(userObject);

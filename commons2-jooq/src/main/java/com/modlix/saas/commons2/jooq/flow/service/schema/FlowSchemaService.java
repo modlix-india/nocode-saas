@@ -1,19 +1,18 @@
-package com.fincity.saas.commons.jooq.flow.service.schema;
+package com.modlix.saas.commons2.jooq.flow.service.schema;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
-import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
-import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
-import com.fincity.saas.commons.util.Case;
+import com.modlix.saas.commons2.jooq.flow.dao.schema.FlowSchemaDAO;
+import com.modlix.saas.commons2.jooq.flow.dto.schema.FlowSchema;
+import com.modlix.saas.commons2.jooq.service.AbstractJOOQUpdatableDataService;
+import com.modlix.saas.commons2.util.Case;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 import org.jooq.UpdatableRecord;
-import reactor.core.publisher.Mono;
 
 public abstract class FlowSchemaService<
                 R extends UpdatableRecord<R>,
@@ -36,31 +35,18 @@ public abstract class FlowSchemaService<
     }
 
     @Override
-    protected Mono<D> updatableEntity(D entity) {
-        return this.dao.readById(entity.getId()).flatMap(existing -> {
-            existing.setFieldSchema(entity.getFieldSchema());
-            return Mono.just(existing);
-        });
+    protected D updatableEntity(D entity) {
+
+        D existing = this.dao.readById(entity.getId());
+
+        existing.setFieldSchema(entity.getFieldSchema());
+
+        return existing;
     }
 
     @Override
-    public Mono<D> create(D entity) {
+    public D create(D entity) {
         return super.create(this.updateEntity(entity));
-    }
-
-    public Mono<D> addField(I id, String fieldName, Map<String, Object> schema) {
-        return this.dao.readById(id).flatMap(existing -> {
-            Map<String, Map<String, Object>> fieldSchema =
-                    existing.getFieldSchema() != null ? existing.getFieldSchema() : new LinkedHashMap<>();
-
-            Map.Entry<String, Map<String, Object>> entry = this.updateSchemaEntry(
-                    existing.getDbSchema(), existing.getDbTableName(), Map.entry(fieldName, schema));
-
-            fieldSchema.put(entry.getKey(), entry.getValue());
-
-            existing.setFieldSchema(fieldSchema);
-            return super.update(existing);
-        });
     }
 
     @SuppressWarnings("unchecked")
@@ -71,6 +57,22 @@ public abstract class FlowSchemaService<
 
         return (D) entity.setFieldSchema(
                 this.toFieldMap(entity.getDbSchema(), entity.getDbTableName(), entity.getFieldSchema()));
+    }
+
+    public D addField(I id, String fieldName, Map<String, Object> schema) {
+
+        D existing = this.dao.readById(id);
+
+        Map<String, Map<String, Object>> fieldSchema =
+                existing.getFieldSchema() != null ? existing.getFieldSchema() : new LinkedHashMap<>();
+
+        Map.Entry<String, Map<String, Object>> entry =
+                this.updateSchemaEntry(existing.getDbSchema(), existing.getDbTableName(), Map.entry(fieldName, schema));
+
+        fieldSchema.put(entry.getKey(), entry.getValue());
+
+        existing.setFieldSchema(fieldSchema);
+        return super.update(existing);
     }
 
     private Map<String, Map<String, Object>> toFieldMap(

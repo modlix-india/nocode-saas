@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.1</version>
+        <version>3.4.9</version>
         <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
@@ -19,8 +19,6 @@
     <properties>
         <!-- directories -->
         <dir.main.java>src/main/java</dir.main.java>
-        <dir.package.server>message</dir.package.server>
-        <dir.resources>src/main/resources</dir.resources>
         <dir.test.java>src/test/java</dir.test.java>
         <!-- java -->
         <java.version>21</java.version>
@@ -28,11 +26,13 @@
         <!-- internal -->
         <package.i.nocode-kirun-version>3.7.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
+        <!-- open source -->
         <package.o.jooq.version>3.20.3</package.o.jooq.version>
+        <package.o.lombok.version>1.18.38</package.o.lombok.version>
+        <package.o.maven-compiler-plugin.version>3.13.0</package.o.maven-compiler-plugin.version>
         <package.o.palantir-java.format.version>2.70.0</package.o.palantir-java.format.version>
         <package.o.spotless.version>2.45.0</package.o.spotless.version>
-        <!-- open source -->
-        <package.o.spring-cloud.version>2024.0.0-RC1</package.o.spring-cloud.version>
+        <package.o.spring-cloud.version>2024.0.2</package.o.spring-cloud.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -116,6 +116,26 @@
             <url>https://repo.spring.io/milestone</url>
         </repository>
     </repositories>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${package.o.maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${package.o.lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <profiles>
         <profile>
             <id>spotless</id>
@@ -162,25 +182,6 @@
                                     <sortProperties>true</sortProperties>
                                 </sortPom>
                             </pom>
-                            <yaml>
-                                <includes>
-                                    <include>${dir.resources}/*.yml</include>
-                                    <include>${dir.resources}/*.yaml</include>
-                                </includes>
-                                <jackson>
-                                    <features>
-                                        <INDENT_OUTPUT>true</INDENT_OUTPUT>
-                                        <ORDER_MAP_ENTRIES_BY_KEYS>true</ORDER_MAP_ENTRIES_BY_KEYS>
-                                    </features>
-                                    <yamlFeatures>
-                                        <WRITE_DOC_START_MARKER>true</WRITE_DOC_START_MARKER>
-                                        <MINIMIZE_QUOTES>true</MINIMIZE_QUOTES>
-                                        <SPLIT_LINES>true</SPLIT_LINES>
-                                    </yamlFeatures>
-                                </jackson>
-                                <trimTrailingWhitespace/>
-                                <endWithNewline/>
-                            </yaml>
                         </configuration>
                         <dependencies>
                             <dependency>

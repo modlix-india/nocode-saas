@@ -1,7 +1,6 @@
 package com.modlix.saas.commons2.jooq.util;
 
 import java.math.BigInteger;
-
 import org.jooq.types.ULong;
 
 public class ULongUtil {
@@ -34,7 +33,5 @@ public class ULongUtil {
         }
     }
 
-    private ULongUtil() {
-    }
+    private ULongUtil() {}
 }
-

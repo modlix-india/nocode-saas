@@ -37,11 +37,15 @@ import reactor.util.function.Tuple2;
 public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>>
         extends AbstractFlowUpdatableDAO<R, ULong, D> implements IEagerDAO<R> {
 
+    private static final String APP_CODE = "APP_CODE";
+    private static final String CLIENT_CODE = "CLIENT_CODE";
     private static final String CODE = "CODE";
     private static final String NAME = "NAME";
     private static final String TEMP_ACTIVE = "TEMP_ACTIVE";
     private static final String IS_ACTIVE = "IS_ACTIVE";
 
+    protected final Field<String> appCodeField;
+    protected final Field<String> clientCodeField;
     protected final Field<String> codeField;
     protected final Field<String> nameField;
     protected final Field<Boolean> tempActiveField;
@@ -54,6 +58,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
 
     protected BaseUpdatableDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
+        this.appCodeField = table.field(APP_CODE, String.class);
+        this.clientCodeField = table.field(CLIENT_CODE, String.class);
         this.codeField = flowTable.field(CODE, String.class);
         this.nameField = flowTable.field(NAME, String.class);
         this.tempActiveField = flowTable.field(TEMP_ACTIVE, Boolean.class);
@@ -138,11 +144,11 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     private AbstractCondition getAppCodeCondition(ProcessorAccess access) {
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode());
+        return FilterCondition.make(BaseUpdatableDto.Fields.appCode, access.getAppCode());
     }
 
     private AbstractCondition getClientCodeCondition(ProcessorAccess access) {
-        return FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getEffectiveClientCode());
+        return FilterCondition.make(BaseUpdatableDto.Fields.clientCode, access.getEffectiveClientCode());
     }
 
     public Mono<D> readInternal(ULong id) {
@@ -174,8 +180,8 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         if (StringUtil.safeIsBlank(name)) return Mono.just(Boolean.FALSE);
 
         List<Condition> baseConditions = new ArrayList<>();
-        baseConditions.add(super.appCodeField.eq(appCode));
-        baseConditions.add(super.clientCodeField.eq(clientCode));
+        baseConditions.add(this.appCodeField.eq(appCode));
+        baseConditions.add(this.clientCodeField.eq(clientCode));
         baseConditions.add(this.nameField.eq(name));
 
         if (id != null) baseConditions.add(this.idField.ne(id));

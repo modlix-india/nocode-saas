@@ -6,6 +6,8 @@ import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import java.io.Serializable;
+import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -13,13 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
 @Transactional
-public abstract class FlowSchemaDAO<R extends UpdatableRecord<R>, D extends FlowSchema<ULong, ULong>>
-        extends AbstractUpdatableDAO<R, ULong, D> {
+public abstract class FlowSchemaDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends FlowSchema<I, I>>
+        extends AbstractUpdatableDAO<R, I, D> {
 
-    private static final String ID_FIELD_NAME = "ID";
-
-    protected FlowSchemaDAO(Class<D> pojoClass, Table<R> table) {
-        super(pojoClass, table, table.field(ID_FIELD_NAME, ULong.class));
+    protected FlowSchemaDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
+        super(pojoClass, table, idField);
     }
 
     public Mono<D> getFlowSchema(AbstractCondition condition, String dbSchema, String dbTableName) {

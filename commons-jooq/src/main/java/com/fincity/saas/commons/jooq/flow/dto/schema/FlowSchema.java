@@ -1,8 +1,8 @@
 package com.fincity.saas.commons.jooq.flow.dto.schema;
 
-import com.fincity.saas.commons.jooq.flow.schema.AbstractRDBMSSchema;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import java.io.Serializable;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -24,7 +24,7 @@ public abstract class FlowSchema<I extends Serializable, U extends Serializable>
     private String dbSchema;
     private String dbTableName;
     private ULong dbId;
-    private AbstractRDBMSSchema fieldSchema;
+    private Map<String, Map<String, Object>> fieldSchema;
 
     protected FlowSchema() {
         super();

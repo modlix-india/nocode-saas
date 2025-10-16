@@ -48,6 +48,9 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     protected transient SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
             new HashSetValuedHashMap<>();
 
+    private String appCode;
+    private String clientCode;
+
     private String code = UniqueUtil.shortUUID();
     private String name;
     private String description;
