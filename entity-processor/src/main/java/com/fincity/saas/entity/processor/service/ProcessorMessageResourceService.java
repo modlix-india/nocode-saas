@@ -36,7 +36,8 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String PRODUCT_TEMPLATE_MISSING = "product_template_missing";
     public static final String PRODUCT_TEMPLATE_TYPE_MISSING = "product_template_type_missing";
     public static final String INVALID_PARENT = "invalid_parent";
-    public static final String STAGE_MISSING = "stage_missing";
+    public static final String STAGE_MISSING = "stage_id_missing";
+    public static final String STATUS_MISSING = "status_id_missing";
     public static final String INVALID_STAGE_STATUS = "invalid_stage_status";
     public static final String TEMPLATE_STAGE_MISSING = "template_stage_missing";
     public static final String TEMPLATE_STAGE_INVALID = "template_stage_invalid";
@@ -54,6 +55,8 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String INVALID_PARAMETERS = "invalid_parameters";
     public static final String WEBSITE_ENTITY_DATA_INVALID = "website_entity_data_invalid";
     public static final String UNKNOWN_EXOTEL_CALLER_ID = "unknown_exotel_caller_id";
+    public static final String PRODUCT_TEMPLATE_NOT_FOUND = "product_template_not_found";
+    public static final String PRODUCT_NOT_FOUND = "product_not_found";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
