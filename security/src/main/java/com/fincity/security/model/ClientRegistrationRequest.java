@@ -37,6 +37,8 @@ public class ClientRegistrationRequest implements BasePassword<ClientRegistratio
     private String subDomain;
     private String subDomainSuffix;
     private String socialRegisterState;
+    private ULong planId;
+    private ULong cycleId;
 
     public String getIdentifier() {
 

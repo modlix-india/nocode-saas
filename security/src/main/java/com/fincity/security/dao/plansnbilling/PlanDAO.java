@@ -2,7 +2,9 @@ package com.fincity.security.dao.plansnbilling;
 
 import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
 import static com.fincity.security.jooq.tables.SecurityPlanApp.SECURITY_PLAN_APP;
+import static com.fincity.security.jooq.tables.SecurityClientPlan.SECURITY_CLIENT_PLAN;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -74,4 +76,12 @@ public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, P
         .where(SECURITY_PLAN_APP.PLAN_ID.in(planIds)))
         .collectMultimap(rec -> rec.get(SECURITY_PLAN_APP.PLAN_ID), rec -> rec.get(SECURITY_PLAN_APP.APP_ID));
         }
+
+
+    public Mono<Boolean> addClientToPlan(ULong clientId, ULong planId, ULong cycleId, LocalDateTime endDate) {
+        // Here we need to check if the client has any plan already whit the same apps and throw an exception,
+        // Also if the the apps are exactly same then end that plan and add this plan.
+
+        return Mono.just(true);
+    }
 }

@@ -1,5 +1,6 @@
 package com.fincity.security.service.plansnbilling;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -194,6 +195,10 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Plan> read(ULong id) {
         return super.read(id).flatMap(p -> this.readOthers(List.of(p))).map(List::getFirst);
     }
+    
+    public Mono<Plan> readInternal(ULong id) {
+        return super.read(id).flatMap(p -> this.readOthers(List.of(p))).map(List::getFirst);
+    }
 
     @PreAuthorize("hasAuthority('Authorities.Plan_READ')")
     @Override
@@ -225,5 +230,14 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     return p;
                 }).collectList()
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.readOthers"));
+    }
+
+    public Mono<Boolean> addPlanAndCyCle(ULong clientId, String urlClientCode, ULong planId, ULong cycleId, LocalDateTime endDate) {
+        return FlatMapUtil.flatMapMono(
+            () -> this.clientService.getClientBy(urlClientCode),
+            urlClient -> this.readInternal(planId).filter(plan -> plan.getClientId().equals(urlClient.getId()))
+                        .filter(plan -> plan.getCycles() != null && plan.getCycles().stream().anyMatch(cycle -> cycle.getId().equals(cycleId))),
+            (urlClient, plan) -> this.dao.addClientToPlan(clientId, planId, cycleId, endDate)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.addPlanAndCyCle"));
     }
 }
