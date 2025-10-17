@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.dao.base;
 
 import com.fincity.saas.commons.jooq.dao.AbstractDAO;
-import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -135,8 +134,7 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
     }
 
     private Mono<AbstractCondition> getClientCodeCondition(ProcessorAccess access) {
-        return Mono.just(
-                FilterCondition.make(BaseUpdatableDto.Fields.clientCode, access.getEffectiveClientCode()));
+        return Mono.just(FilterCondition.make(BaseUpdatableDto.Fields.clientCode, access.getEffectiveClientCode()));
     }
 
     private Mono<AbstractCondition> getUserConditions(ProcessorAccess access, Map<String, String> fieldMappings) {

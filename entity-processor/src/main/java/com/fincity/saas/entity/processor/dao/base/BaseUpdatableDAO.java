@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowUpdatableDAO;
-import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;

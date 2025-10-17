@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.service.rule.base;
+package com.fincity.saas.entity.processor.service.rule.condition;
 
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.rule.base.BaseRuleDAO;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
+public abstract class BaseConditionRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     @Override
@@ -30,14 +30,5 @@ public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends Ba
             existing.setVersion(existing.getVersion() + 1);
             return Mono.just(existing);
         });
-    }
-
-    @Override
-    public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
-    }
-
-    public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 }

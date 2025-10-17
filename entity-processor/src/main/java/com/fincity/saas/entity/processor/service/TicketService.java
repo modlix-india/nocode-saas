@@ -26,6 +26,8 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.rule.ProductStageRuleService;
+
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -136,7 +138,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentityDnc) -> Mono.just(
                                 ticket.setProductId(productIdentityDnc.getT1().getULongId())
                                         .setDnc(productIdentityDnc.getT2())),
-                        (access, productIdentityDnc, pTicket) -> super.createInternal(access, pTicket),
+                        (access, productIdentityDnc, pTicket) -> super.create(access, pTicket),
                         (access, productIdentityDnc, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentityDnc, pTicket, created, noteCreated) -> this.activityService
@@ -178,7 +180,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, isDuplicate) -> Mono.just(
                                 ticket.setProductId(productIdentity.getT1().getULongId())
                                         .setDnc(productIdentity.getT2())),
-                        (access, productIdentity, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                        (access, productIdentity, isDuplicate, pTicket) -> super.create(access, pTicket),
                         (access, productIdentity, isDuplicate, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
@@ -255,7 +257,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                                     .getFirst()
                                                     .getId());
 
-                                        return super.updateInternal(cTicket);
+                                        return super.updateInternal(access, cTicket);
                                     },
                                     (pAccess, cTicket, product, stageStatusEntity, oldStage, uTicket) ->
                                             this.createTask(pAccess, ticketStatusRequest, uTicket),
@@ -305,7 +307,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                             return FlatMapUtil.flatMapMono(
                                     () -> this.setTicketAssignment(access, ticket, ticketReassignRequest.getUserId()),
-                                    super::updateInternal,
+                                    aTicket -> super.updateInternal(access, aTicket),
                                     (aTicket, uTicket) -> this.createNote(access, ticketReassignRequest, uTicket),
                                     (aTicket, uTicket, cNote) -> this.activityService
                                             .acReassign(
@@ -484,7 +486,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 cTicketRequest.getLeadDetails().getSource(),
                                 cTicketRequest.getLeadDetails().getSubSource()),
                         (campaign, product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (campaign, product, ticket, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                        (campaign, product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket),
                         (campaign, product, ticket, isDuplicate, pTicket, created) ->
                                 this.createNote(access, null, created),
                         (campaign, product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
@@ -517,7 +519,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 cTicketRequest.getLeadDetails().getSource(),
                                 cTicketRequest.getLeadDetails().getSubSource()),
                         (product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, isDuplicate, pTicket) -> super.createInternal(access, pTicket),
+                        (product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket),
                         (product, ticket, isDuplicate, pTicket, created) ->
                                 this.createNote(access, cTicketRequest, created),
                         (product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService

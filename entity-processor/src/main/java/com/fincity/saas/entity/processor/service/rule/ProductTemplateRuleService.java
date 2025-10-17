@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.service;
+package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -9,7 +9,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
-import com.fincity.saas.entity.processor.service.rule.RuleService;
+import com.fincity.saas.entity.processor.service.ProductTemplateService;
 import com.google.gson.JsonElement;
 import java.util.List;
 import java.util.Set;
@@ -52,11 +52,6 @@ public class ProductTemplateRuleService
     @Override
     protected Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId) {
         return productTemplateService.checkAndUpdateIdentityWithAccess(access, entityId);
-    }
-
-    @Override
-    protected String getEntityRefName() {
-        return productTemplateService.getEntityName();
     }
 
     @Override

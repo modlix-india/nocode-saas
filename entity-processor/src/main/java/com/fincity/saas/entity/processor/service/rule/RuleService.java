@@ -16,6 +16,8 @@ import com.fincity.saas.entity.processor.model.response.rule.RuleResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.service.rule.condition.ComplexRuleService;
+import com.fincity.saas.entity.processor.service.rule.condition.SimpleRuleService;
 import com.google.gson.JsonElement;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +48,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
 
     protected abstract Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId);
-
-    protected abstract String getEntityRefName();
 
     protected abstract Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds);
 

@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.service.rule.base;
+package com.fincity.saas.entity.processor.service.rule.condition;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;

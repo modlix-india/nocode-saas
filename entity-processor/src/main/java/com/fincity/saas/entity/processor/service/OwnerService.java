@@ -45,11 +45,6 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     @Override
-    protected Mono<Owner> checkEntity(Owner entity, ProcessorAccess access) {
-        return Mono.just(entity);
-    }
-
-    @Override
     protected Mono<Owner> updatableEntity(Owner entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
@@ -67,7 +62,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.checkDuplicate(access, ownerRequest),
-                        (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
+                        (access, isDuplicate) -> super.create(access, Owner.of(ownerRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
     }
 
@@ -94,7 +89,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                         () -> this.dao
                                 .readByNumberAndEmail(
                                         access, ticket.getDialCode(), ticket.getPhoneNumber(), ticket.getEmail())
-                                .switchIfEmpty(this.createInternal(access, Owner.of(ticket))),
+                                .switchIfEmpty(super.create(access, Owner.of(ticket))),
                         owner -> {
                             if (owner.getId() == null)
                                 return this.msgService.throwMessage(
