@@ -44,6 +44,9 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     protected transient SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
             new HashSetValuedHashMap<>();
 
+    private String appCode;
+    private String clientCode;
+
     private String code = UniqueUtil.shortUUID();
 
     private String name = this.code;

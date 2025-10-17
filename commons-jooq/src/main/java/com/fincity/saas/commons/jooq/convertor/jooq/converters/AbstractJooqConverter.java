@@ -2,11 +2,10 @@ package com.fincity.saas.commons.jooq.convertor.jooq.converters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.util.SpringContextAccessor;
+import java.io.Serializable;
 import org.jooq.impl.AbstractConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.Serializable;
 
 public abstract class AbstractJooqConverter<T, U> extends AbstractConverter<T, U> implements Serializable {
 

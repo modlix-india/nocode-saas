@@ -1,13 +1,11 @@
 package com.fincity.saas.commons.jooq.util;
 
 import java.math.BigInteger;
-
 import org.jooq.types.ULong;
 
 public class ULongUtil {
 
-    private ULongUtil() {
-    }
+    private ULongUtil() {}
 
     public static ULong valueOf(Object o) {
 

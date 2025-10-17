@@ -1,14 +1,12 @@
 package com.modlix.saas.commons2.jooq.gson;
 
+import com.modlix.saas.commons2.exception.GenericException;
 import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
-
 import org.jooq.types.UNumber;
 import org.springframework.http.HttpStatus;
-
-import com.modlix.saas.commons2.exception.GenericException;
 
 public class UNumberListAdapter<R extends UNumber> extends AbstractListAdapter<R> {
 

@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 public class UserFieldResolver implements RelationResolver {
 
     private static final Set<String> SUPPORTED_FIELDS =
-            Set.of("actorId", "assignedUserId", "managerId", "createdBy", "updatedBy");
+            Set.of("actorId", "assignedUserId", "lastAssignedUserId", "managerId", "createdBy", "updatedBy");
 
     private final IFeignSecurityService securityService;
 

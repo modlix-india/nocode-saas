@@ -64,7 +64,8 @@ public class TicketCallService {
                         .switchIfEmpty(this.createExotelTicket(access, productComm.getProductId(), from)),
                 (productComm, ticket) ->
                         messageService.connectCall(appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
-                                .setProviderIncomingRequest(request.getQueryParams().toSingleValueMap())
+                                .setProviderIncomingRequest(
+                                        request.getQueryParams().toSingleValueMap())
                                 .setConnectionName(productComm.getConnectionName())
                                 .setUserId(ticket.getAssignedUserId())));
     }

@@ -59,16 +59,16 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     public AbstractCondition addAppCodeAndClientCodeToCondition(MessageAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                    FilterCondition.make(BaseDto.Fields.appCode, access.getAppCode())
                             .setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                    FilterCondition.make(BaseDto.Fields.clientCode, access.getClientCode())
                             .setOperator(FilterConditionOperator.EQUALS));
 
         return ComplexCondition.and(
                 condition,
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())
+                FilterCondition.make(BaseDto.Fields.appCode, access.getAppCode())
                         .setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, access.getClientCode())
+                FilterCondition.make(BaseDto.Fields.clientCode, access.getClientCode())
                         .setOperator(FilterConditionOperator.EQUALS));
     }
 }

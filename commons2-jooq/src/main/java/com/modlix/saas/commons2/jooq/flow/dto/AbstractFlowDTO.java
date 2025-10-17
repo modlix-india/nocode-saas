@@ -1,13 +1,11 @@
 package com.modlix.saas.commons2.jooq.flow.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.gson.JsonElement;
+import com.modlix.saas.commons2.jooq.flow.jackson.FieldSerializer;
+import com.modlix.saas.commons2.model.dto.AbstractDTO;
 import java.io.Serial;
 import java.io.Serializable;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.modlix.saas.commons2.jooq.flow.FlowField;
-import com.modlix.saas.commons2.model.dto.AbstractDTO;
-import com.google.gson.JsonObject;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -24,11 +22,6 @@ public abstract class AbstractFlowDTO<I extends Serializable, U extends Serializ
     @Serial
     private static final long serialVersionUID = 7121981370061595384L;
 
-    private String appCode;
-    private String clientCode;
-
-    @FlowField
-    @JsonIgnore
-    private JsonObject fields;
+    @JsonSerialize(using = FieldSerializer.class)
+    private JsonElement fields;
 }
-

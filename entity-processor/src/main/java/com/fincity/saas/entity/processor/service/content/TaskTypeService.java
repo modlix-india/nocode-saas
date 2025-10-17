@@ -34,6 +34,11 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     @Override
+    protected Mono<TaskType> checkEntity(TaskType entity, ProcessorAccess access) {
+        return super.checkExistsByName(access, entity);
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TASK_TYPE;
     }
@@ -69,18 +74,8 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Mono<TaskType> create(TaskTypeRequest taskTypeRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskTypeRequest))
+        return super.create(TaskType.of(taskTypeRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[TaskTypeRequest]"));
-    }
-
-    public Mono<TaskType> createInternal(ProcessorAccess access, TaskTypeRequest taskTypeRequest) {
-
-        TaskType taskType = TaskType.of(taskTypeRequest);
-
-        return this.checkExistsByName(access, taskType)
-                .flatMap(cEntity -> super.createInternal(access, taskType))
-                .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskTypeRequest]"));
     }
 
     public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {

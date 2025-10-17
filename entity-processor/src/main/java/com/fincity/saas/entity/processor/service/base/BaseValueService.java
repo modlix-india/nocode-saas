@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -316,26 +315,30 @@ public abstract class BaseValueService<
         if (parentId == null) return Mono.empty();
 
         return this.getAllValues(appCode, clientCode, platform, productTemplateId, parentId)
-                .mapNotNull(map -> map.entrySet().stream()
+                .flatMap(map -> Mono.justOrEmpty(map.entrySet().stream()
                         .filter(entry -> parentId.equals(entry.getKey().getId()))
-                        .findFirst()
-                        .orElse(null));
+                        .findFirst()));
     }
 
     protected Mono<Map<D, Set<D>>> getAllValues(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong... parentIds) {
 
-        if (parentIds == null
-                || parentIds.length == 0
-                || Arrays.stream(parentIds).allMatch(Objects::isNull))
+        if (parentIds == null || parentIds.length == 0)
             return this.getAllValues(appCode, clientCode, platform, productTemplateId);
 
-        Set<ULong> parents = Set.of(parentIds);
+        Set<ULong> parents = new HashSet<>(Arrays.asList(parentIds));
+        parents.remove(null);
+
+        if (parents.isEmpty()) return this.getAllValues(appCode, clientCode, platform, productTemplateId);
 
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
-                .map(values -> values.entrySet().stream()
-                        .filter(entry -> parents.contains(entry.getKey().getId()))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                .map(values -> {
+                    Map<D, Set<D>> filtered = HashMap.newHashMap(parents.size());
+                    values.entrySet().stream()
+                            .filter(entry -> parents.contains(entry.getKey().getId()))
+                            .forEach(entry -> filtered.put(entry.getKey(), entry.getValue()));
+                    return filtered;
+                });
     }
 
     private Mono<Map<D, Set<D>>> getAllValues(
@@ -358,37 +361,33 @@ public abstract class BaseValueService<
     private Mono<Map<D, Set<D>>> processValuesAndBuildHierarchy(Tuple2<List<D>, Map<ULong, D>> tuple) {
         Map<D, Set<D>> result = new HashMap<>();
 
-        Map<ULong, Set<D>> parentToChildrenMap = this.buildParentChildrenMap(tuple.getT1(), result);
-        this.linkParentsWithChildren(result, parentToChildrenMap);
-
-        return Mono.just(result);
-    }
-
-    private Map<ULong, Set<D>> buildParentChildrenMap(List<D> values, Map<D, Set<D>> result) {
         Map<ULong, Set<D>> parentToChildrenMap = new HashMap<>();
 
-        for (D value : values) {
+        Map<ULong, D> idToEntityMap = new HashMap<>();
 
-            this.addToParentMap(parentToChildrenMap, value.getParentLevel0(), value);
-            this.addToParentMap(parentToChildrenMap, value.getParentLevel1(), value);
+        for (D value : tuple.getT1()) {
+            idToEntityMap.put(value.getId(), value);
+
+            if (value.getParentLevel0() != null)
+                parentToChildrenMap
+                        .computeIfAbsent(value.getParentLevel0(), k -> new HashSet<>())
+                        .add(value);
+
+            if (value.getParentLevel1() != null)
+                parentToChildrenMap
+                        .computeIfAbsent(value.getParentLevel1(), k -> new HashSet<>())
+                        .add(value);
 
             if (Boolean.TRUE.equals(value.getIsParent()) || !value.hasParentLevels())
                 result.put(value, new HashSet<>());
         }
 
-        return parentToChildrenMap;
-    }
+        parentToChildrenMap.forEach((parentId, children) -> {
+            D parent = idToEntityMap.get(parentId);
+            if (parent != null && result.containsKey(parent)) result.get(parent).addAll(children);
+        });
 
-    private void addToParentMap(Map<ULong, Set<D>> parentToChildrenMap, ULong parentId, D childValue) {
-        if (parentId != null)
-            parentToChildrenMap.computeIfAbsent(parentId, k -> new HashSet<>()).add(childValue);
-    }
-
-    private void linkParentsWithChildren(Map<D, Set<D>> result, Map<ULong, Set<D>> parentToChildrenMap) {
-        parentToChildrenMap.forEach((parentId, children) -> result.keySet().stream()
-                .filter(bv -> bv.getId().equals(parentId))
-                .findFirst()
-                .ifPresent(parentValue -> result.get(parentValue).addAll(children)));
+        return Mono.just(result);
     }
 
     public Mono<List<D>> getValuesFlat(

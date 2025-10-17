@@ -33,8 +33,8 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
 
         List<Condition> conditions = new ArrayList<>();
 
-        conditions.add(this.appCodeField.eq(access.getAppCode()));
-        conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
+        conditions.add(super.appCodeField.eq(access.getAppCode()));
+        conditions.add(super.clientCodeField.eq(access.getEffectiveClientCode()));
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 

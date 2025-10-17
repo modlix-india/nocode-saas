@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.service.rule;
+package com.fincity.saas.entity.processor.service.rule.condition;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;

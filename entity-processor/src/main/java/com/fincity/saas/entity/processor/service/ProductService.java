@@ -91,19 +91,22 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.create(Product.of(productRequest)),
-                        created -> productTemplateService.readIdentityWithAccess(productRequest.getProductTemplateId()),
-                        (created, productTemplate) -> {
+                        super::hasAccess,
+                        access -> super.create(access, Product.of(productRequest)),
+                        (access, created) ->
+                                productTemplateService.readIdentityWithAccess(productRequest.getProductTemplateId()),
+                        (access, created, productTemplate) -> {
                             created.setProductTemplateId(productTemplate.getId());
-                            return super.updateInternal(created);
+                            return super.updateInternal(access, created);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
-    public Mono<ProductTemplate> setProductTemplate(Identity productId, ProductTemplate productTemplate) {
-        return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(productId), product -> {
+    public Mono<ProductTemplate> setProductTemplate(
+            ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
+        return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(access, productId), product -> {
                     product.setProductTemplateId(productTemplate.getId());
-                    return super.updateInternal(product).map(updated -> productTemplate);
+                    return super.updateInternal(access, product).map(updated -> productTemplate);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
@@ -121,8 +124,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                             .flatMap(entry -> this.readIdentityWithAccess(access, entry.getId())
                                     .map(product -> product.setForPartner(entry.getValue())))
                             .collectList()
-                            .flatMapMany(validatedProducts ->
-                                    Flux.fromIterable(validatedProducts).flatMap(this::updateInternal))
+                            .flatMapMany(validatedProducts -> Flux.fromIterable(validatedProducts)
+                                    .flatMap(vProduct -> super.updateInternal(access, vProduct)))
                             .count();
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));

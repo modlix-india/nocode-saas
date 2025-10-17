@@ -2,7 +2,6 @@ package com.fincity.saas.commons.jooq.flow.schema.enums;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
-
 import java.sql.SQLType;
 import java.sql.Types;
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum CommonSqlType implements SQLType {
-
     TINYINT(Types.TINYINT),
     SMALLINT(Types.SMALLINT),
     INTEGER(Types.INTEGER),

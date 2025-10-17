@@ -1,5 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -10,12 +15,10 @@ import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -44,6 +47,11 @@ public class ProductTemplateService
     }
 
     @Override
+    protected Mono<ProductTemplate> checkEntity(ProductTemplate entity, ProcessorAccess access) {
+        return super.checkExistsByName(access, entity);
+    }
+
+    @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TEMPLATE;
     }
@@ -61,24 +69,25 @@ public class ProductTemplateService
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> super.checkExistsByName(access, productTemplate),
-                        super::createInternal,
-                        (access, cEntity, created) -> (productTemplateRequest.getProductId() == null
+                        access -> super.create(access, productTemplate),
+                        (access, created) -> (productTemplateRequest.getProductId() == null
                                         || productTemplateRequest.getProductId().isNull())
                                 ? Mono.just(created)
-                                : this.updateDependentServices(created, productTemplateRequest.getProductId()))
+                                : this.updateDependentServices(access, productTemplateRequest.getProductId(), created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.create"));
     }
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
-                        () -> super.readIdentityWithAccess(identity),
-                        productTemplate ->
-                                this.updateDependentServices(productTemplate, productTemplateRequest.getProductId()))
+                        super::hasAccess,
+                        access -> super.readIdentityWithAccess(access, identity),
+                        (access, productTemplate) -> this.updateDependentServices(
+                                access, productTemplateRequest.getProductId(), productTemplate))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.attachEntity"));
     }
 
-    private Mono<ProductTemplate> updateDependentServices(ProductTemplate productTemplate, Identity productId) {
-        return productService.setProductTemplate(productId, productTemplate);
+    private Mono<ProductTemplate> updateDependentServices(
+            ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
+        return productService.setProductTemplate(access, productId, productTemplate);
     }
 }

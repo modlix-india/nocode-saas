@@ -63,8 +63,8 @@ public abstract class RuleDAO<R extends UpdatableRecord<R>, D extends Rule<D>> e
 
         List<Condition> conditions = new ArrayList<>();
 
-        conditions.add(this.appCodeField.eq(appCode));
-        conditions.add(this.clientCodeField.eq(clientCode));
+        conditions.add(super.appCodeField.eq(appCode));
+        conditions.add(super.clientCodeField.eq(clientCode));
         conditions.add(this.entityIdField.eq(entityId));
 
         Condition stageCondition = this.stageIdField.eq(stageId);

@@ -1,8 +1,17 @@
 package com.modlix.saas.commons2.jooq.controller;
 
+import com.modlix.saas.commons2.jooq.dao.AbstractDAO;
+import com.modlix.saas.commons2.jooq.service.AbstractJOOQDataService;
+import com.modlix.saas.commons2.model.Query;
+import com.modlix.saas.commons2.model.dto.AbstractDTO;
+import com.modlix.saas.commons2.util.ConditionUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import java.beans.PropertyEditorSupport;
 import java.io.Serializable;
-
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
@@ -23,19 +32,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import com.modlix.saas.commons2.jooq.dao.AbstractDAO;
-import com.modlix.saas.commons2.jooq.service.AbstractJOOQDataService;
-import com.modlix.saas.commons2.model.Query;
-import com.modlix.saas.commons2.model.dto.AbstractDTO;
-import com.modlix.saas.commons2.util.ConditionUtil;
-
-import jakarta.servlet.http.HttpServletRequest;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractDTO<I, I>, O extends AbstractDAO<R, I, D>, S extends AbstractJOOQDataService<R, I, D, O>> {
+public class AbstractJOOQDataController<
+        R extends UpdatableRecord<R>,
+        I extends Serializable,
+        D extends AbstractDTO<I, I>,
+        O extends AbstractDAO<R, I, D>,
+        S extends AbstractJOOQDataService<R, I, D, O>> {
 
     public static final String PATH_VARIABLE_ID = "id";
     public static final String PATH_ID = "/{" + PATH_VARIABLE_ID + "}";
@@ -49,28 +51,22 @@ public class AbstractJOOQDataController<R extends UpdatableRecord<R>, I extends 
         binder.registerCustomEditor(ULong.class, new PropertyEditorSupport() {
             @Override
             public void setAsText(String text) {
-                if (text == null)
-                    setValue(null);
-                else
-                    setValue(ULong.valueOf(text));
+                if (text == null) setValue(null);
+                else setValue(ULong.valueOf(text));
             }
         });
         binder.registerCustomEditor(UInteger.class, new PropertyEditorSupport() {
             @Override
             public void setAsText(String text) {
-                if (text == null)
-                    setValue(null);
-                else
-                    setValue(UInteger.valueOf(text));
+                if (text == null) setValue(null);
+                else setValue(UInteger.valueOf(text));
             }
         });
         binder.registerCustomEditor(UShort.class, new PropertyEditorSupport() {
             @Override
             public void setAsText(String text) {
-                if (text == null)
-                    setValue(null);
-                else
-                    setValue(UShort.valueOf(text));
+                if (text == null) setValue(null);
+                else setValue(UShort.valueOf(text));
             }
         });
     }

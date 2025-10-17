@@ -1,14 +1,12 @@
 package com.fincity.saas.commons.jooq.gson;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
-
 import org.jooq.types.UNumber;
 import org.springframework.http.HttpStatus;
-
-import com.fincity.saas.commons.exeception.GenericException;
 
 public class UNumberListAdapter<R extends UNumber> extends AbstractListAdapter<R> {
 

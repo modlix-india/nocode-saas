@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
+import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -43,6 +44,7 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
     protected Rule() {
         super();
         this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.lastAssignedUserId);
     }
 
     protected Rule(Rule<T> rule) {

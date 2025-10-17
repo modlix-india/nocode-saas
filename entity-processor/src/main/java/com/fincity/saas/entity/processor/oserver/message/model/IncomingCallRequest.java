@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.oserver.message.model;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;

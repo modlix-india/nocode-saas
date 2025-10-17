@@ -1,15 +1,13 @@
 package com.modlix.saas.commons2.jooq;
 
-import org.junit.jupiter.api.Test;
-import org.jooq.types.ULong;
-import org.jooq.types.UInteger;
-import org.jooq.types.UShort;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import com.modlix.saas.commons2.util.Tuples;
-import com.modlix.saas.commons2.jooq.dao.AbstractDAO;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
+import org.jooq.types.UShort;
+import org.junit.jupiter.api.Test;
 
 public class Commons2JooqTest {
 

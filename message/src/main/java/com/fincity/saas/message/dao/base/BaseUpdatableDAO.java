@@ -141,16 +141,16 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
             AbstractCondition condition, String appCode, String clientCode) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
+                    FilterCondition.make(BaseUpdatableDto.Fields.appCode, appCode)
                             .setOperator(FilterConditionOperator.EQUALS),
-                    FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
+                    FilterCondition.make(BaseUpdatableDto.Fields.clientCode, clientCode)
                             .setOperator(FilterConditionOperator.EQUALS));
 
         return ComplexCondition.and(
                 condition,
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, appCode)
+                FilterCondition.make(BaseUpdatableDto.Fields.appCode, appCode)
                         .setOperator(FilterConditionOperator.EQUALS),
-                FilterCondition.make(AbstractFlowUpdatableDTO.Fields.clientCode, clientCode)
+                FilterCondition.make(BaseUpdatableDto.Fields.clientCode, clientCode)
                         .setOperator(FilterConditionOperator.EQUALS));
     }
 

@@ -52,22 +52,13 @@ public abstract class BaseContentService<
     }
 
     @Override
-    public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
-    }
-
-    public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
-    }
-
-    @Override
     protected boolean canOutsideCreate() {
         return Boolean.TRUE;
     }
 
     @Override
-    public Mono<D> createInternal(ProcessorAccess access, D entity) {
-        return super.createInternal(access, entity)
+    public Mono<D> create(ProcessorAccess access, D entity) {
+        return super.create(access, entity)
                 .flatMap(cContent ->
                         this.activityService.acContentCreate(cContent).then(Mono.just(cContent)));
     }
@@ -127,17 +118,12 @@ public abstract class BaseContentService<
     }
 
     @Override
-    public Mono<D> update(D entity) {
+    public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
-                (access, oEntity) -> this.updateInternal(entity),
-                (access, oEntity, uEntity) ->
+                () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
+                 oEntity -> super.update(access, entity),
+                (oEntity, uEntity) ->
                         activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
-    }
-
-    public Mono<D> updateInternal(D entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
     }
 
     protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
