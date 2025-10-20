@@ -1,20 +1,38 @@
 package com.fincity.saas.entity.processor.dao;
 
-import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormRecord;
-import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
-import org.springframework.stereotype.Component;
+import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplatesWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS;
 
-import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplatesWalkInForm.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORM;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
+import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormsRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 @Component
-public class ProductTemplateWalkInFormDAO extends BaseUpdatableDAO<EntityProcessorProductTemplatesWalkInFormRecord, ProductTemplateWalkInForm> {
+public class ProductTemplateWalkInFormDAO
+        extends BaseUpdatableDAO<EntityProcessorProductTemplatesWalkInFormsRecord, ProductTemplateWalkInForm> {
 
-    public ProductTemplateWalkInFormDAO(){
+    public ProductTemplateWalkInFormDAO() {
         super(
                 ProductTemplateWalkInForm.class,
-                ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORM,
-                ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORM.ID
-               );
+                ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS,
+                ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS.ID);
+    }
+
+    public Mono<ProductTemplateWalkInForm> findByAppClientAndProductTemplate(
+            ProcessorAccess access, ULong productTemplateId) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.processorAccessCondition(
+                        FilterCondition.make(ProductTemplateWalkInForm.Fields.productTemplateId, productTemplateId),
+                        access),
+                super::filter,
+                (abstractCondition, jooqCondition) -> Mono.from(
+                                dslContext.selectFrom(this.table).where(jooqCondition.and(super.isActiveTrue())))
+                        .map(record -> record.into(ProductTemplateWalkInForm.class)));
     }
 }

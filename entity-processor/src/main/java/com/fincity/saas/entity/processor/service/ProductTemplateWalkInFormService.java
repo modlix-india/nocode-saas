@@ -3,29 +3,85 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.entity.processor.dao.ProductTemplateDAO;
 import com.fincity.saas.entity.processor.dao.ProductTemplateWalkInFormDAO;
-import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateWalkInFormRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import lombok.RequiredArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-@RequiredArgsConstructor
-public class ProductTemplateWalkInFormService extends BaseUpdatableService<
-        EntityProcessorProductTemplatesWalkInFormRecord,
-        ProductTemplateWalkInForm,
-        ProductTemplateWalkInFormDAO> {
+public class ProductTemplateWalkInFormService
+        extends BaseUpdatableService<
+                EntityProcessorProductTemplatesWalkInFormsRecord,
+                ProductTemplateWalkInForm,
+                ProductTemplateWalkInFormDAO> {
 
-    private final ProductTemplateDAO productTemplateDAO;
-    private final StageDAO stageDAO;
-    private final ProductTemplateWalkInFormDAO productTemplateWalkInFormDAO;
+    private static final String PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE = "ProductTemplateWalkInForm";
+
+    private final ProductTemplateService productTemplateService;
+    private final StageService stageService;
+
+    public ProductTemplateWalkInFormService(ProductTemplateService productTemplateService, StageService stageService) {
+        this.productTemplateService = productTemplateService;
+        this.stageService = stageService;
+    }
+
+    @Override
+    protected String getCacheName() {
+        return PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE;
+    }
+
+    @Override
+    protected boolean canOutsideCreate() {
+        return Boolean.FALSE;
+    }
+
+    public Mono<ProductTemplateWalkInForm> create(ProductTemplateWalkInFormRequest req) {
+
+        if (req.getProductTemplateId() == null || req.getStageId() == null || req.getStatusId() == null) {
+            List<String> missingFields = new ArrayList<>();
+            if (req.getProductTemplateId() == null)
+                missingFields.add(ProcessorMessageResourceService.PRODUCT_TEMPLATE_ID_MISSING);
+            if (req.getStageId() == null) missingFields.add(ProcessorMessageResourceService.STAGE_MISSING);
+            if (req.getStatusId() == null) missingFields.add(ProcessorMessageResourceService.STATUS_MISSING);
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    String.join(",", missingFields),
+                    this.getEntitySeries());
+        }
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> Mono.zip(
+                                productTemplateService.readIdentityWithAccess(access, req.getProductTemplateId()),
+                                stageService.readIdentityWithAccess(access, req.getStageId()),
+                                stageService.readIdentityWithAccess(access, req.getStatusId())),
+                        (access, tuple3) -> {
+                            ULong productTemplateId = tuple3.getT1().getId();
+                            return this.dao
+                                    .findByAppClientAndProductTemplate(access, productTemplateId)
+                                    .flatMap(existing -> this.updateInternal(
+                                            access,
+                                            existing.setStageId(tuple3.getT2().getId())
+                                                    .setStatusId(tuple3.getT3().getId())
+                                                    .setAssignmentType(req.getAssignmentType())))
+                                    .switchIfEmpty(this.createInternal(
+                                            access,
+                                            new ProductTemplateWalkInForm()
+                                                    .setProductTemplateId(productTemplateId)
+                                                    .setStageId(tuple3.getT2().getId())
+                                                    .setStatusId(tuple3.getT3().getId())
+                                                    .setAssignmentType(req.getAssignmentType())));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateWalkInFormService.create"));
+    }
 
     @Override
     protected Mono<ProductTemplateWalkInForm> updatableEntity(ProductTemplateWalkInForm entity) {
@@ -35,61 +91,5 @@ public class ProductTemplateWalkInFormService extends BaseUpdatableService<
             existing.setStatusId(entity.getStatusId());
             return Mono.just(existing);
         });
-    }
-
-    public Mono<ProductTemplateWalkInForm> create(ProductTemplateWalkInFormRequest productTemplateWalkInFormRequest) {
-        if (productTemplateWalkInFormRequest.getProductTemplateId() == null
-                || productTemplateWalkInFormRequest.getStageId() == null
-                || productTemplateWalkInFormRequest.getStatusId() == null) {
-            return msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.INVALID_PARAMETERS);
-        }
-
-        ProductTemplateWalkInForm entity = ProductTemplateWalkInForm.of(productTemplateWalkInFormRequest);
-
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> Mono.zip(
-                        productTemplateDAO.readInternal(access, entity.getProductTemplateId())
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        ProcessorMessageResourceService.PRODUCT_TEMPLATE_NOT_FOUND)),
-
-                        stageDAO.readInternal(access, entity.getStageId())
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        ProcessorMessageResourceService.STAGE_MISSING)),
-
-                        stageDAO.readInternal(access, entity.getStatusId())
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-                                        ProcessorMessageResourceService.STATUS_MISSING))
-                ).flatMap(tuple -> {
-                    if (entity.getId() != null) {
-                        return this.readById(access, entity.getId())
-                                .flatMap(existing ->
-                                        updatableEntity(entity)
-                                                .flatMap(updated -> {
-                                                    updated.setId(existing.getId());
-                                                    return this.updateInternal(access, updated);
-                                                })
-                                )
-                                .switchIfEmpty(this.createInternal(access, entity)); // If not found, create
-                    } else {
-                        return this.createInternal(access, entity);
-                    }
-                })
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateWalkInFormService.create"));
-    }
-
-    @Override
-    protected String getCacheName() {
-        return "ProductTemplateWalkInFormCache";
-    }
-
-    @Override
-    protected boolean canOutsideCreate() {
-        return false;
     }
 }
