@@ -351,7 +351,7 @@ CREATE TABLE `security`.`security_payment_gateway` (
 
 
 ALTER TABLE `security`.`security_client_plan`
-  MODIFY COLUMN `END_DATE` TIMESTAMP NOT NULL DEFAULT '9999-12-31 23:59:59' COMMENT 'End date of the plan';
+  MODIFY COLUMN `END_DATE` TIMESTAMP NOT NULL DEFAULT '2035-12-31 23:59:59' COMMENT 'End date of the plan';
 
 ALTER TABLE `security`.`security_plan`
   ADD COLUMN `FALL_BACK_PLAN_ID` bigint unsigned DEFAULT NULL COMMENT 'Fallback plan ID',
