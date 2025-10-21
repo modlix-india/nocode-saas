@@ -25,15 +25,24 @@ import com.fincity.security.jooq.tables.SecurityClientHierarchy;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
+import com.fincity.security.jooq.tables.SecurityClientPlan;
 import com.fincity.security.jooq.tables.SecurityClientType;
 import com.fincity.security.jooq.tables.SecurityClientUrl;
 import com.fincity.security.jooq.tables.SecurityDepartment;
 import com.fincity.security.jooq.tables.SecurityDesignation;
+import com.fincity.security.jooq.tables.SecurityInvoice;
+import com.fincity.security.jooq.tables.SecurityInvoiceItem;
 import com.fincity.security.jooq.tables.SecurityOneTimeToken;
 import com.fincity.security.jooq.tables.SecurityOtp;
 import com.fincity.security.jooq.tables.SecurityPastPasswords;
 import com.fincity.security.jooq.tables.SecurityPastPins;
+import com.fincity.security.jooq.tables.SecurityPayment;
+import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPermission;
+import com.fincity.security.jooq.tables.SecurityPlan;
+import com.fincity.security.jooq.tables.SecurityPlanApp;
+import com.fincity.security.jooq.tables.SecurityPlanCycle;
+import com.fincity.security.jooq.tables.SecurityPlanLimit;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileClientRestriction;
 import com.fincity.security.jooq.tables.SecurityProfileRole;
@@ -180,6 +189,11 @@ public class Security extends SchemaImpl {
     public final SecurityClientPinPolicy SECURITY_CLIENT_PIN_POLICY = SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY;
 
     /**
+     * The table <code>security.security_client_plan</code>.
+     */
+    public final SecurityClientPlan SECURITY_CLIENT_PLAN = SecurityClientPlan.SECURITY_CLIENT_PLAN;
+
+    /**
      * The table <code>security.security_client_type</code>.
      */
     public final SecurityClientType SECURITY_CLIENT_TYPE = SecurityClientType.SECURITY_CLIENT_TYPE;
@@ -198,6 +212,16 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_designation</code>.
      */
     public final SecurityDesignation SECURITY_DESIGNATION = SecurityDesignation.SECURITY_DESIGNATION;
+
+    /**
+     * The table <code>security.security_invoice</code>.
+     */
+    public final SecurityInvoice SECURITY_INVOICE = SecurityInvoice.SECURITY_INVOICE;
+
+    /**
+     * The table <code>security.security_invoice_item</code>.
+     */
+    public final SecurityInvoiceItem SECURITY_INVOICE_ITEM = SecurityInvoiceItem.SECURITY_INVOICE_ITEM;
 
     /**
      * The table <code>security.security_one_time_token</code>.
@@ -220,9 +244,39 @@ public class Security extends SchemaImpl {
     public final SecurityPastPins SECURITY_PAST_PINS = SecurityPastPins.SECURITY_PAST_PINS;
 
     /**
+     * The table <code>security.security_payment</code>.
+     */
+    public final SecurityPayment SECURITY_PAYMENT = SecurityPayment.SECURITY_PAYMENT;
+
+    /**
+     * The table <code>security.security_payment_gateway</code>.
+     */
+    public final SecurityPaymentGateway SECURITY_PAYMENT_GATEWAY = SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY;
+
+    /**
      * The table <code>security.security_permission</code>.
      */
     public final SecurityPermission SECURITY_PERMISSION = SecurityPermission.SECURITY_PERMISSION;
+
+    /**
+     * The table <code>security.security_plan</code>.
+     */
+    public final SecurityPlan SECURITY_PLAN = SecurityPlan.SECURITY_PLAN;
+
+    /**
+     * The table <code>security.security_plan_app</code>.
+     */
+    public final SecurityPlanApp SECURITY_PLAN_APP = SecurityPlanApp.SECURITY_PLAN_APP;
+
+    /**
+     * The table <code>security.security_plan_cycle</code>.
+     */
+    public final SecurityPlanCycle SECURITY_PLAN_CYCLE = SecurityPlanCycle.SECURITY_PLAN_CYCLE;
+
+    /**
+     * The table <code>security.security_plan_limit</code>.
+     */
+    public final SecurityPlanLimit SECURITY_PLAN_LIMIT = SecurityPlanLimit.SECURITY_PLAN_LIMIT;
 
     /**
      * The table <code>security.security_profile</code>.
@@ -346,15 +400,24 @@ public class Security extends SchemaImpl {
             SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
             SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY,
+            SecurityClientPlan.SECURITY_CLIENT_PLAN,
             SecurityClientType.SECURITY_CLIENT_TYPE,
             SecurityClientUrl.SECURITY_CLIENT_URL,
             SecurityDepartment.SECURITY_DEPARTMENT,
             SecurityDesignation.SECURITY_DESIGNATION,
+            SecurityInvoice.SECURITY_INVOICE,
+            SecurityInvoiceItem.SECURITY_INVOICE_ITEM,
             SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN,
             SecurityOtp.SECURITY_OTP,
             SecurityPastPasswords.SECURITY_PAST_PASSWORDS,
             SecurityPastPins.SECURITY_PAST_PINS,
+            SecurityPayment.SECURITY_PAYMENT,
+            SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY,
             SecurityPermission.SECURITY_PERMISSION,
+            SecurityPlan.SECURITY_PLAN,
+            SecurityPlanApp.SECURITY_PLAN_APP,
+            SecurityPlanCycle.SECURITY_PLAN_CYCLE,
+            SecurityPlanLimit.SECURITY_PLAN_LIMIT,
             SecurityProfile.SECURITY_PROFILE,
             SecurityProfileClientRestriction.SECURITY_PROFILE_CLIENT_RESTRICTION,
             SecurityProfileRole.SECURITY_PROFILE_ROLE,

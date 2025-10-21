@@ -91,6 +91,8 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String USER_APP_REQUEST_INCORRECT_STATUS = "user_app_request_incorrect_status";
     public static final String USER_APP_REQUEST_MANDATORY_REQUEST_ID = "user_app_request_mandatory_request_id";
     public static final String FORBIDDEN_WRITE_APPLICATION_ACCESS = "forbidden_write_application_access";
+    public static final String PLAN_CONFLICT_PLAN_ALREADY_EXISTS = "plan_conflict_plan_already_exists";
+    public static final String PLAN_DEFAULT_PLAN_MUST_HAVE_ONE_APP = "plan_default_plan_must_have_one_app";
 
     public SecurityMessageResourceService() {
 
@@ -103,13 +105,13 @@ public class SecurityMessageResourceService extends AbstractMessageService {
         Mono<Locale> locale = SecurityContextUtil.getUsersLocale();
 
         return locale.flatMap(l -> {
-                    var x = this.bundleMap.get(l);
+            var x = this.bundleMap.get(l);
 
-                    if (x == null)
-                        x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
+            if (x == null)
+                x = this.bundleMap.get(Locale.forLanguageTag(l.getLanguage()));
 
-                    return x == null ? Mono.empty() : Mono.just(x);
-                }).defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
+            return x == null ? Mono.empty() : Mono.just(x);
+        }).defaultIfEmpty(this.bundleMap.get(Locale.ENGLISH))
                 .map(e -> e.getString(e.containsKey(messageId) ? messageId : UKNOWN_ERROR));
 
     }
