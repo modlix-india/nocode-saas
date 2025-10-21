@@ -7,12 +7,16 @@ import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
 import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import reactor.core.publisher.Mono;
 
 public abstract class FlowSchemaService<
@@ -22,18 +26,31 @@ public abstract class FlowSchemaService<
                 O extends FlowSchemaDAO<R, I, D>>
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
+    private static final String FLOW_SCHEMA_CACHE_NAME = "flowSchema";
+    private static final String SCHEMA_CACHE_NAME = "schema";
     private static final String FLOW_SCHEMA_NAMESPACE = Namespaces.SYSTEM + ".FlowSchema";
     private static final String FLOW_FIELD_NAMESPACE = FLOW_SCHEMA_NAMESPACE + ".Field";
-
     private static final UnaryOperator<String> dbNameConverter = Case.SNAKE.getConverter();
     private static final UnaryOperator<String> schemaNameConverter = Case.PASCAL.getConverter();
     private static final UnaryOperator<String> fieldNameConverter = Case.SCREAMING_SNAKE_CASE.getConverter();
 
-    private final ObjectMapper mapper;
+    private CacheService cacheService;
 
-    protected FlowSchemaService(ObjectMapper mapper) {
+    private ObjectMapper mapper;
+
+    @Autowired
+    private void setCacheService(CacheService cacheService) {
+        this.cacheService = cacheService;
+    }
+
+    @Autowired
+    private void setObjectMapper(ObjectMapper mapper) {
         this.mapper = mapper;
     }
+
+    protected abstract Mono<Schema> getSchema(String dbSchema, String dbTableName);
+
+    protected abstract Mono<Schema> getSchema(String dbSchema, String dbTableName, ULong dbId);
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -103,7 +120,7 @@ public abstract class FlowSchemaService<
                 + schemaNameConverter.apply(dbTableName);
     }
 
-    private Schema toSchema(Map<String, Object> map) {
+    protected Schema toSchema(Map<String, Object> map) {
         return mapper.convertValue(map, Schema.class);
     }
 

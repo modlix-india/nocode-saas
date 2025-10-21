@@ -1,6 +1,8 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import java.io.Serial;
@@ -22,6 +24,7 @@ public abstract class AbstractFlowDTO<I extends Serializable, U extends Serializ
     @Serial
     private static final long serialVersionUID = 7121981370061595384L;
 
+    @JsonDeserialize(using = FieldDeserializer.class)
     @JsonSerialize(using = FieldSerializer.class)
     private Map<String, Object> fields;
 }

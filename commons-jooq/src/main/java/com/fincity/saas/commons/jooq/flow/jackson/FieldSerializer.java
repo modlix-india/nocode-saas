@@ -23,12 +23,12 @@ public class FieldSerializer extends StdSerializer<Map<String, Object>> {
             throws IOException {
 
         jsonGenerator.writeStartObject();
-        this.writeMap(stringObjectMap, jsonGenerator, serializerProvider);
+        this.writeFieldMap(stringObjectMap, jsonGenerator, serializerProvider);
         jsonGenerator.writeEndObject();
     }
 
     @SuppressWarnings("unchecked")
-    private void writeMap(Map<String, Object> map, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+    private void writeFieldMap(Map<String, Object> map, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
             throws IOException {
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -39,12 +39,12 @@ public class FieldSerializer extends StdSerializer<Map<String, Object>> {
                 case Map<?, ?> nestedMap -> {
                     jsonGenerator.writeFieldName(key);
                     jsonGenerator.writeStartObject();
-                    this.writeMap((Map<String, Object>) nestedMap, jsonGenerator, serializerProvider);
+                    this.writeFieldMap((Map<String, Object>) nestedMap, jsonGenerator, serializerProvider);
                     jsonGenerator.writeEndObject();
                 }
                 case List<?> nestedList -> {
                     jsonGenerator.writeArrayFieldStart(key);
-                    this.writeList((List<Object>) nestedList, jsonGenerator, serializerProvider);
+                    this.writeFieldList((List<Object>) nestedList, jsonGenerator, serializerProvider);
                     jsonGenerator.writeEndArray();
                 }
                 default -> jsonGenerator.writeObjectField(key, value);
@@ -53,19 +53,19 @@ public class FieldSerializer extends StdSerializer<Map<String, Object>> {
     }
 
     @SuppressWarnings("unchecked")
-    private void writeList(List<Object> list, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+    private void writeFieldList(List<Object> list, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
             throws IOException {
 
         for (Object value : list) {
             switch (value) {
                 case Map<?, ?> nestedMap -> {
                     jsonGenerator.writeStartObject();
-                    this.writeMap((Map<String, Object>) nestedMap, jsonGenerator, serializerProvider);
+                    this.writeFieldMap((Map<String, Object>) nestedMap, jsonGenerator, serializerProvider);
                     jsonGenerator.writeEndObject();
                 }
                 case List<?> nestedList -> {
                     jsonGenerator.writeStartArray();
-                    this.writeList((List<Object>) nestedList, jsonGenerator, serializerProvider);
+                    this.writeFieldList((List<Object>) nestedList, jsonGenerator, serializerProvider);
                     jsonGenerator.writeEndArray();
                 }
                 default -> jsonGenerator.writeObject(value);
