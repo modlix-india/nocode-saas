@@ -623,17 +623,32 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
         return _securityPermission;
     }
 
-    private transient SecurityPlanPath _securityPlan;
+    private transient SecurityPlanPath _fk1PlanClientId;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>security.security_plan</code> table
+     * <code>security.security_plan</code> table, via the
+     * <code>FK1_PLAN_CLIENT_ID</code> key
      */
-    public SecurityPlanPath securityPlan() {
-        if (_securityPlan == null)
-            _securityPlan = new SecurityPlanPath(this, null, Keys.FK1_PLAN_CLIENT_ID.getInverseKey());
+    public SecurityPlanPath fk1PlanClientId() {
+        if (_fk1PlanClientId == null)
+            _fk1PlanClientId = new SecurityPlanPath(this, null, Keys.FK1_PLAN_CLIENT_ID.getInverseKey());
 
-        return _securityPlan;
+        return _fk1PlanClientId;
+    }
+
+    private transient SecurityPlanPath _fk1PlanForClientId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_plan</code> table, via the
+     * <code>FK1_PLAN_FOR_CLIENT_ID</code> key
+     */
+    public SecurityPlanPath fk1PlanForClientId() {
+        if (_fk1PlanForClientId == null)
+            _fk1PlanForClientId = new SecurityPlanPath(this, null, Keys.FK1_PLAN_FOR_CLIENT_ID.getInverseKey());
+
+        return _fk1PlanForClientId;
     }
 
     private transient SecurityProfilePath _securityProfile;
@@ -774,6 +789,14 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      */
     public SecurityAppPath fk2ClientPinPolAppId() {
         return securityClientPinPolicy().securityApp();
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_plan</code> table
+     */
+    public SecurityPlanPath securityPlan() {
+        return securityClientPlan().securityPlan();
     }
 
     @Override

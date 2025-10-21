@@ -11,6 +11,7 @@ import com.fincity.security.jooq.tables.SecurityApp.SecurityAppPath;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientPlan.SecurityClientPlanPath;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
+import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.SecurityPlanApp.SecurityPlanAppPath;
 import com.fincity.security.jooq.tables.SecurityPlanCycle.SecurityPlanCyclePath;
 import com.fincity.security.jooq.tables.SecurityPlanLimit.SecurityPlanLimitPath;
@@ -123,6 +124,41 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
      */
     public final TableField<SecurityPlanRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_plan.FALL_BACK_PLAN_ID</code>.
+     * Fallback plan ID
+     */
+    public final TableField<SecurityPlanRecord, ULong> FALL_BACK_PLAN_ID = createField(DSL.name("FALL_BACK_PLAN_ID"), SQLDataType.BIGINTUNSIGNED, this, "Fallback plan ID");
+
+    /**
+     * The column <code>security.security_plan.PLAN_CODE</code>. Plan code
+     */
+    public final TableField<SecurityPlanRecord, String> PLAN_CODE = createField(DSL.name("PLAN_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Plan code");
+
+    /**
+     * The column <code>security.security_plan.FOR_REGISTRATION</code>.
+     * Indicator if this plan is for registration
+     */
+    public final TableField<SecurityPlanRecord, Byte> FOR_REGISTRATION = createField(DSL.name("FOR_REGISTRATION"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Indicator if this plan is for registration");
+
+    /**
+     * The column <code>security.security_plan.ORDER_NUMBER</code>. Order number
+     * of the plan
+     */
+    public final TableField<SecurityPlanRecord, Integer> ORDER_NUMBER = createField(DSL.name("ORDER_NUMBER"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "Order number of the plan");
+
+    /**
+     * The column <code>security.security_plan.DEFAULT_PLAN</code>. Indicator if
+     * this plan is the default plan
+     */
+    public final TableField<SecurityPlanRecord, Byte> DEFAULT_PLAN = createField(DSL.name("DEFAULT_PLAN"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Indicator if this plan is the default plan");
+
+    /**
+     * The column <code>security.security_plan.FOR_CLIENT_ID</code>. Client ID
+     * for which this plan is applicable
+     */
+    public final TableField<SecurityPlanRecord, ULong> FOR_CLIENT_ID = createField(DSL.name("FOR_CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Client ID for which this plan is applicable");
+
     private SecurityPlan(Name alias, Table<SecurityPlanRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -202,25 +238,51 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
 
     @Override
     public List<UniqueKey<SecurityPlanRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_PLAN_UK2_PLAN_NAME_CLIENT_ID);
+        return Arrays.asList(Keys.KEY_SECURITY_PLAN_UK1_PLAN_PLAN_CODE, Keys.KEY_SECURITY_PLAN_UK2_PLAN_NAME_CLIENT_ID);
     }
 
     @Override
     public List<ForeignKey<SecurityPlanRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PLAN_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PLAN_CLIENT_ID, Keys.FK1_PLAN_FALL_BACK_PLAN_ID, Keys.FK1_PLAN_FOR_CLIENT_ID);
     }
 
-    private transient SecurityClientPath _securityClient;
+    private transient SecurityClientPath _fk1PlanClientId;
 
     /**
      * Get the implicit join path to the <code>security.security_client</code>
+     * table, via the <code>FK1_PLAN_CLIENT_ID</code> key.
+     */
+    public SecurityClientPath fk1PlanClientId() {
+        if (_fk1PlanClientId == null)
+            _fk1PlanClientId = new SecurityClientPath(this, Keys.FK1_PLAN_CLIENT_ID, null);
+
+        return _fk1PlanClientId;
+    }
+
+    private transient SecurityPlanPath _securityPlan;
+
+    /**
+     * Get the implicit join path to the <code>security.security_plan</code>
      * table.
      */
-    public SecurityClientPath securityClient() {
-        if (_securityClient == null)
-            _securityClient = new SecurityClientPath(this, Keys.FK1_PLAN_CLIENT_ID, null);
+    public SecurityPlanPath securityPlan() {
+        if (_securityPlan == null)
+            _securityPlan = new SecurityPlanPath(this, Keys.FK1_PLAN_FALL_BACK_PLAN_ID, null);
 
-        return _securityClient;
+        return _securityPlan;
+    }
+
+    private transient SecurityClientPath _fk1PlanForClientId;
+
+    /**
+     * Get the implicit join path to the <code>security.security_client</code>
+     * table, via the <code>FK1_PLAN_FOR_CLIENT_ID</code> key.
+     */
+    public SecurityClientPath fk1PlanForClientId() {
+        if (_fk1PlanForClientId == null)
+            _fk1PlanForClientId = new SecurityClientPath(this, Keys.FK1_PLAN_FOR_CLIENT_ID, null);
+
+        return _fk1PlanForClientId;
     }
 
     private transient SecurityPlanAppPath _securityPlanApp;
@@ -286,6 +348,14 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
             _securityInvoice = new SecurityInvoicePath(this, null, Keys.FK2_INVOICE_PLAN_ID.getInverseKey());
 
         return _securityInvoice;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>security.security_client</code> table
+     */
+    public SecurityClientPath securityClient() {
+        return securityClientPlan().securityClient();
     }
 
     /**

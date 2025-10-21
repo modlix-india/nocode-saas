@@ -1,9 +1,10 @@
 package com.fincity.security.dao.plansnbilling;
 
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 import static com.fincity.security.jooq.tables.SecurityClientPlan.SECURITY_CLIENT_PLAN;
 import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
 import static com.fincity.security.jooq.tables.SecurityPlanApp.SECURITY_PLAN_APP;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -13,14 +14,17 @@ import java.util.stream.Collectors;
 
 import org.jooq.Field;
 import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.AbstractClientCheckDAO;
+import com.fincity.security.dto.plansnbilling.ClientPlan;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.jooq.enums.SecurityPlanStatus;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
@@ -117,5 +121,54 @@ public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, P
                         .map(Record1::value1).filter(appId -> !planApps.contains(appId)).collectList()
                         .map(apps -> !apps.isEmpty()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanDao.findConflictPlans"));
+    }
+
+    public Mono<List<ULong>> readRegistrationPlans(String urlClientCode, String urlAppCode,
+            boolean includeMultiAppPlans) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> Flux
+                        .from(this.dslContext.select(SECURITY_PLAN_APP.PLAN_ID, SECURITY_PLAN_APP.APP_ID)
+                                .from(SECURITY_PLAN_APP)
+                                .join(SECURITY_PLAN).on(SECURITY_PLAN_APP.PLAN_ID.eq(SECURITY_PLAN.ID))
+                                .join(SECURITY_CLIENT).on(SECURITY_PLAN.CLIENT_ID.eq(SECURITY_CLIENT.ID))
+                                .join(SECURITY_APP).on(SECURITY_PLAN_APP.APP_ID.eq(SECURITY_APP.ID))
+                                .where(DSL.and(
+                                        SECURITY_PLAN.FOR_REGISTRATION.eq(ByteUtil.ONE),
+                                        SECURITY_CLIENT.CODE.eq(urlClientCode),
+                                        SECURITY_APP.APP_CODE.eq(urlAppCode),
+                                        SECURITY_PLAN.STATUS.eq(SecurityPlanStatus.ACTIVE))))
+                        .collect(Collectors.groupingBy(Record2::value1,
+                                Collectors.mapping(Record2::value2, Collectors.toList()))),
+
+                planApps -> Mono.just(planApps.entrySet().stream()
+                        .filter(entry -> includeMultiAppPlans || entry.getValue().size() == 1)
+                        .map(Map.Entry::getKey)
+                        .toList()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanDao.readRegistrationPlans"));
+    }
+
+    public Mono<ULong> getDefaultPlanId(ULong appId) {
+        return Mono.from(this.dslContext.select(SECURITY_PLAN_APP.PLAN_ID).from(SECURITY_PLAN_APP)
+                .join(SECURITY_PLAN).on(SECURITY_PLAN_APP.PLAN_ID.eq(SECURITY_PLAN.ID))
+                .where(SECURITY_PLAN_APP.APP_ID.eq(appId).and(SECURITY_PLAN.DEFAULT_PLAN.eq(ByteUtil.ONE)))
+                .orderBy(SECURITY_PLAN.UPDATED_AT.desc())
+                .limit(1))
+                .map(Record1::value1);
+    }
+
+    public Mono<ClientPlan> getClientPlan(ULong appId, ULong clientId) {
+        return Mono.from(this.dslContext.select(SECURITY_CLIENT_PLAN.fields()).from(SECURITY_CLIENT_PLAN)
+                .join(SECURITY_PLAN).on(SECURITY_CLIENT_PLAN.PLAN_ID.eq(SECURITY_PLAN.ID))
+                .join(SECURITY_PLAN_APP).on(SECURITY_PLAN_APP.PLAN_ID.eq(SECURITY_PLAN.ID))
+                .where(SECURITY_CLIENT_PLAN.CLIENT_ID.eq(clientId).and(SECURITY_PLAN_APP.APP_ID.eq(appId))).limit(1))
+                .map(rec -> rec.into(ClientPlan.class));
+    }
+
+    public Flux<ULong> getClientsForPlan(ULong planId) {
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT_PLAN.CLIENT_ID).from(SECURITY_CLIENT_PLAN)
+                .where(SECURITY_CLIENT_PLAN.PLAN_ID.eq(planId)))
+                .map(Record1::value1);
     }
 }

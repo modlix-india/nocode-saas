@@ -137,9 +137,9 @@ VALUES (@`v_client_system`, 'Subscription CREATE', 'Create', 'Subscription creat
        (@`v_client_system`, 'Subscription READ', 'Read', 'Subscription read'),
        (@`v_client_system`, 'Subscription UPDATE', 'Update', 'Subscription update'),
        (@`v_client_system`, 'Subscription DELETE', 'Delete', 'Subscription delete'),
-       (@`v_client_system`, 'Subscription Manager', 'Manager', 'Subscription manager'); 
+       (@`v_client_system`, 'Subscription Manager', 'Manager', 'Subscription manager');
 
-SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription Manager' LIMIT 1 INTO @`v_v2_role_subscription_manager`;    
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription Manager' LIMIT 1 INTO @`v_v2_role_subscription_manager`;
 
 SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription CREATE' LIMIT 1 INTO @`v_v2_role_subscription_create`;
 SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription READ' LIMIT 1 INTO @`v_v2_role_subscription_read`;
@@ -159,7 +159,7 @@ VALUES (@`v_v2_role_subscription_create`, @`v_permission_subscription_create`),
 
 INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
 VALUES (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_create`),
-       (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_read`), 
+       (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_read`),
        (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_update`),
        (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_delete`);
 
@@ -348,3 +348,30 @@ CREATE TABLE `security`.`security_payment_gateway` (
   KEY `FK1_PAYMENT_GATEWAY_CLIENT_ID` (`CLIENT_ID`),
   CONSTRAINT `FK1_PAYMENT_GATEWAY_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+ALTER TABLE `security`.`security_client_plan`
+  MODIFY COLUMN `END_DATE` TIMESTAMP NOT NULL DEFAULT '9999-12-31 23:59:59' COMMENT 'End date of the plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FALL_BACK_PLAN_ID` bigint unsigned DEFAULT NULL COMMENT 'Fallback plan ID',
+  ADD CONSTRAINT `FK1_PLAN_FALL_BACK_PLAN_ID` FOREIGN KEY (`FALL_BACK_PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  ADD KEY `FK1_PLAN_FALL_BACK_PLAN_ID` (`FALL_BACK_PLAN_ID`),
+  ADD COLUMN `PLAN_CODE` CHAR(8) NOT NULL COMMENT 'Plan code';
+
+ALTER TABLE `security`.`security_plan`
+  ADD UNIQUE KEY `UK1_PLAN_PLAN_CODE` (`PLAN_CODE`);
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FOR_REGISTRATION` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Indicator if this plan is for registration';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `ORDER_NUMBER` int NOT NULL DEFAULT 0 COMMENT 'Order number of the plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `DEFAULT_PLAN` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Indicator if this plan is the default plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FOR_CLIENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Client ID for which this plan is applicable',
+  ADD KEY `FK1_PLAN_FOR_CLIENT_ID` (`FOR_CLIENT_ID`),
+  ADD CONSTRAINT `FK1_PLAN_FOR_CLIENT_ID` FOREIGN KEY (`FOR_CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;

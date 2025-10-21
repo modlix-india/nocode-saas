@@ -28,6 +28,12 @@ public class Plan extends AbstractUpdatableDTO<ULong, ULong> {
     private String description;
     private String features;
     private SecurityPlanStatus status;
+    private String planCode;
+    private ULong fallBackPlanId;
+    private boolean forRegistration;
+    private int orderNumber;
+    private boolean defaultPlan;
+    private ULong forClientId;
 
     private List<App> apps;
     private List<PlanCycle> cycles;

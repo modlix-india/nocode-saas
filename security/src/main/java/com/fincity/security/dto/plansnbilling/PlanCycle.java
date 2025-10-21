@@ -18,7 +18,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class PlanCycle extends AbstractUpdatableDTO<ULong, ULong> {
-    
+
     @Serial
     private static final long serialVersionUID = 1L;
 

@@ -186,6 +186,106 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
         return (LocalDateTime) get(9);
     }
 
+    /**
+     * Setter for <code>security.security_plan.FALL_BACK_PLAN_ID</code>.
+     * Fallback plan ID
+     */
+    public SecurityPlanRecord setFallBackPlanId(ULong value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.FALL_BACK_PLAN_ID</code>.
+     * Fallback plan ID
+     */
+    public ULong getFallBackPlanId() {
+        return (ULong) get(10);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.PLAN_CODE</code>. Plan code
+     */
+    public SecurityPlanRecord setPlanCode(String value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.PLAN_CODE</code>. Plan code
+     */
+    public String getPlanCode() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.FOR_REGISTRATION</code>.
+     * Indicator if this plan is for registration
+     */
+    public SecurityPlanRecord setForRegistration(Byte value) {
+        set(12, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.FOR_REGISTRATION</code>.
+     * Indicator if this plan is for registration
+     */
+    public Byte getForRegistration() {
+        return (Byte) get(12);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.ORDER_NUMBER</code>. Order number
+     * of the plan
+     */
+    public SecurityPlanRecord setOrderNumber(Integer value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.ORDER_NUMBER</code>. Order number
+     * of the plan
+     */
+    public Integer getOrderNumber() {
+        return (Integer) get(13);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.DEFAULT_PLAN</code>. Indicator if
+     * this plan is the default plan
+     */
+    public SecurityPlanRecord setDefaultPlan(Byte value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.DEFAULT_PLAN</code>. Indicator if
+     * this plan is the default plan
+     */
+    public Byte getDefaultPlan() {
+        return (Byte) get(14);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.FOR_CLIENT_ID</code>. Client ID
+     * for which this plan is applicable
+     */
+    public SecurityPlanRecord setForClientId(ULong value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.FOR_CLIENT_ID</code>. Client ID
+     * for which this plan is applicable
+     */
+    public ULong getForClientId() {
+        return (ULong) get(15);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -209,7 +309,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
     /**
      * Create a detached, initialised SecurityPlanRecord
      */
-    public SecurityPlanRecord(ULong id, ULong clientId, String name, String description, String features, SecurityPlanStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityPlanRecord(ULong id, ULong clientId, String name, String description, String features, SecurityPlanStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, ULong fallBackPlanId, String planCode, Byte forRegistration, Integer orderNumber, Byte defaultPlan, ULong forClientId) {
         super(SecurityPlan.SECURITY_PLAN);
 
         setId(id);
@@ -222,6 +322,12 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setFallBackPlanId(fallBackPlanId);
+        setPlanCode(planCode);
+        setForRegistration(forRegistration);
+        setOrderNumber(orderNumber);
+        setDefaultPlan(defaultPlan);
+        setForClientId(forClientId);
         resetTouchedOnNotNull();
     }
 }
