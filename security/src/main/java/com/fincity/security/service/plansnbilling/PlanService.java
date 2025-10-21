@@ -22,6 +22,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.plansnbilling.PlanCycleDAO;
 import com.fincity.security.dao.plansnbilling.PlanDAO;
 import com.fincity.security.dao.plansnbilling.PlanLimitDAO;
@@ -30,6 +31,7 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.dto.plansnbilling.PlanLimit;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
+import com.fincity.security.model.ClientPlanRequest;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.SecurityMessageResourceService;
@@ -298,6 +300,17 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     return p;
                 }).collectList())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.readOthers"));
+    }
+
+    public Mono<Boolean> addPlanAndCyCle(ClientPlanRequest request) {
+
+        if (StringUtil.safeIsBlank(request.getUrlClientCode()))
+            this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
+                    .flatMap(urlClientCode -> this.addPlanAndCyCle(request.getClientId(), urlClientCode,
+                            request.getPlanId(), request.getCycleId(), request.getEndDate()));
+
+        return this.addPlanAndCyCle(request.getClientId(), request.getUrlClientCode(), request.getPlanId(),
+                request.getCycleId(), request.getEndDate());
     }
 
     public Mono<Boolean> addPlanAndCyCle(ULong clientId, String urlClientCode, ULong planId, ULong cycleId,
