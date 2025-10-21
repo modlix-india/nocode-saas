@@ -91,6 +91,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String USER_APP_REQUEST_INCORRECT_STATUS = "user_app_request_incorrect_status";
     public static final String USER_APP_REQUEST_MANDATORY_REQUEST_ID = "user_app_request_mandatory_request_id";
     public static final String FORBIDDEN_WRITE_APPLICATION_ACCESS = "forbidden_write_application_access";
+    public static final String PLAN_CONFLICT_PLAN_ALREADY_EXISTS = "plan_conflict_plan_already_exists";
 
     public SecurityMessageResourceService() {
 

@@ -48,7 +48,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     private final SecurityMessageResourceService messageResourceService;
 
     public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, ClientService clientService,
-                       AppService appService, SecurityMessageResourceService messageResourceService) {
+            AppService appService, SecurityMessageResourceService messageResourceService) {
         this.planCycleDAO = planCycleDAO;
         this.planLimitDAO = planLimitDAO;
         this.clientService = clientService;
@@ -60,49 +60,49 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     @Override
     public Mono<Plan> create(Plan entity) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> {
-                            if (entity.getClientId() == null) {
-                                entity.setClientId(ULong.valueOf(ca.getUser().getClientId()));
-                                return Mono.just(true);
-                            }
+                ca -> {
+                    if (entity.getClientId() == null) {
+                        entity.setClientId(ULong.valueOf(ca.getUser().getClientId()));
+                        return Mono.just(true);
+                    }
 
-                            return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId()).filter(BooleanUtil::safeValueOf);
-                        },
+                    return this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
+                            entity.getClientId()).filter(BooleanUtil::safeValueOf);
+                },
 
-                        (ca, managed) -> this.appAccesses(entity),
+                (ca, managed) -> this.appAccesses(entity),
 
-                        (ca, managed, hasWriteAccess) -> super.create(entity),
+                (ca, managed, hasWriteAccess) -> super.create(entity),
 
-                        (ca, managed, hasWriteAccess, created) -> entity.getApps() == null || entity.getApps().isEmpty()
-                                ? Mono.just(true)
-                                : this.dao.addApps(created.getId(), entity.getApps().stream().map(App::getId).toList()),
+                (ca, managed, hasWriteAccess, created) -> entity.getApps() == null || entity.getApps().isEmpty()
+                        ? Mono.just(true)
+                        : this.dao.addApps(created.getId(), entity.getApps().stream().map(App::getId).toList()),
 
-                        (ca, managed, hasWriteAccess, created, appsAdded) -> {
+                (ca, managed, hasWriteAccess, created, appsAdded) -> {
 
-                            created.setApps(entity.getApps());
+                    created.setApps(entity.getApps());
 
-                            if (entity.getCycles() == null || entity.getCycles().isEmpty())
-                                return Mono.just(created);
+                    if (entity.getCycles() == null || entity.getCycles().isEmpty())
+                        return Mono.just(created);
 
-                            return Flux.fromIterable(entity.getCycles())
-                                    .map(cycle -> cycle.setPlanId(created.getId()))
-                                    .flatMap(this.planCycleDAO::create).collectList()
-                                    .map(created::setCycles);
-                        },
+                    return Flux.fromIterable(entity.getCycles())
+                            .map(cycle -> cycle.setPlanId(created.getId()))
+                            .flatMap(this.planCycleDAO::create).collectList()
+                            .map(created::setCycles);
+                },
 
-                        (ca, managed, hasWriteAccess, created, appsAdded, cyclesAdded) -> {
+                (ca, managed, hasWriteAccess, created, appsAdded, cyclesAdded) -> {
 
-                            if (entity.getLimits() == null || entity.getLimits().isEmpty())
-                                return Mono.just(created);
+                    if (entity.getLimits() == null || entity.getLimits().isEmpty())
+                        return Mono.just(created);
 
-                            return Flux.fromIterable(entity.getLimits())
-                                    .map(limit -> limit.setPlanId(created.getId()))
-                                    .flatMap(this.planLimitDAO::create).collectList()
-                                    .map(created::setLimits);
-                        })
+                    return Flux.fromIterable(entity.getLimits())
+                            .map(limit -> limit.setPlanId(created.getId()))
+                            .flatMap(this.planLimitDAO::create).collectList()
+                            .map(created::setLimits);
+                })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 SecurityMessageResourceService.FORBIDDEN_CREATE, "Plan")))
@@ -181,13 +181,16 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 ca -> this.read(id),
 
-                (ca, existing) -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), existing.getClientId()).filter(BooleanUtil::safeValueOf),
+                (ca, existing) -> this.clientService
+                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), existing.getClientId())
+                        .filter(BooleanUtil::safeValueOf),
 
                 (ca, existing, hasAccess) -> this.dao.delete(id),
 
-                (ca, existing, hasAccess, deleted) -> Mono.zip(this.planCycleDAO.deleteCycles(id), this.planLimitDAO.deleteLimits(id))
-                        .map(x -> deleted)
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.delete"));
+                (ca, existing, hasAccess, deleted) -> Mono
+                        .zip(this.planCycleDAO.deleteCycles(id), this.planLimitDAO.deleteLimits(id))
+                        .map(x -> deleted))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.delete"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Plan_READ')")
@@ -195,7 +198,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Plan> read(ULong id) {
         return super.read(id).flatMap(p -> this.readOthers(List.of(p))).map(List::getFirst);
     }
-    
+
     public Mono<Plan> readInternal(ULong id) {
         return super.read(id).flatMap(p -> this.readOthers(List.of(p))).map(List::getFirst);
     }
@@ -203,9 +206,8 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     @PreAuthorize("hasAuthority('Authorities.Plan_READ')")
     @Override
     public Mono<Page<Plan>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return super.readPageFilter(pageable, condition).flatMap(page -> this.readOthers(page.getContent()).map(plans ->
-                PageableExecutionUtils.getPage(plans, pageable, page::getTotalElements)
-        ));
+        return super.readPageFilter(pageable, condition).flatMap(page -> this.readOthers(page.getContent())
+                .map(plans -> PageableExecutionUtils.getPage(plans, pageable, page::getTotalElements)));
     }
 
     public Mono<List<Plan>> readOthers(List<Plan> plans) {
@@ -228,16 +230,50 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     p.setCycles(cycleMap.get(p.getId()));
                     p.setLimits(limitMap.get(p.getId()));
                     return p;
-                }).collectList()
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.readOthers"));
+                }).collectList()).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.readOthers"));
     }
 
-    public Mono<Boolean> addPlanAndCyCle(ULong clientId, String urlClientCode, ULong planId, ULong cycleId, LocalDateTime endDate) {
+    public Mono<Boolean> addPlanAndCyCle(ULong clientId, String urlClientCode, ULong planId, ULong cycleId,
+            LocalDateTime endDate) {
         return FlatMapUtil.flatMapMono(
-            () -> this.clientService.getClientBy(urlClientCode),
-            urlClient -> this.readInternal(planId).filter(plan -> plan.getClientId().equals(urlClient.getId()))
-                        .filter(plan -> plan.getCycles() != null && plan.getCycles().stream().anyMatch(cycle -> cycle.getId().equals(cycleId))),
-            (urlClient, plan) -> this.dao.addClientToPlan(clientId, planId, cycleId, endDate)
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.addPlanAndCyCle"));
+
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .filter(BooleanUtil::safeValueOf),
+
+                (ca, hasAccess) -> this.dao.findConflictPlans(clientId, urlClientCode, planId)
+                        .filter(BooleanUtil::safeValueOf)
+                        .switchIfEmpty(this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.PLAN_CONFLICT_PLAN_ALREADY_EXISTS)),
+
+                (ca, hasAccess, conflictPlans) -> this.clientService.getClientBy(urlClientCode),
+
+                (ca, hasAccess, conflictPlans, urlClient) -> this.readInternal(planId)
+                        .filter(plan -> plan.getClientId().equals(urlClient.getId()))
+                        .filter(plan -> plan.getCycles() != null
+                                && plan.getCycles().stream().anyMatch(cycle -> cycle.getId().equals(cycleId))),
+
+                (ca, hasAccess, conflictPlans, urlClient, plan) -> this.dao.addClientToPlan(clientId, planId, cycleId,
+                        endDate))
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService
+                        .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_CREATE, "Plan")))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.addPlanAndCyCle"));
+    }
+
+    public Mono<Boolean> removeClientFromPlan(ULong clientId, ULong planId) {
+        return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> this.clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .filter(BooleanUtil::safeValueOf),
+
+                (ca, hasAccess) -> this.dao.removeClientFromPlan(clientId, planId))
+                .switchIfEmpty(Mono.defer(() -> this.messageResourceService
+                        .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                SecurityMessageResourceService.FORBIDDEN_CREATE, "Plan")))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.removeClientFromPlan"));
     }
 }
