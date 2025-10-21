@@ -1,21 +1,26 @@
 package com.fincity.saas.commons.jooq.flow.service.schema;
 
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.UnaryOperator;
+
+import org.jooq.UpdatableRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
+import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
 import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.UnaryOperator;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import reactor.core.publisher.Mono;
 
@@ -48,9 +53,15 @@ public abstract class FlowSchemaService<
         this.mapper = mapper;
     }
 
-    protected abstract Mono<Schema> getSchema(String dbSchema, String dbTableName);
+    public abstract String getDbSchemaName();
 
-    protected abstract Mono<Schema> getSchema(String dbSchema, String dbTableName, ULong dbId);
+    public abstract Mono<Schema> getSchema(String dbTableName);
+
+    public Mono<Schema> getSchema(String dbTableName, I dbId) {
+        return this.getIdSchema(dbTableName, dbId).switchIfEmpty(this.getSchema(dbTableName));
+    }
+
+    protected abstract Mono<Schema> getIdSchema(String dbTableName, I dbId);
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
@@ -83,8 +94,14 @@ public abstract class FlowSchemaService<
     @SuppressWarnings("unchecked")
     private D updateEntity(D entity) {
 
-        entity.setDbSchema(dbNameConverter.apply(entity.getDbSchema()));
+        entity.setDbSchema(this.getDbSchemaName());
         entity.setDbTableName(dbNameConverter.apply(entity.getDbTableName()));
+
+        if (!entity.getDbTableName().startsWith(entity.getDbSchema()))
+            throw new GenericException(
+                    HttpStatus.BAD_REQUEST,
+                    StringFormatter.format(
+                            AbstractMessageService.INVALID_TABLE_NAME, entity.getDbTableName(), entity.getDbSchema()));
 
         return (D) entity.setFieldSchema(
                 this.toFieldMap(entity.getDbSchema(), entity.getDbTableName(), entity.getFieldSchema()));

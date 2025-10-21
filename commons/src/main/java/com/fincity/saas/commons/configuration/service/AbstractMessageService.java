@@ -23,8 +23,8 @@ public class AbstractMessageService {
     public static final String CANNOT_BE_UPDATED = "cannot_be_updated";
 
     public static final String OBJECT_NOT_FOUND = "object_not_found";
-    public static final String FIELD_NOT_AVAILABLE = " field cannot be updated, it might not be available or unmodifiable"; 
-    
+    public static final String FIELD_NOT_AVAILABLE = " field cannot be updated, it might not be available or unmodifiable";
+    public static final String INVALID_TABLE_NAME = "$ is not a valid table for Schema $.";
 
     protected Map<Locale, ResourceBundle> bundleMap;
 

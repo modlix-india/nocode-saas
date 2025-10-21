@@ -1,13 +1,15 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -27,4 +29,8 @@ public abstract class AbstractFlowDTO<I extends Serializable, U extends Serializ
     @JsonDeserialize(using = FieldDeserializer.class)
     @JsonSerialize(using = FieldSerializer.class)
     private Map<String, Object> fields;
+
+    public String getDbTableName() {
+        return null;
+    }
 }
