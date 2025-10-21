@@ -52,6 +52,7 @@ import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
+import com.fincity.security.service.plansnbilling.PlanService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -85,6 +86,7 @@ public class ClientRegistrationService {
     private final AppRegistrationIntegrationService appRegistrationIntegrationService;
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
     private final SecurityMessageResourceService securityMessageResourceService;
+    private final PlanService planService;
 
     @Value("${security.subdomain.endings}")
     private String[] subDomainEndings;
@@ -95,7 +97,8 @@ public class ClientRegistrationService {
                                      ClientUrlService clientUrlService, AppRegistrationV2DAO appRegistrationDAO, IFeignFilesService filesService,
                                      AppRegistrationIntegrationService appRegistrationIntegrationService,
                                      AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
-                                     SecurityMessageResourceService securityMessageResourceService) {
+                                     SecurityMessageResourceService securityMessageResourceService,
+                                     PlanService planService) {
 
         this.dao = dao;
         this.appService = appService;
@@ -111,6 +114,7 @@ public class ClientRegistrationService {
         this.appRegistrationIntegrationService = appRegistrationIntegrationService;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
         this.securityMessageResourceService = securityMessageResourceService;
+        this.planService = planService;
     }
 
     private <T> Mono<T> regError(Object... params) {
@@ -229,9 +233,18 @@ public class ClientRegistrationService {
 
         return FlatMapUtil.flatMapMono(
                         () -> monoResponse,
-                        tup -> this.autoAddRegObjectsFromOtherApps(tup.getT2(), tup.getT3()).map(x -> tup.getT1())
+                        tup -> this.autoAddRegObjectsFromOtherApps(tup.getT2(), tup.getT3()),
+                        (tup, added) -> this.addPlanAndCycle(tup.getT2(), registrationRequest).map(x -> tup.getT1())
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register (Part 2)"));
+    }
+
+    private Mono<Boolean> addPlanAndCycle(Client client, ClientRegistrationRequest registrationRequest) {
+        return FlatMapUtil.flatMapMono(
+            SecurityContextUtil::getUsersContextAuthentication,
+
+            ca -> this.planService.addPlanAndCyCle(client.getId(), ca.getUrlClientCode(), registrationRequest.getPlanId(), registrationRequest.getCycleId(), null)
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addPlanAndCycle"));
     }
 
     private Mono<Boolean> autoAddRegObjectsFromOtherApps(Client client, User user) {
