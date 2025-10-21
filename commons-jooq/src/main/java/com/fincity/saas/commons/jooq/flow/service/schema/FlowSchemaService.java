@@ -1,14 +1,5 @@
 package com.fincity.saas.commons.jooq.flow.service.schema;
 
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.UnaryOperator;
-
-import org.jooq.UpdatableRecord;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -21,7 +12,13 @@ import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
-
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.UnaryOperator;
+import org.jooq.UpdatableRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public abstract class FlowSchemaService<
@@ -53,15 +50,20 @@ public abstract class FlowSchemaService<
         this.mapper = mapper;
     }
 
-    public abstract String getDbSchemaName();
+    protected abstract String getDbSchemaName();
 
-    public abstract Mono<Schema> getSchema(String dbTableName);
-
-    public Mono<Schema> getSchema(String dbTableName, I dbId) {
-        return this.getIdSchema(dbTableName, dbId).switchIfEmpty(this.getSchema(dbTableName));
-    }
+    protected abstract Mono<Schema> getSchema(String dbTableName);
 
     protected abstract Mono<Schema> getIdSchema(String dbTableName, I dbId);
+
+    public Mono<Schema> getSchema(String dbTableName, I dbId) {
+
+        if (dbTableName == null || dbTableName.isEmpty()) return Mono.empty();
+
+        if (dbId == null) return this.getSchema(dbTableName);
+
+        return this.getIdSchema(dbTableName, dbId).switchIfEmpty(this.getSchema(dbTableName));
+    }
 
     @Override
     protected Mono<D> updatableEntity(D entity) {

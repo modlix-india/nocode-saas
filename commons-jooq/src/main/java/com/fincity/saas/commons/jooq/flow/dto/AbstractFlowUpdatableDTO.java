@@ -1,15 +1,13 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.Map;
-
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;

@@ -28,7 +28,8 @@ public class FieldSerializer extends StdSerializer<Map<String, Object>> {
     }
 
     @SuppressWarnings("unchecked")
-    private void writeFieldMap(Map<String, Object> map, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+    private void writeFieldMap(
+            Map<String, Object> map, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
             throws IOException {
 
         for (Map.Entry<String, Object> entry : map.entrySet()) {

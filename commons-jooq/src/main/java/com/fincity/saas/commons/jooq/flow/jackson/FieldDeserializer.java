@@ -1,18 +1,17 @@
 package com.fincity.saas.commons.jooq.flow.jackson;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.UnaryOperator;
-
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fincity.saas.commons.util.Case;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.UnaryOperator;
 
 public class FieldDeserializer extends StdDeserializer<Map<String, Object>> {
 
@@ -38,7 +37,7 @@ public class FieldDeserializer extends StdDeserializer<Map<String, Object>> {
 
         jsonNode.fields().forEachRemaining(field -> {
             String key = dbFieldConverter.apply(field.getKey());
-            result.put(key, extractValue(field.getValue()));
+            result.put(key, this.extractValue(field.getValue()));
         });
 
         return result;
@@ -47,7 +46,7 @@ public class FieldDeserializer extends StdDeserializer<Map<String, Object>> {
     private List<Object> readFieldList(JsonNode node) {
         List<Object> list = new ArrayList<>(node.size());
 
-        node.forEach(item -> list.add(extractValue(item)));
+        node.forEach(item -> list.add(this.extractValue(item)));
 
         return list;
     }
