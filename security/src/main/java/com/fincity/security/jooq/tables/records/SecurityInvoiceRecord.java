@@ -236,6 +236,23 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
         return (LocalDateTime) get(12);
     }
 
+    /**
+     * Setter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
+     * reason
+     */
+    public SecurityInvoiceRecord setInvoiceReason(String value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.INVOICE_REASON</code>. Invoice
+     * reason
+     */
+    public String getInvoiceReason() {
+        return (String) get(13);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -259,7 +276,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     /**
      * Create a detached, initialised SecurityInvoiceRecord
      */
-    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String invoiceReason) {
         super(SecurityInvoice.SECURITY_INVOICE);
 
         setId(id);
@@ -275,6 +292,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
+        setInvoiceReason(invoiceReason);
         resetTouchedOnNotNull();
     }
 }
