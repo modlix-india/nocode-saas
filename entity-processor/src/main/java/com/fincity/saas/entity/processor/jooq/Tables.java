@@ -15,6 +15,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplatesWalkInForm;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForm;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
@@ -87,6 +89,18 @@ public class Tables {
      * <code>entity_processor.entity_processor_product_templates</code>.
      */
     public static final EntityProcessorProductTemplates ENTITY_PROCESSOR_PRODUCT_TEMPLATES = EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_templates_walk_in_form</code>.
+     */
+    public static final EntityProcessorProductTemplatesWalkInForm ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORM = EntityProcessorProductTemplatesWalkInForm.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORM;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_walk_in_form</code>.
+     */
+    public static final EntityProcessorProductWalkInForm ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORM = EntityProcessorProductWalkInForm.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORM;
 
     /**
      * The table <code>entity_processor.entity_processor_products</code>.

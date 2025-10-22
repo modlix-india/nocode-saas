@@ -9,6 +9,8 @@ import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
+import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
+import com.fincity.saas.entity.processor.dto.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.content.Note;
@@ -17,22 +19,7 @@ import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
+import com.fincity.saas.entity.processor.jooq.tables.*;
 import java.util.Map;
 import lombok.Getter;
 import org.jooq.EnumType;
@@ -88,7 +75,19 @@ public enum EntitySeries implements EnumType {
     NOTE("NOTE", "Note", 25, "Note", EntityProcessorNotes.ENTITY_PROCESSOR_NOTES),
     ACTIVITY("ACTIVITY", "Activity", 26, "Activity", null),
     CAMPAIGN("CAMPAIGN", "Campaign", 27, "Campaign", EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS),
-    PARTNER("PARTNER", "Partner", 28, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS);
+    PARTNER("PARTNER", "Partner", 28, "Partner", EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS),
+    PRODUCT_TEMPLATE_WALK_IN_FORMS(
+            "PRODUCT_TEMPLATE_WALK_IN_FORMS",
+            "Product Template Walk In Forms",
+            29,
+            "ProductTemplateWalkInForm",
+            EntityProcessorProductTemplatesWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS),
+    PRODUCT_WALK_IN_FORMS(
+            "PRODUCT_WALK_IN_FORMS",
+            "Product Walk In Forms",
+            30,
+            "ProductWalkInForms",
+            EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS);
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -108,7 +107,9 @@ public enum EntitySeries implements EnumType {
             Map.entry(NOTE, "Note"),
             Map.entry(ACTIVITY, "Activity"),
             Map.entry(CAMPAIGN, "Campaign"),
-            Map.entry(PARTNER, "Partner"));
+            Map.entry(PARTNER, "Partner"),
+            Map.entry(PRODUCT_TEMPLATE_WALK_IN_FORMS, "ProductTemplateWalkInForms"),
+            Map.entry(PRODUCT_WALK_IN_FORMS, "ProductWalkInForms"));
 
     private final String literal;
     private final String displayName;
@@ -158,6 +159,8 @@ public enum EntitySeries implements EnumType {
             case ACTIVITY -> Activity.class;
             case CAMPAIGN -> Campaign.class;
             case PARTNER -> Partner.class;
+            case PRODUCT_TEMPLATE_WALK_IN_FORMS -> ProductTemplateWalkInForm.class;
+            case PRODUCT_WALK_IN_FORMS -> ProductWalkInForm.class;
         };
     }
 

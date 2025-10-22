@@ -15,6 +15,8 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplatesWalkInForms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
@@ -103,6 +105,18 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorProductTemplates ENTITY_PROCESSOR_PRODUCT_TEMPLATES = EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES;
 
     /**
+     * The table
+     * <code>entity_processor.entity_processor_product_templates_walk_in_forms</code>.
+     */
+    public final EntityProcessorProductTemplatesWalkInForms ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS = EntityProcessorProductTemplatesWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>.
+     */
+    public final EntityProcessorProductWalkInForms ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS = EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS;
+
+    /**
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
@@ -165,6 +179,8 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES,
             EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
+            EntityProcessorProductTemplatesWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS,
+            EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
             EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
             EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
