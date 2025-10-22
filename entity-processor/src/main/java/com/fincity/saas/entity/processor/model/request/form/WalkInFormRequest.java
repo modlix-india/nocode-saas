@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model.request;
+package com.fincity.saas.entity.processor.model.request.form;
 
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
@@ -13,10 +13,10 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-public final class ProductWalkInFormRequest extends BaseRequest<ProductWalkInFormRequest> {
+public final class WalkInFormRequest extends BaseRequest<WalkInFormRequest> {
 
     @Serial
-    private static final long serialVersionUID = -3348592870179377228L;
+    private static final long serialVersionUID = 3964494193089067344L;
 
     private Identity productId;
     private Identity stageId;
