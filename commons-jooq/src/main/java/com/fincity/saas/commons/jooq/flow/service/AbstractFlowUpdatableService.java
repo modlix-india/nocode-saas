@@ -67,7 +67,7 @@ public abstract class AbstractFlowUpdatableService<
         if (!entityMap.containsKey(AbstractFlowUpdatableDTO.Fields.fields)) return Mono.just(entityMap);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService().getSchema(entity.getDbTableName(), entity.getId()),
+                        () -> this.getFlowSchemaService().getSchema(entity.getTableName(), entity.getId()),
                         schema -> ReactiveSchemaValidator.validate(
                                 null, schema, null, this.toJsonElement((Map<String, Object>)
                                         entityMap.get(AbstractFlowUpdatableDTO.Fields.fields))),
@@ -82,7 +82,7 @@ public abstract class AbstractFlowUpdatableService<
     private Mono<D> validateSchema(D entity) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService().getSchema(entity.getDbTableName(), entity.getId()),
+                        () -> this.getFlowSchemaService().getSchema(entity.getTableName(), entity.getId()),
                         schema -> ReactiveSchemaValidator.validate(
                                 null, schema, null, this.toJsonElement(entity.getFields())),
                         (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> (D) entity.setFields(vMap)))

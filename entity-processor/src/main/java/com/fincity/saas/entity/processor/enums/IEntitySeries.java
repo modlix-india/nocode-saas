@@ -24,4 +24,8 @@ public interface IEntitySeries {
     default String getEntityKey() {
         return NameUtil.decapitalize(this.getEntityName());
     }
+
+    default String getTableName() {
+        return this.getEntitySeries().getTable().getName();
+    }
 }

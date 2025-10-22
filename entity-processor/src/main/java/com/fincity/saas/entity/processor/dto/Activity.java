@@ -67,4 +67,9 @@ public class Activity extends BaseDto<Activity> {
                 .setObjectId(object.getId())
                 .setObjectData(object.getData());
     }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.ACTIVITY;
+    }
 }

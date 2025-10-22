@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
@@ -77,5 +78,10 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
             case MAIL -> productComm.setEmail(productCommRequest.getEmail().getAddress());
             default -> productComm;
         };
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT_COMM;
     }
 }

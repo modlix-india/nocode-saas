@@ -2,7 +2,10 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
+import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
+import com.fincity.saas.commons.jooq.flow.service.schema.FlowSchemaService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -16,6 +19,7 @@ import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +122,17 @@ public abstract class BaseUpdatableService<
     @Autowired
     public void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
+    }
+
+    @Override
+    protected <
+                    R0 extends UpdatableRecord<R0>,
+                    I0 extends Serializable,
+                    D0 extends FlowSchema<I0, I0>,
+                    O0 extends FlowSchemaDAO<R0, I0, D0>,
+                    S0 extends FlowSchemaService<R0, I0, D0, O0>>
+            S0 getFlowSchemaService() {
+        return null;
     }
 
     @Override

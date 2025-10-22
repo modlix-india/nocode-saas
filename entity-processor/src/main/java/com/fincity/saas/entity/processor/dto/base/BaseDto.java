@@ -99,4 +99,9 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     public BaseResponse toBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
     }
+
+    @Override
+    public String getTableName() {
+        return IEntitySeries.super.getTableName();
+    }
 }

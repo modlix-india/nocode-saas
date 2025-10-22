@@ -126,4 +126,9 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     public Identity getIdentity() {
         return Identity.of(this.getId().toBigInteger(), this.getCode());
     }
+
+    @Override
+    public String getTableName() {
+        return IEntitySeries.super.getTableName();
+    }
 }

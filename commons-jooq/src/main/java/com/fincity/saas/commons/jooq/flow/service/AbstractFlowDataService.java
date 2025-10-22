@@ -50,7 +50,7 @@ public abstract class AbstractFlowDataService<
     private Mono<D> validateSchema(D entity) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService().getSchema(entity.getDbTableName(), entity.getId()),
+                        () -> this.getFlowSchemaService().getSchema(entity.getTableName(), entity.getId()),
                         schema -> ReactiveSchemaValidator.validate(
                                 null, schema, null, this.toJsonElement(entity.getFields())),
                         (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> (D) entity.setFields(vMap)))

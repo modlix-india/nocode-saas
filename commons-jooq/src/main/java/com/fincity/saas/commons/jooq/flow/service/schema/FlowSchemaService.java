@@ -1,5 +1,15 @@
 package com.fincity.saas.commons.jooq.flow.service.schema;
 
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
+
+import org.jooq.UpdatableRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -12,13 +22,7 @@ import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
-import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.UnaryOperator;
-import org.jooq.UpdatableRecord;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+
 import reactor.core.publisher.Mono;
 
 public abstract class FlowSchemaService<
@@ -28,15 +32,12 @@ public abstract class FlowSchemaService<
                 O extends FlowSchemaDAO<R, I, D>>
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
-    private static final String FLOW_SCHEMA_CACHE_NAME = "flowSchema";
-    private static final String SCHEMA_CACHE_NAME = "schema";
+    private static final String SCHEMA_CACHE = "schema";
     private static final String FLOW_SCHEMA_NAMESPACE = Namespaces.SYSTEM + ".FlowSchema";
     private static final String FLOW_FIELD_NAMESPACE = FLOW_SCHEMA_NAMESPACE + ".Field";
-    private static final UnaryOperator<String> dbNameConverter = Case.SNAKE.getConverter();
     private static final UnaryOperator<String> schemaNameConverter = Case.PASCAL.getConverter();
-    private static final UnaryOperator<String> fieldNameConverter = Case.SCREAMING_SNAKE_CASE.getConverter();
 
-    private CacheService cacheService;
+    protected CacheService cacheService;
 
     private ObjectMapper mapper;
 
@@ -48,6 +49,10 @@ public abstract class FlowSchemaService<
     @Autowired
     private void setObjectMapper(ObjectMapper mapper) {
         this.mapper = mapper;
+    }
+
+    protected String getSchemaCache() {
+        return SCHEMA_CACHE;
     }
 
     protected abstract String getDbSchemaName();
@@ -65,6 +70,34 @@ public abstract class FlowSchemaService<
         return this.getIdSchema(dbTableName, dbId).switchIfEmpty(this.getSchema(dbTableName));
     }
 
+    protected String getCacheKey(String... entityNames) {
+        return String.join(":", entityNames);
+    }
+
+    protected String getCacheKey(Object... entityNames) {
+        return String.join(
+                ":",
+                Stream.of(entityNames)
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .toArray(String[]::new));
+    }
+
+    protected Mono<Boolean> evictCache(D entity) {
+        return Mono.just(Boolean.TRUE);
+    }
+
+    @Override
+    public Mono<D> update(I key, Map<String, Object> fields) {
+        return super.update(key, fields)
+                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
+    @Override
+    public Mono<D> update(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
     @Override
     protected Mono<D> updatableEntity(D entity) {
         return this.dao.readById(entity.getId()).flatMap(existing -> {
@@ -78,26 +111,11 @@ public abstract class FlowSchemaService<
         return super.create(this.updateEntity(entity));
     }
 
-    public Mono<D> addField(I id, String fieldName, Map<String, Object> schema) {
-        return this.dao.readById(id).flatMap(existing -> {
-            Map<String, Map<String, Object>> fieldSchema =
-                    existing.getFieldSchema() != null ? existing.getFieldSchema() : new LinkedHashMap<>();
-
-            Map.Entry<String, Map<String, Object>> entry = this.updateSchemaEntry(
-                    existing.getDbSchema(), existing.getDbTableName(), Map.entry(fieldName, schema));
-
-            fieldSchema.put(entry.getKey(), entry.getValue());
-
-            existing.setFieldSchema(fieldSchema);
-            return super.update(existing);
-        });
-    }
-
     @SuppressWarnings("unchecked")
     private D updateEntity(D entity) {
 
         entity.setDbSchema(this.getDbSchemaName());
-        entity.setDbTableName(dbNameConverter.apply(entity.getDbTableName()));
+        entity.setDbTableName(entity.getDbTableName());
 
         if (!entity.getDbTableName().startsWith(entity.getDbSchema()))
             throw new GenericException(
@@ -109,34 +127,22 @@ public abstract class FlowSchemaService<
                 this.toFieldMap(entity.getDbSchema(), entity.getDbTableName(), entity.getFieldSchema()));
     }
 
-    private Map<String, Map<String, Object>> toFieldMap(
-            String dbSchema, String dbTableName, Map<String, Map<String, Object>> fieldMap) {
+    private Map<String, Object> toFieldMap(
+            String dbSchema, String dbTableName, Map<String, Object> fieldSchemaMap) {
 
-        Map<String, Map<String, Object>> fieldSchema = new LinkedHashMap<>();
+		Schema schema = this.toSchema(fieldSchemaMap)
+				.setNamespace(this.getNamespace(dbSchema, dbTableName));
 
-        for (Map.Entry<String, Map<String, Object>> field : fieldMap.entrySet()) {
-            Map.Entry<String, Map<String, Object>> entry = this.updateSchemaEntry(dbSchema, dbTableName, field);
-            fieldSchema.put(entry.getKey(), entry.getValue());
-        }
-
-        return fieldSchema;
-    }
-
-    private Map.Entry<String, Map<String, Object>> updateSchemaEntry(
-            String dbSchema, String dbTableName, Map.Entry<String, Map<String, Object>> entry) {
-
-        String key = fieldNameConverter.apply(entry.getKey());
-
-        Schema schema = this.toSchema(entry.getValue())
-                .setName(schemaNameConverter.apply(entry.getKey()))
-                .setNamespace(this.getNamespace(dbSchema, dbTableName));
-
-        return Map.entry(key, this.schemaToMap(schema));
+        return this.schemaToMap(schema);
     }
 
     private String getNamespace(String dbSchema, String dbTableName) {
         return FLOW_FIELD_NAMESPACE + "." + schemaNameConverter.apply(dbSchema) + "."
                 + schemaNameConverter.apply(dbTableName);
+    }
+
+    protected Schema toSchema(D entity) {
+        return this.toSchema(entity.getFieldSchema());
     }
 
     protected Schema toSchema(Map<String, Object> map) {

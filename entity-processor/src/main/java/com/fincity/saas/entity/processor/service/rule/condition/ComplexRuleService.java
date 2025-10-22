@@ -10,7 +10,6 @@ import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorComplexRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-
 import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +20,8 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class ComplexRuleService extends BaseConditionRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
+public class ComplexRuleService
+        extends BaseConditionRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
         implements IConditionRuleService<ComplexCondition, ComplexRule, ComplexRuleService> {
 
     private static final String COMPLEX_RULE = "complexRule";

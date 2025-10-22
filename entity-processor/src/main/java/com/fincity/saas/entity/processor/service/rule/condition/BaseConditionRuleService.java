@@ -11,7 +11,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public abstract class BaseConditionRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
+public abstract class BaseConditionRuleService<
+                R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     @Override

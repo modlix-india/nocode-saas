@@ -121,7 +121,7 @@ public abstract class BaseContentService<
     public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
-                 oEntity -> super.update(access, entity),
+                oEntity -> super.update(access, entity),
                 (oEntity, uEntity) ->
                         activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
     }

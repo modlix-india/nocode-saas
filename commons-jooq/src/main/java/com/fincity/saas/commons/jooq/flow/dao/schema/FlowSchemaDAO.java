@@ -40,7 +40,7 @@ public abstract class FlowSchemaDAO<R extends UpdatableRecord<R>, I extends Seri
                         .map(rec -> rec.into(this.pojoClass)));
     }
 
-    public Mono<AbstractCondition> getFlowSchemaCondition(
+    protected Mono<AbstractCondition> getFlowSchemaCondition(
             AbstractCondition condition, String dbSchema, String dbTableName, ULong dbId) {
 
         if (dbId == null)

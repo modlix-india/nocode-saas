@@ -256,15 +256,14 @@ public class ProductCommService
                                                         access,
                                                         ProductComm.of(productCommRequest, prodId, connection)));
                                     }
-                                    return super.create(
-                                            access, ProductComm.of(productCommRequest, prodId, connection));
+                                    return super.create(access, ProductComm.of(productCommRequest, prodId, connection));
                                 }));
                     }
                     return connMono.flatMap(connection -> {
                         ULong prodId = null;
                         return this.updateDefault(access, connection, productCommRequest)
-                                .switchIfEmpty(super.create(
-                                        access, ProductComm.of(productCommRequest, prodId, connection)));
+                                .switchIfEmpty(
+                                        super.create(access, ProductComm.of(productCommRequest, prodId, connection)));
                     });
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));

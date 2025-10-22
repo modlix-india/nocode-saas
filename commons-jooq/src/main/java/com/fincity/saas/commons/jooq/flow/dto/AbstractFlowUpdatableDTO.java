@@ -1,13 +1,16 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
-import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
+import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -29,7 +32,7 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
     @JsonSerialize(using = FieldSerializer.class)
     private Map<String, Object> fields;
 
-    public String getDbTableName() {
-        return null;
-    }
+    public abstract String getTableName();
+
+	public abstract Schema getSchema();
 }
