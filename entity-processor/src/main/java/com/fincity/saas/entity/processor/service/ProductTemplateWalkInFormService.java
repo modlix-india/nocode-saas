@@ -5,7 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductTemplateWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormsRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateWalkInFormRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import org.springframework.http.HttpStatus;
@@ -16,7 +16,7 @@ import reactor.util.context.Context;
 @Service
 public class ProductTemplateWalkInFormService
         extends BaseUpdatableService<
-                EntityProcessorProductTemplatesWalkInFormsRecord,
+                EntityProcessorProductTemplateWalkInFormsRecord,
                 ProductTemplateWalkInForm,
                 ProductTemplateWalkInFormDAO> {
 
