@@ -20,7 +20,7 @@ public class ProductTemplateWalkInFormService
                 ProductTemplateWalkInForm,
                 ProductTemplateWalkInFormDAO> {
 
-    private static final String PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE = "ProductTemplateWalkInForm";
+    private static final String PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE = "productTemplateWalkInForm";
 
     private final ProductTemplateService productTemplateService;
     private final StageService stageService;

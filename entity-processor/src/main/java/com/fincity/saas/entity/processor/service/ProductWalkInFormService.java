@@ -18,7 +18,7 @@ import reactor.util.context.Context;
 public class ProductWalkInFormService
         extends BaseUpdatableService<EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
 
-    private static final String PRODUCT_WALK_IN_FORM_CACHE = "ProductWalkInForm";
+    private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
 
     private final ProductService productService;
     private final StageService stageService;
