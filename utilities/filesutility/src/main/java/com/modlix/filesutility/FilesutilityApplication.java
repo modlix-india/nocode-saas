@@ -43,13 +43,13 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 @SpringBootApplication
 public class FilesutilityApplication {
 
-	private static final String BUCKET_NAME_STATIC = "prod-static";
-	private static final String BUCKET_NAME_SECURED = "prod-secured";
+	private static final String BUCKET_NAME_STATIC = "dev-static";
+	private static final String BUCKET_NAME_SECURED = "dev-secured";
 	private static final String ENDPOINT = "https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com";
-	private static final String ACCESS_KEY = "";
-	private static final String SECRET_KEY = "";
+	private static final String ACCESS_KEY = "6c40fe605250582bec4b567231af4e83";
+	private static final String SECRET_KEY = "0dfd87276a0812e4394aaad40e4df2b37a0752e4d437666fc6734b166edad3f2";
 
-	private static final String LOCAL_STATIC_LOCATION = "C:\\Users\\kiran\\Downloads\\imp downloads\\files\\static"; // NOSONAR
+	private static final String LOCAL_STATIC_LOCATION = "/Users/kirangrandhi/kiran/fincity/nocode-saas/utilities/ocifilesrestore/deletedFiles"; // NOSONAR
 	private static final String LOCAL_SECURED_LOCATION = "C:\\Users\\kiran\\Downloads\\imp downloads\\files\\secured"; // NOSONAR
 
 	private static final String DB_CONNECTION_STRING = "jdbc:mysql://localhost:3306/files";
@@ -108,7 +108,7 @@ public class FilesutilityApplication {
 		// Comment the following lines if you don't want to upload the files to
 		// CloudFlare from your local machine
 
-		// uploadFiles(s3Client, BUCKET_NAME_STATIC, LOCAL_STATIC_LOCATION, "SYSTEM");
+		uploadFiles(s3Client, BUCKET_NAME_STATIC, LOCAL_STATIC_LOCATION, "SYSTEM");
 		// // NOSONAR
 		// uploadFiles(s3Client, BUCKET_NAME_SECURED, LOCAL_SECURED_LOCATION); //
 		// NOSONAR

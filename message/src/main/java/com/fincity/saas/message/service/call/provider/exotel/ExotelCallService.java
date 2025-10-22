@@ -223,7 +223,7 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                     createResponse(user.getValue().getNumber(), connection);
 
                             return Mono.zip(exotelCreated, callCreated, responseCreated)
-                                    .flatMap(tuple -> super.callEventService
+                                    .<ExotelConnectAppletResponse>flatMap(tuple -> super.callEventService
                                             .sendIncomingCallEvent(
                                                     access.getAppCode(),
                                                     access.getClientCode(),
