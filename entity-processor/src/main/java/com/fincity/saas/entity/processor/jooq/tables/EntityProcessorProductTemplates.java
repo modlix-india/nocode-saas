@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplatesWalkInForms.EntityProcessorProductTemplatesWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
@@ -261,6 +262,20 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
             _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK1_PRODUCT_TEMPLATE_RULES_PRODUCT_TEMPLATE_ID.getInverseKey());
 
         return _entityProcessorProductTemplateRules;
+    }
+
+    private transient EntityProcessorProductTemplatesWalkInFormsPath _entityProcessorProductTemplatesWalkInForms;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_templates_walk_in_forms</code>
+     * table
+     */
+    public EntityProcessorProductTemplatesWalkInFormsPath entityProcessorProductTemplatesWalkInForms() {
+        if (_entityProcessorProductTemplatesWalkInForms == null)
+            _entityProcessorProductTemplatesWalkInForms = new EntityProcessorProductTemplatesWalkInFormsPath(this, null, Keys.FK1_PRODUCT_TEMPLATES_WALK_IN_FORMS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorProductTemplatesWalkInForms;
     }
 
     private transient EntityProcessorProductsPath _entityProcessorProducts;
