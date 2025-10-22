@@ -1,5 +1,9 @@
 package com.fincity.security.service.plansnbilling;
 
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +18,8 @@ import reactor.core.publisher.Mono;
 @Service
 public class InvoiceService
         extends AbstractSecurityUpdatableDataService<SecurityInvoiceRecord, ULong, Invoice, InvoiceDAO> {
+
+    private static final Pattern UTC_PATTERN = Pattern.compile("UTC([+-]?)(\\d{1,2}):?(\\d{2})?");
 
     private final InvoiceDAO invoiceDAO;
 
@@ -55,5 +61,23 @@ public class InvoiceService
 
     public Mono<Void> generateInvoices() {
         return Mono.empty();
+    }
+
+    private ZoneId getZoneId(String zoneName) {
+
+        if (zoneName.toUpperCase().startsWith("UTC")) {
+            Matcher matcher = UTC_PATTERN.matcher(zoneName);
+            if (matcher.matches()) {
+                String sign = matcher.group(1);
+                int hours = matcher.group(2) == null ? 0 : Integer.parseInt(matcher.group(2));
+                int minutes = matcher.group(3) == null ? 0 : Integer.parseInt(matcher.group(3));
+                // System.out.println(sign + " - " + hours + " - " + minutes);
+                zoneName = "UTC" + (sign == null || sign.equals("-") || sign.equals("") ? "-" : "+")
+                        + String.format("%02d", hours)
+                        + String.format("%02d", minutes);
+            }
+        }
+
+        return ZoneId.of(zoneName);
     }
 }
