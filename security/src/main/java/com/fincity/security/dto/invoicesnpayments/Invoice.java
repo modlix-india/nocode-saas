@@ -31,6 +31,7 @@ public class Invoice extends AbstractUpdatableDTO<ULong, ULong> {
     private LocalDateTime invoiceDueDate;
     private BigDecimal invoiceAmount;
     private SecurityInvoiceInvoiceStatus invoiceStatus;
+    private String invoiceReason;
 
     private List<InvoiceItem> items;
 }

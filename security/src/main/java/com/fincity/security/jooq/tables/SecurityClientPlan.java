@@ -91,7 +91,7 @@ public class SecurityClientPlan extends TableImpl<SecurityClientPlanRecord> {
      * The column <code>security.security_client_plan.END_DATE</code>. End date
      * of the plan
      */
-    public final TableField<SecurityClientPlanRecord, LocalDateTime> END_DATE = createField(DSL.name("END_DATE"), SQLDataType.LOCALDATETIME(0), this, "End date of the plan");
+    public final TableField<SecurityClientPlanRecord, LocalDateTime> END_DATE = createField(DSL.name("END_DATE"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.inline("2035-12-31 23:59:59", SQLDataType.LOCALDATETIME)), this, "End date of the plan");
 
     private SecurityClientPlan(Name alias, Table<SecurityClientPlanRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
