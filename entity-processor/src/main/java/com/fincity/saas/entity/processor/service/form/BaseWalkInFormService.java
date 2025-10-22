@@ -110,6 +110,14 @@ public abstract class BaseWalkInFormService<
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".create"));
     }
 
+    public Mono<D> getWalkInForm(Identity productId) {
+
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.resolveProduct(access, productId),
+                (access, product) -> this.getWalkInFormInternal(access, product.getT1()));
+    }
+
     public Mono<D> getWalkInFormInternal(ProcessorAccess access, ULong productId) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
