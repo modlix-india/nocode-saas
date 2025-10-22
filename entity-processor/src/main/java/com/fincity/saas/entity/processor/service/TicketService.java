@@ -139,10 +139,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentityDnc, pTicket) -> super.createInternal(access, pTicket),
                         (access, productIdentityDnc, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
-                        (access, productIdentityDnc, pTicket, created, noteCreated) -> this.activityService
-                                .acCreate(created)
-                                .thenReturn(created)
-                                .thenReturn(created))
+                        (access, productIdentityDnc, pTicket, created, noteCreated) ->
+                                this.activityService.acCreate(created).thenReturn(created))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }
@@ -347,6 +345,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     this.productService.getEntityName());
 
+        if (ticket.getAssignedUserId() != null && ticket.getStage() != null) return Mono.just(ticket);
+
+        if (ticket.getAssignedUserId() != null)
+            return FlatMapUtil.flatMapMono(
+                            () -> this.productService.readById(ticket.getProductId()),
+                            product -> this.setDefaultStage(access, ticket, product.getProductTemplateId()))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
+
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.productService.readById(ticket.getProductId()),
                         product -> this.setDefaultStage(access, ticket, product.getProductTemplateId()),
@@ -364,7 +370,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     private Mono<Ticket> setDefaultStage(ProcessorAccess access, Ticket ticket, ULong productTemplateId) {
 
-        if (productTemplateId == null) return Mono.just(ticket);
+        if (productTemplateId == null || ticket.getStage() != null) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.stageService.getFirstStage(access, productTemplateId),
