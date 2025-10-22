@@ -204,6 +204,22 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.38</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -219,7 +235,7 @@
                                 <driver>com.mysql.cj.jdbc.Driver</driver>
                                 <url>jdbc:mysql://localhost:3306/entity_collector</url>
                                 <user>root</user>
-                                <password>Sowmya@14555</password>
+                                <password>Kiran@123</password>
                             </jdbc>
                             <generator>
                                 <database>
