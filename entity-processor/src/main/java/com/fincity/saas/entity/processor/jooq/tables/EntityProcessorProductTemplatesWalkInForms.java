@@ -117,7 +117,7 @@ public class EntityProcessorProductTemplatesWalkInForms extends TableImpl<Entity
      * <code>entity_processor.entity_processor_product_templates_walk_in_forms.STAGE_ID</code>.
      * Status for this Product template walk in form.
      */
-    public final TableField<EntityProcessorProductTemplatesWalkInFormsRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Status for this Product template walk in form.");
+    public final TableField<EntityProcessorProductTemplatesWalkInFormsRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Status for this Product template walk in form.");
 
     /**
      * The column
@@ -260,7 +260,7 @@ public class EntityProcessorProductTemplatesWalkInForms extends TableImpl<Entity
 
     @Override
     public List<UniqueKey<EntityProcessorProductTemplatesWalkInFormsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS_UK1_PRODUCT_TEMPLATES_WALK_IN_FORMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS_UK2_PRODUCT_TEMPLATES_WALK_IN_FORMS_APP_CLIENT_PRODUCT_TEMPLATE);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS_UK1_PRODUCT_TEMPLATES_WALK_IN_FORMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS_UK2_PRODUCT_TEMPLATES_WALK_IN_FORMS_PRODUCT_TEMPLATE_ID);
     }
 
     @Override

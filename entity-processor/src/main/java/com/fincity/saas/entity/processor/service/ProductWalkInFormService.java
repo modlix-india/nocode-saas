@@ -9,9 +9,6 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.request.ProductWalkInFormRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import java.util.ArrayList;
-import java.util.List;
-import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -46,39 +43,67 @@ public class ProductWalkInFormService
         return EntitySeries.PRODUCT_WALK_IN_FORMS;
     }
 
-    public Mono<ProductWalkInForm> create(ProductWalkInFormRequest req) {
-        if (req.getProductId() == null || req.getStageId() == null || req.getStatusId() == null) {
-            List<String> missingFields = new ArrayList<>();
-            if (req.getProductId() == null) missingFields.add(ProcessorMessageResourceService.PRODUCT_ID_MISSING);
-            if (req.getStageId() == null) missingFields.add(ProcessorMessageResourceService.STAGE_MISSING);
-            if (req.getStatusId() == null) missingFields.add(ProcessorMessageResourceService.STATUS_MISSING);
+    public Mono<ProductWalkInForm> create(ProductWalkInFormRequest formRequest) {
+
+        if (formRequest.getProductId() == null) {
             return msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg), String.join(",", missingFields));
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    productService.getEntityName());
+        }
+
+        if (formRequest.getStageId() == null) {
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    stageService.getEntityName());
         }
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> Mono.zip(
-                                productService.readIdentityWithAccess(access, req.getProductId()),
-                                stageService.readIdentityWithAccess(access, req.getStageId()),
-                                stageService.readIdentityWithAccess(access, req.getStatusId())),
-                        (access, tuple3) -> {
-                            ULong productId = tuple3.getT1().getId();
-                            return this.dao
-                                    .findByAppClientAndProductId(access, productId)
-                                    .flatMap(existing -> this.updateInternal(
-                                            access,
-                                            existing.setStageId(tuple3.getT2().getId())
-                                                    .setStatusId(tuple3.getT3().getId())
-                                                    .setAssignmentType(req.getAssignmentType())))
-                                    .switchIfEmpty(this.createInternal(
-                                            access,
-                                            new ProductWalkInForm()
-                                                    .setProductId(productId)
-                                                    .setStageId(tuple3.getT2().getId())
-                                                    .setStatusId(tuple3.getT3().getId())
-                                                    .setAssignmentType(req.getAssignmentType())));
-                        })
+                        access -> productService.readIdentityWithAccess(access, formRequest.getProductId()),
+                        (access, product) -> stageService
+                                .getParentChild(
+                                        access,
+                                        product.getProductTemplateId(),
+                                        formRequest.getStageId(),
+                                        formRequest.getStatusId())
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.STAGE_MISSING)),
+                        (access, product, stageStatusEntity) -> dao.findByAppClientAndProductId(access, product.getId())
+                                .flatMap(existing -> super.updateInternal(
+                                        access,
+                                        existing.setStageId(stageStatusEntity
+                                                        .getKey()
+                                                        .getId())
+                                                .setStatusId(
+                                                        stageStatusEntity
+                                                                        .getValue()
+                                                                        .isEmpty()
+                                                                ? null
+                                                                : stageStatusEntity
+                                                                        .getValue()
+                                                                        .getFirst()
+                                                                        .getId())
+                                                .setAssignmentType(formRequest.getAssignmentType())))
+                                .switchIfEmpty(super.createInternal(
+                                        access,
+                                        new ProductWalkInForm()
+                                                .setProductId(product.getId())
+                                                .setStageId(stageStatusEntity
+                                                        .getKey()
+                                                        .getId())
+                                                .setStatusId(
+                                                        stageStatusEntity
+                                                                        .getValue()
+                                                                        .isEmpty()
+                                                                ? null
+                                                                : stageStatusEntity
+                                                                        .getValue()
+                                                                        .getFirst()
+                                                                        .getId())
+                                                .setAssignmentType(formRequest.getAssignmentType()))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.create"));
     }
 

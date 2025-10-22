@@ -117,7 +117,7 @@ public class EntityProcessorProductWalkInForms extends TableImpl<EntityProcessor
      * <code>entity_processor.entity_processor_product_walk_in_forms.STAGE_ID</code>.
      * Status for this product walk in form.
      */
-    public final TableField<EntityProcessorProductWalkInFormsRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Status for this product walk in form.");
+    public final TableField<EntityProcessorProductWalkInFormsRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Status for this product walk in form.");
 
     /**
      * The column
@@ -260,7 +260,7 @@ public class EntityProcessorProductWalkInForms extends TableImpl<EntityProcessor
 
     @Override
     public List<UniqueKey<EntityProcessorProductWalkInFormsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS_UK1_PRODUCT_WALK_IN_FORMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS_UK2_PRODUCT_WALK_IN_FORMS_APP_CODE_CLIENT_CODE_PRODUCT_ID);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS_UK1_PRODUCT_WALK_IN_FORMS_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS_UK2_PRODUCT_WALK_IN_FORMS_PRODUCT_ID);
     }
 
     @Override
