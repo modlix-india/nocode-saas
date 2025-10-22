@@ -139,9 +139,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentityDnc, pTicket) -> super.createInternal(access, pTicket),
                         (access, productIdentityDnc, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
-                        (access, productIdentityDnc, pTicket, created, noteCreated) -> this.activityService
-                                .acCreate(created)
-                                .thenReturn(created))
+                        (access, productIdentityDnc, pTicket, created, noteCreated) ->
+                                this.activityService.acCreate(created).thenReturn(created))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createOpenResponse"));
     }

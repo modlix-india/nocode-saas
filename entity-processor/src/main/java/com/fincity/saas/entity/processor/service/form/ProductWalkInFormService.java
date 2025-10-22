@@ -1,11 +1,5 @@
 package com.fincity.saas.entity.processor.service.form;
 
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
@@ -22,8 +16,13 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductService;
+import com.fincity.saas.entity.processor.service.ProductStageRuleService;
 import com.fincity.saas.entity.processor.service.TicketService;
-
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -36,6 +35,8 @@ public class ProductWalkInFormService
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
     private TicketService ticketService;
+    private ProductStageRuleService productStageRuleService;
+
     private ProductTemplateWalkInFormService productTemplateWalkInFormService;
 
     public ProductWalkInFormService(ProductService productService) {
@@ -45,6 +46,11 @@ public class ProductWalkInFormService
     @Autowired
     private void setTicketService(TicketService ticketService) {
         this.ticketService = ticketService;
+    }
+
+    @Autowired
+    private void setProductStageRuleService(ProductStageRuleService productStageRuleService) {
+        this.productStageRuleService = productStageRuleService;
     }
 
     @Lazy
@@ -109,6 +115,13 @@ public class ProductWalkInFormService
                 (walkInFormResponse, ticket, userTicket) -> {
                     userTicket.setStage(walkInFormResponse.getStageId());
                     userTicket.setStatus(walkInFormResponse.getStatusId());
+
+                    if (ticket.getId() != null)
+                        return ticketService
+                                .updateInternal(access, ticket)
+                                .map(updated ->
+                                        ProcessorResponse.ofCreated(updated.getCode(), updated.getEntitySeries()));
+
                     return ticketService
                             .createInternal(access, userTicket)
                             .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));

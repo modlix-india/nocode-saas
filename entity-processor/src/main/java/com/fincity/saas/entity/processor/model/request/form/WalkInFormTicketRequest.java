@@ -1,17 +1,14 @@
 package com.fincity.saas.entity.processor.model.request.form;
 
-import java.io.Serial;
-
-import org.jooq.types.ULong;
-
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)

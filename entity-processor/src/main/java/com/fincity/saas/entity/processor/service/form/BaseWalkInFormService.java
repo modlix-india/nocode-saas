@@ -1,10 +1,5 @@
 package com.fincity.saas.entity.processor.service.form;
 
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -18,7 +13,10 @@ import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -121,10 +119,9 @@ public abstract class BaseWalkInFormService<
 
     public Mono<WalkInFormResponse> getWalkInFormResponse(ProcessorAccess access, ULong productId) {
         return this.getWalkInFormInternal(access, productId).map(walkInForm -> new WalkInFormResponse()
-		        .setProductId(walkInForm.getProductId())
+                .setProductId(walkInForm.getProductId())
                 .setStageId(walkInForm.getStageId())
                 .setStatusId(walkInForm.getStatusId())
-		        .setAssignmentType(walkInForm.getAssignmentType())
-        );
+                .setAssignmentType(walkInForm.getAssignmentType()));
     }
 }

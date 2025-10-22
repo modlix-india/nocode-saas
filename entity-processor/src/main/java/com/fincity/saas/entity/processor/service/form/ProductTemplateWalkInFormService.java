@@ -45,15 +45,13 @@ public class ProductTemplateWalkInFormService
                 .map(productTemplate -> Tuples.of(productTemplate.getId(), productTemplate.getId()));
     }
 
-	@Override
-	protected ProductTemplateWalkInForm create(
-			ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
-		return (ProductTemplateWalkInForm) new ProductTemplateWalkInForm()
-				.setProductTemplateId(entityId)
-				.setStageId(stageId)
-				.setStatusId(statusId)
-				.setAssignmentType(assignmentType);
-	}
-
-
+    @Override
+    protected ProductTemplateWalkInForm create(
+            ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+        return (ProductTemplateWalkInForm) new ProductTemplateWalkInForm()
+                .setProductTemplateId(entityId)
+                .setStageId(stageId)
+                .setStatusId(statusId)
+                .setAssignmentType(assignmentType);
+    }
 }
