@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.controller;
 import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.ProductTemplateWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesWalkInFormsRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateWalkInFormRequest;
 import com.fincity.saas.entity.processor.service.ProductTemplateWalkInFormService;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/entity/processor/products/templates/forms")
 public class ProductTemplateWalkInFormController
         extends BaseUpdatableController<
-                EntityProcessorProductTemplatesWalkInFormsRecord,
+                EntityProcessorProductTemplateWalkInFormsRecord,
                 ProductTemplateWalkInForm,
                 ProductTemplateWalkInFormDAO,
                 ProductTemplateWalkInFormService> {
