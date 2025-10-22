@@ -1,0 +1,31 @@
+package com.fincity.saas.entity.processor.model.request.form;
+
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
+import com.fincity.saas.entity.processor.model.base.BaseRequest;
+import com.fincity.saas.entity.processor.model.common.Email;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
+@Data
+@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+public class WalkInFormTicketRequest extends BaseRequest<WalkInFormTicketRequest> {
+
+    @Serial
+    private static final long serialVersionUID = 5455857302595973770L;
+
+    private ULong userId;
+    private PhoneNumber phoneNumber;
+    private Email email;
+    private String source;
+    private String subSource;
+    private String comment;
+}

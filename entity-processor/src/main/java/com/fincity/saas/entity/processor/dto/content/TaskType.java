@@ -14,7 +14,6 @@ import lombok.experimental.FieldNameConstants;
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-@FieldNameConstants
 public class TaskType extends BaseUpdatableDto<TaskType> {
 
     @Serial

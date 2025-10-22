@@ -1,21 +1,25 @@
 package com.fincity.saas.entity.processor.dto;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
+import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -88,6 +92,13 @@ public class Ticket extends BaseProcessorDto<Ticket> {
 
     public static Ticket of(CampaignTicketRequest campaignTicketRequest) {
         return new Ticket()
+		        .setDialCode(
+				        campaignTicketRequest.getLeadDetails().getPhone() != null
+						        ? campaignTicketRequest
+						        .getLeadDetails()
+						        .getPhone()
+						        .getCountryCode()
+						        : null)
                 .setPhoneNumber(
                         campaignTicketRequest.getLeadDetails().getPhone() != null
                                 ? campaignTicketRequest
@@ -113,6 +124,26 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                                 : campaignTicketRequest.getLeadDetails().getFirstName() + " "
                                         + campaignTicketRequest.getLeadDetails().getLastName());
     }
+
+	public static Ticket of(WalkInFormTicketRequest walkInFormTicketRequest) {
+		return new Ticket()
+				.setDialCode(
+						walkInFormTicketRequest.getPhoneNumber() != null
+								? walkInFormTicketRequest.getPhoneNumber().getCountryCode()
+								: null)
+				.setPhoneNumber(
+						walkInFormTicketRequest.getPhoneNumber() != null
+								? walkInFormTicketRequest.getPhoneNumber().getNumber()
+								: null)
+				.setEmail(
+						walkInFormTicketRequest.getEmail() != null
+								? walkInFormTicketRequest.getEmail().getAddress()
+								: null)
+				.setSource(walkInFormTicketRequest.getSource())
+				.setSubSource(walkInFormTicketRequest.getSubSource() != null ? walkInFormTicketRequest.getSubSource() : null)
+				.setName(walkInFormTicketRequest.getName())
+				.setDescription(walkInFormTicketRequest.getDescription());
+	}
 
     @Override
     @JsonIgnore
