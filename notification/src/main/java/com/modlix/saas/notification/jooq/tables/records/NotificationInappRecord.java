@@ -90,28 +90,11 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
     }
 
     /**
-     * Setter for <code>notification.notification_inapp.NOTIFICATION_ID</code>.
-     * Notification ID
-     */
-    public NotificationInappRecord setNotificationId(String value) {
-        set(4, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>notification.notification_inapp.NOTIFICATION_ID</code>.
-     * Notification ID
-     */
-    public String getNotificationId() {
-        return (String) get(4);
-    }
-
-    /**
      * Setter for <code>notification.notification_inapp.TITLE</code>.
      * Notification title
      */
     public NotificationInappRecord setTitle(String value) {
-        set(5, value);
+        set(4, value);
         return this;
     }
 
@@ -120,7 +103,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Notification title
      */
     public String getTitle() {
-        return (String) get(5);
+        return (String) get(4);
     }
 
     /**
@@ -128,7 +111,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Notification message
      */
     public NotificationInappRecord setMessage(String value) {
-        set(6, value);
+        set(5, value);
         return this;
     }
 
@@ -137,7 +120,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Notification message
      */
     public String getMessage() {
-        return (String) get(6);
+        return (String) get(5);
     }
 
     /**
@@ -145,7 +128,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * URL
      */
     public NotificationInappRecord setMimeUrl(String value) {
-        set(7, value);
+        set(6, value);
         return this;
     }
 
@@ -154,7 +137,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * URL
      */
     public String getMimeUrl() {
-        return (String) get(7);
+        return (String) get(6);
     }
 
     /**
@@ -163,7 +146,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Notification type
      */
     public NotificationInappRecord setNotificationType(String value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -173,14 +156,14 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Notification type
      */
     public String getNotificationType() {
-        return (String) get(8);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>notification.notification_inapp.READ_AT</code>. Read at
      */
     public NotificationInappRecord setReadAt(LocalDateTime value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -188,7 +171,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Getter for <code>notification.notification_inapp.READ_AT</code>. Read at
      */
     public LocalDateTime getReadAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(8);
     }
 
     /**
@@ -196,7 +179,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * when this row is created
      */
     public NotificationInappRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -205,7 +188,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -231,14 +214,13 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
     /**
      * Create a detached, initialised NotificationInappRecord
      */
-    public NotificationInappRecord(ULong id, ULong userId, String appCode, String notificationName, String notificationId, String title, String message, String mimeUrl, String notificationType, LocalDateTime readAt, LocalDateTime createdAt) {
+    public NotificationInappRecord(ULong id, ULong userId, String appCode, String notificationName, String title, String message, String mimeUrl, String notificationType, LocalDateTime readAt, LocalDateTime createdAt) {
         super(NotificationInapp.NOTIFICATION_INAPP);
 
         setId(id);
         setUserId(userId);
         setAppCode(appCode);
         setNotificationName(notificationName);
-        setNotificationId(notificationId);
         setTitle(title);
         setMessage(message);
         setMimeUrl(mimeUrl);

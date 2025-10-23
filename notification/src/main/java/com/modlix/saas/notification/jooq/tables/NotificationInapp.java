@@ -77,12 +77,6 @@ public class NotificationInapp extends TableImpl<NotificationInappRecord> {
     public final TableField<NotificationInappRecord, String> NOTIFICATION_NAME = createField(DSL.name("NOTIFICATION_NAME"), SQLDataType.VARCHAR(256).nullable(false), this, "Notification name");
 
     /**
-     * The column <code>notification.notification_inapp.NOTIFICATION_ID</code>.
-     * Notification ID
-     */
-    public final TableField<NotificationInappRecord, String> NOTIFICATION_ID = createField(DSL.name("NOTIFICATION_ID"), SQLDataType.CHAR(32).nullable(false), this, "Notification ID");
-
-    /**
      * The column <code>notification.notification_inapp.TITLE</code>.
      * Notification title
      */

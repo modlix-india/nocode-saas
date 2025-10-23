@@ -2,8 +2,6 @@ package com.fincity.saas.entity.processor.controller.open;
 
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
-import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.service.TicketService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,11 +22,6 @@ public class TicketOpenController {
 
     public TicketOpenController(TicketService ticketService) {
         this.ticketService = ticketService;
-    }
-
-    @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<ProcessorResponse>> createFromRequest(@RequestBody TicketRequest ticketRequest) {
-        return this.ticketService.createOpenResponse(ticketRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping(CAMPAIGN_REQ_PATH)

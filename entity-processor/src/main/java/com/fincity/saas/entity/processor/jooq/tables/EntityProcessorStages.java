@@ -11,7 +11,9 @@ import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms.EntityProcessorProductWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
@@ -374,6 +376,64 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK2_PRODUCT_TEMPLATE_RULES_STAGE_ID.getInverseKey());
 
         return _entityProcessorProductTemplateRules;
+    }
+
+    private transient EntityProcessorProductTemplateWalkInFormsPath _fk2ProductTemplateWalkInFormsStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>
+     * table, via the <code>FK2_PRODUCT_TEMPLATE_WALK_IN_FORMS_STAGE_ID</code>
+     * key
+     */
+    public EntityProcessorProductTemplateWalkInFormsPath fk2ProductTemplateWalkInFormsStageId() {
+        if (_fk2ProductTemplateWalkInFormsStageId == null)
+            _fk2ProductTemplateWalkInFormsStageId = new EntityProcessorProductTemplateWalkInFormsPath(this, null, Keys.FK2_PRODUCT_TEMPLATE_WALK_IN_FORMS_STAGE_ID.getInverseKey());
+
+        return _fk2ProductTemplateWalkInFormsStageId;
+    }
+
+    private transient EntityProcessorProductWalkInFormsPath _fk2ProductWalkInFormsStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table, via the <code>FK2_PRODUCT_WALK_IN_FORMS_STAGE_ID</code> key
+     */
+    public EntityProcessorProductWalkInFormsPath fk2ProductWalkInFormsStageId() {
+        if (_fk2ProductWalkInFormsStageId == null)
+            _fk2ProductWalkInFormsStageId = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK2_PRODUCT_WALK_IN_FORMS_STAGE_ID.getInverseKey());
+
+        return _fk2ProductWalkInFormsStageId;
+    }
+
+    private transient EntityProcessorProductTemplateWalkInFormsPath _fk3ProductTemplateWalkInFormsStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>
+     * table, via the <code>FK3_PRODUCT_TEMPLATE_WALK_IN_FORMS_STATUS_ID</code>
+     * key
+     */
+    public EntityProcessorProductTemplateWalkInFormsPath fk3ProductTemplateWalkInFormsStatusId() {
+        if (_fk3ProductTemplateWalkInFormsStatusId == null)
+            _fk3ProductTemplateWalkInFormsStatusId = new EntityProcessorProductTemplateWalkInFormsPath(this, null, Keys.FK3_PRODUCT_TEMPLATE_WALK_IN_FORMS_STATUS_ID.getInverseKey());
+
+        return _fk3ProductTemplateWalkInFormsStatusId;
+    }
+
+    private transient EntityProcessorProductWalkInFormsPath _fk3ProductWalkInFormsStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table, via the <code>FK3_PRODUCT_WALK_IN_FORMS_STATUS_ID</code> key
+     */
+    public EntityProcessorProductWalkInFormsPath fk3ProductWalkInFormsStatusId() {
+        if (_fk3ProductWalkInFormsStatusId == null)
+            _fk3ProductWalkInFormsStatusId = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK3_PRODUCT_WALK_IN_FORMS_STATUS_ID.getInverseKey());
+
+        return _fk3ProductWalkInFormsStatusId;
     }
 
     private transient EntityProcessorTicketsPath _fk3TicketsStageId;

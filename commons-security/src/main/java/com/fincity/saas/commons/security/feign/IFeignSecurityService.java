@@ -175,7 +175,7 @@ public interface IFeignSecurityService {
     Mono<User> getUserInternal(@PathVariable("id") BigInteger id, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal}")
-    Mono<List<User>> getUserInternal(
+    Mono<List<User>> getUsersInternal(
             @RequestParam List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal/clients}")

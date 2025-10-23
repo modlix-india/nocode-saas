@@ -106,6 +106,9 @@ public class UserSubOrganizationService
     }
 
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
+
+        if (userId == null) return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER));
+
         return Mono.zip(
                         this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
                         this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
@@ -145,27 +148,27 @@ public class UserSubOrganizationService
     private Mono<User> updateManager(User user, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.just(user),
-                (ContextAuthentication ca, User uUser) -> ca.isSystemClient()
-                        ? Mono.just(Boolean.TRUE)
-                        : clientService
-                                .isBeingManagedBy(
-                                        ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
-                                .<Boolean>flatMap(BooleanUtil::safeValueOfWithEmpty),
-                (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
-                        .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
-                                ? this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        SecurityMessageResourceService.USER_REPORTING_ERROR)
-                                : Mono.just(uUser)),
-                (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
-                    ULong oldReportingTo = validUser.getReportingTo();
-                    return super.update(validUser.setReportingTo(managerId))
-                            .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
-                },
-                (ca, uUser, sysOrManaged, validUser, updated) -> this.evictTokens(updated.getId())
-                        .<User>map(evicted -> updated))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> Mono.just(user),
+                        (ContextAuthentication ca, User uUser) -> ca.isSystemClient()
+                                ? Mono.just(Boolean.TRUE)
+                                : clientService
+                                        .isBeingManagedBy(
+                                                ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
+                                        .<Boolean>flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
+                                .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
+                                        ? this.msgService.throwMessage(
+                                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                                SecurityMessageResourceService.USER_REPORTING_ERROR)
+                                        : Mono.just(uUser)),
+                        (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
+                            ULong oldReportingTo = validUser.getReportingTo();
+                            return super.update(validUser.setReportingTo(managerId))
+                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                        },
+                        (ca, uUser, sysOrManaged, validUser, updated) ->
+                                this.evictTokens(updated.getId()).<User>map(evicted -> updated))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user reporting manager"));
     }

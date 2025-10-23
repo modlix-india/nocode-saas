@@ -47,7 +47,7 @@ public class UserFieldResolver implements RelationResolver {
                     .flatMap(userMap -> this.applyEagerFiltering(userMap, eager, eagerFields));
 
         return securityService
-                .getUserInternal(idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
+                .getUsersInternal(idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
                 .map(userList -> userList.stream()
                         .collect(Collectors.toMap(user -> ULongUtil.valueOf(user.getId()), IClassConvertor::toMap)))
                 .flatMap(userMap -> this.applyEagerFiltering(userMap, eager, eagerFields));
