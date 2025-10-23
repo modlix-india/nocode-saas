@@ -29,7 +29,9 @@ public enum SecuritySoxLogObjectName implements EnumType {
 
     APP("APP"),
 
-    PROFILE("PROFILE");
+    PROFILE("PROFILE"),
+
+    INVOICE("INVOICE");
 
     private final String literal;
 

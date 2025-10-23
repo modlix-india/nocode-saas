@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractConnectionService {
 
-    public static final String META_CONNECTION_NAME = "META_API";
     private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
 
     protected EntityCollectorMessageResourceService msgService;
@@ -32,19 +31,19 @@ public abstract class AbstractConnectionService {
         this.coreService = coreService;
     }
 
-    public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode) {
-        return this.getCoreToken(appCode, clientCode)
+    public Mono<String> getConnectionOAuth2Token(String appCode, String clientCode, String connectionName) {
+        return this.getCoreToken(appCode, clientCode, connectionName)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         EntityCollectorMessageResourceService.TOKEN_UNAVAILABLE,
-                        META_CONNECTION_NAME));
+                        connectionName));
     }
 
-    private Mono<String> getCoreToken(String appCode, String clientCode) {
+    private Mono<String> getCoreToken(String appCode, String clientCode, String connectionName) {
         return this.cacheService.cacheValueOrGet(
                 CACHE_NAME_REST_OAUTH2,
-                () -> coreService.getConnectionOAuth2Token( clientCode, appCode, META_CONNECTION_NAME ),
-                this.getCacheKey(META_CONNECTION_NAME, clientCode, appCode));
+                () -> coreService.getConnectionOAuth2Token( clientCode, appCode, connectionName ),
+                this.getCacheKey(connectionName, clientCode, appCode));
     }
 
     private String getCacheKey(String... entityNames) {

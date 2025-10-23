@@ -100,7 +100,7 @@ public class EntityCollectorLog extends TableImpl<EntityCollectorLogRecord> {
      * The column <code>entity_collector.entity_collector_log.STATUS</code>.
      * Status of the entity transfer
      */
-    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(11).nullable(false).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the entity transfer");
+    public final TableField<EntityCollectorLogRecord, EntityCollectorLogStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(11).asEnumDataType(EntityCollectorLogStatus.class), this, "Status of the entity transfer");
 
     /**
      * The column

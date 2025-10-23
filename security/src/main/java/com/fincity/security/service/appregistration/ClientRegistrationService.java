@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.fincity.security.dto.*;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -30,6 +30,12 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
+import com.fincity.security.dto.App;
+import com.fincity.security.dto.AppRegistrationIntegrationToken;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientUrl;
+import com.fincity.security.dto.TokenObject;
+import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
 import com.fincity.security.enums.otp.OtpPurpose;
@@ -52,6 +58,7 @@ import com.fincity.security.service.ClientUrlService;
 import com.fincity.security.service.OtpService;
 import com.fincity.security.service.SecurityMessageResourceService;
 import com.fincity.security.service.UserService;
+import com.fincity.security.service.plansnbilling.PlanService;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -85,6 +92,7 @@ public class ClientRegistrationService {
     private final AppRegistrationIntegrationService appRegistrationIntegrationService;
     private final AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService;
     private final SecurityMessageResourceService securityMessageResourceService;
+    private final PlanService planService;
 
     @Value("${security.subdomain.endings}")
     private String[] subDomainEndings;
@@ -95,7 +103,8 @@ public class ClientRegistrationService {
                                      ClientUrlService clientUrlService, AppRegistrationV2DAO appRegistrationDAO, IFeignFilesService filesService,
                                      AppRegistrationIntegrationService appRegistrationIntegrationService,
                                      AppRegistrationIntegrationTokenService appRegistrationIntegrationTokenService,
-                                     SecurityMessageResourceService securityMessageResourceService) {
+                                     SecurityMessageResourceService securityMessageResourceService,
+                                     PlanService planService) {
 
         this.dao = dao;
         this.appService = appService;
@@ -111,6 +120,7 @@ public class ClientRegistrationService {
         this.appRegistrationIntegrationService = appRegistrationIntegrationService;
         this.appRegistrationIntegrationTokenService = appRegistrationIntegrationTokenService;
         this.securityMessageResourceService = securityMessageResourceService;
+        this.planService = planService;
     }
 
     private <T> Mono<T> regError(Object... params) {
@@ -184,18 +194,22 @@ public class ClientRegistrationService {
                     return Mono.just(context);
                 }),
 
-                (ContextAuthentication ca) -> this.clientService.getClientAppPolicy(ULong.valueOf(ca.getLoggedInFromClientId()),
+                (ContextAuthentication ca) -> this.clientService.getClientAppPolicy(
+                        ULong.valueOf(ca.getLoggedInFromClientId()),
                         ca.getUrlAppCode(), registrationRequest.getInputPassType()),
 
                 (ca, policy) -> this.preRegisterCheck(registrationRequest, ca, policy),
 
-                (ContextAuthentication ca, AbstractPolicy policy, String subDomain) -> this.fetchAppProp(ULong.valueOf(ca.getLoggedInFromClientId()), null,
+                (ContextAuthentication ca, AbstractPolicy policy, String subDomain) -> this.fetchAppProp(
+                        ULong.valueOf(ca.getLoggedInFromClientId()), null,
                         ca.getUrlAppCode(), AppService.APP_PROP_REG_TYPE),
 
                 (ca, policy, subDomain, regProp) -> this.registerClient(registrationRequest, ca, regProp),
 
-                (ContextAuthentication ca, AbstractPolicy policy, String subDomain, String regProp, Client client) -> this.registerUser(
-                        ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest, client,
+                (ContextAuthentication ca, AbstractPolicy policy, String subDomain, String regProp,
+                 Client client) -> this.registerUser(
+                        ca.getUrlAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), registrationRequest,
+                        client,
                         policy),
 
                 (ca, policy, subDomain, regProp, client, userTuple) -> {
@@ -206,10 +220,12 @@ public class ClientRegistrationService {
 
                     return Mono.just("");
                 },
-                (ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client, ca.getUrlAppCode()),
+                (ca, policy, subDomain, regProp, client, userTuple, token) -> this.addFilesAccessPath(ca, client,
+                        ca.getUrlAppCode()),
 
                 (ca, policy, subDomain, regProp, client, userTuple, token, filesAccessCreated) -> this
-                        .createRegistrationEvents(ca, client, subDomain, userTuple.getT1(), token, userTuple.getT2(), request)
+                        .createRegistrationEvents(ca, client, subDomain, userTuple.getT1(), token, userTuple.getT2(),
+                                request)
                         .flatMap(events -> this.getClientRegistrationResponse(registrationRequest,
                                 userTuple.getT1().getId(), userTuple.getT2(), request, response)),
 
@@ -224,31 +240,52 @@ public class ClientRegistrationService {
                     return this.clientUrlService.createForRegistration(
                                     new ClientUrl().setAppCode(ca.getUrlAppCode())
                                             .setUrlPattern(subDomain).setClientId(client.getId()))
-                            .<Tuple3<RegistrationResponse, Client, User>>map(e -> Tuples.of(res, client, userTuple.getT1()));
+                            .<Tuple3<RegistrationResponse, Client, User>>map(
+                                    e -> Tuples.of(res, client, userTuple.getT1()));
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register (Part 1)"));
 
         return FlatMapUtil.flatMapMono(
                         () -> monoResponse,
-                        tup -> this.autoAddRegObjectsFromOtherApps(tup.getT2(), tup.getT3()).map(x -> tup.getT1())
-                )
+                        tup -> this.autoAddRegObjectsFromOtherApps(tup.getT2(), tup.getT3()),
+                        (tup, added) -> this.addPlanAndCycle(tup.getT2(), registrationRequest).map(x -> tup.getT1()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.register (Part 2)"));
+    }
+
+    private Mono<Boolean> addPlanAndCycle(Client client, ClientRegistrationRequest registrationRequest) {
+
+        if (registrationRequest.getPlanId() == null || registrationRequest.getCycleId() == null)
+            return Mono.just(Boolean.TRUE);
+
+        return FlatMapUtil.flatMapMono(
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.planService.addPlanAndCyCle(client.getId(), ca.getUrlClientCode(),
+                                registrationRequest.getPlanId(), registrationRequest.getCycleId(), null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addPlanAndCycle"));
     }
 
     private Mono<Boolean> autoAddRegObjectsFromOtherApps(Client client, User user) {
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.appService.getAppIdsForAdditionalAppRegistration(ca.getUrlAppCode(), ca.getUrlClientCode(), client),
+                        ca -> this.appService.getAppIdsForAdditionalAppRegistration(ca.getUrlAppCode(), ca.getUrlClientCode(),
+                                client),
 
-                (ca, appIds) -> Flux.fromIterable(appIds).flatMap(appId -> this.appService.getAppById(appId).map(App::getAppCode))
-                        .flatMap(appCode -> this.addFilesAccessPath(ca, client, appCode)).reduce(Boolean.TRUE, (e1, e2) -> e1 && e2),
+                        (ca, appIds) -> Flux.fromIterable(appIds)
+                                .flatMap(appId -> this.appService.getAppById(appId).map(App::getAppCode))
+                                .flatMap(appCode -> this.addFilesAccessPath(ca, client, appCode))
+                                .reduce(Boolean.TRUE, (e1, e2) -> e1 && e2),
 
-                (ca, appIds, filesAdded) -> this.clientService.getClientBy(ca.getUrlClientCode()).map(Client::getId),
+                        (ca, appIds, filesAdded) -> this.clientService.getClientBy(ca.getUrlClientCode()).map(Client::getId),
 
-                (ca, appIds, filesAdded, urlClientId) -> Flux.fromIterable(appIds).flatMap(appId -> this.appService.getAppById(appId).map(App::getClientId).map(acid -> Tuples.of(appId, acid)))
-                        .flatMap(ids -> this.userService.addRegistrationObjects(ids.getT1(), ids.getT2(), urlClientId, client, user.getId())).reduce(Boolean.TRUE, (e1, e2) -> e1 && e2)
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.autoAddRegObjectsFromOtherApps"));
+                        (ca, appIds, filesAdded, urlClientId) -> Flux.fromIterable(appIds)
+                                .flatMap(appId -> this.appService.getAppById(appId).map(App::getClientId)
+                                        .map(acid -> Tuples.of(appId, acid)))
+                                .flatMap(ids -> this.userService.addRegistrationObjects(ids.getT1(), ids.getT2(), urlClientId,
+                                        client, user.getId()))
+                                .reduce(Boolean.TRUE, (e1, e2) -> e1 && e2))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.autoAddRegObjectsFromOtherApps"));
     }
 
     private Mono<String> getUrlPrefix(ServerHttpRequest request, ContextAuthentication ca) {
@@ -464,6 +501,7 @@ public class ClientRegistrationService {
         client.setTokenValidityMinutes(VALIDITY_MINUTES);
         client.setBusinessSize(request.getBusinessSize());
         client.setIndustry(request.getIndustry());
+        client.setStatusCode(SecurityClientStatusCode.ACTIVE);
 
         if (safeIsBlank(client.getName()))
             return this.regError("Client name cannot be blank");
@@ -504,7 +542,8 @@ public class ClientRegistrationService {
     private Mono<Boolean> verifyClient(ContextAuthentication ca, String regProp, String emailId, String phoneNumber,
                                        String otp) {
 
-        if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION) || SecurityContextUtil.hasAuthority("Authorities.Client_CREATE", ca.getAuthorities()))
+        if (regProp.equals(AppService.APP_PROP_REG_TYPE_NO_VERIFICATION)
+                || SecurityContextUtil.hasAuthority("Authorities.Client_CREATE", ca.getAuthorities()))
             return Mono.just(Boolean.TRUE);
 
         OtpVerificationRequest otpVerificationRequest = new OtpVerificationRequest().setEmailId(emailId)
@@ -617,8 +656,8 @@ public class ClientRegistrationService {
             ServerHttpRequest request) {
 
         return this.getUrlPrefix(request, ca).flatMap(urlPrefix -> {
-            Map<String, Object> clientEventData =
-                    Map.of("client", client, "subDomain", subDomain, "urlPrefix", urlPrefix);
+            Map<String, Object> clientEventData = Map.of("client", client, "subDomain", subDomain, "urlPrefix",
+                    urlPrefix);
 
             Map<String, Object> userEventData = Map.of(
                     "client",
@@ -756,7 +795,8 @@ public class ClientRegistrationService {
 
     public Mono<Void> registerWSocialCallback(ServerHttpRequest request, ServerHttpResponse response) {
 
-        if (request.getQueryParams().getFirst("code") == null) return invalidSocialCallback(request, response);
+        if (request.getQueryParams().getFirst("code") == null)
+            return invalidSocialCallback(request, response);
 
         String host = request.getHeaders().getFirst(X_FORWARDED_HOST);
 
@@ -826,8 +866,8 @@ public class ClientRegistrationService {
         return FlatMapUtil.flatMapMono(
                         () -> this.appRegistrationIntegrationTokenService.verifyIntegrationState(
                                 request.getQueryParams().getFirst("state")),
-                        appRegIntegrationToken ->
-                                this.appRegistrationIntegrationService.read(appRegIntegrationToken.getIntegrationId()),
+                        appRegIntegrationToken -> this.appRegistrationIntegrationService
+                                .read(appRegIntegrationToken.getIntegrationId()),
                         (appRegIntegrationToken, appRegIntegration) -> {
 
                             String redirectUrl = appRegIntegrationToken
@@ -845,7 +885,8 @@ public class ClientRegistrationService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientRegistrationService.invalidSocialCallback"));
     }
 
-    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntegrationToken, UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
+    private Mono<Void> fillDefaultSocialCallbackResponse(AppRegistrationIntegrationToken appRegIntegrationToken,
+                                                         UriComponentsBuilder uriBuilder, ServerHttpResponse response) {
 
         appRegIntegrationToken.getRequestParam().forEach((key, value) -> {
             if (value != null) {
@@ -900,24 +941,24 @@ public class ClientRegistrationService {
                         (ca, isOwner, app, client, restrictedProfileAdded) -> this.appService.addClientAccessAfterRegistration(
                                 app.getAppCode(), ULong.valueOf(ca.getLoggedInFromClientId()), client),
 
-                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded) ->
-                                this.addFilesAccessPath(ca, client, appCode),
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded) -> this.addFilesAccessPath(ca, client,
+                                appCode),
 
-                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) ->
-                                this.userService.addDefaultProfiles(
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded) -> this.userService
+                                .addDefaultProfiles(
                                         app.getId(),
                                         app.getClientId(),
                                         ULong.valueOf(ca.getLoggedInFromClientId()),
                                         client,
                                         userId),
 
-                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded, userProfileAdded) ->
-                                this.userService.addDefaultRoles(
-                                        app.getId(),
-                                        app.getClientId(),
-                                        ULong.valueOf(ca.getLoggedInFromClientId()),
-                                        client,
-                                        userId),
+                        (ca, isOwner, app, client, restrictedProfileAdded, appAccAdded, filePathAdded,
+                         userProfileAdded) -> this.userService.addDefaultRoles(
+                                app.getId(),
+                                app.getClientId(),
+                                ULong.valueOf(ca.getLoggedInFromClientId()),
+                                client,
+                                userId),
 
                         (ca,
                          isOwner,
