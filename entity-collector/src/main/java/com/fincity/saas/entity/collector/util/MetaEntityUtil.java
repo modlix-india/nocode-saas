@@ -127,7 +127,7 @@ public final class MetaEntityUtil {
                                                 value.path(LEADGEN_ID).asText(null);
                                         String adId = value.path(AD_ID).asText(null);
 
-                                        if (formId != null && leadGenId != null && adId != null) {
+                                        if (formId != null && leadGenId != null) {
                                             resultList.add(new ExtractPayload(formId, leadGenId, adId));
                                         }
                                     }));
