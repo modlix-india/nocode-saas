@@ -41,7 +41,6 @@ public class ProductWalkInFormService
                 EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
 
     private static final String SYSTEM = "SYSTEM";
-
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
     private TicketService ticketService;
