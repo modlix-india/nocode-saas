@@ -49,7 +49,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     public Mono<Task> createInternal(ProcessorAccess access, TaskRequest taskRequest) {
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, taskRequest),
-                        (task) -> this.createContent(taskRequest),
+                        task -> this.createContent(taskRequest),
                         (task, content) -> super.createContent(access, content))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
     }
@@ -117,7 +117,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                             vTask.setHasReminder(Boolean.TRUE);
                             vTask.setNextReminder(reminderDate);
 
-                            return this.updateInternal(vTask);
+                            return this.update(access, vTask);
                         },
                         (access, task, vTask, uTask) ->
                                 this.activityService.acReminderSet(uTask).then(Mono.just(uTask)))
@@ -159,7 +159,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                                 vTask.setCancelledDate(date);
                             }
 
-                            return this.updateInternal(vTask);
+                            return this.update(access, vTask);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskStatus"));
     }

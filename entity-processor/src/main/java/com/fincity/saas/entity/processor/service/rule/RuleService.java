@@ -26,12 +26,10 @@ import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-@Service
 public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D>, O extends RuleDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
@@ -46,8 +44,6 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     protected abstract Mono<D> createFromRequest(RuleRequest ruleRequest);
 
     protected abstract Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId);
-
-    protected abstract String getEntityRefName();
 
     protected abstract Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds);
 
@@ -416,7 +412,7 @@ public abstract class RuleService<R extends UpdatableRecord<R>, D extends Rule<D
     }
 
     private Mono<D> createOrUpdateRule(ProcessorAccess access, D rule) {
-        return rule.getId() != null ? this.update(rule) : this.createInternal(access, rule);
+        return rule.getId() != null ? this.update(access, rule) : this.create(access, rule);
     }
 
     private Mono<D> getRuleFromRequest(
