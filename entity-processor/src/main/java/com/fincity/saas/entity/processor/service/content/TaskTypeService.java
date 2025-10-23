@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.service.content;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskTypeDAO;
@@ -31,6 +30,11 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
+    }
+
+    @Override
+    protected Mono<TaskType> checkEntity(TaskType entity, ProcessorAccess access) {
+        return super.checkExistsByName(access, entity);
     }
 
     @Override
@@ -69,18 +73,8 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     }
 
     public Mono<TaskType> create(TaskTypeRequest taskTypeRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskTypeRequest))
+        return super.create(TaskType.of(taskTypeRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[TaskTypeRequest]"));
-    }
-
-    public Mono<TaskType> createInternal(ProcessorAccess access, TaskTypeRequest taskTypeRequest) {
-
-        TaskType taskType = TaskType.of(taskTypeRequest);
-
-        return this.checkExistsByName(access, taskType)
-                .flatMap(cEntity -> super.createInternal(access, taskType))
-                .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME, "TaskTypeService.createInternal[ProcessorAccess, TaskTypeRequest]"));
     }
 
     public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
