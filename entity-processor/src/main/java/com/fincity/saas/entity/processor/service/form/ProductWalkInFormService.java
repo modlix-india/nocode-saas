@@ -156,7 +156,7 @@ public class ProductWalkInFormService
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     "Owner User");
 
-        return ticketService
+        return this.ticketService
                 .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
                 .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
@@ -170,7 +170,7 @@ public class ProductWalkInFormService
 
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
-        return ticketService
+        return this.ticketService
                 .updateTicketStage(
                         access,
                         ticket,
@@ -191,7 +191,7 @@ public class ProductWalkInFormService
 
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
-        return ticketService
+        return this.ticketService
                 .createInternal(
                         access,
                         ticket.setStage(walkInFormResponse.getStageId())
