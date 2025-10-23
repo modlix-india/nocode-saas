@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service.form;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
@@ -30,6 +31,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -87,7 +89,8 @@ public class ProductWalkInFormService
     protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
         return productService
                 .readIdentityWithAccess(access, productId)
-                .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()));
+                .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.resolveProduct"));
     }
 
     @Override
@@ -118,7 +121,8 @@ public class ProductWalkInFormService
                                 NameUtil.assembleFullName(
                                         user.getFirstName(), user.getMiddleName(), user.getLastName())))
                         .sorted(Comparator.comparing(IdAndValue::getId))
-                        .toList()));
+                        .toList()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFromUsers"));
     }
 
     public Mono<Ticket> getWalkInTicket(
@@ -129,7 +133,8 @@ public class ProductWalkInFormService
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
         return this.resolveProduct(access, productId)
-                .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null));
+                .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTicket"));
     }
 
     public Mono<ProcessorResponse> createWalkInTicket(
@@ -144,7 +149,8 @@ public class ProductWalkInFormService
                 walkInFormResponse -> this.validateAndGetTicket(access, walkInFormResponse, ticketRequest),
                 (walkInFormResponse, ticket) -> ticket.getId() != null
                         ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
-                        : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest));
+                        : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
     }
 
     private Mono<Ticket> validateAndGetTicket(
@@ -160,7 +166,8 @@ public class ProductWalkInFormService
 
         return ticketService
                 .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
-                .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)));
+                .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
     }
 
     private Mono<ProcessorResponse> updateExistingTicket(
@@ -178,7 +185,8 @@ public class ProductWalkInFormService
                         walkInFormResponse.getStatusId(),
                         null,
                         ticketRequest.getComment())
-                .map(updated -> ProcessorResponse.ofSuccess(updated.getCode(), updated.getEntitySeries()));
+                .map(updated -> ProcessorResponse.ofSuccess(updated.getCode(), updated.getEntitySeries()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
     }
 
     private Mono<ProcessorResponse> createNewTicket(
@@ -195,7 +203,8 @@ public class ProductWalkInFormService
                                 .setSource("Walk In")
                                 .setProductId(walkInFormResponse.getProductId())
                                 .setAssignedUserId(ticketRequest.getUserId()))
-                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
+                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createNewTicket"));
     }
 
     public Mono<WalkInFormResponse> getWalkInFormResponse(String appCode, String clientCode, Identity productId) {
@@ -204,7 +213,8 @@ public class ProductWalkInFormService
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
-        return this.getWalkInFormResponseInternal(access, productId);
+        return this.getWalkInFormResponseInternal(access, productId)
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponse"));
     }
 
     public Mono<WalkInFormResponse> getWalkInFormResponseInternal(ProcessorAccess access, Identity productId) {
@@ -213,6 +223,7 @@ public class ProductWalkInFormService
                 () -> this.resolveProduct(access, productId),
                 product -> this.getWalkInFormResponse(access, product.getT1())
                         .switchIfEmpty(
-                                this.productTemplateWalkInFormService.getWalkInFormResponse(access, product.getT2())));
+                                this.productTemplateWalkInFormService.getWalkInFormResponse(access, product.getT2())))
+		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponseInternal"));
     }
 }
