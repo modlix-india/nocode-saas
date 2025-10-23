@@ -141,42 +141,61 @@ public class ProductWalkInFormService
 
         return FlatMapUtil.flatMapMono(
                 () -> this.getWalkInFormResponseInternal(access, productId),
-                walkInFormResponse -> ticketService
-                        .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
-                        .switchIfEmpty(Mono.just(Ticket.of(ticketRequest))),
-                (walkInFormResponse, ticket) -> this.assignUser(walkInFormResponse, ticketRequest.getUserId(), ticket),
-                (walkInFormResponse, ticket, userTicket) -> {
-                    userTicket.setStage(walkInFormResponse.getStageId());
-                    userTicket.setStatus(walkInFormResponse.getStatusId());
-
-                    if (ticket.getId() != null)
-                        return ticketService
-                                .updateInternal(access, ticket)
-                                .map(updated ->
-                                        ProcessorResponse.ofCreated(updated.getCode(), updated.getEntitySeries()));
-
-                    userTicket.setSource("Walk In");
-                    userTicket.setProductId(walkInFormResponse.getProductId());
-
-                    return ticketService
-                            .createInternal(access, userTicket)
-                            .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
-                });
+                walkInFormResponse -> this.validateAndGetTicket(access, walkInFormResponse, ticketRequest),
+                (walkInFormResponse, ticket) -> ticket.getId() != null
+                        ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
+                        : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest));
     }
 
-    private Mono<Ticket> assignUser(WalkInFormResponse walkInFormResponse, ULong userId, Ticket ticket) {
+    private Mono<Ticket> validateAndGetTicket(
+            ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
 
-        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL)) {
-            if (userId == null)
-                return this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_MISSING,
-                        "Owner User");
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL) && ticketRequest.getUserId() == null)
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "Owner User");
 
-            return Mono.just(ticket.setAssignedUserId(userId));
-        }
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
-        return Mono.just(ticket);
+        return ticketService
+                .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
+                .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)));
+    }
+
+    private Mono<ProcessorResponse> updateExistingTicket(
+            ProcessorAccess access,
+            Ticket ticket,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
+
+        return ticketService
+                .updateTicketStage(
+                        access,
+                        ticket,
+                        ticketRequest.getUserId(),
+                        walkInFormResponse.getStageId(),
+                        walkInFormResponse.getStatusId(),
+                        null,
+                        ticketRequest.getComment())
+                .map(updated -> ProcessorResponse.ofSuccess(updated.getCode(), updated.getEntitySeries()));
+    }
+
+    private Mono<ProcessorResponse> createNewTicket(
+            ProcessorAccess access,
+            Ticket ticket,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
+
+        return ticketService
+                .createInternal(
+                        access,
+                        ticket.setStage(walkInFormResponse.getStageId())
+                                .setStatus(walkInFormResponse.getStatusId())
+                                .setSource("Walk In")
+                                .setProductId(walkInFormResponse.getProductId())
+                                .setAssignedUserId(ticketRequest.getUserId()))
+                .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()));
     }
 
     public Mono<WalkInFormResponse> getWalkInFormResponse(String appCode, String clientCode, Identity productId) {
