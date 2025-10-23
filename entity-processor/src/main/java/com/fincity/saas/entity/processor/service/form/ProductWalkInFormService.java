@@ -199,7 +199,7 @@ public class ProductWalkInFormService
                         walkInFormResponse.getStatusId(),
                         null,
                         ticketRequest.getComment())
-                .map(updated -> ProcessorResponse.ofSuccess(updated.getCode(), updated.getEntitySeries()))
+                .map(updated -> ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
     }
 
