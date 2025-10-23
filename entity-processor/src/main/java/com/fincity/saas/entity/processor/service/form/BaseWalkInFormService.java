@@ -49,12 +49,14 @@ public abstract class BaseWalkInFormService<
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
-        return super.updatableEntity(entity).map(existing -> {
-            existing.setAssignmentType(entity.getAssignmentType());
-            existing.setStageId(entity.getStageId());
-            existing.setStatusId(entity.getStatusId());
-            return existing;
-        });
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setAssignmentType(entity.getAssignmentType());
+                    existing.setStageId(entity.getStageId());
+                    existing.setStatusId(entity.getStatusId());
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".updatableEntity"));
     }
 
     protected abstract String getProductEntityName();
@@ -76,7 +78,8 @@ public abstract class BaseWalkInFormService<
                 .flatMap(existing ->
                         super.updateInternal(access, existing.update(name, stageId, statusId, assignmentType)))
                 .switchIfEmpty(
-                        super.createInternal(access, this.create(name, productId, stageId, statusId, assignmentType)));
+                        super.createInternal(access, this.create(name, productId, stageId, statusId, assignmentType)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".createOrUpdate"));
     }
 
     public Mono<D> create(WalkInFormRequest walkInFormRequest) {
@@ -121,9 +124,10 @@ public abstract class BaseWalkInFormService<
 
     public Mono<D> getWalkInForm(Identity productId) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.resolveProduct(access, productId),
-                (access, product) -> this.getWalkInFormInternal(access, product.getT1()));
+                        super::hasAccess,
+                        access -> this.resolveProduct(access, productId),
+                        (access, product) -> this.getWalkInFormInternal(access, product.getT1()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInForm"));
     }
 
     public Mono<D> getWalkInFormInternal(ProcessorAccess access, ULong productId) {
@@ -134,10 +138,13 @@ public abstract class BaseWalkInFormService<
     }
 
     public Mono<WalkInFormResponse> getWalkInFormResponse(ProcessorAccess access, ULong productId) {
-        return this.getWalkInFormInternal(access, productId).map(walkInForm -> new WalkInFormResponse()
-                .setProductId(walkInForm.getProductId())
-                .setStageId(walkInForm.getStageId())
-                .setStatusId(walkInForm.getStatusId())
-                .setAssignmentType(walkInForm.getAssignmentType()));
+        return this.getWalkInFormInternal(access, productId)
+                .map(walkInForm -> new WalkInFormResponse()
+                        .setProductId(walkInForm.getProductId())
+                        .setStageId(walkInForm.getStageId())
+                        .setStatusId(walkInForm.getStatusId())
+                        .setAssignmentType(walkInForm.getAssignmentType()))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInFormResponse"));
     }
 }

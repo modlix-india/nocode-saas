@@ -5,12 +5,8 @@ import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.enums.LeadSource;
 import com.fincity.saas.entity.collector.enums.LeadSubSource;
-import com.fincity.saas.entity.collector.fiegn.IFeignCoreService;
 import com.fincity.saas.entity.collector.model.LeadDetails;
-import com.fincity.saas.entity.collector.service.EntityCollectorLogService;
-import com.fincity.saas.entity.collector.service.EntityCollectorMessageResourceService;
 import lombok.extern.slf4j.Slf4j;
-import org.jooq.types.ULong;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -23,12 +19,20 @@ public final class EntityUtil {
 
     private static final WebClient webClient = WebClient.create();
 
-    public static final String CONNECTION_NAME = "META_API";
+    public static final String META_CONNECTION_NAME = "META_API";
+    public static final String GOOGLE_CONNECTION_NAME = "GOOGLE_API";
+    public static final String GOOGLE_UTM_SOURCE = "google";
+    public static final String META_UTM_SOURCE = "facebook";
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
     private static final String FORWARDED_FOR = "X-Forwarded-For";
     private static final String UNKNOWN = "UNKNOWN";
-    private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
+    private static final String FORWARDED_HOST = "X-Forwarded-Host";
+
+
+    public static String getHost(ServerHttpRequest request) {
+        return request.getHeaders().getFirst(FORWARDED_HOST);
+    }
 
     public static Mono<Map<String, Object>> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
 
@@ -50,24 +54,6 @@ public final class EntityUtil {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<>() {});
-    }
-
-    public static Mono<String> fetchOAuthToken(IFeignCoreService coreService, String clientCode, String appCode) {
-        return coreService.getConnectionOAuth2Token(clientCode, appCode, CONNECTION_NAME);
-    }
-
-    public static Mono<String> fetchOAuthToken(
-            IFeignCoreService coreService,
-            String clientCode,
-            String appCode,
-            EntityCollectorMessageResourceService messageService,
-            EntityCollectorLogService logService,
-            ULong logId) {
-
-        return coreService
-                .getConnectionOAuth2Token( clientCode, appCode, CONNECTION_NAME)
-                .onErrorResume(error ->
-                        logService.updateOnError(logId, error.getMessage()).then(Mono.empty()));
     }
 
     public static void populateStaticFields(
