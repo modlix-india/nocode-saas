@@ -69,7 +69,7 @@ public class FilesSecuredAccessKeys extends TableImpl<FilesSecuredAccessKeysReco
      * The column <code>files.files_secured_access_keys.ACCESS_KEY</code>. Key
      * used for securing the file.
      */
-    public final TableField<FilesSecuredAccessKeysRecord, String> ACCESS_KEY = createField(DSL.name("ACCESS_KEY"), SQLDataType.CHAR(13).nullable(false), this, "Key used for securing the file.");
+    public final TableField<FilesSecuredAccessKeysRecord, String> ACCESS_KEY = createField(DSL.name("ACCESS_KEY"), SQLDataType.CHAR(15).nullable(false), this, "Key used for securing the file.");
 
     /**
      * The column <code>files.files_secured_access_keys.ACCESS_TILL</code>. Time
