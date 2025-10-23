@@ -26,7 +26,7 @@ public abstract class BaseWalkInFormController<
         return this.service.create(walkInFormRequest).map(ResponseEntity::ok);
     }
 
-    @GetMapping(REQ_PATH_ID + "/forms")
+    @GetMapping(REQ_PATH_ID + "/by-product")
     public Mono<ResponseEntity<D>> getWalkInForm(@PathVariable(PATH_VARIABLE_ID) final Identity productId) {
         return this.service.getWalkInForm(productId).map(ResponseEntity::ok);
     }
