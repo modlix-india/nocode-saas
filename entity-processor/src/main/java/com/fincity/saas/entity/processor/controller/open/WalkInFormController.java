@@ -43,7 +43,8 @@ public class WalkInFormController {
         return this.productWalkInFormService
                 .getWalkInFormResponse(appCode, clientCode, productId)
                 .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @GetMapping(PATH_ID + "/ticket")
@@ -56,7 +57,8 @@ public class WalkInFormController {
         return this.productWalkInFormService
                 .getWalkInTicket(appCode, clientCode, productId, phoneNumber)
                 .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @GetMapping("/users")
@@ -65,7 +67,8 @@ public class WalkInFormController {
         return this.productWalkInFormService
                 .getWalkInFromUsers(appCode, clientCode)
                 .map(ResponseEntity::ok)
-		        .switchIfEmpty(Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
     @PostMapping(PATH_ID)
