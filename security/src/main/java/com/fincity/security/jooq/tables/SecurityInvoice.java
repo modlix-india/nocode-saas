@@ -139,6 +139,12 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
      */
     public final TableField<SecurityInvoiceRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
+    /**
+     * The column <code>security.security_invoice.INVOICE_REASON</code>. Invoice
+     * reason
+     */
+    public final TableField<SecurityInvoiceRecord, String> INVOICE_REASON = createField(DSL.name("INVOICE_REASON"), SQLDataType.VARCHAR(256), this, "Invoice reason");
+
     private SecurityInvoice(Name alias, Table<SecurityInvoiceRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
