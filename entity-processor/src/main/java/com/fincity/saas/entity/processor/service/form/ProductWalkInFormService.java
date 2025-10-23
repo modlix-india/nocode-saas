@@ -156,6 +156,7 @@ public class ProductWalkInFormService
                                         ProcessorResponse.ofCreated(updated.getCode(), updated.getEntitySeries()));
 
                     userTicket.setSource("Walk In");
+                    userTicket.setProductId(walkInFormResponse.getProductId());
 
                     return ticketService
                             .createInternal(access, userTicket)
