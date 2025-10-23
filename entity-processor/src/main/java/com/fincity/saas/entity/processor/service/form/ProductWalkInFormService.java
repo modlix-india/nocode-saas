@@ -105,7 +105,9 @@ public class ProductWalkInFormService
 
         return FlatMapUtil.flatMapMono(
                 () -> super.securityService.getClientByCode(clientCode),
-                client -> super.securityService.hasReadAccess(appCode, clientCode).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                client -> super.securityService
+                        .hasReadAccess(appCode, clientCode)
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
                 (client, hasAccess) -> super.securityService.getClientUserInternal(List.of(client.getId()), null),
                 (client, hasAccess, users) -> Mono.just(users.stream()
                         .filter(user -> user.getFirstName() != null && user.getLastName() != null)

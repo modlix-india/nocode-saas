@@ -60,7 +60,9 @@ public class WalkInFormController {
     @GetMapping("/users")
     public Mono<ResponseEntity<List<IdAndValue<BigInteger, String>>>> getWalkInFromUsers(
             @RequestHeader("appCode") String appCode, @RequestHeader("clientCode") String clientCode) {
-        return this.productWalkInFormService.getWalkInFromUsers(appCode, clientCode).map(ResponseEntity::ok);
+        return this.productWalkInFormService
+                .getWalkInFromUsers(appCode, clientCode)
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping(PATH_ID)
