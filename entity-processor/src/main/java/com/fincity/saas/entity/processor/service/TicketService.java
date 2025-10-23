@@ -431,14 +431,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         ticket.setStatus(statusId);
 
         return FlatMapUtil.flatMapMono(
-                () -> super.updateInternal(ticket),
-                uTicket ->
-                        taskRequest != null ? this.createTask(access, taskRequest, uTicket) : Mono.just(Boolean.FALSE),
-                (uTicket, cTask) -> this.activityService
-                        .acStageStatus(uTicket, comment, oldStage)
-                        .thenReturn(uTicket),
-                (uTicket, cTask, fTicket) -> this.reassignForStage(access, ticket, reassignUserId))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
+                        () -> super.updateInternal(ticket),
+                        uTicket -> taskRequest != null
+                                ? this.createTask(access, taskRequest, uTicket)
+                                : Mono.just(Boolean.FALSE),
+                        (uTicket, cTask) -> this.activityService
+                                .acStageStatus(uTicket, comment, oldStage)
+                                .thenReturn(uTicket),
+                        (uTicket, cTask, fTicket) -> this.reassignForStage(access, ticket, reassignUserId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
     }
 
     private Mono<Boolean> createTask(ProcessorAccess access, TaskRequest taskRequest, Ticket ticket) {
@@ -478,23 +479,23 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-	public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId) {
+    public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId) {
 
-		if (userId != null) return this.updateTicketForReassignment(access, ticket, userId, AUTOMATIC_REASSIGNMENT);
+        if (userId != null) return this.updateTicketForReassignment(access, ticket, userId, AUTOMATIC_REASSIGNMENT);
 
-		return FlatMapUtil.flatMapMono(
-				() -> this.productStageRuleService.getUserAssignment(
-						access,
-						ticket.getProductId(),
-						ticket.getStage(),
-						this.getEntityPrefix(access.getAppCode()),
-						access.getUserId(),
-						ticket.toJsonElement()),
-				ruleUserId -> ruleUserId == null
-						? Mono.just(ticket)
-						: this.updateTicketForReassignment(access, ticket, ruleUserId, AUTOMATIC_REASSIGNMENT))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForStage"));
-	}
+        return FlatMapUtil.flatMapMono(
+                        () -> this.productStageRuleService.getUserAssignment(
+                                access,
+                                ticket.getProductId(),
+                                ticket.getStage(),
+                                this.getEntityPrefix(access.getAppCode()),
+                                access.getUserId(),
+                                ticket.toJsonElement()),
+                        ruleUserId -> ruleUserId == null
+                                ? Mono.just(ticket)
+                                : this.updateTicketForReassignment(access, ticket, ruleUserId, AUTOMATIC_REASSIGNMENT))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForStage"));
+    }
 
     private Mono<Ticket> updateTicketForReassignment(
             ProcessorAccess access, Ticket ticket, ULong userId, String comment) {
@@ -504,22 +505,23 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         if (oldUserId != null && oldUserId.equals(userId)) return Mono.just(ticket);
 
         return FlatMapUtil.flatMapMono(
-                () -> this.setTicketAssignment(access, ticket, userId),
-                super::updateInternal,
-                (aTicket, uTicket) -> this.activityService
-                        .acReassign(uTicket.getId(), comment, oldUserId, uTicket.getAssignedUserId())
-                        .thenReturn(uTicket))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketForReassignment"));
+                        () -> this.setTicketAssignment(access, ticket, userId),
+                        super::updateInternal,
+                        (aTicket, uTicket) -> this.activityService
+                                .acReassign(uTicket.getId(), comment, oldUserId, uTicket.getAssignedUserId())
+                                .thenReturn(uTicket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketForReassignment"));
     }
 
     public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
-        return this.dao.readByNumberAndEmail(
-                access,
-                productId,
-                ticketPhone != null ? ticketPhone.getCountryCode() : null,
-                ticketPhone != null ? ticketPhone.getNumber() : null,
-                ticketMail != null ? ticketMail.getAddress() : null)
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+        return this.dao
+                .readByNumberAndEmail(
+                        access,
+                        productId,
+                        ticketPhone != null ? ticketPhone.getCountryCode() : null,
+                        ticketPhone != null ? ticketPhone.getNumber() : null,
+                        ticketMail != null ? ticketMail.getAddress() : null)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
     public Flux<Ticket> updateTicketDncByClientId(ULong clientId, Boolean dnc) {

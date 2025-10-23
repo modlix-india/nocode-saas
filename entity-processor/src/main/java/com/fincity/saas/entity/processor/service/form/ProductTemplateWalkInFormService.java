@@ -45,7 +45,7 @@ public class ProductTemplateWalkInFormService
         return productTemplateService
                 .readIdentityWithAccess(access, productId)
                 .map(productTemplate -> Tuples.of(productTemplate.getId(), productTemplate.getId()))
-		        .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateWalkInFormService.resolveProduct"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateWalkInFormService.resolveProduct"));
     }
 
     @Override
