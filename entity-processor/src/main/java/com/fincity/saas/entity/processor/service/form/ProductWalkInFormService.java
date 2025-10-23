@@ -19,7 +19,6 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductService;
-import com.fincity.saas.entity.processor.service.ProductStageRuleService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
@@ -45,7 +44,6 @@ public class ProductWalkInFormService
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
     private TicketService ticketService;
-    private ProductStageRuleService productStageRuleService;
 
     private ProductTemplateWalkInFormService productTemplateWalkInFormService;
 
@@ -56,11 +54,6 @@ public class ProductWalkInFormService
     @Autowired
     private void setTicketService(TicketService ticketService) {
         this.ticketService = ticketService;
-    }
-
-    @Autowired
-    private void setProductStageRuleService(ProductStageRuleService productStageRuleService) {
-        this.productStageRuleService = productStageRuleService;
     }
 
     @Lazy
@@ -163,8 +156,6 @@ public class ProductWalkInFormService
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     "Owner User");
 
-        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
-
         return ticketService
                 .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
                 .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)))
@@ -176,6 +167,8 @@ public class ProductWalkInFormService
             Ticket ticket,
             WalkInFormResponse walkInFormResponse,
             WalkInFormTicketRequest ticketRequest) {
+
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
         return ticketService
                 .updateTicketStage(
@@ -195,6 +188,8 @@ public class ProductWalkInFormService
             Ticket ticket,
             WalkInFormResponse walkInFormResponse,
             WalkInFormTicketRequest ticketRequest) {
+
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
         return ticketService
                 .createInternal(
@@ -218,7 +213,7 @@ public class ProductWalkInFormService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponse"));
     }
 
-    public Mono<WalkInFormResponse> getWalkInFormResponseInternal(ProcessorAccess access, Identity productId) {
+    private Mono<WalkInFormResponse> getWalkInFormResponseInternal(ProcessorAccess access, Identity productId) {
 
         return FlatMapUtil.flatMapMono(
                         () -> this.resolveProduct(access, productId),
