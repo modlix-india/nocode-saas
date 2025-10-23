@@ -99,13 +99,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     this.productService.getEntityName());
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.setAssignment(ticket, access),
+                        () -> this.setAssignmentAndStage(ticket, access),
                         aTicket -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
                         this::updateTicketFromOwner)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
     }
 
-    private Mono<Ticket> setAssignment(Ticket ticket, ProcessorAccess access) {
+    private Mono<Ticket> setAssignmentAndStage(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getAssignedUserId() != null && ticket.getStage() != null) return Mono.just(ticket);
 
