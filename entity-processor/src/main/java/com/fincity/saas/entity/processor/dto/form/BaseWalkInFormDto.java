@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -38,9 +39,11 @@ public abstract class BaseWalkInFormDto<T extends BaseWalkInFormDto<T>> extends 
         this.assignmentType = baseWalkInFormDto.assignmentType;
     }
 
+    @JsonIgnore
     public abstract ULong getProductId();
 
-    public T update(ULong stageId, ULong statusId, AssignmentType assignmentType) {
+    public T update(String name, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+        super.setName(name);
         this.stageId = stageId;
         this.statusId = statusId;
         this.assignmentType = assignmentType;

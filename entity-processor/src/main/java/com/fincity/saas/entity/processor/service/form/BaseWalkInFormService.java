@@ -61,14 +61,22 @@ public abstract class BaseWalkInFormService<
 
     protected abstract Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId);
 
-    protected abstract D create(ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType);
+    protected abstract D create(
+            String name, ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType);
 
     protected Mono<D> createOrUpdate(
-            ProcessorAccess access, ULong productId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+            ProcessorAccess access,
+            String name,
+            ULong productId,
+            ULong stageId,
+            ULong statusId,
+            AssignmentType assignmentType) {
         return this.dao
                 .getByProductId(access, productId)
-                .flatMap(existing -> super.updateInternal(access, existing.update(stageId, statusId, assignmentType)))
-                .switchIfEmpty(super.createInternal(access, this.create(productId, stageId, statusId, assignmentType)));
+                .flatMap(existing ->
+                        super.updateInternal(access, existing.update(name, stageId, statusId, assignmentType)))
+                .switchIfEmpty(
+                        super.createInternal(access, this.create(name, productId, stageId, statusId, assignmentType)));
     }
 
     public Mono<D> create(WalkInFormRequest walkInFormRequest) {
@@ -98,6 +106,7 @@ public abstract class BaseWalkInFormService<
                                         ProcessorMessageResourceService.STAGE_MISSING)),
                         (access, product, stageStatusEntity) -> this.createOrUpdate(
                                 access,
+                                walkInFormRequest.getName(),
                                 product.getT1(),
                                 stageStatusEntity.getKey().getId(),
                                 stageStatusEntity.getValue().isEmpty()

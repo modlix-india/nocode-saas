@@ -47,8 +47,9 @@ public class ProductTemplateWalkInFormService
 
     @Override
     protected ProductTemplateWalkInForm create(
-            ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+            String name, ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
         return (ProductTemplateWalkInForm) new ProductTemplateWalkInForm()
+                .setName(name)
                 .setProductTemplateId(entityId)
                 .setStageId(stageId)
                 .setStatusId(statusId)

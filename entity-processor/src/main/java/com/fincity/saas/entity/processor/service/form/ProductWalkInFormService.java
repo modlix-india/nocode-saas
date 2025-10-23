@@ -91,8 +91,10 @@ public class ProductWalkInFormService
     }
 
     @Override
-    protected ProductWalkInForm create(ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+    protected ProductWalkInForm create(
+            String name, ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
         return (ProductWalkInForm) new ProductWalkInForm()
+                .setName(name)
                 .setProductId(entityId)
                 .setStageId(stageId)
                 .setStatusId(statusId)
