@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import lombok.Data;
@@ -32,6 +33,7 @@ public class ProductTemplateWalkInForm extends BaseWalkInFormDto<ProductTemplate
     }
 
     @Override
+    @JsonIgnore
     public ULong getProductId() {
         return this.getProductTemplateId();
     }
