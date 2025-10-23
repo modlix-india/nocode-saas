@@ -91,19 +91,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     @Override
     protected Mono<Ticket> checkEntity(Ticket ticket, ProcessorAccess access) {
-        return this.checkTicket(ticket, access)
-                .flatMap(uEntity -> this.setOwner(access, uEntity))
-                .flatMap(owner -> this.updateTicketFromOwner(ticket, owner))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
-    }
-
-    private Mono<Ticket> checkTicket(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getProductId() == null)
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     this.productService.getEntityName());
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.setAssignment(ticket, access),
+                        aTicket -> this.ownerService.getOrCreateTicketOwner(access, aTicket),
+                        this::updateTicketFromOwner)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkEntity"));
+    }
+
+    private Mono<Ticket> setAssignment(Ticket ticket, ProcessorAccess access) {
 
         if (ticket.getAssignedUserId() != null && ticket.getStage() != null) return Mono.just(ticket);
 
@@ -152,13 +154,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     ProcessorMessageResourceService.TICKET_ASSIGNMENT_MISSING,
                     this.getEntityPrefix(access.getAppCode()));
 
-        return Mono.just(ticket.setAssignedUserId(userId));
-    }
-
-    private Mono<Owner> setOwner(ProcessorAccess access, Ticket ticket) {
-        return this.ownerService
-                .getOrCreateTicketOwner(access, ticket)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setOwner"));
+        return Mono.just(ticket.setAssignedUserId(userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.setTicketAssignment"));
     }
 
     private Mono<Ticket> updateTicketFromOwner(Ticket ticket, Owner owner) {
