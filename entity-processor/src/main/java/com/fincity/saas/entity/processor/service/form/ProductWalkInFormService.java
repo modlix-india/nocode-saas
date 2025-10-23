@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
+import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
@@ -40,7 +41,6 @@ public class ProductWalkInFormService
                 EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
 
     private static final String SYSTEM = "SYSTEM";
-
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
     private TicketService ticketService;
@@ -129,6 +129,17 @@ public class ProductWalkInFormService
         return this.resolveProduct(access, productId)
                 .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTicket"));
+    }
+
+    public Mono<Product> getWalkInProduct(String appCode, String clientCode, Identity productId) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.productService
+                .readIdentityWithAccess(access, productId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInProduct"));
     }
 
     public Mono<ProcessorResponse> createWalkInTicket(

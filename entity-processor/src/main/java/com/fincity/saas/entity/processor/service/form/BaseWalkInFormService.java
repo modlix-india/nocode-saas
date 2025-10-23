@@ -130,13 +130,6 @@ public abstract class BaseWalkInFormService<
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInForm"));
     }
 
-    public Mono<D> getWalkInFormInternal(ProcessorAccess access, ULong productId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.getByProductId(access, productId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId));
-    }
-
     public Mono<WalkInFormResponse> getWalkInFormResponse(ProcessorAccess access, ULong productId) {
         return this.getWalkInFormInternal(access, productId)
                 .map(walkInForm -> new WalkInFormResponse()
@@ -146,5 +139,12 @@ public abstract class BaseWalkInFormService<
                         .setAssignmentType(walkInForm.getAssignmentType()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInFormResponse"));
+    }
+
+    private Mono<D> getWalkInFormInternal(ProcessorAccess access, ULong productId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getByProductId(access, productId),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId));
     }
 }

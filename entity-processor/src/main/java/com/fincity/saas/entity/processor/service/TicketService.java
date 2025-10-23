@@ -188,6 +188,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     protected Mono<Ticket> updatableEntity(Ticket ticket) {
         return super.updatableEntity(ticket)
                 .flatMap(existing -> {
+                    existing.setAssignedUserId(ticket.getAssignedUserId());
                     existing.setStage(ticket.getStage());
                     existing.setStatus(ticket.getStatus());
 
