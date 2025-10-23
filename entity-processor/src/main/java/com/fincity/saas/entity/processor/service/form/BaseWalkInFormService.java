@@ -111,7 +111,6 @@ public abstract class BaseWalkInFormService<
     }
 
     public Mono<D> getWalkInForm(Identity productId) {
-
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.resolveProduct(access, productId),
