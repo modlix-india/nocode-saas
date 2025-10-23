@@ -2,12 +2,14 @@ package com.fincity.saas.entity.processor.service.form;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductWalkInFormsRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -18,6 +20,10 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.ProductService;
 import com.fincity.saas.entity.processor.service.ProductStageRuleService;
 import com.fincity.saas.entity.processor.service.TicketService;
+import com.fincity.saas.entity.processor.util.NameUtil;
+import java.math.BigInteger;
+import java.util.Comparator;
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -31,6 +37,8 @@ import reactor.util.function.Tuples;
 public class ProductWalkInFormService
         extends BaseWalkInFormService<
                 EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
+
+    private static final String SYSTEM = "SYSTEM";
 
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
@@ -91,7 +99,28 @@ public class ProductWalkInFormService
                 .setAssignmentType(assignmentType);
     }
 
-    public Mono<Ticket> getTicket(String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+    public Mono<List<IdAndValue<BigInteger, String>>> getWalkInFromUsers(String appCode, String clientCode) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.securityService.getClientByCode(clientCode),
+                client -> super.securityService.hasReadAccess(appCode, clientCode).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (client, hasAccess) -> super.securityService.getClientUserInternal(List.of(client.getId()), null),
+                (client, hasAccess, users) -> Mono.just(users.stream()
+                        .filter(user -> user.getFirstName() != null && user.getLastName() != null)
+                        .map(user -> IdAndValue.of(
+                                user.getId(),
+                                NameUtil.assembleFullName(
+                                        user.getFirstName(), user.getMiddleName(), user.getLastName())))
+                        .sorted(Comparator.comparing(IdAndValue::getId))
+                        .toList()));
+    }
+
+    public Mono<Ticket> getWalkInTicket(
+            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
@@ -99,12 +128,12 @@ public class ProductWalkInFormService
                 .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null));
     }
 
-    public Mono<ProcessorResponse> createTicket(
+    public Mono<ProcessorResponse> createWalkInTicket(
             String appCode, String clientCode, Identity productId, WalkInFormTicketRequest ticketRequest) {
 
-        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
 
-        if (ticketRequest.getSource() == null) ticketRequest.setSource("Walk In");
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
         return FlatMapUtil.flatMapMono(
                 () -> this.getWalkInFormResponseInternal(access, productId),
@@ -121,6 +150,8 @@ public class ProductWalkInFormService
                                 .updateInternal(access, ticket)
                                 .map(updated ->
                                         ProcessorResponse.ofCreated(updated.getCode(), updated.getEntitySeries()));
+
+                    userTicket.setSource("Walk In");
 
                     return ticketService
                             .createInternal(access, userTicket)
@@ -144,6 +175,8 @@ public class ProductWalkInFormService
     }
 
     public Mono<WalkInFormResponse> getWalkInFormResponse(String appCode, String clientCode, Identity productId) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 

@@ -22,7 +22,6 @@ public class WalkInFormTicketRequest extends BaseRequest<WalkInFormTicketRequest
     private ULong userId;
     private PhoneNumber phoneNumber;
     private Email email;
-    private String source;
     private String subSource;
     private String comment;
 }
