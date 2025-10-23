@@ -1,12 +1,15 @@
 package com.fincity.saas.entity.processor.controller.open;
 
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.form.ProductWalkInFormService;
+import java.math.BigInteger;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,7 +53,15 @@ public class WalkInFormController {
             @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber) {
 
         return this.productWalkInFormService
-                .getTicket(appCode, clientCode, productId, phoneNumber)
+                .getWalkInTicket(appCode, clientCode, productId, phoneNumber)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/users")
+    public Mono<ResponseEntity<List<IdAndValue<BigInteger, String>>>> getWalkInFromUsers(
+            @RequestHeader("appCode") String appCode, @RequestHeader("clientCode") String clientCode) {
+        return this.productWalkInFormService
+                .getWalkInFromUsers(appCode, clientCode)
                 .map(ResponseEntity::ok);
     }
 
@@ -62,7 +73,7 @@ public class WalkInFormController {
             @RequestBody WalkInFormTicketRequest ticketRequest) {
 
         return this.productWalkInFormService
-                .createTicket(appCode, clientCode, productId, ticketRequest)
+                .createWalkInTicket(appCode, clientCode, productId, ticketRequest)
                 .map(ResponseEntity::ok);
     }
 }

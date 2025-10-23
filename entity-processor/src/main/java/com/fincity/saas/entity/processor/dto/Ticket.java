@@ -136,7 +136,6 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                         walkInFormTicketRequest.getEmail() != null
                                 ? walkInFormTicketRequest.getEmail().getAddress()
                                 : null)
-                .setSource(walkInFormTicketRequest.getSource())
                 .setSubSource(
                         walkInFormTicketRequest.getSubSource() != null ? walkInFormTicketRequest.getSubSource() : null)
                 .setName(walkInFormTicketRequest.getName())
