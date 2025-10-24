@@ -98,7 +98,7 @@ public abstract class BaseAnalyticsService<
         if (assignedUsersIds.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getUserInternal(assignedUsersIds, null),
+                () -> securityService.getUsersInternal(assignedUsersIds, null),
                 userList -> Mono.just(
                         filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
                                 .setAssignedUsers(userList.stream()

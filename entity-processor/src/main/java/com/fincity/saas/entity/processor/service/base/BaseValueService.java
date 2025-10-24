@@ -51,6 +51,47 @@ public abstract class BaseValueService<
     }
 
     @Override
+    protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.zip(
+                        Boolean.TRUE.equals(entity.getIsParent())
+                                ? this.existsByName(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        entity.getPlatform(),
+                                        entity.getProductTemplateId(),
+                                        entity.getId(),
+                                        entity.getName())
+                                : Mono.just(Boolean.FALSE),
+                        entity.hasParentLevels()
+                                ? this.existsById(
+                                        access.getAppCode(),
+                                        access.getClientCode(),
+                                        entity.getPlatform(),
+                                        entity.getProductTemplateId(),
+                                        entity.getParentLevel0(),
+                                        entity.getParentLevel1())
+                                : Mono.just(Boolean.TRUE)),
+                exists -> {
+                    if (exists.getT1())
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                entity.getName(),
+                                entity.getEntityName());
+
+                    if (!exists.getT2())
+                        return this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.INVALID_PARENT,
+                                entity.getEntityName());
+
+                    entity.setName(NameUtil.normalize(entity.getName()));
+                    return Mono.just(entity);
+                });
+    }
+
+    @Override
     protected Mono<Boolean> evictCache(D entity) {
         return Mono.zip(super.evictCache(entity), this.evictEtCache(entity), this.evictMapCache(entity))
                 .map(evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3());
@@ -112,51 +153,11 @@ public abstract class BaseValueService<
         });
     }
 
-    private Mono<D> validateEntity(D entity, ProcessorAccess access) {
-        return FlatMapUtil.flatMapMono(
-                () -> Mono.zip(
-                        Boolean.TRUE.equals(entity.getIsParent())
-                                ? this.existsByName(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        entity.getPlatform(),
-                                        entity.getProductTemplateId(),
-                                        entity.getId(),
-                                        entity.getName())
-                                : Mono.just(Boolean.FALSE),
-                        entity.hasParentLevels()
-                                ? this.existsById(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        entity.getPlatform(),
-                                        entity.getProductTemplateId(),
-                                        entity.getParentLevel0(),
-                                        entity.getParentLevel1())
-                                : Mono.just(Boolean.TRUE)),
-                exists -> {
-                    if (exists.getT1())
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                entity.getName(),
-                                entity.getEntityName());
-
-                    if (!exists.getT2())
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                ProcessorMessageResourceService.INVALID_PARENT,
-                                entity.getEntityName());
-
-                    entity.setName(NameUtil.normalize(entity.getName()));
-                    return Mono.just(entity);
-                });
-    }
-
     @Override
     public Mono<D> create(D entity) {
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
-                access -> this.validateEntity(entity, access),
+                access -> this.checkEntity(entity, access),
                 (access, vEntity) -> this.applyOrder(vEntity, access),
                 (access, vEntity, aEntity) -> {
                     aEntity.setIsParent(Boolean.TRUE);
@@ -168,7 +169,7 @@ public abstract class BaseValueService<
 
     public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.validateEntity(entity, access), vEntity -> {
+        return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, access), vEntity -> {
             entity.setIsParent(Boolean.FALSE);
             entity.setParentLevel0(parentEntity.getId());
 
@@ -176,43 +177,6 @@ public abstract class BaseValueService<
 
             return super.createInternal(access, entity);
         });
-    }
-
-    @Override
-    public Mono<D> update(D entity) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.updateInternal(access, entity));
-    }
-
-    @Override
-    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.validateEntity(entity, access),
-                vEntity -> super.updateInternal(access, entity),
-                (vEntity, updated) -> this.evictCache(updated).map(evicted -> updated));
-    }
-
-    @Override
-    public Mono<D> update(ULong key, Map<String, Object> fields) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> key != null ? this.read(key) : Mono.empty(),
-                (access, entity) -> super.updateInternal(access, key, fields),
-                (access, entity, updated) ->
-                        this.evictCache(entity).map(evicted -> updated).switchIfEmpty(Mono.just(updated)));
-    }
-
-    public Mono<D> updateInternalAndEvictCache(ProcessorAccess access, D entity) {
-        return FlatMapUtil.flatMapMono(() -> super.updateInternal(access, entity), updated -> this.evictCache(entity)
-                .map(evicted -> updated));
-    }
-
-    @Override
-    public Mono<Integer> delete(ULong id) {
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.read(id),
-                super::deleteInternal,
-                (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
     }
 
     protected Mono<Boolean> existsById(

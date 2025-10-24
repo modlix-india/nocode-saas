@@ -18,7 +18,7 @@
     <description>A generic server to manage RDBMS Entities</description>
     <properties>
         <!-- database -->
-        <database.mysql.jdbc.password>Vishwas123#</database.mysql.jdbc.password>
+        <database.mysql.jdbc.password>Kiran@123</database.mysql.jdbc.password>
         <database.mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</database.mysql.jdbc.url>
         <database.mysql.jdbc.user>root</database.mysql.jdbc.user>
         <database.schema.name>entity_processor</database.schema.name>
@@ -218,7 +218,24 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.38</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
         </plugins>
+
     </build>
     <profiles>
         <profile>

@@ -9,17 +9,34 @@ import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.ProductStageRule;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
 import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
-import com.fincity.saas.entity.processor.dto.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.dto.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.Stage;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
+import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
+import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
 import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
 import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
-import com.fincity.saas.entity.processor.jooq.tables.*;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 import java.util.Map;
 import lombok.Getter;
 import org.jooq.EnumType;
@@ -81,7 +98,7 @@ public enum EntitySeries implements EnumType {
             "Product Template Walk In Forms",
             29,
             "ProductTemplateWalkInForm",
-            EntityProcessorProductTemplatesWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATES_WALK_IN_FORMS),
+            EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS),
     PRODUCT_WALK_IN_FORMS(
             "PRODUCT_WALK_IN_FORMS",
             "Product Walk In Forms",

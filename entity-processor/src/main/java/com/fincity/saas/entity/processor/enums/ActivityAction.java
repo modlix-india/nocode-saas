@@ -39,6 +39,7 @@ public enum ActivityAction implements EnumType {
             "STAGE_UPDATE",
             "Stage moved from $%s to $%s by $user.".formatted(getOldName(Ticket.Fields.stage), Ticket.Fields.stage),
             keys(getOldName(Ticket.Fields.stage), Ticket.Fields.stage)),
+    WALK_IN("WALK_IN", "$entity walked in by $user.", keys("entity")),
 
     // Task-related actions
     TASK_CREATE(

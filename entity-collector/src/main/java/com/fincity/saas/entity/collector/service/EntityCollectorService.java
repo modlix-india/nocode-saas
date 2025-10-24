@@ -4,19 +4,23 @@ import static com.fincity.saas.entity.collector.util.EntityUtil.getClientIpAddre
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.extractMetaPayload;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.fetchMetaData;
 import static com.fincity.saas.entity.collector.util.MetaEntityUtil.normalizeMetaEntity;
-import static com.fincity.saas.entity.collector.util.WebsiteEntityUtil.getHost;
-import static com.fincity.saas.entity.collector.util.WebsiteEntityUtil.normalizeWebsiteEntity;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.entity.collector.dto.EntityIntegration;
+import com.fincity.saas.entity.collector.dto.EntityResponse;
 import com.fincity.saas.entity.collector.dto.WebsiteDetails;
 import com.fincity.saas.entity.collector.jooq.enums.EntityCollectorLogStatus;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.model.LeadDetails;
 import com.fincity.saas.entity.collector.service.commons.AbstractConnectionService;
 import com.fincity.saas.entity.collector.util.EntityUtil;
+import com.fincity.saas.entity.collector.util.GoogleEntityUtil;
+import com.fincity.saas.entity.collector.util.MetaEntityUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -64,7 +68,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         integration.getId(), mapper.convertValue(responseBody, new TypeReference<>() {}), null),
 
                                 (extractPayload, integration, logId) -> this.getConnectionOAuth2Token(
-                                                 integration.getInAppCode(), integration.getClientCode())
+                                                 integration.getInAppCode(), integration.getClientCode(), EntityUtil.META_CONNECTION_NAME)
                                         // Treat blank token as empty to stop the chain
                                         .filter(token -> token != null && !token.isBlank())
                                         // If empty/blank, log and STOP further processing for this item
@@ -111,7 +115,7 @@ public class EntityCollectorService extends AbstractConnectionService {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> Mono.just(getHost(request)),
+                () -> Mono.just(EntityUtil.getHost(request)),
 
                 host -> entityIntegrationService.findByInSourceAndType(host, EntityIntegrationsInSourceType.WEBSITE),
 
@@ -120,8 +124,8 @@ public class EntityCollectorService extends AbstractConnectionService {
                         mapper.convertValue(websiteBody, new TypeReference<>() {}),
                         getClientIpAddress(request)),
 
-                (host, integration, logId) -> normalizeWebsiteEntity(
-                        websiteBody, integration, coreService, msgService, entityCollectorLogService, logId),
+                (host, integration, logId) -> handleWebsiteEntity(
+                        websiteBody, integration, logId),
 
                 (host, integration, logId, response) ->
                         msgService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE),
@@ -135,5 +139,63 @@ public class EntityCollectorService extends AbstractConnectionService {
                         sMessage),
 
                 (host, integration, logId, response, sMessage, result, uLog) -> Mono.just(result));
+    }
+
+    private Mono<EntityResponse> handleWebsiteEntity(WebsiteDetails websiteDetails, EntityIntegration integration, ULong logId) {
+
+        LeadDetails lead = new LeadDetails().createLead(websiteDetails);
+
+        EntityResponse response = new EntityResponse();
+        response.setLeadDetails(lead);
+        response.setAppCode(integration.getOutAppCode());
+        response.setClientCode(integration.getClientCode());
+
+        String connectionName;
+        if (websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE))
+            connectionName = EntityUtil.GOOGLE_CONNECTION_NAME;
+        else if ( websiteDetails.getUtmSource().equals(EntityUtil.META_UTM_SOURCE))
+            connectionName = EntityUtil.META_CONNECTION_NAME;
+        else {
+            connectionName = null;
+        }
+
+        return connectionName == null ? Mono.just(response) : processCampaignForWebsite(response, websiteDetails, integration, connectionName, logId);
+
+    }
+
+    private Mono<EntityResponse> processCampaignForWebsite(
+            EntityResponse response,
+            WebsiteDetails websiteDetails,
+            EntityIntegration integration,
+            String connectionName,
+            ULong logId) {
+
+        String adId = websiteDetails.getUtmAd();
+
+        if (adId == null || adId.isBlank()) {
+            return Mono.just(response);
+        }
+
+        return FlatMapUtil.flatMapMonoWithNull(
+
+                        () -> this.getConnectionOAuth2Token(
+                                        integration.getInAppCode(), integration.getClientCode(), connectionName)
+                                .onErrorResume(ex -> entityCollectorLogService
+                                        .updateOnError(logId, "OAuth token fetch failed: " + ex.getMessage())
+                                        .then(Mono.empty())),
+
+                        token -> websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE)
+                                ? GoogleEntityUtil.buildCampaignDetails(websiteDetails.getUtmLoginCustomer(), websiteDetails.getUtmCustomer(), adId, token)
+                                : MetaEntityUtil.buildCampaignDetails(adId, token),
+
+                        (token, campaignDetails) -> {
+                            response.setCampaignDetails(campaignDetails);
+                            return Mono.just(response);
+                        })
+                .switchIfEmpty(this.msgService
+                        .getMessage(EntityCollectorMessageResourceService.FAILED_NORMALIZE_ENTITY)
+                        .flatMap(msg -> this.entityCollectorLogService
+                                .updateOnError(logId, msg)
+                                .then(Mono.empty())));
     }
 }

@@ -117,7 +117,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                             vTask.setHasReminder(Boolean.TRUE);
                             vTask.setNextReminder(reminderDate);
 
-                            return super.update(access, vTask);
+                            return this.update(access, vTask);
                         },
                         (access, task, vTask, uTask) ->
                                 this.activityService.acReminderSet(uTask).then(Mono.just(uTask)))
@@ -159,7 +159,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                                 vTask.setCancelledDate(date);
                             }
 
-                            return super.update(access, vTask);
+                            return this.update(access, vTask);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.setTaskStatus"));
     }

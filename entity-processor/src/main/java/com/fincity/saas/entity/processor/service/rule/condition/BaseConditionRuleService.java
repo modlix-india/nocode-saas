@@ -10,9 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Service
-public abstract class BaseConditionRuleService<
-                R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
+public abstract class BaseRuleService<R extends UpdatableRecord<R>, D extends BaseRule<D>, O extends BaseRuleDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     @Override
@@ -31,5 +29,14 @@ public abstract class BaseConditionRuleService<
             existing.setVersion(existing.getVersion() + 1);
             return Mono.just(existing);
         });
+    }
+
+    @Override
+    public Mono<D> create(D entity) {
+        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
+    }
+
+    public Mono<D> createPublic(D entity) {
+        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
     }
 }
