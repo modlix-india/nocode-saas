@@ -121,7 +121,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/plans/registration",
 
-                "/api/security/plans/internal/limits");
+                "/api/security/plans/internal/limits",
+
+		        "/api/security/otp/generate",
+
+		        "/api/security/otp/verify");
     }
 
 }

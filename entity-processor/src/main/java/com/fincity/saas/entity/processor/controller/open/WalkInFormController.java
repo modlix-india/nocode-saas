@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.controller.open;
 
+import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -47,8 +48,21 @@ public class WalkInFormController {
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
+    @GetMapping(PATH_ID + "/product")
+    public Mono<ResponseEntity<Product>> getWalkInProduct(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @PathVariable(PATH_VARIABLE_ID) final Identity productId) {
+
+        return this.productWalkInFormService
+                .getWalkInProduct(appCode, clientCode, productId)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
     @GetMapping(PATH_ID + "/ticket")
-    public Mono<ResponseEntity<Ticket>> getTicket(
+    public Mono<ResponseEntity<Ticket>> getWalkInTicket(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @PathVariable(PATH_VARIABLE_ID) final Identity productId,
@@ -72,7 +86,7 @@ public class WalkInFormController {
     }
 
     @PostMapping(PATH_ID)
-    public Mono<ResponseEntity<ProcessorResponse>> createTicket(
+    public Mono<ResponseEntity<ProcessorResponse>> createWalkInTicket(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @PathVariable(PATH_VARIABLE_ID) final Identity productId,
