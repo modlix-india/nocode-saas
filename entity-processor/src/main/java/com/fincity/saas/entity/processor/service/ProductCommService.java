@@ -55,7 +55,7 @@ public class ProductCommService
         return Mono.zip(
                 super.evictCache(entity),
                 this.evictProductCommCache(entity),
-                (baseEvicted, defaultEvicted) -> baseEvicted && defaultEvicted);
+                (baseEvicted, productCommEvicted) -> baseEvicted && productCommEvicted);
     }
 
     private Mono<Boolean> evictProductCommCache(ProductComm entity) {
@@ -76,23 +76,23 @@ public class ProductCommService
 
     private Mono<Boolean> evictDefaultCache(ProductComm entity) {
 
-        if (entity.getProductId() != null)
-            return super.cacheService.evict(
-                    this.getCacheName(),
-                    super.getCacheKey(
-                            entity.getAppCode(),
-                            entity.getClientCode(),
-                            entity.getConnectionName(),
-                            entity.getConnectionType()));
-
-        return super.cacheService.evict(
-                this.getCacheName(),
-                super.getCacheKey(
-                        entity.getAppCode(),
-                        entity.getClientCode(),
-                        entity.getProductId(),
-                        entity.getConnectionName(),
-                        entity.getConnectionType()));
+        return Mono.zip(
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getConnectionName(),
+                                entity.getConnectionType())),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getProductId(),
+                                entity.getConnectionName(),
+                                entity.getConnectionType())),
+                (appDefaultEvicted, productDefaultEvicted) -> appDefaultEvicted || productDefaultEvicted);
     }
 
     @Override
