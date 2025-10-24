@@ -75,10 +75,8 @@ public abstract class BaseWalkInFormService<
             AssignmentType assignmentType) {
         return this.dao
                 .getByProductId(access, productId)
-                .flatMap(existing ->
-                        super.updateInternal(access, existing.update(name, stageId, statusId, assignmentType)))
-                .switchIfEmpty(
-                        super.createInternal(access, this.create(name, productId, stageId, statusId, assignmentType)))
+                .flatMap(existing -> super.update(access, existing.update(name, stageId, statusId, assignmentType)))
+                .switchIfEmpty(super.create(access, this.create(name, productId, stageId, statusId, assignmentType)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".createOrUpdate"));
     }
 

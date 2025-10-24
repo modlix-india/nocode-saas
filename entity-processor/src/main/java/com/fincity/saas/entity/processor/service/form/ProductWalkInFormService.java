@@ -181,6 +181,15 @@ public class ProductWalkInFormService
 
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
+        if (ticketRequest.getEmail() != null)
+            ticket.setEmail(ticketRequest.getEmail().getAddress());
+
+        if (ticketRequest.getName() != null) ticket.setName(ticketRequest.getName());
+
+        if (ticketRequest.getDescription() != null) ticket.setDescription(ticketRequest.getDescription());
+
+        if (ticket.getSubSource() == null) ticket.setSubSource(ticketRequest.getSubSource());
+
         return this.ticketService
                 .updateTicketStage(
                         access,
@@ -190,7 +199,7 @@ public class ProductWalkInFormService
                         walkInFormResponse.getStatusId(),
                         null,
                         ticketRequest.getComment())
-                .map(updated -> ProcessorResponse.ofSuccess(updated.getCode(), updated.getEntitySeries()))
+                .map(updated -> ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
     }
 
@@ -203,7 +212,7 @@ public class ProductWalkInFormService
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
 
         return this.ticketService
-                .createInternal(
+                .create(
                         access,
                         ticket.setStage(walkInFormResponse.getStageId())
                                 .setStatus(walkInFormResponse.getStatusId())

@@ -252,19 +252,18 @@ public class ProductCommService
                                     ULong prodId = product.getId();
                                     if (Boolean.TRUE.equals(productCommRequest.isDefault())) {
                                         return this.updateDefault(access, connection, productCommRequest)
-                                                .switchIfEmpty(super.createInternal(
+                                                .switchIfEmpty(super.create(
                                                         access,
                                                         ProductComm.of(productCommRequest, prodId, connection)));
                                     }
-                                    return super.createInternal(
-                                            access, ProductComm.of(productCommRequest, prodId, connection));
+                                    return super.create(access, ProductComm.of(productCommRequest, prodId, connection));
                                 }));
                     }
                     return connMono.flatMap(connection -> {
                         ULong prodId = null;
                         return this.updateDefault(access, connection, productCommRequest)
-                                .switchIfEmpty(super.createInternal(
-                                        access, ProductComm.of(productCommRequest, prodId, connection)));
+                                .switchIfEmpty(
+                                        super.create(access, ProductComm.of(productCommRequest, prodId, connection)));
                     });
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));

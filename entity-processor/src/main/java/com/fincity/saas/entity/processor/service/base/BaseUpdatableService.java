@@ -49,6 +49,10 @@ public abstract class BaseUpdatableService<
 
     protected abstract boolean canOutsideCreate();
 
+    protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
+        return Mono.just(entity);
+    }
+
     protected <T> Mono<T> throwOutsideUserAccess(String action) {
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -128,6 +132,27 @@ public abstract class BaseUpdatableService<
                 .onErrorResume(e -> Mono.empty());
     }
 
+    @Override
+    protected Mono<D> updatableEntity(D entity) {
+
+        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
+            if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
+            existing.setDescription(entity.getDescription());
+            existing.setTempActive(entity.isTempActive());
+            existing.setActive(entity.isActive());
+            return Mono.just(existing);
+        });
+    }
+
+    @Override
+    public Mono<D> create(D entity) {
+        return this.hasAccess().flatMap(access -> this.create(access, entity));
+    }
+
+    public Mono<D> create(ProcessorAccess access, D entity) {
+        return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
+    }
+
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
@@ -140,28 +165,6 @@ public abstract class BaseUpdatableService<
                 access.isOutsideUser() ? access.getUserInherit().getManagedClientCode() : access.getClientCode());
 
         return super.create(entity);
-    }
-
-    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
-
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
-
-        return super.update(entity);
-    }
-
-    public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
-
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
-
-        return super.update(key, fields);
-    }
-
-    public Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
-
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
-
-        return super.delete(entity.getId())
-                .flatMap(deleted -> this.evictCache(entity).map(evicted -> deleted));
     }
 
     @Override
@@ -258,26 +261,43 @@ public abstract class BaseUpdatableService<
     }
 
     @Override
-    public Mono<D> update(ULong key, Map<String, Object> fields) {
-        return super.update(key, fields)
-                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    public Mono<D> update(D entity) {
+        return this.hasAccess().flatMap(access -> this.update(access, entity));
+    }
+
+    public Mono<D> update(ProcessorAccess access, D entity) {
+        return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
 
     @Override
-    public Mono<D> update(D entity) {
+    public Mono<D> update(ULong key, Map<String, Object> fields) {
+        if (key == null) return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.read(key),
+                (access, entity) -> this.updateInternal(access, key, fields));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<D> updateByCode(String code, D entity) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readByCode(code).map(cEntity -> (D) entity.setId(cEntity.getId())), this::update);
+    }
+
+    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
+
+        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
+
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
-    @Override
-    protected Mono<D> updatableEntity(D entity) {
+    public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
-        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
-            if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
-            existing.setDescription(entity.getDescription());
-            existing.setTempActive(entity.isTempActive());
-            existing.setActive(entity.isActive());
-            return Mono.just(existing);
-        });
+        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
+
+        return super.update(key, fields)
+                .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
     protected <T> Mono<T> identityMissingError() {
@@ -364,32 +384,6 @@ public abstract class BaseUpdatableService<
                 .map(entity -> identity.setId(entity.getId().toBigInteger()));
     }
 
-    public Mono<Identity> checkAndUpdateIdentity(Identity identity) {
-
-        if (identity == null || identity.isNull()) return this.identityMissingError();
-
-        if (identity.isId())
-            return this.readById(ULongUtil.valueOf(identity.getId()))
-                    .map(entity -> identity)
-                    .switchIfEmpty(this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            ProcessorMessageResourceService.IDENTITY_WRONG,
-                            this.getEntityName(),
-                            identity.getId()));
-
-        return this.readByCode(identity.getCode())
-                .map(entity -> identity.setId(entity.getId().toBigInteger()))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
-                        identity.getCode()));
-    }
-
-    public Mono<Identity> checkAndUpdateIdentityWithAccess(Identity identity) {
-        return this.hasAccess().flatMap(access -> this.checkAndUpdateIdentityWithAccess(access, identity));
-    }
-
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -416,29 +410,21 @@ public abstract class BaseUpdatableService<
         return this.readIdentityWithAccess(identity).flatMap(entity -> this.delete(entity.getId()));
     }
 
-    @SuppressWarnings("unchecked")
-    public Mono<D> updateByCode(String code, D entity) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.readByCode(code).map(cEntity -> (D) entity.setId(cEntity.getId())),
-                this::update,
-                (e, updated) -> this.evictCache(updated).map(evicted -> updated));
-    }
-
     public Mono<Integer> deleteByCode(String code) {
-        return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> this.readByCode(access, code),
-                this::deleteInternal,
-                (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
+        return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.readByCode(access, code), this::deleteInternal);
     }
 
     @Override
     public Mono<Integer> delete(ULong id) {
-        return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> this.read(id),
-                this::deleteInternal,
-                (access, entity, deleted) -> this.evictCache(entity).map(evicted -> deleted));
+        return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.read(id), this::deleteInternal);
+    }
+
+    public Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
+
+        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
+
+        return super.delete(entity.getId())
+                .flatMap(deleted -> this.evictCache(entity).map(evicted -> deleted));
     }
 
     public Mono<Integer> deleteMultiple(Collection<D> entities) {
