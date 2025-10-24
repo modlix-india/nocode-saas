@@ -81,7 +81,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                             && !s.getId().equals(entity.getId());
                                 })
                                 .map(s -> s.setOrder(s.getOrder() + 1))
-                                .flatMap(oStage -> super.updateInternalAndEvictCache(access, oStage))
+                                .flatMap(oStage -> super.updateInternal(access, oStage))
                                 .then(Mono.just(entity));
                     })
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
@@ -157,10 +157,10 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                                     .setIsFailure(stageRequest.getIsFailure())
                                                     .setPlatform(stageRequest.getPlatform());
 
-                                            return super.update(existingStage);
+                                            return super.update(access, existingStage);
                                         })
-                                        .switchIfEmpty(super.create(Stage.ofParent(stageRequest)));
-                            else return super.create(Stage.ofParent(stageRequest));
+                                        .switchIfEmpty(super.create(access, Stage.ofParent(stageRequest)));
+                            else return super.create(access, Stage.ofParent(stageRequest));
                         },
                         (access, productTemplateId, parentStage) -> stageRequest.getChildren() != null
                                 ? this.updateOrCreateChildren(
@@ -331,7 +331,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .flatMap(entry -> {
                                         Stage stage = parentStageMap.get(entry.getKey());
                                         stage.setOrder(entry.getValue());
-                                        return this.updateInternalAndEvictCache(access, stage);
+                                        return this.updateInternal(access, stage);
                                     })
                                     .collectList();
                         })
