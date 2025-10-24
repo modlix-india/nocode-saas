@@ -59,6 +59,11 @@ public class ProductWalkInFormService
         this.ticketService = ticketService;
     }
 
+    @Autowired
+    private void setActivityService(ActivityService activityService) {
+        this.activityService = activityService;
+    }
+
     @Lazy
     @Autowired
     private void setProductTemplateWalkInFormService(
