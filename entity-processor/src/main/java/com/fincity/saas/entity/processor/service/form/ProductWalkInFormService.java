@@ -18,6 +18,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
+import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductService;
 import com.fincity.saas.entity.processor.service.SourceUtil;
@@ -45,6 +46,7 @@ public class ProductWalkInFormService
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
     private final ProductService productService;
     private TicketService ticketService;
+    private ActivityService activityService;
 
     private ProductTemplateWalkInFormService productTemplateWalkInFormService;
 
@@ -155,7 +157,10 @@ public class ProductWalkInFormService
                         walkInFormResponse -> this.validateAndGetTicket(access, walkInFormResponse, ticketRequest),
                         (walkInFormResponse, ticket) -> ticket.getId() != null
                                 ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
-                                : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest))
+                                : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest),
+                        (walkInFormResponse, ticket, created) -> this.activityService
+                                .acWalkIn(access, ticket, ticketRequest.getComment())
+                                .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
     }
 
