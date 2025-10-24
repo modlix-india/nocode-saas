@@ -20,6 +20,7 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.ProductService;
+import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
@@ -216,7 +217,7 @@ public class ProductWalkInFormService
                         access,
                         ticket.setStage(walkInFormResponse.getStageId())
                                 .setStatus(walkInFormResponse.getStatusId())
-                                .setSource("Walk In")
+                                .setSource(SourceUtil.WALK_IN)
                                 .setProductId(walkInFormResponse.getProductId())
                                 .setAssignedUserId(ticketRequest.getUserId()))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
