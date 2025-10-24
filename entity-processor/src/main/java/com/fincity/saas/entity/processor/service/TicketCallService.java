@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -61,7 +62,7 @@ public class TicketCallService {
                                 callerId.getNumber())),
                 productComm -> ticketService
                         .getTicket(access, productComm.getProductId(), from, null)
-                        .switchIfEmpty(this.createExotelTicket(access, productComm.getProductId(), from)),
+                        .switchIfEmpty(this.createExotelTicket(access, from, productComm)),
                 (productComm, ticket) ->
                         messageService.connectCall(appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
                                 .setProviderIncomingRequest(
@@ -70,7 +71,15 @@ public class TicketCallService {
                                 .setUserId(ticket.getAssignedUserId())));
     }
 
-    private Mono<Ticket> createExotelTicket(ProcessorAccess access, ULong productId, PhoneNumber from) {
+    private Mono<Ticket> createExotelTicket(ProcessorAccess access, PhoneNumber from, ProductComm productComm) {
+
+        ULong productId = productComm.getProductId();
+
+        String source = productComm.getSource() != null ? productComm.getSource() : SourceUtil.DEFAULT_CALL_SOURCE;
+
+        String subSource =
+                productComm.getSubSource() != null ? productComm.getSubSource() : SourceUtil.DEFAULT_CALL_SUB_SOURCE;
+
         return ticketService.createInternal(
                 access,
                 new Ticket()
@@ -78,7 +87,7 @@ public class TicketCallService {
                         .setDialCode(from.getCountryCode())
                         .setPhoneNumber(from.getNumber())
                         .setProductId(productId)
-                        .setSource(CALL_CONNECTION.name())
-                        .setSubSource(ConnectionSubType.EXOTEL.name()));
+                        .setSource(source)
+                        .setSubSource(subSource));
     }
 }
