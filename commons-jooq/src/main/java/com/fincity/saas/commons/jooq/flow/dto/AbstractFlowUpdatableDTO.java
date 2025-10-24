@@ -2,11 +2,14 @@ package com.fincity.saas.commons.jooq.flow.dto;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
 import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
@@ -34,5 +37,11 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
 
     public abstract String getTableName();
 
-	public abstract Schema getSchema();
+    public Schema getSchema() {
+        Schema schema = new Schema().setName(this.getClass().getSimpleName()).setType(Type.of(SchemaType.OBJECT));
+
+        Map<String, Schema> props = new LinkedHashMap<>();
+        props.put(Fields.fields, new Schema().setName(Fields.fields).setType(Type.of(SchemaType.OBJECT)));
+        return schema.setProperties(props);
+    }
 }
