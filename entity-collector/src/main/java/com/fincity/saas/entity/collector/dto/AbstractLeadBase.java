@@ -72,16 +72,20 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
 
 
         if ("FACEBOOK".equalsIgnoreCase(details.getUtmSource())) {
-            this.setPlatform("FACEBOOK");
+            this.setPlatform("Facebook");
+            this.setSource(LeadSource.SOCIAL_MEDIA);
+            this.setSubSource(LeadSubSource.FACEBOOK);
+        } else if ("GOOGLE".equalsIgnoreCase(details.getUtmSource())){
+            this.setPlatform("Google");
             this.setSource(LeadSource.WEBSITE);
-            this.setSubSource(LeadSubSource.WEBSITE_FORM);
-        } else {
-            this.setPlatform("WEBSITE");
-            this.setSource(LeadSource.WEBSITE);
-            this.setSubSource(this.getSubSource() != null
-                    ? this.getSubSource()
-                    : LeadSubSource.WEBSITE_FORM);
-        }
+            this.setSubSource(LeadSubSource.GOOGLE);
+        }else {
+                this.setPlatform("Website");
+                this.setSource(LeadSource.WEBSITE);
+                this.setSubSource(this.getSubSource() != null
+                        ? this.getSubSource()
+                        : LeadSubSource.WEBSITE_FORM);
+            }
 
         return (T) this;
     }
