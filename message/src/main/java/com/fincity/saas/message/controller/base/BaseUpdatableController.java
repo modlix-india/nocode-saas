@@ -164,8 +164,8 @@ public abstract class BaseUpdatableController<
 
         queryParams.add(EagerUtil.EAGER, query.getEager().toString());
 
-		if (query.getEagerFields() != null)
-			query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
+        if (query.getEagerFields() != null)
+            query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)

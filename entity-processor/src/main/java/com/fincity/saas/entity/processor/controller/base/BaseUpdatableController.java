@@ -160,12 +160,12 @@ public abstract class BaseUpdatableController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-	    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
+        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
 
-	    queryParams.add(EagerUtil.EAGER, query.getEager().toString());
+        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
 
-	    if (query.getEagerFields() != null)
-		    query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
+        if (query.getEagerFields() != null)
+            query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
