@@ -36,12 +36,7 @@ public abstract class BaseValueService<
                 R extends UpdatableRecord<R>, D extends BaseValueDto<D>, O extends BaseValueDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
-    private static final String VALUE_ET_KEY = "valueEtKey";
     protected ProductTemplateService productTemplateService;
-
-    public String getValueEtKey() {
-        return VALUE_ET_KEY;
-    }
 
     public abstract Mono<D> applyOrder(D entity, ProcessorAccess access);
 
@@ -93,28 +88,10 @@ public abstract class BaseValueService<
 
     @Override
     protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(super.evictCache(entity), this.evictEtCache(entity), this.evictMapCache(entity))
-                .map(evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3());
-    }
-
-    private Mono<Boolean> evictEtCache(D entity) {
         return Mono.zip(
-                super.cacheService.evict(
-                        getCacheName(),
-                        super.getCacheKey(
-                                this.getValueEtKey(),
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getPlatform(),
-                                entity.getProductTemplateId())),
-                super.cacheService.evict(
-                        getCacheName(),
-                        super.getCacheKey(
-                                this.getValueEtKey(),
-                                entity.getAppCode(),
-                                entity.getClientCode(),
-                                entity.getProductTemplateId())),
-                (pEvicted, evicted) -> pEvicted && evicted);
+                super.evictCache(entity),
+                this.evictMapCache(entity),
+                (baseEvicted, mapEvicted) -> baseEvicted && mapEvicted);
     }
 
     private Mono<Boolean> evictMapCache(D entity) {
@@ -167,6 +144,19 @@ public abstract class BaseValueService<
                 (access, vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
 
+    @Override
+    public Mono<D> create(ProcessorAccess access, D entity) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.checkEntity(entity, access),
+                vEntity -> this.applyOrder(vEntity, access),
+                (vEntity, aEntity) -> {
+                    aEntity.setIsParent(Boolean.TRUE);
+
+                    return super.createInternal(access, aEntity);
+                },
+                (vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
+    }
+
     public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, access), vEntity -> {
@@ -175,7 +165,8 @@ public abstract class BaseValueService<
 
             if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
 
-            return super.createInternal(access, entity);
+            return super.createInternal(access, entity)
+                    .flatMap(cEntity -> this.evictCache(cEntity).map(evicted -> cEntity));
         });
     }
 
@@ -307,30 +298,17 @@ public abstract class BaseValueService<
 
     private Mono<Map<D, Set<D>>> getAllValues(
             String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.getAllValuesInternal(appCode, clientCode, platform, productTemplateId),
-                super.getCacheKey(this.getValueEtKey(), appCode, clientCode, platform, productTemplateId));
+        return this.getAllValueMap(appCode, clientCode, platform, productTemplateId)
+                .flatMap(this::processValuesAndBuildHierarchy);
     }
 
-    private Mono<Map<D, Set<D>>> getAllValuesInternal(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return FlatMapUtil.flatMapMono(
-                () -> Mono.zip(
-                        this.getValuesFlat(appCode, clientCode, platform, productTemplateId, null),
-                        this.getAllValueMap(appCode, clientCode, platform, productTemplateId)),
-                this::processValuesAndBuildHierarchy);
-    }
-
-    private Mono<Map<D, Set<D>>> processValuesAndBuildHierarchy(Tuple2<List<D>, Map<ULong, D>> tuple) {
+    private Mono<Map<D, Set<D>>> processValuesAndBuildHierarchy(Map<ULong, D> idToEntityMap) {
         Map<D, Set<D>> result = new HashMap<>();
-
         Map<ULong, Set<D>> parentToChildrenMap = new HashMap<>();
 
-        Map<ULong, D> idToEntityMap = new HashMap<>();
-
-        for (D value : tuple.getT1()) {
-            idToEntityMap.put(value.getId(), value);
+        for (D value : idToEntityMap.values()) {
+            if (Boolean.TRUE.equals(value.getIsParent()) || !value.hasParentLevels())
+                result.put(value, new HashSet<>());
 
             if (value.getParentLevel0() != null)
                 parentToChildrenMap
@@ -341,17 +319,25 @@ public abstract class BaseValueService<
                 parentToChildrenMap
                         .computeIfAbsent(value.getParentLevel1(), k -> new HashSet<>())
                         .add(value);
-
-            if (Boolean.TRUE.equals(value.getIsParent()) || !value.hasParentLevels())
-                result.put(value, new HashSet<>());
         }
 
         parentToChildrenMap.forEach((parentId, children) -> {
             D parent = idToEntityMap.get(parentId);
-            if (parent != null && result.containsKey(parent)) result.get(parent).addAll(children);
+            if (parent != null && result.containsKey(parent)) {
+                result.get(parent).addAll(children);
+            }
         });
 
         return Mono.just(result);
+    }
+
+    private Mono<Map<ULong, D>> getAllValueMap(
+            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.getValuesFlat(appCode, clientCode, platform, productTemplateId, null)
+                        .map(BaseUpdatableDto::toIdMap),
+                super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
 
     public Mono<List<D>> getValuesFlat(
@@ -362,14 +348,5 @@ public abstract class BaseValueService<
             Boolean isParent,
             ULong... valueEntityIds) {
         return this.dao.getValues(appCode, clientCode, platform, productTemplateId, isParent, valueEntityIds);
-    }
-
-    private Mono<Map<ULong, D>> getAllValueMap(
-            String appCode, String clientCode, Platform platform, ULong productTemplateId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.getValuesFlat(appCode, clientCode, platform, productTemplateId, null)
-                        .map(BaseUpdatableDto::toIdMap),
-                super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
 }
