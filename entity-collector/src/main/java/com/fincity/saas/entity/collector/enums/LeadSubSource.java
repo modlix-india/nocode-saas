@@ -6,7 +6,8 @@ import org.jooq.EnumType;
 @Getter
 public enum LeadSubSource implements EnumType {
     WEBSITE_FORM("WEBSITE_FORM", "Website Form"),
-    FACEBOOK("FACEBOOK", "Facebook");
+    FACEBOOK("FACEBOOK", "Facebook"),
+    GOOGLE( "GOOGLE", "Google");
 
     private final String literal;
     private final String name;
