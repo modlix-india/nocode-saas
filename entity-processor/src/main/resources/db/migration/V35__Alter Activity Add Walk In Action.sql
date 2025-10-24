@@ -1,4 +1,4 @@
-ALTER TABLE `ENTITY_PROCESSOR`.`ENTITY_PROCESSOR_ACTIVITIES`
+ALTER TABLE `entity_processor`.`entity_processor_activities`
     MODIFY COLUMN `ACTIVITY_ACTION` ENUM (
         'CREATE',
         'RE_INQUIRY',
