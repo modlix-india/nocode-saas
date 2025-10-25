@@ -197,7 +197,7 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
                     content.setOwnerId(ticket.getOwnerId());
-                    return this.createInternal(access, content);
+                    return this.create(access, content);
                 })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -212,7 +212,7 @@ public abstract class BaseContentService<
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ownerService.readById(content.getOwnerId()),
-                        owner -> this.createInternal(access, content.setOwnerId(owner.getId())))
+                        owner -> this.create(access, content.setOwnerId(owner.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -230,7 +230,7 @@ public abstract class BaseContentService<
                         user -> {
                             content.setUserId(ULongUtil.valueOf(user.getId()));
                             content.setClientId(ULongUtil.valueOf(user.getClientId()));
-                            return this.createInternal(access, content);
+                            return this.create(access, content);
                         })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

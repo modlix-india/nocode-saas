@@ -305,6 +305,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acStageUpdate"));
     }
 
+    public Mono<Void> acWalkIn(ProcessorAccess access, Ticket ticket, String comment) {
+        return this.createActivityInternal(
+                        access, ActivityAction.WALK_IN, null, comment, Map.of(Activity.Fields.ticketId, ticket.getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acWalkIn"));
+    }
+
     public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
 
         if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
@@ -564,7 +570,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acAssign"));
     }
 
-    public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
+    public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser, boolean isAutomatic) {
+        return isAutomatic
+                ? acReassignSystem(ticketId, comment, oldUser, newUser)
+                : acReassign(ticketId, comment, oldUser, newUser);
+    }
+
+    private Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
 
         return FlatMapUtil.flatMapMono(
                         () -> Mono.zip(
@@ -587,7 +599,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassign"));
     }
 
-    public Mono<Void> acReassignSystem(ULong ticketId, String comment, String oldUser, String newUser) {
+    private Mono<Void> acReassignSystem(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
         return this.createActivityInternal(
                         ActivityAction.REASSIGN_SYSTEM,
                         comment,
