@@ -5,6 +5,7 @@ package com.fincity.saas.entity.collector.jooq.tables.records;
 
 
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsStatus;
 import com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations;
 
 import java.time.LocalDateTime;
@@ -205,11 +206,28 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     }
 
     /**
+     * Setter for <code>entity_collector.entity_integrations.STATUS</code>.
+     * Integration status
+     */
+    public EntityIntegrationsRecord setStatus(EntityIntegrationsStatus value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_collector.entity_integrations.STATUS</code>.
+     * Integration status
+     */
+    public EntityIntegrationsStatus getStatus() {
+        return (EntityIntegrationsStatus) get(10);
+    }
+
+    /**
      * Setter for <code>entity_collector.entity_integrations.CREATED_BY</code>.
      * ID of the user who created this row
      */
     public EntityIntegrationsRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -218,7 +236,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -226,7 +244,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is created
      */
     public EntityIntegrationsRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -235,7 +253,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     /**
@@ -243,7 +261,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who updated this row
      */
     public EntityIntegrationsRecord setUpdatedBy(ULong value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -252,7 +270,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * ID of the user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(13);
     }
 
     /**
@@ -260,7 +278,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is updated
      */
     public EntityIntegrationsRecord setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -269,7 +287,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
      * Time when this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -295,7 +313,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
     /**
      * Create a detached, initialised EntityIntegrationsRecord
      */
-    public EntityIntegrationsRecord(ULong id, String clientCode, String inAppCode, String outAppCode, String primaryTarget, String secondaryTarget, String inSource, EntityIntegrationsInSourceType inSourceType, String primaryVerifyToken, String secondaryVerifyToken, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityIntegrationsRecord(ULong id, String clientCode, String inAppCode, String outAppCode, String primaryTarget, String secondaryTarget, String inSource, EntityIntegrationsInSourceType inSourceType, String primaryVerifyToken, String secondaryVerifyToken, EntityIntegrationsStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityIntegrations.ENTITY_INTEGRATIONS);
 
         setId(id);
@@ -308,6 +326,7 @@ public class EntityIntegrationsRecord extends UpdatableRecordImpl<EntityIntegrat
         setInSourceType(inSourceType);
         setPrimaryVerifyToken(primaryVerifyToken);
         setSecondaryVerifyToken(secondaryVerifyToken);
+        setStatus(status);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

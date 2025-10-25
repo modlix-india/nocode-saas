@@ -7,6 +7,7 @@ package com.fincity.saas.entity.collector.jooq.tables;
 import com.fincity.saas.entity.collector.jooq.EntityCollector;
 import com.fincity.saas.entity.collector.jooq.Keys;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsStatus;
 import com.fincity.saas.entity.collector.jooq.tables.EntityCollectorLog.EntityCollectorLogPath;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 
@@ -126,6 +127,12 @@ public class EntityIntegrations extends TableImpl<EntityIntegrationsRecord> {
      * Secondary verification token is to verify the secondary target
      */
     public final TableField<EntityIntegrationsRecord, String> SECONDARY_VERIFY_TOKEN = createField(DSL.name("SECONDARY_VERIFY_TOKEN"), SQLDataType.VARCHAR(255), this, "Secondary verification token is to verify the secondary target");
+
+    /**
+     * The column <code>entity_collector.entity_integrations.STATUS</code>.
+     * Integration status
+     */
+    public final TableField<EntityIntegrationsRecord, EntityIntegrationsStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(7).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(EntityIntegrationsStatus.class), this, "Integration status");
 
     /**
      * The column <code>entity_collector.entity_integrations.CREATED_BY</code>.
