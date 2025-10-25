@@ -21,9 +21,6 @@ public class WalkInFormResponse implements Serializable {
     private ULong productId;
 
     @JsonIgnore
-    private ULong productTemplateId;
-
-    @JsonIgnore
     private ULong stageId;
 
     @JsonIgnore
