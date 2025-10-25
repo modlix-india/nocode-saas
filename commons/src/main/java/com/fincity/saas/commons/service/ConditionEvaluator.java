@@ -72,9 +72,7 @@ public class ConditionEvaluator {
 
         ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-		JsonElement value = extractor.getValue(field);
-
-        return Mono.justOrEmpty(value);
+        return Mono.justOrEmpty(extractor.getValue(field));
     }
 
     private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
@@ -156,10 +154,8 @@ public class ConditionEvaluator {
             if (p1.isNumber() && p2.isNumber())
                 return compare(jsonVal, filterVal).map(result -> result == 0);
             if (p1.isBoolean() && p2.isBoolean()) return Mono.just(p1.getAsBoolean() == p2.getAsBoolean());
-            if (p1.isString() && p2.isString()) {
-                boolean s = p1.getAsString().equals(p2.getAsString());
+            if (p1.isString() && p2.isString())
                 return Mono.just(p1.getAsString().equals(p2.getAsString()));
-            }
         }
 
         return Mono.just(jsonVal.toString().equals(filterVal.toString()));
