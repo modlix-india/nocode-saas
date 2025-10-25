@@ -158,19 +158,25 @@ public class ProductWalkInFormService
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getWalkInFormResponseInternal(access, productId),
-                        walkInFormResponse -> this.validateAndGetTicket(access, walkInFormResponse, ticketRequest),
-                        (walkInFormResponse, ticket) -> ticket.getId() != null
+                        () -> this.resolveProduct(access, productId),
+                        resolvedProduct -> this.getWalkInFormResponseInternal(access, resolvedProduct),
+                        (resolvedProduct, walkInFormResponse) ->
+                                this.validateAndGetTicket(access, resolvedProduct, walkInFormResponse, ticketRequest),
+                        (resolvedProduct, walkInFormResponse, ticket) -> ticket.getId() != null
                                 ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
-                                : this.createNewTicket(access, ticket, walkInFormResponse, ticketRequest),
-                        (walkInFormResponse, ticket, created) -> this.activityService
+                                : this.createNewTicket(
+                                        access, resolvedProduct, ticket, walkInFormResponse, ticketRequest),
+                        (resolvedProduct, walkInFormResponse, ticket, created) -> this.activityService
                                 .acWalkIn(access, ticket, ticketRequest.getComment())
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
     }
 
     private Mono<Ticket> validateAndGetTicket(
-            ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
+            ProcessorAccess access,
+            Tuple2<ULong, ULong> resolvedProduct,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
 
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL) && ticketRequest.getUserId() == null)
             return msgService.throwMessage(
@@ -179,7 +185,7 @@ public class ProductWalkInFormService
                     "Owner User");
 
         return this.ticketService
-                .getTicket(access, walkInFormResponse.getProductId(), ticketRequest.getPhoneNumber(), null)
+                .getTicket(access, resolvedProduct.getT1(), ticketRequest.getPhoneNumber(), null)
                 .switchIfEmpty(Mono.just(Ticket.of(ticketRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
     }
@@ -201,6 +207,17 @@ public class ProductWalkInFormService
 
         if (ticket.getSubSource() == null) ticket.setSubSource(ticketRequest.getSubSource());
 
+        boolean stageUnchanged = walkInFormResponse.getStageId().equals(ticket.getStage());
+
+        boolean statusUnchanged = walkInFormResponse.getStatusId() == null
+                || walkInFormResponse.getStatusId().equals(ticket.getStatus());
+
+        if (stageUnchanged && statusUnchanged)
+            return ticketService
+                    .updateInternal(access, ticket)
+                    .map(updated -> ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries()))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
+
         return this.ticketService
                 .updateTicketStage(
                         access,
@@ -216,6 +233,7 @@ public class ProductWalkInFormService
 
     private Mono<ProcessorResponse> createNewTicket(
             ProcessorAccess access,
+            Tuple2<ULong, ULong> resolvedProduct,
             Ticket ticket,
             WalkInFormResponse walkInFormResponse,
             WalkInFormTicketRequest ticketRequest) {
@@ -228,7 +246,7 @@ public class ProductWalkInFormService
                         ticket.setStage(walkInFormResponse.getStageId())
                                 .setStatus(walkInFormResponse.getStatusId())
                                 .setSource(SourceUtil.WALK_IN)
-                                .setProductId(walkInFormResponse.getProductId())
+                                .setProductId(resolvedProduct.getT1())
                                 .setAssignedUserId(ticketRequest.getUserId()))
                 .map(created -> ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createNewTicket"));
@@ -240,17 +258,16 @@ public class ProductWalkInFormService
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
-        return this.getWalkInFormResponseInternal(access, productId)
+        return this.resolveProduct(access, productId)
+                .flatMap(resolvedProduct -> this.getWalkInFormResponseInternal(access, resolvedProduct))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponse"));
     }
 
-    private Mono<WalkInFormResponse> getWalkInFormResponseInternal(ProcessorAccess access, Identity productId) {
-
-        return FlatMapUtil.flatMapMono(
-                        () -> this.resolveProduct(access, productId),
-                        product -> this.getWalkInFormResponse(access, product.getT1())
-                                .switchIfEmpty(this.productTemplateWalkInFormService.getWalkInFormResponse(
-                                        access, product.getT2())))
+    private Mono<WalkInFormResponse> getWalkInFormResponseInternal(
+            ProcessorAccess access, Tuple2<ULong, ULong> resolvedProduct) {
+        return this.getWalkInFormResponse(access, resolvedProduct.getT1())
+                .switchIfEmpty(
+                        this.productTemplateWalkInFormService.getWalkInFormResponse(access, resolvedProduct.getT2()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponseInternal"));
     }
