@@ -46,7 +46,7 @@ public abstract class BaseContentRequest<T extends BaseContentRequest<T>> extend
     public ContentEntitySeries getContentEntitySeries() {
         if (this.ticketId != null && !this.ticketId.isNull()) return ContentEntitySeries.TICKET;
 
-        if (this.ownerId != null && this.ownerId.isNull()) return ContentEntitySeries.OWNER;
+        if (this.ownerId != null && !this.ownerId.isNull()) return ContentEntitySeries.OWNER;
 
         if (this.userId != null) return ContentEntitySeries.USER;
 

@@ -5,6 +5,7 @@ import static com.fincity.saas.entity.collector.jooq.tables.EntityIntegrations.E
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsStatus;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 import org.jooq.Condition;
 import org.jooq.types.ULong;
@@ -21,8 +22,11 @@ public class EntityIntegrationDAO extends AbstractUpdatableDAO<EntityIntegration
     public Mono<EntityIntegration> findByInSourceAndInSourceType(
             String inSource, EntityIntegrationsInSourceType inSourceType) {
 
-        Condition condition =
-                ENTITY_INTEGRATIONS.IN_SOURCE.eq(inSource).and(ENTITY_INTEGRATIONS.IN_SOURCE_TYPE.eq(inSourceType));
+        Condition condition = ENTITY_INTEGRATIONS
+                .IN_SOURCE
+                .eq(inSource)
+                .and(ENTITY_INTEGRATIONS.IN_SOURCE_TYPE.eq(inSourceType))
+                .and(ENTITY_INTEGRATIONS.STATUS.eq(EntityIntegrationsStatus.ACTIVE));
 
         return Mono.from(this.dslContext
                         .selectFrom(ENTITY_INTEGRATIONS)
