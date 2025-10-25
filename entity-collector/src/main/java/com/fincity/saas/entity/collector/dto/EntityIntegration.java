@@ -3,6 +3,8 @@ package com.fincity.saas.entity.collector.dto;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
 import java.io.Serial;
+
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsStatus;
 import lombok.*;
 import lombok.experimental.Accessors;
 import org.jooq.types.ULong;
@@ -25,4 +27,5 @@ public class EntityIntegration extends AbstractUpdatableDTO<ULong, ULong> {
     private EntityIntegrationsInSourceType inSourceType;
     private String primaryVerifyToken;
     private String secondaryVerifyToken;
+    private EntityIntegrationsStatus status;
 }
