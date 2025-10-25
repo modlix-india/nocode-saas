@@ -2,7 +2,9 @@ package com.fincity.saas.commons.util;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
@@ -85,6 +87,12 @@ public interface IClassConvertor {
         return getGson().toJsonTree(this, this.getClass());
     }
 
+	@JsonIgnore
+	default JsonNode toJsonNode() {
+		ObjectMapper mapper = getObjectMapper();
+		return mapper.valueToTree(this);
+	}
+
     @JsonIgnore
     default Mono<Map<String, Object>> toMapAsync() {
         return Mono.fromCallable(this::toMap).subscribeOn(Schedulers.boundedElastic());
@@ -94,6 +102,11 @@ public interface IClassConvertor {
     default Mono<JsonElement> toJsonAsync() {
         return Mono.fromCallable(this::toJsonElement).subscribeOn(Schedulers.boundedElastic());
     }
+
+	@JsonIgnore
+	default Mono<JsonNode> toJsonNodeAsync() {
+		return Mono.fromCallable(this::toJsonNode).subscribeOn(Schedulers.boundedElastic());
+	}
 
     @JsonIgnore
     default MultiValueMap<String, String> toFormData() {

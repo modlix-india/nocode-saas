@@ -1,5 +1,8 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -30,8 +33,6 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +58,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             AbstractUpdatableDTO.Fields.updatedBy,
             AbstractUpdatableDTO.Fields.updatedAt,
             BaseDto.Fields.code);
+
+    private static final JsonNodeFactory FACTORY = JsonNodeFactory.instance;
 
     private StageService stageService;
     private TicketService ticketService;
@@ -311,74 +314,73 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acWalkIn"));
     }
 
-    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content) {
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(ProcessorAccess access, T content) {
 
         if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
-        return this.acContentCreate(content, null)
+        return this.acContentCreate(access, content, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T]"));
     }
 
-    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(T content, String comment) {
+    public <T extends BaseContentDto<T>> Mono<Void> acContentCreate(ProcessorAccess access, T content, String comment) {
 
         if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         if (content instanceof Note note)
-            return this.acNoteAdd(note, comment)
+            return this.acNoteAdd(access, note, comment)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T, String]"));
 
         if (content instanceof Task task)
-            return this.acTaskCreate(task, comment)
+            return this.acTaskCreate(access, task, comment)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T, String]"));
 
         return Mono.<Void>empty()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T, String]"));
     }
 
-    public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(T content, T updated) {
+    public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(ProcessorAccess access, T content, T updated) {
 
         if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
-        return this.acContentUpdate(content, updated, null)
+        return this.acContentUpdate(access, content, updated, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentCreate[T, T]"));
     }
 
-    public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(T content, T updated, String comment) {
+    public <T extends BaseContentDto<T>> Mono<Void> acContentUpdate(
+            ProcessorAccess access, T content, T updated, String comment) {
 
         if (!content.getContentEntitySeries().equals(ContentEntitySeries.TICKET)) return Mono.empty();
 
         if (content instanceof Note note && updated instanceof Note updatedNote)
-            return this.acNoteUpdate(note, updatedNote, comment)
+            return this.acNoteUpdate(access, note, updatedNote, comment)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentUpdate[T, T, String]"));
 
         if (content instanceof Task task && updated instanceof Task updatedTask)
-            return this.acTaskUpdate(task, updatedTask, comment)
+            return this.acTaskUpdate(access, task, updatedTask, comment)
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentUpdate[T, T, String]"));
 
         return Mono.<Void>empty()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acContentUpdate[T, T, String]"));
     }
 
-    public Mono<Void> acTaskCreate(Task task, String comment) {
-        return this.hasAccess()
-                .flatMap(access -> this.createActivityInternal(
+    public Mono<Void> acTaskCreate(ProcessorAccess access, Task task, String comment) {
+        return this.createActivityInternal(
                         access,
                         ActivityAction.TASK_CREATE,
                         task.getCreatedAt(),
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId())))
+                                Activity.Fields.taskId, task.getId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCreate"));
     }
 
-    public Mono<Void> acTaskUpdate(Task task, Task updated, String comment) {
+    public Mono<Void> acTaskUpdate(ProcessorAccess access, Task task, Task updated, String comment) {
         return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> Mono.zip(updated.toJsonAsync(), task.toJsonAsync()),
-                (access, uTask) ->
-                        this.extractDifference(uTask.getT1(), uTask.getT2()).switchIfEmpty(Mono.just(new JsonObject())),
-                (access, uTask, dTask) -> this.createActivityInternal(
+                () -> Mono.zip(updated.toJsonNodeAsync(), task.toJsonNodeAsync()),
+                uTask -> this.extractDifference(uTask.getT1(), uTask.getT2())
+                        .switchIfEmpty(Mono.just(FACTORY.objectNode())),
+                (uTask, dTask) -> this.createActivityInternal(
                         access,
                         ActivityAction.TASK_UPDATE,
                         updated.getUpdatedAt(),
@@ -482,26 +484,24 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReminderSet"));
     }
 
-    public Mono<Void> acNoteAdd(Note note, String comment) {
-        return this.hasAccess()
-                .flatMap(access -> this.createActivityInternal(
+    public Mono<Void> acNoteAdd(ProcessorAccess access, Note note, String comment) {
+        return this.createActivityInternal(
                         access,
                         ActivityAction.NOTE_ADD,
                         note.getCreatedAt(),
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId, note.getTicketId(),
-                                Activity.Fields.noteId, note.getId())))
+                                Activity.Fields.noteId, note.getId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteAdd"));
     }
 
-    public Mono<Void> acNoteUpdate(Note note, Note updated, String comment) {
+    public Mono<Void> acNoteUpdate(ProcessorAccess access, Note note, Note updated, String comment) {
         return FlatMapUtil.flatMapMonoWithNull(
-                this::hasAccess,
-                access -> Mono.zip(updated.toJsonAsync(), note.toJsonAsync()),
-                (access, uNote) ->
-                        this.extractDifference(uNote.getT1(), uNote.getT2()).switchIfEmpty(Mono.just(new JsonObject())),
-                (access, uNote, dNote) -> this.createActivityInternal(
+                () -> Mono.zip(updated.toJsonNodeAsync(), note.toJsonNodeAsync()),
+                uNote -> this.extractDifference(uNote.getT1(), uNote.getT2())
+                        .switchIfEmpty(Mono.just(FACTORY.objectNode())),
+                (uNote, dNote) -> this.createActivityInternal(
                         access,
                         ActivityAction.NOTE_UPDATE,
                         updated.getUpdatedAt(),
@@ -707,17 +707,16 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName()));
     }
 
-    private Mono<JsonElement> extractDifference(JsonElement incoming, JsonElement existing) {
+    private Mono<JsonNode> extractDifference(JsonNode incoming, JsonNode existing) {
 
-        if (!incoming.isJsonObject() && !existing.isJsonObject())
-            return DifferenceExtractor.extract(incoming, existing);
+        if (!incoming.isObject() && !existing.isObject()) return DifferenceExtractor.extract(incoming, existing);
 
-        JsonObject iObject = incoming.deepCopy().getAsJsonObject();
-        JsonObject eObject = existing.deepCopy().getAsJsonObject();
+        ObjectNode iObject = incoming.deepCopy();
+        ObjectNode eObject = existing.deepCopy();
 
         sUpdatedFields.forEach(key -> {
-            if (iObject.has(key)) iObject.remove(key);
-            if (eObject.has(key)) eObject.remove(key);
+            iObject.remove(key);
+            eObject.remove(key);
         });
 
         return DifferenceExtractor.extract(iObject, eObject);

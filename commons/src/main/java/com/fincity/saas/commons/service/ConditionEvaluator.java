@@ -45,6 +45,9 @@ public class ConditionEvaluator {
         List<AbstractCondition> conds = cc.getConditions();
         if (conds == null || conds.isEmpty()) return Mono.just(Boolean.FALSE);
 
+        if (cc.getConditions().size() == 1)
+            return this.evaluateFilter((FilterCondition) cc.getConditions().getFirst(), json);
+
         boolean isAnd = cc.getOperator() == AND;
 
         if (isAnd) {
@@ -69,7 +72,9 @@ public class ConditionEvaluator {
 
         ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-        return Mono.just(extractor.getValue(field));
+		JsonElement value = extractor.getValue(field);
+
+        return Mono.justOrEmpty(value);
     }
 
     private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
@@ -131,7 +136,7 @@ public class ConditionEvaluator {
                                         && !target.getAsJsonPrimitive().getAsBoolean());
                             default -> Mono.just(Boolean.FALSE);
                         })
-                .defaultIfEmpty(Boolean.FALSE);
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     private Mono<JsonElement> convertToJsonElement(Object value) {
@@ -151,8 +156,10 @@ public class ConditionEvaluator {
             if (p1.isNumber() && p2.isNumber())
                 return compare(jsonVal, filterVal).map(result -> result == 0);
             if (p1.isBoolean() && p2.isBoolean()) return Mono.just(p1.getAsBoolean() == p2.getAsBoolean());
-            if (p1.isString() && p2.isString())
+            if (p1.isString() && p2.isString()) {
+                boolean s = p1.getAsString().equals(p2.getAsString());
                 return Mono.just(p1.getAsString().equals(p2.getAsString()));
+            }
         }
 
         return Mono.just(jsonVal.toString().equals(filterVal.toString()));

@@ -292,6 +292,10 @@ public abstract class BaseUpdatableService<
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
+    protected Mono<D> updateInternalForOutsideUser(D entity) {
+        return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
+    }
+
     public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");

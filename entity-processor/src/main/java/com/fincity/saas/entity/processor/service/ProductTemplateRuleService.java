@@ -81,7 +81,7 @@ public class ProductTemplateRuleService
                                 access.getAppCode(), access.getEffectiveClientCode(), entityId, stageId),
                         productTemplateRules -> super.ruleExecutionService.executeRules(
                                 productTemplateRules, tokenPrefix, userId, data),
-                        (productTemplateRules, eRule) -> super.update(access, eRule),
+                        (productTemplateRules, eRule) -> super.updateInternalForOutsideUser(eRule),
                         (productTemplateRules, eRule, uRule) -> {
                             ULong assignedUserId = uRule.getLastAssignedUserId();
                             if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
