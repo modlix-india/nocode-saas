@@ -1,6 +1,8 @@
 package com.modlix.saas.commons2.util;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
@@ -18,6 +20,10 @@ public interface IClassConvertor {
     private static Gson getGson() {
         return SpringContextAccessor.getBean(Gson.class);
     }
+
+	private static ObjectMapper getObjectMapper() {
+		return SpringContextAccessor.getBean(ObjectMapper.class);
+	}
 
     private static MultiValueMap<String, String> mapToFormData(Map<String, Object> map) {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
@@ -82,6 +88,12 @@ public interface IClassConvertor {
     default JsonElement toJson() {
         return getGson().toJsonTree(this, this.getClass());
     }
+
+	@JsonIgnore
+	default JsonNode toJsonNode() {
+		ObjectMapper mapper = getObjectMapper();
+		return mapper.valueToTree(this);
+	}
 
     @JsonIgnore
     default MultiValueMap<String, String> toFormData() {

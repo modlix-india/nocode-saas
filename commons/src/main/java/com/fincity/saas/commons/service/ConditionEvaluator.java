@@ -45,6 +45,9 @@ public class ConditionEvaluator {
         List<AbstractCondition> conds = cc.getConditions();
         if (conds == null || conds.isEmpty()) return Mono.just(Boolean.FALSE);
 
+        if (cc.getConditions().size() == 1)
+            return this.evaluateFilter((FilterCondition) cc.getConditions().getFirst(), json);
+
         boolean isAnd = cc.getOperator() == AND;
 
         if (isAnd) {
@@ -69,7 +72,7 @@ public class ConditionEvaluator {
 
         ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-        return Mono.just(extractor.getValue(field));
+        return Mono.justOrEmpty(extractor.getValue(field));
     }
 
     private Mono<Boolean> evaluateFilter(FilterCondition fc, JsonElement json) {
@@ -131,7 +134,7 @@ public class ConditionEvaluator {
                                         && !target.getAsJsonPrimitive().getAsBoolean());
                             default -> Mono.just(Boolean.FALSE);
                         })
-                .defaultIfEmpty(Boolean.FALSE);
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     private Mono<JsonElement> convertToJsonElement(Object value) {

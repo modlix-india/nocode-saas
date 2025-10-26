@@ -60,7 +60,7 @@ public abstract class BaseContentService<
     public Mono<D> create(ProcessorAccess access, D entity) {
         return super.create(access, entity)
                 .flatMap(cContent ->
-                        this.activityService.acContentCreate(cContent).then(Mono.just(cContent)));
+                        this.activityService.acContentCreate(access, cContent).then(Mono.just(cContent)));
     }
 
     @Override
@@ -122,8 +122,9 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
                 oEntity -> super.update(access, entity),
-                (oEntity, uEntity) ->
-                        activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
+                (oEntity, uEntity) -> activityService
+                        .acContentUpdate(access, oEntity, uEntity)
+                        .then(Mono.just(uEntity)));
     }
 
     protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
