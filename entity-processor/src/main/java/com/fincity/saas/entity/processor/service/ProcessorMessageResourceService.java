@@ -54,6 +54,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String INVALID_PARAMETERS = "invalid_parameters";
     public static final String WEBSITE_ENTITY_DATA_INVALID = "website_entity_data_invalid";
     public static final String UNKNOWN_EXOTEL_CALLER_ID = "unknown_exotel_caller_id";
+    public static final String ENTITY_INACTIVE = "entity_inactive";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

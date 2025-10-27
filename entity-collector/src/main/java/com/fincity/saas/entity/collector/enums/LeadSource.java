@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.collector.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 import org.jooq.EnumType;
 
@@ -9,11 +10,11 @@ public enum LeadSource implements EnumType {
     SOCIAL_MEDIA("SOCIAL_MEDIA", "Social Media");
 
     private final String literal;
-    private final String name;
+    private final String value;
 
     LeadSource(String literal, String name) {
         this.literal = literal;
-        this.name = name;
+        this.value = name;
     }
 
     public static LeadSource lookupLiteral(String literal) {
@@ -27,11 +28,11 @@ public enum LeadSource implements EnumType {
 
     @Override
     public String getName() {
-        return name;
+        return value;
     }
 
-    @Override
-    public String toString() {
-        return this.name;
+    @JsonValue
+    public String getValue() {   // Jackson serializes this as the JSON value
+        return value;
     }
 }

@@ -178,6 +178,12 @@ public class ProductWalkInFormService
             WalkInFormResponse walkInFormResponse,
             WalkInFormTicketRequest ticketRequest) {
 
+        if (!walkInFormResponse.isActive())
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.ENTITY_INACTIVE,
+                    this.getEntityName());
+
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL) && ticketRequest.getUserId() == null)
             return msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
