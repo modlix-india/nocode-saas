@@ -66,6 +66,8 @@ public abstract class BaseWalkInFormService<
     protected abstract D create(
             String name, ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType);
 
+    protected abstract Mono<D> attachEntity(ProcessorAccess access, ULong productId, D entity);
+
     protected Mono<D> createOrUpdate(
             ProcessorAccess access,
             String name,
@@ -116,7 +118,9 @@ public abstract class BaseWalkInFormService<
                                                 .getValue()
                                                 .getFirst()
                                                 .getId(),
-                                walkInFormRequest.getAssignmentType()))
+                                walkInFormRequest.getAssignmentType()),
+                        (access, product, stageStatusEntity, created) ->
+                                this.attachEntity(access, product.getT1(), created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".create"));
     }
 
