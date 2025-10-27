@@ -134,7 +134,8 @@ public abstract class BaseWalkInFormService<
                         .setProductId(walkInForm.getProductId())
                         .setStageId(walkInForm.getStageId())
                         .setStatusId(walkInForm.getStatusId())
-                        .setAssignmentType(walkInForm.getAssignmentType()))
+                        .setAssignmentType(walkInForm.getAssignmentType())
+                        .setActive(walkInForm.isActive()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInFormResponse"));
     }

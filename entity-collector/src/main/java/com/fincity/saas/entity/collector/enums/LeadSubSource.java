@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.collector.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 import org.jooq.EnumType;
 
@@ -10,11 +11,11 @@ public enum LeadSubSource implements EnumType {
     GOOGLE( "GOOGLE", "Google");
 
     private final String literal;
-    private final String name;
+    private final String value;
 
     LeadSubSource(String literal, String name) {
         this.literal = literal;
-        this.name = name;
+        this.value = name;
     }
 
     public static LeadSubSource lookupLiteral(String literal) {
@@ -28,11 +29,11 @@ public enum LeadSubSource implements EnumType {
 
     @Override
     public String getName() {
-        return name;
+        return value;
     }
 
-    @Override
-    public String toString() {
-        return this.name;
+    @JsonValue
+    public String getValue() {   // Jackson serializes this as the JSON value
+        return value;
     }
 }

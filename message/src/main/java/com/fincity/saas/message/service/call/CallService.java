@@ -1,5 +1,9 @@
 package com.fincity.saas.message.service.call;
 
+import java.util.EnumMap;
+
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dao.call.CallDAO;
@@ -10,9 +14,8 @@ import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.message.service.base.BaseUpdatableService;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
+
 import jakarta.annotation.PostConstruct;
-import java.util.EnumMap;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -52,8 +55,7 @@ public class CallService extends BaseUpdatableService<MessageCallsRecord, Call, 
                         access -> this.connectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), callRequest.getConnectionName()),
                         (access, connection) -> services.get(connection.getConnectionSubType())
-                                .makeCall(access, callRequest, connection),
-                        (access, connection, call) -> this.createInternal(access, call))
+                                .makeCall(access, callRequest, connection))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CallService.makeCall"));
     }
 }
