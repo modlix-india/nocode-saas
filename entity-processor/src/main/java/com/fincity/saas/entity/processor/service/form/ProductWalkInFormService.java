@@ -105,6 +105,11 @@ public class ProductWalkInFormService
                 .setAssignmentType(assignmentType);
     }
 
+    @Override
+    protected Mono<ProductWalkInForm> attachEntity(ProcessorAccess access, ULong productId, ProductWalkInForm entity) {
+        return this.productService.setProductWalkInForm(access, productId, entity);
+    }
+
     public Mono<List<IdAndValue<BigInteger, String>>> getWalkInFromUsers(String appCode, String clientCode) {
 
         if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
