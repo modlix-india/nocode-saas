@@ -60,7 +60,7 @@ public abstract class BaseContentService<
     public Mono<D> create(ProcessorAccess access, D entity) {
         return super.create(access, entity)
                 .flatMap(cContent ->
-                        this.activityService.acContentCreate(cContent).then(Mono.just(cContent)));
+                        this.activityService.acContentCreate(access, cContent).then(Mono.just(cContent)));
     }
 
     @Override
@@ -122,8 +122,9 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
                 oEntity -> super.update(access, entity),
-                (oEntity, uEntity) ->
-                        activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
+                (oEntity, uEntity) -> activityService
+                        .acContentUpdate(access, oEntity, uEntity)
+                        .then(Mono.just(uEntity)));
     }
 
     protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
@@ -197,7 +198,7 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
                     content.setOwnerId(ticket.getOwnerId());
-                    return this.createInternal(access, content);
+                    return this.create(access, content);
                 })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -212,7 +213,7 @@ public abstract class BaseContentService<
 
         return FlatMapUtil.flatMapMono(
                         () -> this.ownerService.readById(content.getOwnerId()),
-                        owner -> this.createInternal(access, content.setOwnerId(owner.getId())))
+                        owner -> this.create(access, content.setOwnerId(owner.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -230,7 +231,7 @@ public abstract class BaseContentService<
                         user -> {
                             content.setUserId(ULongUtil.valueOf(user.getId()));
                             content.setClientId(ULongUtil.valueOf(user.getClientId()));
-                            return this.createInternal(access, content);
+                            return this.create(access, content);
                         })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

@@ -11,6 +11,7 @@ import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.collector.dao.EntityIntegrationDAO;
 import com.fincity.saas.entity.collector.dto.EntityIntegration;
 import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsInSourceType;
+import com.fincity.saas.entity.collector.jooq.enums.EntityIntegrationsStatus;
 import com.fincity.saas.entity.collector.jooq.tables.records.EntityIntegrationsRecord;
 import java.net.URI;
 import org.jooq.types.ULong;
@@ -93,6 +94,7 @@ public class EntityIntegrationService
             existing.setSecondaryVerifyToken(entity.getSecondaryVerifyToken());
             existing.setInSource(entity.getInSource());
             existing.setInSourceType(entity.getInSourceType());
+            existing.setStatus(entity.getStatus());
             return existing;
         });
     }
@@ -100,6 +102,20 @@ public class EntityIntegrationService
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
+    }
+
+    @Override
+    public Mono<Integer> delete(ULong id) {
+
+        return this.read(id)
+                .map(e -> {
+                    e.setStatus(EntityIntegrationsStatus.DELETED);
+                    return e;
+                })
+                .flatMap(super::update)
+                .flatMap(e -> this.cacheService
+                        .evict(CACHE_NAME_ENTITY_INTEGRATIONS, getCacheKeys(e.getInSource(), e.getInSourceType()))
+                        .map(x -> 1));
     }
 
     private Mono<Boolean> sendVerificationRequest(

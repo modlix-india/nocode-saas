@@ -90,10 +90,11 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                         vConn -> this.makeExotelCall(access, exotelCallRequest, connection),
                         (vConn, eCreated) ->
                                 this.toCall(eCreated).map(call -> call.setConnectionName(connection.getName())),
-                        (vConn, eCreated, cCreated) -> super.callEventService
+                        (vConn, eCreated, call) -> super.callService.createInternal(access, call),
+                        (vConn, eCreated, call, cCall) -> super.callEventService
                                 .sendMakeCallEvent(
                                         access.getAppCode(), access.getClientCode(), access.getUserId(), eCreated)
-                                .thenReturn(cCreated))
+                                .thenReturn(cCall))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.makeCall"));
     }
 

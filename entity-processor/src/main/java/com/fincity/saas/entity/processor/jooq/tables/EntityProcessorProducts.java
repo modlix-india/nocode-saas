@@ -127,6 +127,13 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.PRODUCT_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_WALK_IN_FORM_ID = createField(DSL.name("PRODUCT_WALK_IN_FORM_ID"), SQLDataType.BIGINTUNSIGNED, this, "Walk in form related to this product.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
      * File Details if product has a logo file
      */
@@ -287,7 +294,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     @Override
     public List<ForeignKey<EntityProcessorProductsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID);
+        return Arrays.asList(Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID, Keys.FK2_PRODUCTS_PWIF_ID);
     }
 
     private transient EntityProcessorProductTemplatesPath _entityProcessorProductTemplates;
@@ -301,6 +308,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorProductTemplates = new EntityProcessorProductTemplatesPath(this, Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID, null);
 
         return _entityProcessorProductTemplates;
+    }
+
+    private transient EntityProcessorProductWalkInFormsPath _entityProcessorProductWalkInForms;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table.
+     */
+    public EntityProcessorProductWalkInFormsPath entityProcessorProductWalkInForms() {
+        if (_entityProcessorProductWalkInForms == null)
+            _entityProcessorProductWalkInForms = new EntityProcessorProductWalkInFormsPath(this, Keys.FK2_PRODUCTS_PWIF_ID, null);
+
+        return _entityProcessorProductWalkInForms;
     }
 
     private transient EntityProcessorCampaignsPath _entityProcessorCampaigns;
@@ -340,20 +361,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
             _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, null, Keys.FK1_PRODUCT_RULES_PRODUCT_ID.getInverseKey());
 
         return _entityProcessorProductStageRules;
-    }
-
-    private transient EntityProcessorProductWalkInFormsPath _entityProcessorProductWalkInForms;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
-     * table
-     */
-    public EntityProcessorProductWalkInFormsPath entityProcessorProductWalkInForms() {
-        if (_entityProcessorProductWalkInForms == null)
-            _entityProcessorProductWalkInForms = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK1_PRODUCT_WALK_IN_FORMS_PRODUCT_ID.getInverseKey());
-
-        return _entityProcessorProductWalkInForms;
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;

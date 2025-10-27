@@ -64,7 +64,9 @@ public class ConditionEvaluator {
 
         ObjectValueSetterExtractor extractor = new ObjectValueSetterExtractor(obj, prefix);
 
-        return extractor.getValue(field);
+		JsonElement value = extractor.getValue(field);
+
+        return value != null ? value : JsonNull.INSTANCE;
     }
 
     private Boolean evaluateFilter(FilterCondition fc, JsonElement json) {

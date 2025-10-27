@@ -18,7 +18,7 @@
     <description>A generic server to manage RDBMS Entities</description>
     <properties>
         <!-- database -->
-        <database.mysql.jdbc.password>Kiran@123</database.mysql.jdbc.password>
+        <database.mysql.jdbc.password>Vishwas123#</database.mysql.jdbc.password>
         <database.mysql.jdbc.url>jdbc:mysql://localhost:3306/${database.schema.name}</database.mysql.jdbc.url>
         <database.mysql.jdbc.user>root</database.mysql.jdbc.user>
         <database.schema.name>entity_processor</database.schema.name>
@@ -211,14 +211,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
@@ -234,8 +226,15 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
         </plugins>
-
     </build>
     <profiles>
         <profile>

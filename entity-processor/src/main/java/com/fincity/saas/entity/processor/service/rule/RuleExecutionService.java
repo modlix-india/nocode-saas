@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
@@ -89,9 +89,8 @@ public class RuleExecutionService {
         final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
         return this.findMatchedRules(rules, prefix, data)
-                .flatMap(matchedRules -> matchedRules.isEmpty()
-                        ? handleDefaultRule(rules, finalUserId)
-                        : handleMatchedRule(matchedRules.getFirst(), finalUserId))
+                .flatMap(matchedRules -> this.handleMatchedRule(matchedRules, finalUserId))
+                .switchIfEmpty(this.handleDefaultRule(rules, finalUserId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
@@ -196,43 +195,41 @@ public class RuleExecutionService {
         return Mono.just(userIds.get(selectedIndex % userIds.size())).map(userId -> this.addAssignedUser(rule, userId));
     }
 
-    private <T extends Rule<T>> Mono<Boolean> evaluateRule(T rule, String tokenPrefix, JsonElement data) {
-        return FlatMapUtil.flatMapMonoWithNull(
-                () -> {
-                    if (rule == null) return Mono.empty();
-
-                    if (rule.isSimple())
-                        return simpleRuleService.getCondition(rule.getId(), rule.getEntitySeries(), Boolean.FALSE);
-
-                    if (rule.isComplex()) return complexRuleService.getCondition(rule.getId(), rule.getEntitySeries());
-
-                    return Mono.empty();
-                },
-                condition -> {
-                    if (condition == null) return Mono.just(Boolean.FALSE);
-
-                    ConditionEvaluator con =
-                            conditionEvaluatorCache.computeIfAbsent(tokenPrefix, ConditionEvaluator::new);
-
-                    return con.evaluate(condition, data);
-                });
-    }
-
     @SuppressWarnings("unchecked")
     private <T extends Rule<T>> T addAssignedUser(T rule, ULong assignedUserId) {
         return (T) rule.setLastAssignedUserId(assignedUserId);
     }
 
-    private <T extends Rule<T>> Mono<List<T>> findMatchedRules(Map<Integer, T> rules, String prefix, JsonElement data) {
-        return Flux.fromIterable(rules.keySet())
-                .filter(order -> order != null && order > 0)
-                .sort((o1, o2) -> Integer.compare(o2, o1))
-                .map(rules::get)
-                .flatMap(rule -> this.evaluateRule(rule, prefix, data)
-                        .filter(matches -> matches)
-                        .map(matches -> rule))
-                .take(1)
-                .collectList();
+    private <T extends Rule<T>> Mono<T> findMatchedRules(Map<Integer, T> rules, String prefix, JsonElement data) {
+        if (rules == null || rules.isEmpty()) return Mono.empty();
+
+        List<T> sortedRules = rules.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getKey() > 0)
+                .sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey()))
+                .map(Map.Entry::getValue)
+                .toList();
+
+        return Flux.fromIterable(sortedRules)
+                .concatMap(rule -> this.getConditionForRule(rule).flatMap(condition -> {
+                    if (condition == null) return Mono.empty();
+
+                    ConditionEvaluator con = conditionEvaluatorCache.computeIfAbsent(prefix, ConditionEvaluator::new);
+
+                    return con.evaluate(condition, data)
+                            .filter(Boolean::booleanValue)
+                            .mapNotNull(match -> rule);
+                }))
+                .next();
+    }
+
+    private <T extends Rule<T>> Mono<AbstractCondition> getConditionForRule(T rule) {
+        if (rule == null) return Mono.empty();
+
+        if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId(), rule.getEntitySeries(), Boolean.FALSE);
+
+        if (rule.isComplex()) return complexRuleService.getCondition(rule.getId(), rule.getEntitySeries());
+
+        return Mono.empty();
     }
 
     private <T extends Rule<T>> Mono<T> handleDefaultRule(Map<Integer, T> rules, ULong finalUserId) {

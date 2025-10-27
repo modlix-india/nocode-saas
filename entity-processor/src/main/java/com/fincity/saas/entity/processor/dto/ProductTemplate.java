@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -22,14 +23,18 @@ public class ProductTemplate extends BaseUpdatableDto<ProductTemplate> {
     private static final long serialVersionUID = 2361640922389483322L;
 
     private ProductTemplateType productTemplateType;
+    private ULong productTemplateWalkInFormId;
 
     public ProductTemplate() {
         super();
+        this.relationsMap.put(
+                Fields.productTemplateWalkInFormId, EntitySeries.PRODUCT_TEMPLATE_WALK_IN_FORMS.getTable());
     }
 
     public ProductTemplate(ProductTemplate productTemplate) {
         super(productTemplate);
         this.productTemplateType = productTemplate.productTemplateType;
+        this.productTemplateWalkInFormId = productTemplate.productTemplateWalkInFormId;
     }
 
     public static ProductTemplate of(ProductTemplateRequest productTemplateRequest) {
