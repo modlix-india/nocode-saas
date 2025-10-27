@@ -6,6 +6,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -75,6 +76,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .flatMap(existing -> {
                     existing.setForPartner(entity.getForPartner());
                     existing.setProductTemplateId(entity.getProductTemplateId());
+                    existing.setProductWalkInFormId(entity.getProductWalkInFormId());
                     existing.setLogoFileDetail(entity.getLogoFileDetail());
                     existing.setBannerFileDetail(entity.getBannerFileDetail());
 
@@ -109,6 +111,15 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     return super.updateInternal(access, product).map(updated -> productTemplate);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
+    }
+
+    public Mono<ProductWalkInForm> setProductWalkInForm(
+            ProcessorAccess access, ULong productId, ProductWalkInForm productWalkInForm) {
+        return FlatMapUtil.flatMapMono(() -> super.readById(access, productId), product -> {
+                    product.setProductWalkInFormId(productWalkInForm.getId());
+                    return super.updateInternal(access, product).map(updated -> productWalkInForm);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductWalkInForm"));
     }
 
     public Mono<Long> updateForPartner(ProductPartnerUpdateRequest request) {

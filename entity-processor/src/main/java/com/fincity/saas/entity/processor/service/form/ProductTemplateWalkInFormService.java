@@ -58,4 +58,10 @@ public class ProductTemplateWalkInFormService
                 .setStatusId(statusId)
                 .setAssignmentType(assignmentType);
     }
+
+    @Override
+    protected Mono<ProductTemplateWalkInForm> attachEntity(
+            ProcessorAccess access, ULong productId, ProductTemplateWalkInForm entity) {
+        return this.productTemplateService.setProductTemplateWalkInForm(access, productId, entity);
+    }
 }
