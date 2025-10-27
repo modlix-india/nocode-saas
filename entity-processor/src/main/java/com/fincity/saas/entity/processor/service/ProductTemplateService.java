@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.ProductTemplateDAO;
 import com.fincity.saas.entity.processor.dto.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
@@ -13,6 +14,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -47,6 +49,16 @@ public class ProductTemplateService
     @Override
     protected Mono<ProductTemplate> checkEntity(ProductTemplate entity, ProcessorAccess access) {
         return super.checkExistsByName(access, entity);
+    }
+
+    @Override
+    protected Mono<ProductTemplate> updatableEntity(ProductTemplate entity) {
+        return super.updatableEntity(entity)
+                .flatMap(existing -> {
+                    existing.setProductTemplateWalkInFormId(entity.getProductTemplateWalkInFormId());
+                    return Mono.just(existing);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updatableEntity"));
     }
 
     @Override
@@ -87,5 +99,14 @@ public class ProductTemplateService
     private Mono<ProductTemplate> updateDependentServices(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
         return productService.setProductTemplate(access, productId, productTemplate);
+    }
+
+    public Mono<ProductTemplateWalkInForm> setProductTemplateWalkInForm(
+            ProcessorAccess access, ULong productTemplateId, ProductTemplateWalkInForm productTemplateWalkInForm) {
+        return FlatMapUtil.flatMapMono(() -> super.readById(access, productTemplateId), productTemplate -> {
+                    productTemplate.setProductTemplateWalkInFormId(productTemplateWalkInForm.getId());
+                    return super.updateInternal(access, productTemplate).map(updated -> productTemplateWalkInForm);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplateWalkInForm"));
     }
 }

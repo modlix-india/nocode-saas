@@ -24,18 +24,21 @@ public class Product extends BaseProcessorDto<Product> {
 
     private ULong productTemplateId;
     private Boolean forPartner = Boolean.FALSE;
+    private ULong productWalkInFormId;
     private FileDetail logoFileDetail;
     private FileDetail bannerFileDetail;
 
     public Product() {
         super();
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
+        this.relationsMap.put(Fields.productWalkInFormId, EntitySeries.PRODUCT_WALK_IN_FORMS.getTable());
     }
 
     public Product(Product product) {
         super(product);
         this.productTemplateId = product.productTemplateId;
         this.forPartner = product.forPartner;
+        this.productWalkInFormId = product.productWalkInFormId;
         this.logoFileDetail = product.logoFileDetail;
         this.bannerFileDetail = product.bannerFileDetail;
     }
