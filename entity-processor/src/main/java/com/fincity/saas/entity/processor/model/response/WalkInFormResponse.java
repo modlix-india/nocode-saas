@@ -27,4 +27,6 @@ public class WalkInFormResponse implements Serializable {
     private ULong statusId;
 
     private AssignmentType assignmentType;
+
+    private boolean isActive;
 }
