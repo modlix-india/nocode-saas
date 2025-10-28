@@ -40,7 +40,6 @@ import com.fincity.security.jooq.tables.SecurityPayment;
 import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityPlan;
-import com.fincity.security.jooq.tables.SecurityPlanApp;
 import com.fincity.security.jooq.tables.SecurityPlanCycle;
 import com.fincity.security.jooq.tables.SecurityPlanLimit;
 import com.fincity.security.jooq.tables.SecurityProfile;
@@ -247,11 +246,6 @@ public class Tables {
      * The table <code>security.security_plan</code>.
      */
     public static final SecurityPlan SECURITY_PLAN = SecurityPlan.SECURITY_PLAN;
-
-    /**
-     * The table <code>security.security_plan_app</code>.
-     */
-    public static final SecurityPlanApp SECURITY_PLAN_APP = SecurityPlanApp.SECURITY_PLAN_APP;
 
     /**
      * The table <code>security.security_plan_cycle</code>.

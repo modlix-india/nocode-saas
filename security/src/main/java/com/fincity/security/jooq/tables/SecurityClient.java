@@ -180,6 +180,12 @@ public class SecurityClient extends TableImpl<SecurityClientRecord> {
      */
     public final TableField<SecurityClientRecord, String> INDUSTRY = createField(DSL.name("INDUSTRY"), SQLDataType.VARCHAR(128), this, "client business industry");
 
+    /**
+     * The column <code>security.security_client.BILLING_TIMEZONE</code>. IANA
+     * timezone for billing
+     */
+    public final TableField<SecurityClientRecord, String> BILLING_TIMEZONE = createField(DSL.name("BILLING_TIMEZONE"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.inline("Asia/Calcutta", SQLDataType.VARCHAR)), this, "IANA timezone for billing");
+
     private SecurityClient(Name alias, Table<SecurityClientRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

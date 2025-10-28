@@ -273,6 +273,23 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         return (String) get(14);
     }
 
+    /**
+     * Setter for <code>security.security_client.BILLING_TIMEZONE</code>. IANA
+     * timezone for billing
+     */
+    public SecurityClientRecord setBillingTimezone(String value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client.BILLING_TIMEZONE</code>. IANA
+     * timezone for billing
+     */
+    public String getBillingTimezone() {
+        return (String) get(15);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -296,7 +313,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
     /**
      * Create a detached, initialised SecurityClientRecord
      */
-    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry) {
+    public SecurityClientRecord(ULong id, String code, String name, String typeCode, SecurityClientLevelType levelType, UInteger tokenValidityMinutes, String localeCode, SecurityClientStatusCode statusCode, String businessType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String businessSize, String industry, String billingTimezone) {
         super(SecurityClient.SECURITY_CLIENT);
 
         setId(id);
@@ -314,6 +331,7 @@ public class SecurityClientRecord extends UpdatableRecordImpl<SecurityClientReco
         setUpdatedAt(updatedAt);
         setBusinessSize(businessSize);
         setIndustry(industry);
+        setBillingTimezone(billingTimezone);
         resetTouchedOnNotNull();
     }
 }
