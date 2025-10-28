@@ -34,8 +34,10 @@ public class Plan extends AbstractUpdatableDTO<ULong, ULong> {
     private int orderNumber;
     private boolean defaultPlan;
     private ULong forClientId;
+    private boolean prepaid;
+    private ULong appId;
 
-    private List<App> apps;
+    private App app;
     private List<PlanCycle> cycles;
     private List<PlanLimit> limits;
 }
