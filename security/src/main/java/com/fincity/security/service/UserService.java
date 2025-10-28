@@ -33,6 +33,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -48,6 +49,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
@@ -475,20 +477,24 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<User>> readByIds(List<ULong> userIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readAllFilter(new FilterCondition()
-                        .setField("id")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(userIds))
+                () -> this.readAllFilter(ComplexCondition.and(
+                                new FilterCondition()
+                                        .setField("id")
+                                        .setOperator(FilterConditionOperator.IN)
+                                        .setMultiValue(userIds),
+                                ConditionUtil.parameterMapToMap(queryParams)))
                         .collectList(),
                 users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
     public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readAllFilter(new FilterCondition()
-                        .setField("clientId")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(clientIds))
+                () -> this.readAllFilter(ComplexCondition.and(
+                                new FilterCondition()
+                                        .setField("clientId")
+                                        .setOperator(FilterConditionOperator.IN)
+                                        .setMultiValue(clientIds),
+                                ConditionUtil.parameterMapToMap(queryParams)))
                         .collectList(),
                 users -> this.fillDetails(users, queryParams));
     }

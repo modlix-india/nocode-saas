@@ -18,6 +18,7 @@ import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
+import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
@@ -33,8 +34,9 @@ public abstract class FlowSchemaService<
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
     private static final String SCHEMA_CACHE = "schema";
-    private static final String FLOW_SCHEMA_NAMESPACE = Namespaces.SYSTEM + ".FlowSchema";
-    private static final String FLOW_FIELD_NAMESPACE = FLOW_SCHEMA_NAMESPACE + ".Field";
+    private static final String FLOW_SCHEMA_NAMESPACE =
+            Namespaces.SYSTEM + "." + AbstractFlowUpdatableDTO.FLOW_NAMESPACE;
+    private static final String FLOW_FIELD_NAMESPACE = FLOW_SCHEMA_NAMESPACE + "." + "Field";
     private static final UnaryOperator<String> schemaNameConverter = Case.PASCAL.getConverter();
 
     protected CacheService cacheService;
@@ -127,11 +129,9 @@ public abstract class FlowSchemaService<
                 this.toFieldMap(entity.getDbSchema(), entity.getDbTableName(), entity.getFieldSchema()));
     }
 
-    private Map<String, Object> toFieldMap(
-            String dbSchema, String dbTableName, Map<String, Object> fieldSchemaMap) {
+    private Map<String, Object> toFieldMap(String dbSchema, String dbTableName, Map<String, Object> fieldSchemaMap) {
 
-		Schema schema = this.toSchema(fieldSchemaMap)
-				.setNamespace(this.getNamespace(dbSchema, dbTableName));
+        Schema schema = this.toSchema(fieldSchemaMap).setNamespace(this.getNamespace(dbSchema, dbTableName));
 
         return this.schemaToMap(schema);
     }

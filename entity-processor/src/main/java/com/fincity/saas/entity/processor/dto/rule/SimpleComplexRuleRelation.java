@@ -1,8 +1,10 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -38,5 +40,23 @@ public class SimpleComplexRuleRelation extends BaseUpdatableDto<SimpleComplexRul
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.SIMPLE_COMPLEX_CONDITION_RELATION;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(
+                Fields.complexConditionId,
+                Schema.ofLong(Fields.complexConditionId).setMinimum(1));
+        props.put(
+                Fields.simpleConditionId,
+                Schema.ofLong(Fields.simpleConditionId).setMinimum(1));
+        props.put(Fields.order, Schema.ofInteger(Fields.order).setMinimum(0));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

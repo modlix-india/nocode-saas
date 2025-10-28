@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
@@ -14,7 +15,6 @@ import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.google.gson.JsonPrimitive;
-
 import java.io.Serial;
 import java.util.Collection;
 import java.util.HashMap;
@@ -37,9 +37,11 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong>
-        implements IClassConvertor, IEntitySeries, IRelationMap {
+        implements IEntitySeries, IRelationMap {
 
     public static final int CODE_LENGTH = 22;
+
+    public static final String ENTITY_PROCESSOR_NAMESPACE = Namespaces.SYSTEM + "Entity.Processor";
 
     @Serial
     private static final long serialVersionUID = 1844345864104376760L;
@@ -150,7 +152,7 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
         props.put(
                 Fields.code,
                 Schema.ofString(Fields.code).setMaxLength(CODE_LENGTH).setMinLength(CODE_LENGTH));
-        props.put(Fields.name, Schema.ofString(Fields.name).setMaxLength(512).setMinLength(0));
+        props.put(Fields.name, Schema.ofString(Fields.name).setMaxLength(512));
         props.put(Fields.description, Schema.ofString(Fields.description));
         props.put(Fields.isActive, Schema.ofBoolean(Fields.isActive).setDefaultValue(new JsonPrimitive(true)));
 

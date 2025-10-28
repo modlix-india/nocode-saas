@@ -1,8 +1,10 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -45,5 +47,19 @@ public class ProductTemplateRule extends Rule<ProductTemplateRule> {
     @Override
     public ProductTemplateRule setEntityId(ULong entityId) {
         return this.setProductTemplateId(entityId);
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(
+                Fields.productTemplateId,
+                Schema.ofLong(Fields.productTemplateId).setMinimum(1));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

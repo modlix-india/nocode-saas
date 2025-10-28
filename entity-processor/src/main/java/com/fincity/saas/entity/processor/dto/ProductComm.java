@@ -1,11 +1,18 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -83,5 +90,37 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_COMM;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(
+                Fields.connectionName,
+                Schema.ofString(Fields.connectionName).setMinLength(1).setMaxLength(255));
+        props.put(
+                Fields.connectionType,
+                Schema.ofString(Fields.connectionType).setEnums(EnumSchemaUtil.getSchemaEnums(ConnectionType.class)));
+        props.put(
+                Fields.connectionSubType,
+                Schema.ofString(Fields.connectionSubType)
+                        .setEnums(EnumSchemaUtil.getSchemaEnums(ConnectionSubType.class)));
+        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
+        props.put(
+                Fields.dialCode,
+                Schema.ofInteger(Fields.dialCode)
+                        .setMinimum(1)
+                        .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
+        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
+        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
+        props.put(Fields.isDefault, Schema.ofBoolean(Fields.isDefault).setDefaultValue(new JsonPrimitive(false)));
+        props.put(Fields.source, Schema.ofString(Fields.source));
+        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

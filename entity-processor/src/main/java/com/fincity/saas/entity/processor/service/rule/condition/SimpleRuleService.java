@@ -19,8 +19,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class SimpleRuleService
-        extends BaseConditionRuleService<EntityProcessorSimpleRulesRecord, SimpleRule, SimpleRuleDAO>
+public class SimpleRuleService extends BaseRuleService<EntityProcessorSimpleRulesRecord, SimpleRule, SimpleRuleDAO>
         implements IConditionRuleService<FilterCondition, SimpleRule, SimpleRuleService> {
 
     private static final String SIMPLE_RULE = "simpleRule";

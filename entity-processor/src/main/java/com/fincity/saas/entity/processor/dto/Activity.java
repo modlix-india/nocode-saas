@@ -1,9 +1,11 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
@@ -71,5 +73,30 @@ public class Activity extends BaseDto<Activity> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.ACTIVITY;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(Fields.ticketId, Schema.ofLong(Fields.ticketId).setMinimum(1));
+        props.put(Fields.taskId, Schema.ofLong(Fields.taskId).setMinimum(1));
+        props.put(Fields.noteId, Schema.ofLong(Fields.noteId).setMinimum(1));
+        props.put(Fields.comment, Schema.ofString(Fields.comment));
+        props.put(Fields.activityDate, Schema.ofString(Fields.activityDate));
+        props.put(
+                Fields.activityAction,
+                Schema.ofString(Fields.activityAction).setEnums(EnumSchemaUtil.getSchemaEnums(ActivityAction.class)));
+        props.put(Fields.actorId, Schema.ofLong(Fields.actorId).setMinimum(1));
+        props.put(
+                Fields.objectEntitySeries,
+                Schema.ofString(Fields.objectEntitySeries).setEnums(EnumSchemaUtil.getSchemaEnums(EntitySeries.class)));
+        props.put(Fields.objectId, Schema.ofLong(Fields.objectId).setMinimum(1));
+        props.put(Fields.objectData, Schema.ofObject(Fields.objectData));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

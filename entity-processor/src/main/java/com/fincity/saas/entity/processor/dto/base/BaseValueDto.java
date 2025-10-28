@@ -1,9 +1,13 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -23,7 +27,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
 
     private Platform platform = Platform.PRE_QUALIFICATION;
     private ULong productTemplateId;
-    private Boolean isParent;
+    private Boolean isParent = Boolean.TRUE;
     private ULong parentLevel0;
     private ULong parentLevel1;
     private Integer order;
@@ -87,5 +91,27 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     public ULong setParentLevel_1(ULong parentLevel1) {
         this.parentLevel1 = parentLevel1;
         return parentLevel1;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(
+                Fields.platform,
+                Schema.ofString(Fields.platform).setEnums(EnumSchemaUtil.getSchemaEnums(Platform.class)));
+        props.put(
+                Fields.productTemplateId,
+                Schema.ofLong(Fields.productTemplateId).setMinimum(1));
+        props.put(Fields.isParent, Schema.ofBoolean(Fields.isParent).setDefaultValue(new JsonPrimitive(true)));
+        props.put(Fields.parentLevel0, Schema.ofLong(Fields.parentLevel0).setMinimum(1));
+        props.put(Fields.parentLevel1, Schema.ofLong(Fields.parentLevel1).setMinimum(1));
+        props.put(Fields.order, Schema.ofInteger(Fields.order).setMinimum(0));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

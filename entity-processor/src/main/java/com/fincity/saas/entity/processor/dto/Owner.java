@@ -1,12 +1,16 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -92,5 +96,25 @@ public class Owner extends BaseProcessorDto<Owner> {
 
         this.subSource = NameUtil.normalize(subSource);
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(
+                Fields.dialCode,
+                Schema.ofInteger(Fields.dialCode)
+                        .setMinimum(1)
+                        .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
+        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
+        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
+        props.put(Fields.source, Schema.ofString(Fields.source).setMinimum(0));
+        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

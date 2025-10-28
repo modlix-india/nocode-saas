@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -10,7 +12,9 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -39,7 +43,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String source;
     private String subSource;
     private ULong campaignId;
-    private Boolean dnc = Boolean.FALSE;
+    private boolean dnc;
 
     public Ticket() {
         super();
@@ -165,5 +169,32 @@ public class Ticket extends BaseProcessorDto<Ticket> {
 
         this.subSource = NameUtil.normalize(subSource);
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(Fields.ownerId, Schema.ofLong(Fields.ownerId).setMinimum(1));
+        props.put(Fields.assignedUserId, Schema.ofLong(Fields.assignedUserId).setMinimum(1));
+        props.put(
+                Fields.dialCode,
+                Schema.ofInteger(Fields.dialCode)
+                        .setMinimum(1)
+                        .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
+        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
+        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
+        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
+        props.put(Fields.stage, Schema.ofLong(Fields.stage).setMinimum(1));
+        props.put(Fields.status, Schema.ofLong(Fields.status).setMinimum(1));
+        props.put(Fields.source, Schema.ofString(Fields.source));
+        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
+        props.put(Fields.campaignId, Schema.ofLong(Fields.campaignId).setMinimum(1));
+        props.put(Fields.dnc, Schema.ofBoolean(Fields.dnc).setDefaultValue(new JsonPrimitive(Boolean.FALSE)));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

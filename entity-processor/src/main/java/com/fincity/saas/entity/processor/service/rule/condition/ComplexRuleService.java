@@ -20,8 +20,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class ComplexRuleService
-        extends BaseConditionRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
+public class ComplexRuleService extends BaseRuleService<EntityProcessorComplexRulesRecord, ComplexRule, ComplexRuleDAO>
         implements IConditionRuleService<ComplexCondition, ComplexRule, ComplexRuleService> {
 
     private static final String COMPLEX_RULE = "complexRule";

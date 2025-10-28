@@ -1,9 +1,11 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import java.io.Serial;
 import java.math.BigInteger;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -50,5 +52,19 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     @JsonIgnore
     public ULong getAccessUserOrCreatedBy() {
         return this.getAccessUser() != null ? this.getAccessUser() : this.getCreatedBy();
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
+        props.put(Fields.clientId, Schema.ofLong(Fields.clientId).setMinimum(1));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

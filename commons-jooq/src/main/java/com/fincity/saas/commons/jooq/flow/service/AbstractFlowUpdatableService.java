@@ -1,5 +1,6 @@
 package com.fincity.saas.commons.jooq.flow.service;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSchemaValidator;
 import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -12,7 +13,10 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Mono;
@@ -26,13 +30,15 @@ public abstract class AbstractFlowUpdatableService<
 
     private Gson gson;
 
-    protected abstract <
+    protected <
                     R0 extends UpdatableRecord<R0>,
                     I0 extends Serializable,
                     D0 extends FlowSchema<I0, I0>,
                     O0 extends FlowSchemaDAO<R0, I0, D0>,
                     S0 extends FlowSchemaService<R0, I0, D0, O0>>
-            S0 getFlowSchemaService();
+            S0 getFlowSchemaService() {
+        return null;
+    }
 
     @Autowired
     public void setGson(Gson gson) {
@@ -41,9 +47,7 @@ public abstract class AbstractFlowUpdatableService<
 
     @Override
     public Mono<D> update(D entity) {
-        return this.validateSchema(entity)
-                .flatMap(vEntity -> super.update(entity))
-                .switchIfEmpty(super.update(entity));
+        return this.validateSchema(entity).flatMap(vEntity -> super.update(entity));
     }
 
     @Override
@@ -56,21 +60,14 @@ public abstract class AbstractFlowUpdatableService<
 
     @Override
     public Mono<D> create(D entity) {
-        return this.validateSchema(entity)
-                .flatMap(vEntity -> super.create(entity))
-                .switchIfEmpty(super.create(entity));
+        return this.validateSchema(entity).flatMap(vEntity -> super.create(entity));
     }
 
-    @SuppressWarnings("unchecked")
     private Mono<Map<String, Object>> validateSchema(D entity, Map<String, Object> entityMap) {
 
-        if (!entityMap.containsKey(AbstractFlowUpdatableDTO.Fields.fields)) return Mono.just(entityMap);
-
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService().getSchema(entity.getTableName(), entity.getId()),
-                        schema -> ReactiveSchemaValidator.validate(
-                                null, schema, null, this.toJsonElement((Map<String, Object>)
-                                        entityMap.get(AbstractFlowUpdatableDTO.Fields.fields))),
+                        () -> this.getEntitySchema(entity).map(schema -> this.filterEntitySchema(schema, entityMap)),
+                        schema -> ReactiveSchemaValidator.validate(null, schema, null, this.toJsonElement(entityMap)),
                         (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> {
                             entityMap.put(AbstractFlowUpdatableDTO.Fields.fields, vMap);
                             return entityMap;
@@ -78,15 +75,42 @@ public abstract class AbstractFlowUpdatableService<
                 .switchIfEmpty(Mono.just(entityMap));
     }
 
-    @SuppressWarnings("unchecked")
     private Mono<D> validateSchema(D entity) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService().getSchema(entity.getTableName(), entity.getId()),
+                        () -> this.getEntitySchema(entity),
                         schema -> ReactiveSchemaValidator.validate(
-                                null, schema, null, this.toJsonElement(entity.getFields())),
+                                null, schema, null, entity.toJsonElement()),
                         (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> (D) entity.setFields(vMap)))
                 .switchIfEmpty(Mono.just(entity));
+    }
+
+    private Mono<Schema> getEntitySchema(D entity) {
+
+        Schema schema = entity.getSchema();
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getFlowSchemaService()
+                                .getSchema(entity.getTableName(), entity.getFlowSchemaEntityId()),
+                        flowSchema -> {
+                            Map<String, Schema> props = schema.getProperties();
+                            props.put(AbstractFlowUpdatableDTO.Fields.fields, schema);
+                            return Mono.just(flowSchema.setProperties(props));
+                        })
+                .switchIfEmpty(Mono.just(schema));
+    }
+
+    private Schema filterEntitySchema(Schema schema, Map<String, Object> entityMap) {
+	    Map<String, Schema> props = schema.getProperties();
+	    if (props == null || props.isEmpty() || entityMap == null || entityMap.isEmpty())
+		    return schema;
+
+	    Map<String, Schema> filtered = props.entrySet().stream()
+			    .filter(entry -> !entityMap.containsKey(entry.getKey()))
+			    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+	    schema.setProperties(filtered);
+	    return schema;
     }
 
     private JsonElement toJsonElement(Map<String, Object> fields) {

@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.dto.form;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -46,5 +49,21 @@ public abstract class BaseWalkInFormDto<T extends BaseWalkInFormDto<T>> extends 
         this.statusId = statusId;
         this.assignmentType = assignmentType;
         return (T) this;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(Fields.stageId, Schema.ofLong(Fields.stageId).setMinimum(1));
+        props.put(Fields.statusId, Schema.ofLong(Fields.statusId).setMinimum(1));
+        props.put(
+                Fields.assignmentType,
+                Schema.ofString(Fields.assignmentType).setEnums(EnumSchemaUtil.getSchemaEnums(AssignmentType.class)));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

@@ -1,8 +1,11 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -64,5 +67,24 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
     public ULong getRuleId(EntitySeries entitySeries) {
         if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return this.getProductStageRuleId();
         return this.getProductTemplateRuleId();
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
+        props.put(
+                Fields.productTemplateRuleId,
+                Schema.ofLong(Fields.productTemplateRuleId).setMinimum(1));
+        props.put(
+                Fields.productStageRuleId,
+                Schema.ofLong(Fields.productStageRuleId).setMinimum(1));
+        props.put(Fields.negate, Schema.ofBoolean(Fields.negate).setDefaultValue(new JsonPrimitive(false)));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

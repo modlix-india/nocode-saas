@@ -26,6 +26,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.rule.ProductStageRuleService;
 import java.util.Objects;
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;

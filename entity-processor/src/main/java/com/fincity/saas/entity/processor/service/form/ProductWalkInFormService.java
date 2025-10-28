@@ -7,6 +7,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -27,11 +28,13 @@ import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -119,8 +122,9 @@ public class ProductWalkInFormService
                         client -> super.securityService
                                 .hasReadAccess(appCode, clientCode)
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (client, hasAccess) ->
-                                super.securityService.getClientUserInternal(List.of(client.getId()), null),
+                        (client, hasAccess) -> super.securityService.getClientUserInternal(
+                                List.of(client.getId()),
+                                new LinkedMultiValueMap<>(Map.of(BaseUpdatableDto.Fields.appCode, List.of(appCode)))),
                         (client, hasAccess, users) -> Mono.just(users.stream()
                                 .filter(user -> user.getFirstName() != null && user.getLastName() != null)
                                 .map(user -> IdAndValue.of(

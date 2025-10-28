@@ -8,6 +8,7 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -19,10 +20,12 @@ import com.fincity.saas.entity.processor.util.FilterUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.LinkedMultiValueMap;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseAnalyticsService<
@@ -72,7 +75,10 @@ public abstract class BaseAnalyticsService<
         if (createdBysIds.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientUserInternal(createdBysIds, null),
+                () -> securityService.getClientUserInternal(
+                        createdBysIds,
+                        new LinkedMultiValueMap<>(
+                                Map.of(BaseUpdatableDto.Fields.appCode, List.of(access.getAppCode())))),
                 userList -> Mono.just(filter.filterCreatedByIds(userList.stream()
                                 .map(User::getId)
                                 .map(ULongUtil::valueOf)

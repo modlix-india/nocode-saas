@@ -1,14 +1,18 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -32,10 +36,10 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
 
     private ULong stageId;
     private Integer order;
-    private boolean isDefault = false;
+    private boolean isDefault;
     private boolean breakAtFirstMatch = true;
     private boolean isSimple = true;
-    private boolean isComplex = false;
+    private boolean isComplex;
 
     private DistributionType userDistributionType;
     private UserDistribution userDistribution;
@@ -103,5 +107,33 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
         this.isSimple = isSimple;
         if (isSimple) this.isComplex = false;
         return (T) this;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
+        props.put(Fields.stageId, Schema.ofLong(Fields.stageId).setMinimum(1));
+        props.put(Fields.order, Schema.ofInteger(Fields.order).setMinimum(0));
+        props.put(Fields.isDefault, Schema.ofBoolean(Fields.isDefault).setDefaultValue(new JsonPrimitive(false)));
+        props.put(
+                Fields.breakAtFirstMatch,
+                Schema.ofBoolean(Fields.breakAtFirstMatch).setDefaultValue(new JsonPrimitive(true)));
+        props.put(Fields.isSimple, Schema.ofBoolean(Fields.isSimple).setDefaultValue(new JsonPrimitive(true)));
+        props.put(Fields.isComplex, Schema.ofBoolean(Fields.isComplex).setDefaultValue(new JsonPrimitive(false)));
+        props.put(
+                Fields.userDistributionType,
+                Schema.ofString(Fields.userDistributionType)
+                        .setEnums(EnumSchemaUtil.getSchemaEnums(DistributionType.class)));
+        props.put(Fields.userDistribution, UserDistribution.getSchema());
+        props.put(
+                Fields.lastAssignedUserId,
+                Schema.ofLong(Fields.lastAssignedUserId).setMinimum(1));
+
+        schema.setProperties(props);
+        return schema;
     }
 }

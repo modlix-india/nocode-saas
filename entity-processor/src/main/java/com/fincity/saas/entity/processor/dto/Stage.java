@@ -1,11 +1,14 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -85,5 +88,21 @@ public class Stage extends BaseValueDto<Stage> {
     public Stage setIsFailure(Boolean isFailure) {
         if (this.stageType.isHasSuccessFailure()) this.isFailure = isFailure;
         return this;
+    }
+
+    @Override
+    public Schema getSchema() {
+
+        Schema schema = super.getSchema();
+
+        Map<String, Schema> props = schema.getProperties();
+        props.put(
+                Fields.stageType,
+                Schema.ofString(Fields.stageType).setEnums(EnumSchemaUtil.getSchemaEnums(StageType.class)));
+        props.put(Fields.isSuccess, Schema.ofBoolean(Fields.isSuccess));
+        props.put(Fields.isFailure, Schema.ofBoolean(Fields.isFailure));
+
+        schema.setProperties(props);
+        return schema;
     }
 }
