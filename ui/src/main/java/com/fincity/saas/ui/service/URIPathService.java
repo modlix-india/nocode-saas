@@ -293,14 +293,16 @@ public class URIPathService extends AbstractOverridableDataService<URIPath, URIP
 	private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
 			KIRunFxDefinition kiRunFxDef, String appCode, String clientCode) {
 
+        String authHeader = request.getHeaders().getFirst("Authorization");
+
 		return FlatMapUtil.flatMapMono(
 
 				() -> switch (request.getMethod().toString()) {
-					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+					case "GET" -> iFeignCoreService.executeWith(authHeader, appCode, clientCode, kiRunFxDef.getNamespace(),
 							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
 					case "POST", "PUT", "PATCH", "DELETE" ->
-						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
+						iFeignCoreService.executeWith(authHeader, appCode, clientCode, kiRunFxDef.getNamespace(),
 								kiRunFxDef.getName(), jsonObject.toString());
 
 					default -> Mono.empty();
