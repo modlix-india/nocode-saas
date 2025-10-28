@@ -1,27 +1,16 @@
 package com.fincity.saas.commons.jooq.flow.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.saas.commons.util.Case;
+import com.fincity.saas.commons.util.IClassConvertor;
+import com.fincity.saas.commons.util.StringUtil;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
-
-import org.jooq.types.ULong;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
-import com.fincity.nocode.kirun.engine.json.schema.type.Type;
-import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
-import com.fincity.saas.commons.jooq.flow.jackson.FieldDeserializer;
-import com.fincity.saas.commons.jooq.flow.jackson.FieldSerializer;
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.util.Case;
-import com.fincity.saas.commons.util.IClassConvertor;
-import com.fincity.saas.commons.util.StringUtil;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -42,8 +31,6 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
     @Serial
     private static final long serialVersionUID = 295036657353428449L;
 
-    @JsonDeserialize(using = FieldDeserializer.class)
-    @JsonSerialize(using = FieldSerializer.class)
     private Map<String, Object> fields;
 
     public abstract String getTableName();

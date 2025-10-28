@@ -10,7 +10,11 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import org.jooq.types.UByte;
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
 import org.jooq.types.UNumber;
+import org.jooq.types.UShort;
 import org.springframework.http.HttpStatus;
 
 public class UNumberAdapter<R extends UNumber> extends TypeAdapter<R> implements Serializable {
@@ -36,7 +40,14 @@ public class UNumberAdapter<R extends UNumber> extends TypeAdapter<R> implements
             out.nullValue();
             return;
         }
-        out.value(value);
+
+        switch (value) {
+            case UByte uByte -> out.value(uByte.byteValue());
+            case UInteger uInteger -> out.value(uInteger.intValue());
+            case ULong uLong -> out.value(uLong.longValue());
+            case UShort uShort -> out.value(uShort.shortValue());
+            default -> out.value(value.toBigInteger());
+        }
     }
 
     @SuppressWarnings("unchecked")

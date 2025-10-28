@@ -29,13 +29,13 @@ public class ProcessorFlowSchemaDAO extends FlowSchemaDAO<EntityProcessorFlowSch
     }
 
     public Mono<ProcessorFlowSchema> getFlowSchema(
-            ProcessorAccess access, String dbSchema, String dbTableName, ULong dbId) {
+            ProcessorAccess access, String dbSchema, String dbTableName, ULong dbEntityPkId) {
         return super.getFlowSchema(
                 ComplexCondition.and(
                         FilterCondition.make(ProcessorFlowSchema.Fields.appCode, access.getAppCode()),
                         FilterCondition.make(ProcessorFlowSchema.Fields.clientCode, access.getEffectiveClientCode())),
                 dbSchema,
                 dbTableName,
-                dbId);
+                dbEntityPkId);
     }
 }

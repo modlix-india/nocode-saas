@@ -13,10 +13,8 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import java.io.Serializable;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Mono;
@@ -79,8 +77,7 @@ public abstract class AbstractFlowUpdatableService<
 
         return FlatMapUtil.flatMapMono(
                         () -> this.getEntitySchema(entity),
-                        schema -> ReactiveSchemaValidator.validate(
-                                null, schema, null, entity.toJsonElement()),
+                        schema -> ReactiveSchemaValidator.validate(null, schema, null, entity.toJsonElement()),
                         (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> (D) entity.setFields(vMap)))
                 .switchIfEmpty(Mono.just(entity));
     }
@@ -90,8 +87,10 @@ public abstract class AbstractFlowUpdatableService<
         Schema schema = entity.getSchema();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService()
-                                .getSchema(entity.getTableName(), entity.getFlowSchemaEntityId()),
+                        () -> this.getFlowSchemaService() != null
+                                ? this.getFlowSchemaService()
+                                        .getSchema(entity.getTableName(), entity.getFlowSchemaEntityId())
+                                : Mono.empty(),
                         flowSchema -> {
                             Map<String, Schema> props = schema.getProperties();
                             props.put(AbstractFlowUpdatableDTO.Fields.fields, schema);
@@ -101,16 +100,15 @@ public abstract class AbstractFlowUpdatableService<
     }
 
     private Schema filterEntitySchema(Schema schema, Map<String, Object> entityMap) {
-	    Map<String, Schema> props = schema.getProperties();
-	    if (props == null || props.isEmpty() || entityMap == null || entityMap.isEmpty())
-		    return schema;
+        Map<String, Schema> props = schema.getProperties();
+        if (props == null || props.isEmpty() || entityMap == null || entityMap.isEmpty()) return schema;
 
-	    Map<String, Schema> filtered = props.entrySet().stream()
-			    .filter(entry -> !entityMap.containsKey(entry.getKey()))
-			    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<String, Schema> filtered = props.entrySet().stream()
+                .filter(entry -> !entityMap.containsKey(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-	    schema.setProperties(filtered);
-	    return schema;
+        schema.setProperties(filtered);
+        return schema;
     }
 
     private JsonElement toJsonElement(Map<String, Object> fields) {

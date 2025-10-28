@@ -45,14 +45,14 @@ public class ProcessorFlowSchemaService
     }
 
     @Override
-    protected Mono<Schema> getIdSchema(String dbTableName, ULong dbId) {
-        return this.hasAccess().flatMap(access -> this.getSchema(access, dbTableName, dbId));
+    protected Mono<Schema> getEntityIdSchema(String dbTableName, ULong dbEntityId) {
+        return this.hasAccess().flatMap(access -> this.getSchema(access, dbTableName, dbEntityId));
     }
 
     @Override
     protected Mono<Boolean> evictCache(ProcessorFlowSchema entity) {
 
-        if (entity.getDbId() != null)
+        if (entity.getDbEntityPkId() != null)
             return Mono.zip(
                     super.cacheService.evict(
                             this.getCacheName(),
@@ -69,7 +69,7 @@ public class ProcessorFlowSchemaService
                                     entity.getAppCode(),
                                     entity.getAppCode(),
                                     entity.getDbSchema(),
-                                    entity.getDbId().toString())),
+                                    entity.getDbEntityPkId())),
                     (schemaEvicted, schemaIdEvicted) -> schemaEvicted && schemaIdEvicted);
 
         return super.cacheService.evict(
@@ -96,8 +96,9 @@ public class ProcessorFlowSchemaService
         return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName);
     }
 
-    private Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbTableName, ULong dbId) {
-        return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName, dbId);
+    private Mono<ProcessorFlowSchema> getFlowSchema(
+            ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
+        return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName, dbEntityPkId);
     }
 
     private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName) {
@@ -112,16 +113,17 @@ public class ProcessorFlowSchemaService
                         dbTableName));
     }
 
-    private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName, ULong dbId) {
+    private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
         return super.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getFlowSchema(access, dbTableName, dbId).map(super::toSchema),
+                () -> this.getFlowSchema(access, dbTableName, dbEntityPkId)
+                        .map(super::toSchema),
                 super.getCacheKey(
                         super.getSchemaCache(),
                         access.getAppCode(),
                         access.getAppCode(),
                         this.getDbSchemaName(),
                         dbTableName,
-                        dbId));
+                        dbEntityPkId));
     }
 }

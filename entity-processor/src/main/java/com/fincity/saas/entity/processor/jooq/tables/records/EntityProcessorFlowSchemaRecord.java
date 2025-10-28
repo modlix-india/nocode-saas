@@ -79,7 +79,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
-     * Schema of DB for this flow Schema
+     * Schema of DB for this flow Schema.
      */
     public EntityProcessorFlowSchemaRecord setDbSchema(String value) {
         set(3, value);
@@ -89,7 +89,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
-     * Schema of DB for this flow Schema
+     * Schema of DB for this flow Schema.
      */
     public String getDbSchema() {
         return (String) get(3);
@@ -98,7 +98,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_flow_schema.DB_TABLE_NAME</code>.
-     * Name of the table in this this entity is present for flow Schema
+     * Name of the table in this this entity is present for flow Schema.
      */
     public EntityProcessorFlowSchemaRecord setDbTableName(String value) {
         set(4, value);
@@ -108,7 +108,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_flow_schema.DB_TABLE_NAME</code>.
-     * Name of the table in this this entity is present for flow Schema
+     * Name of the table in this this entity is present for flow Schema.
      */
     public String getDbTableName() {
         return (String) get(4);
@@ -116,20 +116,20 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_flow_schema.DB_ID</code>. ID for
-     * entity for which this flow schema is created
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_ID</code>.
+     * ID for Related entity of table for which this flow schema is created.
      */
-    public EntityProcessorFlowSchemaRecord setDbId(ULong value) {
+    public EntityProcessorFlowSchemaRecord setDbEntityPkId(ULong value) {
         set(5, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_flow_schema.DB_ID</code>. ID for
-     * entity for which this flow schema is created
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_ID</code>.
+     * ID for Related entity of table for which this flow schema is created.
      */
-    public ULong getDbId() {
+    public ULong getDbEntityPkId() {
         return (ULong) get(5);
     }
 
@@ -270,7 +270,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Create a detached, initialised EntityProcessorFlowSchemaRecord
      */
-    public EntityProcessorFlowSchemaRecord(ULong id, String appCode, String clientCode, String dbSchema, String dbTableName, ULong dbId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorFlowSchemaRecord(ULong id, String appCode, String clientCode, String dbSchema, String dbTableName, ULong dbEntityPkId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorFlowSchema.ENTITY_PROCESSOR_FLOW_SCHEMA);
 
         setId(id);
@@ -278,7 +278,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
         setClientCode(clientCode);
         setDbSchema(dbSchema);
         setDbTableName(dbTableName);
-        setDbId(dbId);
+        setDbEntityPkId(dbEntityPkId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

@@ -78,23 +78,23 @@ public class EntityProcessorFlowSchema extends TableImpl<EntityProcessorFlowSche
     /**
      * The column
      * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
-     * Schema of DB for this flow Schema
+     * Schema of DB for this flow Schema.
      */
-    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_SCHEMA = createField(DSL.name("DB_SCHEMA"), SQLDataType.CHAR(22).nullable(false).defaultValue(DSL.inline("entity_processor", SQLDataType.CHAR)), this, "Schema of DB for this flow Schema");
+    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_SCHEMA = createField(DSL.name("DB_SCHEMA"), SQLDataType.CHAR(22).nullable(false).defaultValue(DSL.inline("entity_processor", SQLDataType.CHAR)), this, "Schema of DB for this flow Schema.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_flow_schema.DB_TABLE_NAME</code>.
-     * Name of the table in this this entity is present for flow Schema
+     * Name of the table in this this entity is present for flow Schema.
      */
-    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_TABLE_NAME = createField(DSL.name("DB_TABLE_NAME"), SQLDataType.CHAR(128).nullable(false), this, "Name of the table in this this entity is present for flow Schema");
+    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_TABLE_NAME = createField(DSL.name("DB_TABLE_NAME"), SQLDataType.CHAR(128).nullable(false), this, "Name of the table in this this entity is present for flow Schema.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_flow_schema.DB_ID</code>. ID for
-     * entity for which this flow schema is created
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_ID</code>.
+     * ID for Related entity of table for which this flow schema is created.
      */
-    public final TableField<EntityProcessorFlowSchemaRecord, ULong> DB_ID = createField(DSL.name("DB_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID for entity for which this flow schema is created");
+    public final TableField<EntityProcessorFlowSchemaRecord, ULong> DB_ENTITY_PK_ID = createField(DSL.name("DB_ENTITY_PK_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID for Related entity of table for which this flow schema is created.");
 
     /**
      * The column
@@ -189,7 +189,7 @@ public class EntityProcessorFlowSchema extends TableImpl<EntityProcessorFlowSche
 
     @Override
     public List<UniqueKey<EntityProcessorFlowSchemaRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_FLOW_SCHEMA_UK1_FLOW_SCHEMA_AC_CC_SCHEMA_TABLE_NAME_ID);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_FLOW_SCHEMA_UK1_FLOW_SCHEMA_AC_CC_S_TN_EPK);
     }
 
     @Override

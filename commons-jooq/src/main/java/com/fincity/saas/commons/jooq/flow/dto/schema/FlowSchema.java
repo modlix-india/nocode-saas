@@ -1,18 +1,15 @@
 package com.fincity.saas.commons.jooq.flow.dto.schema;
 
+import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import java.io.Serializable;
 import java.util.Map;
-
-import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
-
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
+import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -26,7 +23,7 @@ public abstract class FlowSchema<I extends Serializable, U extends Serializable>
 
     private String dbSchema;
     private String dbTableName;
-    private ULong dbId;
+    private ULong dbEntityPkId;
     private Map<String, Object> fieldSchema;
 
     protected FlowSchema() {

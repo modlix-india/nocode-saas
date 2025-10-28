@@ -1,15 +1,5 @@
 package com.fincity.saas.commons.jooq.flow.service.schema;
 
-import java.io.Serializable;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-
-import org.jooq.UpdatableRecord;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -23,7 +13,14 @@ import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.Case;
-
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
+import org.jooq.UpdatableRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public abstract class FlowSchemaService<
@@ -61,15 +58,15 @@ public abstract class FlowSchemaService<
 
     protected abstract Mono<Schema> getSchema(String dbTableName);
 
-    protected abstract Mono<Schema> getIdSchema(String dbTableName, I dbId);
+    protected abstract Mono<Schema> getEntityIdSchema(String dbTableName, I dbEntityId);
 
-    public Mono<Schema> getSchema(String dbTableName, I dbId) {
+    public Mono<Schema> getSchema(String dbTableName, I dbEntityId) {
 
         if (dbTableName == null || dbTableName.isEmpty()) return Mono.empty();
 
-        if (dbId == null) return this.getSchema(dbTableName);
+        if (dbEntityId == null) return this.getSchema(dbTableName);
 
-        return this.getIdSchema(dbTableName, dbId).switchIfEmpty(this.getSchema(dbTableName));
+        return this.getEntityIdSchema(dbTableName, dbEntityId).switchIfEmpty(this.getSchema(dbTableName));
     }
 
     protected String getCacheKey(String... entityNames) {

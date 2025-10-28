@@ -272,7 +272,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Setter for
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object associated with this Activity. 
+     * Entity Series of the object associated with this Activity.
      */
     public EntityProcessorActivitiesRecord setObjectEntitySeries(EntitySeries value) {
         set(13, value);
@@ -282,7 +282,7 @@ public class EntityProcessorActivitiesRecord extends UpdatableRecordImpl<EntityP
     /**
      * Getter for
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object associated with this Activity. 
+     * Entity Series of the object associated with this Activity.
      */
     public EntitySeries getObjectEntitySeries() {
         return (EntitySeries) get(13);

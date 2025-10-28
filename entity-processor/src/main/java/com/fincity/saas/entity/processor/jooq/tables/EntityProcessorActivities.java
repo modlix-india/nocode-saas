@@ -163,9 +163,9 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
-     * Entity Series of the object associated with this Activity. 
+     * Entity Series of the object associated with this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<String, EntitySeries>(String.class, EntitySeries.class));
+    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)), this, "Entity Series of the object associated with this Activity.", new EnumConverter<String, EntitySeries>(String.class, EntitySeries.class));
 
     /**
      * The column

@@ -6,7 +6,6 @@ import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
