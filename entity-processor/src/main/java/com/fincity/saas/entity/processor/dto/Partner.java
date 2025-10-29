@@ -1,14 +1,13 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -57,21 +56,22 @@ public class Partner extends BaseUpdatableDto<Partner> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.clientId, Schema.ofLong(Fields.clientId).setMinimum(1));
-        props.put(Fields.managerId, Schema.ofLong(Fields.managerId).setMinimum(1));
+
+        props.put(Fields.clientId, DbSchema.ofNumberId(Fields.clientId));
+        props.put(Fields.managerId, DbSchema.ofNumberId(Fields.managerId));
         props.put(
                 Fields.partnerVerificationStatus,
-                Schema.ofString(Fields.partnerVerificationStatus)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(PartnerVerificationStatus.class))
-                        .setDefaultValue(new JsonPrimitive(PartnerVerificationStatus.INVITATION_SENT.name())));
-        props.put(Fields.dnc, Schema.ofBoolean(Fields.dnc).setDefaultValue(new JsonPrimitive(false)));
+                DbSchema.ofEnum(
+                        Fields.partnerVerificationStatus,
+                        PartnerVerificationStatus.class,
+                        PartnerVerificationStatus.INVITATION_SENT));
+        props.put(Fields.dnc, DbSchema.ofBooleanFalse(Fields.dnc));
 
         schema.setProperties(props);
-        return schema;
     }
 }

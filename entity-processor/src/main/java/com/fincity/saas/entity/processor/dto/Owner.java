@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -99,22 +99,21 @@ public class Owner extends BaseProcessorDto<Owner> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
+
         props.put(
                 Fields.dialCode,
-                Schema.ofInteger(Fields.dialCode)
-                        .setMinimum(1)
+                DbSchema.ofDialCode(Fields.dialCode)
                         .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
-        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
-        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
-        props.put(Fields.source, Schema.ofString(Fields.source).setMinimum(0));
-        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
+        props.put(Fields.phoneNumber, DbSchema.ofPhoneNumber(Fields.phoneNumber));
+        props.put(Fields.email, DbSchema.ofEmail(Fields.email));
+        props.put(Fields.source, DbSchema.ofChar(Ticket.Fields.source, 32));
+        props.put(Fields.subSource, DbSchema.ofCharNull(Ticket.Fields.subSource, 32));
 
         schema.setProperties(props);
-        return schema;
     }
 }

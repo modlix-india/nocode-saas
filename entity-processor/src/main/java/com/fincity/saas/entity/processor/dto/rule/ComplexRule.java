@@ -1,14 +1,13 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.rule.LogicalOperator;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;
@@ -75,25 +74,17 @@ public class ComplexRule extends BaseRule<ComplexRule> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(
-                Fields.parentConditionId,
-                Schema.ofLong(Fields.parentConditionId).setMinimum(1));
-        props.put(
-                Fields.logicalOperator,
-                Schema.ofString(Fields.logicalOperator).setEnums(EnumSchemaUtil.getSchemaEnums(LogicalOperator.class)));
-        props.put(
-                Fields.hasComplexChild,
-                Schema.ofBoolean(Fields.hasComplexChild).setDefaultValue(new JsonPrimitive(false)));
-        props.put(
-                Fields.hasSimpleChild,
-                Schema.ofBoolean(Fields.hasSimpleChild).setDefaultValue(new JsonPrimitive(false)));
+
+        props.put(Fields.parentConditionId, DbSchema.ofNumberId(Fields.parentConditionId));
+        props.put(Fields.logicalOperator, DbSchema.ofEnum(Fields.logicalOperator, LogicalOperator.class));
+        props.put(Fields.hasComplexChild, DbSchema.ofBooleanFalse(Fields.hasComplexChild));
+        props.put(Fields.hasSimpleChild, DbSchema.ofBooleanFalse(Fields.hasSimpleChild));
 
         schema.setProperties(props);
-        return schema;
     }
 }

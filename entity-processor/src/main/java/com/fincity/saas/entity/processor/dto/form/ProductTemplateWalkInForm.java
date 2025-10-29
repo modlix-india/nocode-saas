@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.form;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import java.util.Map;
@@ -46,16 +47,14 @@ public class ProductTemplateWalkInForm extends BaseWalkInFormDto<ProductTemplate
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(
-                Fields.productTemplateId,
-                Schema.ofLong(Fields.productTemplateId).setMinimum(1));
+
+        props.put(Fields.productTemplateId, DbSchema.ofNumberId(Fields.productTemplateId));
 
         schema.setProperties(props);
-        return schema;
     }
 }

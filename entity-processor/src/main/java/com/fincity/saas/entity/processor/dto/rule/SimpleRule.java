@@ -1,15 +1,14 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.rule.base.BaseRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.model.common.ValueContainer;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;
@@ -94,30 +93,24 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.hasParent, Schema.ofBoolean(Fields.hasParent).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.field, Schema.ofString(Fields.field).setMaxLength(255));
+
+        props.put(Fields.hasParent, DbSchema.ofBooleanFalse(Fields.hasParent));
+        props.put(Fields.field, DbSchema.ofCharNull(Fields.field, 255));
         props.put(
                 Fields.comparisonOperator,
-                Schema.ofString(Fields.comparisonOperator)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(ComparisonOperator.class))
-                        .setDefaultValue(new JsonPrimitive(ComparisonOperator.EQUALS.name())));
+                DbSchema.ofEnum(Fields.comparisonOperator, ComparisonOperator.class, ComparisonOperator.EQUALS));
         props.put(Fields.value, ValueContainer.getSchema());
-        props.put(Fields.isValueField, Schema.ofBoolean(Fields.isValueField).setDefaultValue(new JsonPrimitive(false)));
-        props.put(
-                Fields.isToValueField,
-                Schema.ofBoolean(Fields.isToValueField).setDefaultValue(new JsonPrimitive(false)));
+        props.put(Fields.isValueField, DbSchema.ofBooleanFalse(Fields.isValueField));
+        props.put(Fields.isToValueField, DbSchema.ofBooleanFalse(Fields.isToValueField));
         props.put(
                 Fields.matchOperator,
-                Schema.ofString(Fields.matchOperator)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(ComparisonOperator.class))
-                        .setDefaultValue(new JsonPrimitive(ComparisonOperator.EQUALS.name())));
+                DbSchema.ofEnum(Fields.matchOperator, ComparisonOperator.class, ComparisonOperator.EQUALS));
 
         schema.setProperties(props);
-        return schema;
     }
 }

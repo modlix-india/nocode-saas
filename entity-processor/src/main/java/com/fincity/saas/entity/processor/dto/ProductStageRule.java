@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.rule.Rule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
@@ -50,14 +51,14 @@ public class ProductStageRule extends Rule<ProductStageRule> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
+
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
 
         schema.setProperties(props);
-        return schema;
     }
 }

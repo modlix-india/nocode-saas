@@ -1,13 +1,11 @@
 package com.fincity.saas.entity.processor.dto.content;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -84,25 +82,23 @@ public class Task extends BaseContentDto<Task> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.taskTypeId, Schema.ofLong(Fields.taskTypeId).setMinimum(1));
-        props.put(Fields.dueDate, Schema.ofString(Fields.dueDate).setFormat(StringFormat.DATETIME));
-        props.put(
-                Fields.taskPriority,
-                Schema.ofString(Fields.taskPriority).setEnums(EnumSchemaUtil.getSchemaEnums(TaskPriority.class)));
-        props.put(Fields.isCompleted, Schema.ofBoolean(Fields.isCompleted).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.completedDate, Schema.ofString(Fields.completedDate).setFormat(StringFormat.DATETIME));
-        props.put(Fields.isCancelled, Schema.ofBoolean(Fields.isCancelled).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.cancelledDate, Schema.ofString(Fields.cancelledDate).setFormat(StringFormat.DATETIME));
-        props.put(Fields.isDelayed, Schema.ofBoolean(Fields.isDelayed).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.hasReminder, Schema.ofBoolean(Fields.hasReminder).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.nextReminder, Schema.ofString(Fields.nextReminder).setFormat(StringFormat.DATETIME));
+
+        props.put(Fields.taskTypeId, DbSchema.ofNumberId(Fields.taskTypeId));
+        props.put(Fields.dueDate, DbSchema.ofFutureEpochTime(Fields.dueDate));
+        props.put(Fields.taskPriority, DbSchema.ofEnum(Fields.taskPriority, TaskPriority.class));
+        props.put(Fields.isCompleted, DbSchema.ofBooleanFalse(Fields.isCompleted));
+        props.put(Fields.completedDate, DbSchema.ofFutureEpochTime(Fields.completedDate));
+        props.put(Fields.isCancelled, DbSchema.ofBooleanFalse(Fields.isCancelled));
+        props.put(Fields.cancelledDate, DbSchema.ofFutureEpochTime(Fields.cancelledDate));
+        props.put(Fields.isDelayed, DbSchema.ofBooleanFalse(Fields.isDelayed));
+        props.put(Fields.hasReminder, DbSchema.ofBooleanFalse(Fields.hasReminder));
+        props.put(Fields.nextReminder, DbSchema.ofFutureEpochTime(Fields.nextReminder));
 
         schema.setProperties(props);
-        return schema;
     }
 }

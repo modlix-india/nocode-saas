@@ -47,12 +47,12 @@ public class Note extends BaseContentDto<Note> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
+
         schema.setProperties(props);
-        return schema;
     }
 }

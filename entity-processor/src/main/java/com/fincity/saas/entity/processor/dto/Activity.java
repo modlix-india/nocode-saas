@@ -1,11 +1,11 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
@@ -76,27 +76,25 @@ public class Activity extends BaseDto<Activity> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.ticketId, Schema.ofLong(Fields.ticketId).setMinimum(1));
-        props.put(Fields.taskId, Schema.ofLong(Fields.taskId).setMinimum(1));
-        props.put(Fields.noteId, Schema.ofLong(Fields.noteId).setMinimum(1));
-        props.put(Fields.comment, Schema.ofString(Fields.comment));
-        props.put(Fields.activityDate, Schema.ofString(Fields.activityDate));
-        props.put(
-                Fields.activityAction,
-                Schema.ofString(Fields.activityAction).setEnums(EnumSchemaUtil.getSchemaEnums(ActivityAction.class)));
-        props.put(Fields.actorId, Schema.ofLong(Fields.actorId).setMinimum(1));
+
+        props.put(Fields.ticketId, DbSchema.ofNumberId(Fields.ticketId));
+        props.put(Fields.taskId, DbSchema.ofNumberId(Fields.taskId));
+        props.put(Fields.noteId, DbSchema.ofNumberId(Fields.noteId));
+        props.put(Fields.comment, DbSchema.ofChar(Fields.comment));
+        props.put(Fields.activityDate, DbSchema.ofPresentEpochTime(Fields.activityDate));
+        props.put(Fields.activityAction, DbSchema.ofEnum(Fields.activityAction, ActivityAction.class));
+        props.put(Fields.actorId, DbSchema.ofNumberId(Fields.actorId));
         props.put(
                 Fields.objectEntitySeries,
-                Schema.ofString(Fields.objectEntitySeries).setEnums(EnumSchemaUtil.getSchemaEnums(EntitySeries.class)));
-        props.put(Fields.objectId, Schema.ofLong(Fields.objectId).setMinimum(1));
-        props.put(Fields.objectData, Schema.ofObject(Fields.objectData));
+                DbSchema.ofEnum(Fields.objectEntitySeries, EntitySeries.class, EntitySeries.XXX));
+        props.put(Fields.objectId, DbSchema.ofNumberId(Fields.objectId));
+        props.put(Fields.objectData, DbSchema.ofJson(Fields.objectData));
 
         schema.setProperties(props);
-        return schema;
     }
 }

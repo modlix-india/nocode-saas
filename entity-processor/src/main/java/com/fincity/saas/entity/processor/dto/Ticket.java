@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -172,29 +172,28 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.ownerId, Schema.ofLong(Fields.ownerId).setMinimum(1));
-        props.put(Fields.assignedUserId, Schema.ofLong(Fields.assignedUserId).setMinimum(1));
+
+        props.put(Fields.ownerId, DbSchema.ofNumberId(Fields.ownerId));
+        props.put(Fields.assignedUserId, DbSchema.ofNumberId(Fields.assignedUserId));
         props.put(
                 Fields.dialCode,
-                Schema.ofInteger(Fields.dialCode)
-                        .setMinimum(1)
+                DbSchema.ofDialCode(Fields.dialCode)
                         .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
-        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
-        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
-        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
-        props.put(Fields.stage, Schema.ofLong(Fields.stage).setMinimum(1));
-        props.put(Fields.status, Schema.ofLong(Fields.status).setMinimum(1));
-        props.put(Fields.source, Schema.ofString(Fields.source));
-        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
-        props.put(Fields.campaignId, Schema.ofLong(Fields.campaignId).setMinimum(1));
-        props.put(Fields.dnc, Schema.ofBoolean(Fields.dnc).setDefaultValue(new JsonPrimitive(Boolean.FALSE)));
+        props.put(Fields.phoneNumber, DbSchema.ofPhoneNumber(Fields.phoneNumber));
+        props.put(Fields.email, DbSchema.ofEmail(Fields.email));
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
+        props.put(Fields.stage, DbSchema.ofNumberId(Fields.stage));
+        props.put(Fields.status, DbSchema.ofNumberId(Fields.status));
+        props.put(Fields.source, DbSchema.ofChar(Fields.source, 32));
+        props.put(Fields.subSource, DbSchema.ofCharNull(Fields.subSource, 32));
+        props.put(Fields.campaignId, DbSchema.ofNumberId(Fields.campaignId));
+        props.put(Fields.dnc, DbSchema.ofBooleanFalse(Fields.dnc));
 
         schema.setProperties(props);
-        return schema;
     }
 }

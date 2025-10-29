@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import java.io.Serial;
 import java.math.BigInteger;
@@ -39,6 +40,7 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
         this.clientId = baseProcessorDto.clientId;
     }
 
+    @SuppressWarnings("unchecked")
     public T setClientId(BigInteger clientId) {
         this.clientId = ULongUtil.valueOf(clientId);
         return (T) this;
@@ -55,16 +57,15 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
 
-        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
-        props.put(Fields.clientId, Schema.ofLong(Fields.clientId).setMinimum(1));
+        props.put(Fields.version, DbSchema.ofVersion(Fields.version));
+        props.put(Fields.clientId, DbSchema.ofNumberId(Fields.clientId));
 
         schema.setProperties(props);
-        return schema;
     }
 }

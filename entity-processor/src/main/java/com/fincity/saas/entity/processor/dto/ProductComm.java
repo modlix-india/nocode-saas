@@ -1,10 +1,9 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.model.request.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
@@ -93,34 +92,26 @@ public class ProductComm extends BaseProcessorDto<ProductComm> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.connectionName, DbSchema.ofChar(Fields.connectionName, 255));
+        props.put(Fields.connectionType, DbSchema.ofEnum(Fields.connectionType, ConnectionType.class));
+        props.put(Fields.connectionSubType, DbSchema.ofEnum(Fields.connectionSubType, ConnectionSubType.class));
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
         props.put(
-                Fields.connectionName,
-                Schema.ofString(Fields.connectionName).setMinLength(1).setMaxLength(255));
-        props.put(
-                Fields.connectionType,
-                Schema.ofString(Fields.connectionType).setEnums(EnumSchemaUtil.getSchemaEnums(ConnectionType.class)));
-        props.put(
-                Fields.connectionSubType,
-                Schema.ofString(Fields.connectionSubType)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(ConnectionSubType.class)));
-        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
-        props.put(
-                Fields.dialCode,
-                Schema.ofInteger(Fields.dialCode)
-                        .setMinimum(1)
+                Ticket.Fields.dialCode,
+                DbSchema.ofDialCode(Ticket.Fields.dialCode)
                         .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
-        props.put(Fields.phoneNumber, Schema.ofString(Fields.phoneNumber));
-        props.put(Fields.email, Schema.ofString(Fields.email).setFormat(StringFormat.EMAIL));
-        props.put(Fields.isDefault, Schema.ofBoolean(Fields.isDefault).setDefaultValue(new JsonPrimitive(false)));
-        props.put(Fields.source, Schema.ofString(Fields.source));
-        props.put(Fields.subSource, Schema.ofString(Fields.subSource));
+        props.put(Ticket.Fields.phoneNumber, DbSchema.ofPhoneNumber(Ticket.Fields.phoneNumber));
+        props.put(Fields.email, DbSchema.ofEmail(Fields.email));
+        props.put(Fields.isDefault, DbSchema.ofBooleanFalse(Fields.isDefault));
+        props.put(Fields.source, DbSchema.ofChar(Fields.source, 32));
+        props.put(Fields.subSource, DbSchema.ofCharNull(Fields.subSource, 32));
 
         schema.setProperties(props);
-        return schema;
     }
 }

@@ -198,9 +198,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createActivityInternal"));
     }
 
-    public Mono<Void> acCreate(Ticket ticket) {
-        return this.hasAccess()
-                .flatMap(access -> this.acCreate(access, ticket, null))
+    public Mono<Void> acCreate(ProcessorAccess access, Ticket ticket) {
+        return this.acCreate(access, ticket, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
@@ -222,12 +221,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 ticket.getSubSource())
                                         : Map.of(Ticket.Fields.source, ticket.getSource())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
-    }
-
-    public Mono<Void> acReInquiry(Ticket ticket, String source, String subSource) {
-        return super.hasAccess()
-                .flatMap(access -> this.acReInquiry(access, ticket, null, source, subSource))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }
 
     public Mono<Void> acReInquiry(

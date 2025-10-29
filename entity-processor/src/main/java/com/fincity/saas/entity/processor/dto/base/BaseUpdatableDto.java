@@ -4,16 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.entity.processor.constant.EntityProcessorConstants;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.relations.IRelationMap;
 import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.Collection;
 import java.util.HashMap;
@@ -37,8 +38,6 @@ import org.jooq.types.ULong;
 @FieldNameConstants
 public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends AbstractFlowUpdatableDTO<ULong, ULong>
         implements IEntitySeries, IRelationMap {
-
-    public static final int CODE_LENGTH = 22;
 
     public static final String ENTITY_PROCESSOR_NAMESPACE = Namespaces.SYSTEM + "Entity.Processor";
 
@@ -95,27 +94,32 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
                 .collect(Collectors.toMap(BaseUpdatableDto::getId, Function.identity(), (a, b) -> b));
     }
 
+    @SuppressWarnings("unchecked")
     public T setCode() {
         if (this.code != null) return (T) this;
         this.code = UniqueUtil.shortUUID();
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setName(String name) {
         this.name = name;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setDescription(String description) {
         this.description = description;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setActive(boolean isActive) {
         this.isActive = isActive;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setTempActive(boolean tempActive) {
         this.tempActive = tempActive;
         return (T) this;
@@ -137,25 +141,24 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     }
 
     @Override
-    public Schema getSchema() {
+    public String getServerNameSpace() {
+        return EntityProcessorConstants.ENTITY_PROCESSOR_NAMESPACE;
+    }
 
-        Schema schema = super.getSchema();
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
 
-        props.put(
-                Fields.appCode, Schema.ofString(Fields.appCode).setMaxLength(64).setMinLength(0));
-        props.put(
-                Fields.clientCode,
-                Schema.ofString(Fields.clientCode).setMaxLength(8).setMinLength(0));
-        props.put(
-                Fields.code,
-                Schema.ofString(Fields.code).setMaxLength(CODE_LENGTH).setMinLength(CODE_LENGTH));
-        props.put(Fields.name, Schema.ofString(Fields.name).setMaxLength(512));
-        props.put(Fields.description, Schema.ofString(Fields.description));
-        props.put(Fields.isActive, Schema.ofBoolean(Fields.isActive).setDefaultValue(new JsonPrimitive(true)));
+        props.put(Fields.appCode, DbSchema.ofAppCode(Fields.appCode));
+        props.put(Fields.clientCode, DbSchema.ofClientCode(Fields.clientCode));
+        props.put(Fields.code, DbSchema.ofShortUUID(Fields.code));
+        props.put(Fields.name, DbSchema.ofChar(Fields.name, 512));
+        props.put(Fields.description, DbSchema.ofChar(Fields.description));
+        props.put(Fields.isActive, DbSchema.ofBooleanTrue(Fields.isActive));
 
         schema.setProperties(props);
-        return schema;
     }
 }

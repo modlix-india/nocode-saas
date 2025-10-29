@@ -3,9 +3,11 @@ package com.fincity.saas.entity.processor.model.common;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+import com.google.gson.JsonArray;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -64,12 +66,11 @@ public class UserDistribution implements Serializable {
         return Schema.ofObject(Case.PASCAL.getConverter().apply(UserDistribution.class.getSimpleName()))
                 .setProperties(Map.of(
                         Fields.profileIds,
-                        Schema.ofArray(
-                                Fields.profileIds,
-                                Schema.ofLong(Fields.profileIds).setMinimum(1)),
+                        Schema.ofArray(Fields.profileIds, DbSchema.ofNumberId("profileId"))
+                                .setDefaultValue(new JsonArray()),
                         Fields.userIds,
-                        Schema.ofArray(
-                                Fields.userIds, Schema.ofLong(Fields.userIds).setMinimum(1)),
+                        Schema.ofArray(Fields.userIds, DbSchema.ofNumberId("userId"))
+                                .setDefaultValue(new JsonArray()),
                         Fields.percentage,
                         Schema.ofInteger(Fields.percentage).setMinimum(0).setMaximum(100),
                         Fields.weight,

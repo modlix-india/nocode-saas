@@ -10,8 +10,8 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
@@ -75,7 +75,7 @@ public class Identity implements Serializable {
     public Identity setCode(String code) {
 
         if (code == null) return this;
-        if (code.length() == BaseUpdatableDto.CODE_LENGTH) this.code = code;
+        if (code.length() == DbSchema.CODE_LENGTH) this.code = code;
 
         try {
             this.id = new BigInteger(code);

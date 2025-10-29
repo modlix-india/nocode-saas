@@ -73,6 +73,7 @@ public abstract class AbstractFlowUpdatableService<
                 .switchIfEmpty(Mono.just(entityMap));
     }
 
+	@SuppressWarnings("unchecked")
     private Mono<D> validateSchema(D entity) {
 
         return FlatMapUtil.flatMapMono(

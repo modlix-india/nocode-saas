@@ -96,8 +96,7 @@ public class ProcessorFlowSchemaService
         return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName);
     }
 
-    private Mono<ProcessorFlowSchema> getFlowSchema(
-            ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
+    private Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
         return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName, dbEntityPkId);
     }
 
@@ -116,8 +115,7 @@ public class ProcessorFlowSchemaService
     private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
         return super.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getFlowSchema(access, dbTableName, dbEntityPkId)
-                        .map(super::toSchema),
+                () -> this.getFlowSchema(access, dbTableName, dbEntityPkId).map(super::toSchema),
                 super.getCacheKey(
                         super.getSchemaCache(),
                         access.getAppCode(),

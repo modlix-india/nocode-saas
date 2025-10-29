@@ -1,9 +1,9 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
@@ -91,18 +91,16 @@ public class Stage extends BaseValueDto<Stage> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(
-                Fields.stageType,
-                Schema.ofString(Fields.stageType).setEnums(EnumSchemaUtil.getSchemaEnums(StageType.class)));
-        props.put(Fields.isSuccess, Schema.ofBoolean(Fields.isSuccess));
-        props.put(Fields.isFailure, Schema.ofBoolean(Fields.isFailure));
+
+        props.put(Fields.stageType, DbSchema.ofEnum(Fields.stageType, StageType.class, StageType.OPEN));
+        props.put(Fields.isSuccess, DbSchema.ofBoolean(Fields.isSuccess));
+        props.put(Fields.isFailure, DbSchema.ofBoolean(Fields.isFailure));
 
         schema.setProperties(props);
-        return schema;
     }
 }

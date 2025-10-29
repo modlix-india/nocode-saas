@@ -2,10 +2,9 @@ package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.Platform;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -47,6 +46,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
         this.order = baseValueDto.order;
     }
 
+    @SuppressWarnings("unchecked")
     public T setOrder(Integer order) {
         this.order = order;
         return (T) this;
@@ -94,24 +94,19 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
 
-        props.put(
-                Fields.platform,
-                Schema.ofString(Fields.platform).setEnums(EnumSchemaUtil.getSchemaEnums(Platform.class)));
-        props.put(
-                Fields.productTemplateId,
-                Schema.ofLong(Fields.productTemplateId).setMinimum(1));
-        props.put(Fields.isParent, Schema.ofBoolean(Fields.isParent).setDefaultValue(new JsonPrimitive(true)));
-        props.put(Fields.parentLevel0, Schema.ofLong(Fields.parentLevel0).setMinimum(1));
-        props.put(Fields.parentLevel1, Schema.ofLong(Fields.parentLevel1).setMinimum(1));
-        props.put(Fields.order, Schema.ofInteger(Fields.order).setMinimum(0));
+        props.put(Fields.platform, DbSchema.ofEnum(Fields.platform, Platform.class));
+        props.put(Fields.productTemplateId, DbSchema.ofNumberId(Fields.productTemplateId));
+        props.put(Fields.isParent, DbSchema.ofBooleanTrue(Fields.isParent));
+        props.put(Fields.parentLevel0, DbSchema.ofNumberId(Fields.parentLevel0));
+        props.put(Fields.parentLevel1, DbSchema.ofNumberId(Fields.parentLevel1));
+        props.put(Fields.order, DbSchema.ofInt(Fields.order).setMinimum(0));
 
         schema.setProperties(props);
-        return schema;
     }
 }

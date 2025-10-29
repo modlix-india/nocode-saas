@@ -1,14 +1,11 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.entity.processor.jooq.Tables;
 import java.util.EnumMap;
 import java.util.Map;
-
+import lombok.Getter;
 import org.jooq.EnumType;
 import org.jooq.Table;
-
-import com.fincity.saas.entity.processor.jooq.Tables;
-
-import lombok.Getter;
 
 @Getter
 public enum EntitySeries implements EnumType {

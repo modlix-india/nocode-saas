@@ -1,10 +1,10 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import java.io.Serial;
 import java.util.Map;
@@ -33,7 +33,7 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
 
     public Campaign() {
         super();
-        this.relationsMap.put(Campaign.Fields.productId, EntitySeries.PRODUCT.getTable());
+        this.relationsMap.put(Fields.productId, EntitySeries.PRODUCT.getTable());
     }
 
     public Campaign(Campaign campaign) {
@@ -59,25 +59,18 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(
-                Fields.campaignId,
-                Schema.ofString(Fields.campaignId).setMinLength(1).setMaxLength(32));
-        props.put(
-                Fields.campaignName,
-                Schema.ofString(Fields.campaignName).setMinLength(1).setMaxLength(128));
-        props.put(Fields.campaignType, Schema.ofString(Fields.campaignType).setMaxLength(32));
-        props.put(
-                Fields.campaignPlatform,
-                Schema.ofString(Fields.campaignPlatform)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(CampaignPlatform.class)));
-        props.put(Fields.productId, Schema.ofLong(Fields.productId).setMinimum(1));
+
+        props.put(Fields.campaignId, DbSchema.ofChar(Fields.campaignId, 32));
+        props.put(Fields.campaignName, DbSchema.ofChar(Fields.campaignId, 128));
+        props.put(Fields.campaignType, DbSchema.ofChar(Fields.campaignId, 32));
+        props.put(Fields.campaignPlatform, DbSchema.ofEnum(Fields.campaignPlatform, CampaignPlatform.class));
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
 
         schema.setProperties(props);
-        return schema;
     }
 }

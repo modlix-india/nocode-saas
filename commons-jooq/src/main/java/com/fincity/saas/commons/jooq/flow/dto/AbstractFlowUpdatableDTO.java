@@ -2,6 +2,7 @@ package com.fincity.saas.commons.jooq.flow.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.commons.util.IClassConvertor;
@@ -25,7 +26,7 @@ import lombok.experimental.FieldNameConstants;
 public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends Serializable>
         extends AbstractUpdatableDTO<I, U> implements IClassConvertor {
 
-    public static final String FLOW_NAMESPACE = "FlowSchema";
+    public static final String FLOW_NAMESPACE = DbSchema.DB_NAMESPACE + "." + "Flow";
     private static final UnaryOperator<String> NAMESPACE_CONVERTER = Case.PASCAL.getConverter();
 
     @Serial
@@ -44,17 +45,26 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
         return null;
     }
 
+	@JsonIgnore
     public Schema getSchema() {
+        Schema schema = this.createBaseSchema();
+        this.extendSchema(schema);
+        return schema;
+    }
 
+    @JsonIgnore
+    protected Schema createBaseSchema() {
         String name = NAMESPACE_CONVERTER.apply(this.getClass().getSimpleName());
-        String nameSpace =
-                (StringUtil.safeIsBlank(this.getServerNameSpace()) ? FLOW_NAMESPACE : this.getServerNameSpace()) + "."
-                        + name;
+        String nameSpace = StringUtil.safeIsBlank(this.getServerNameSpace())
+                ? FLOW_NAMESPACE
+                : this.getServerNameSpace() + "." + FLOW_NAMESPACE;
 
         Schema schema = Schema.ofObject(name).setNamespace(nameSpace);
 
         Map<String, Schema> props = new LinkedHashMap<>();
-        props.put(Fields.fields, Schema.ofObject(Fields.fields));
+        props.put(Fields.fields, DbSchema.ofJson(Fields.fields));
         return schema.setProperties(props);
     }
+
+    protected void extendSchema(Schema schema) {}
 }

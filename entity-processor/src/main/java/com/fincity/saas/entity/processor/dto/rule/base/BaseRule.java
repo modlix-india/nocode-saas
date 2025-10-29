@@ -1,9 +1,9 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -45,16 +45,19 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
         this.negate = baseRule.negate;
     }
 
+    @SuppressWarnings("unchecked")
     public T setProductTemplateRuleId(ULong productTemplateRuleId) {
         this.productTemplateRuleId = productTemplateRuleId;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setProductStageRuleId(ULong productStageRuleId) {
         this.productStageRuleId = productStageRuleId;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setNegate(boolean negate) {
         this.negate = negate;
         return (T) this;
@@ -70,21 +73,17 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
-        props.put(
-                Fields.productTemplateRuleId,
-                Schema.ofLong(Fields.productTemplateRuleId).setMinimum(1));
-        props.put(
-                Fields.productStageRuleId,
-                Schema.ofLong(Fields.productStageRuleId).setMinimum(1));
-        props.put(Fields.negate, Schema.ofBoolean(Fields.negate).setDefaultValue(new JsonPrimitive(false)));
+
+        props.put(Fields.version, DbSchema.ofVersion(Fields.version));
+        props.put(Fields.productTemplateRuleId, DbSchema.ofNumberId(Fields.productTemplateRuleId));
+        props.put(Fields.productStageRuleId, DbSchema.ofNumberId(Fields.productStageRuleId));
+        props.put(Fields.negate, DbSchema.ofBooleanFalse(Fields.negate));
 
         schema.setProperties(props);
-        return schema;
     }
 }

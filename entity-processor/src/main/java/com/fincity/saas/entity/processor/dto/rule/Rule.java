@@ -1,16 +1,15 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.EnumSchemaUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.model.request.rule.RuleInfoRequest;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
-import com.google.gson.JsonPrimitive;
 import java.io.Serial;
 import java.util.Map;
 import lombok.Data;
@@ -69,6 +68,7 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
 
     public abstract T setEntityId(ULong entityId);
 
+    @SuppressWarnings("unchecked")
     public T of(RuleRequest ruleRequest) {
 
         RuleInfoRequest ruleInfoRequest = ruleRequest.getRule();
@@ -91,18 +91,21 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setIsDefault(boolean isDefault) {
         this.isDefault = isDefault;
         if (isDefault) this.stageId = null;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setComplex(boolean isComplex) {
         this.isComplex = isComplex;
         if (isComplex) this.isSimple = false;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setSimple(boolean isSimple) {
         this.isSimple = isSimple;
         if (isSimple) this.isComplex = false;
@@ -110,30 +113,23 @@ public abstract class Rule<T extends Rule<T>> extends BaseUpdatableDto<T> {
     }
 
     @Override
-    public Schema getSchema() {
+    public void extendSchema(Schema schema) {
 
-        Schema schema = super.getSchema();
+        super.extendSchema(schema);
 
         Map<String, Schema> props = schema.getProperties();
-        props.put(Fields.version, Schema.ofInteger(Fields.version).setMinimum(1));
-        props.put(Fields.stageId, Schema.ofLong(Fields.stageId).setMinimum(1));
-        props.put(Fields.order, Schema.ofInteger(Fields.order).setMinimum(0));
-        props.put(Fields.isDefault, Schema.ofBoolean(Fields.isDefault).setDefaultValue(new JsonPrimitive(false)));
-        props.put(
-                Fields.breakAtFirstMatch,
-                Schema.ofBoolean(Fields.breakAtFirstMatch).setDefaultValue(new JsonPrimitive(true)));
-        props.put(Fields.isSimple, Schema.ofBoolean(Fields.isSimple).setDefaultValue(new JsonPrimitive(true)));
-        props.put(Fields.isComplex, Schema.ofBoolean(Fields.isComplex).setDefaultValue(new JsonPrimitive(false)));
-        props.put(
-                Fields.userDistributionType,
-                Schema.ofString(Fields.userDistributionType)
-                        .setEnums(EnumSchemaUtil.getSchemaEnums(DistributionType.class)));
+
+        props.put(Fields.version, DbSchema.ofVersion(Fields.version));
+        props.put(Fields.stageId, DbSchema.ofNumberId(Fields.stageId));
+        props.put(Fields.order, Schema.ofNumber(Fields.order).setMinimum(0));
+        props.put(Fields.isDefault, DbSchema.ofBooleanFalse(Fields.isDefault));
+        props.put(Fields.breakAtFirstMatch, DbSchema.ofBooleanTrue(Fields.breakAtFirstMatch));
+        props.put(Fields.isSimple, DbSchema.ofBooleanTrue(Fields.isSimple));
+        props.put(Fields.isComplex, DbSchema.ofBooleanFalse(Fields.isComplex));
+        props.put(Fields.userDistributionType, DbSchema.ofEnum(Fields.userDistributionType, DistributionType.class));
         props.put(Fields.userDistribution, UserDistribution.getSchema());
-        props.put(
-                Fields.lastAssignedUserId,
-                Schema.ofLong(Fields.lastAssignedUserId).setMinimum(1));
+        props.put(Fields.lastAssignedUserId, DbSchema.ofNumberId(Fields.lastAssignedUserId));
 
         schema.setProperties(props);
-        return schema;
     }
 }
