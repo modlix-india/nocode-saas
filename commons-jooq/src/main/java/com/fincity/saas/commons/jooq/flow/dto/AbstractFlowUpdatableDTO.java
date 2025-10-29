@@ -28,7 +28,9 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
 
     private Map<String, Object> fields;
 
-    public abstract String getTableName();
+	public abstract String getDbTableName();
+
+	public abstract String getDbEntityName();
 
     @JsonIgnore
     public String getFlowSchemaEntityField() {
@@ -51,7 +53,8 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
     }
 
     protected Schema createBaseSchema() {
-        Schema schema = DbSchema.setEntityNameAndNamespace(new Schema(), this.getClass(), this.getServerNameSpace());
+        Schema schema = DbSchema.setEntityNameAndNamespace(
+                new Schema(), this.getDbEntityName(), this.getServerNameSpace());
 
         Map<String, Schema> props = new LinkedHashMap<>();
         props.put(Fields.fields, DbSchema.ofJson(Fields.fields));

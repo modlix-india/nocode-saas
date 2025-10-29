@@ -1,5 +1,24 @@
 package com.fincity.saas.entity.processor.enums;
 
+import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.dto.Owner;
+import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.dto.Product;
+import com.fincity.saas.entity.processor.dto.ProductComm;
+import com.fincity.saas.entity.processor.dto.ProductStageRule;
+import com.fincity.saas.entity.processor.dto.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.ProductTemplateRule;
+import com.fincity.saas.entity.processor.dto.Stage;
+import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.content.Note;
+import com.fincity.saas.entity.processor.dto.content.Task;
+import com.fincity.saas.entity.processor.dto.content.TaskType;
+import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
+import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
+import com.fincity.saas.entity.processor.dto.rule.ComplexRule;
+import com.fincity.saas.entity.processor.dto.rule.SimpleComplexRuleRelation;
+import com.fincity.saas.entity.processor.dto.rule.SimpleRule;
 import com.fincity.saas.entity.processor.jooq.Tables;
 import java.util.EnumMap;
 import java.util.Map;
@@ -87,7 +106,11 @@ public enum EntitySeries implements EnumType {
     }
 
     public Table<?> getTable() {
-        return TableHolder.TABLE_MAP.get(this);
+        return TableHolder.get(this);
+    }
+
+    public String getClassName() {
+        return ClassHolder.get(this).getSimpleName();
     }
 
     public String getTokenPrefix(String appCode) {
@@ -123,6 +146,40 @@ public enum EntitySeries implements EnumType {
             TABLE_MAP.put(PARTNER, Tables.ENTITY_PROCESSOR_PARTNERS);
             TABLE_MAP.put(PRODUCT_TEMPLATE_WALK_IN_FORMS, Tables.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS);
             TABLE_MAP.put(PRODUCT_WALK_IN_FORMS, Tables.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS);
+        }
+
+        static Table<?> get(EntitySeries series) {
+            return TABLE_MAP.get(series);
+        }
+    }
+
+    private static class ClassHolder {
+        private static final Map<EntitySeries, Class<?>> CLASS_MAP = new EnumMap<>(EntitySeries.class);
+
+        static {
+            CLASS_MAP.put(TICKET, Ticket.class);
+            CLASS_MAP.put(OWNER, Owner.class);
+            CLASS_MAP.put(PRODUCT, Product.class);
+            CLASS_MAP.put(PRODUCT_TEMPLATE, ProductTemplate.class);
+            CLASS_MAP.put(PRODUCT_COMM, ProductComm.class);
+            CLASS_MAP.put(STAGE, Stage.class);
+            CLASS_MAP.put(SIMPLE_RULE, SimpleRule.class);
+            CLASS_MAP.put(COMPLEX_RULE, ComplexRule.class);
+            CLASS_MAP.put(SIMPLE_COMPLEX_CONDITION_RELATION, SimpleComplexRuleRelation.class);
+            CLASS_MAP.put(PRODUCT_STAGE_RULE, ProductStageRule.class);
+            CLASS_MAP.put(PRODUCT_TEMPLATE_RULE, ProductTemplateRule.class);
+            CLASS_MAP.put(TASK, Task.class);
+            CLASS_MAP.put(TASK_TYPE, TaskType.class);
+            CLASS_MAP.put(NOTE, Note.class);
+            CLASS_MAP.put(ACTIVITY, Activity.class);
+            CLASS_MAP.put(CAMPAIGN, Campaign.class);
+            CLASS_MAP.put(PARTNER, Partner.class);
+            CLASS_MAP.put(PRODUCT_TEMPLATE_WALK_IN_FORMS, ProductTemplateWalkInForm.class);
+            CLASS_MAP.put(PRODUCT_WALK_IN_FORMS, ProductWalkInForm.class);
+        }
+
+        static Class<?> get(EntitySeries series) {
+            return CLASS_MAP.get(series);
         }
     }
 }

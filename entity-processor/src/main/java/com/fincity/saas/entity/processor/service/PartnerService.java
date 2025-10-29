@@ -134,7 +134,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
                                         client.getLevelType(),
-                                        this.getEntityName(),
+                                        this.getEntityDisplayName(),
                                         BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
 
                             return super.createInternal(
@@ -323,7 +323,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
 
-        String partnerEntityKey = this.getEntityKey();
+        String partnerEntityKey = NameUtil.decapitalize(this.getEntityDisplayName());
 
         partners.forEach(partner -> {
             Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
@@ -375,7 +375,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
-                    String ticketKey = ticketBucketService.getEntityKey();
+                    String ticketKey = NameUtil.decapitalize(ticketBucketService.getEntityDisplayName());
 
                     partners.forEach(partner -> {
                         StatusEntityCount count = status.get(partner.getClientId());
@@ -432,7 +432,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
-                    String ticketKey = ticketBucketService.getEntityKey();
+                    String ticketKey = NameUtil.decapitalize(ticketBucketService.getEntityDisplayName());
 
                     userMapByIds.forEach((key, value) -> {
                         StatusEntityCount count = status.get(ULongUtil.valueOf(key));

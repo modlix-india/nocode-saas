@@ -136,8 +136,13 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
     }
 
     @Override
-    public String getTableName() {
+    public String getDbTableName() {
         return IEntitySeries.super.getTableName();
+    }
+
+    @Override
+    public String getDbEntityName() {
+        return this.getEntitySeries().getClassName();
     }
 
     @Override

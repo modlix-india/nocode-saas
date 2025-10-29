@@ -48,14 +48,14 @@ public abstract class BaseProcessorService<
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
+                                this.getEntityDisplayName(),
                                 identity.getCode()))
                 : this.readById(access, identity.getULongId())
                         .flatMap(ticket -> this.checkUserAccess(access, ticket))
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
+                                this.getEntityDisplayName(),
                                 identity.getId()));
     }
 

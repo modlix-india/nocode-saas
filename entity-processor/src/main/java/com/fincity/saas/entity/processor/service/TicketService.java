@@ -98,7 +98,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
-                    this.productService.getEntityName());
+                    this.productService.getEntityDisplayName());
 
         return FlatMapUtil.flatMapMono(
                         () -> this.setAssignmentAndStage(ticket, access),
@@ -213,7 +213,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
-                    this.getEntityName());
+                    this.getEntityDisplayName());
 
         if (!ticketRequest.hasSourceInfo())
             return this.msgService.throwMessage(
@@ -364,7 +364,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         if (ticketStatusRequest.getStageId() == null
                 || ticketStatusRequest.getStageId().isNull())
-            return this.identityMissingError(this.stageService.getEntityName());
+            return this.identityMissingError(this.stageService.getEntityDisplayName());
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,

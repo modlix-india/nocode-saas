@@ -44,7 +44,7 @@ public abstract class AbstractFlowDataService<
         return this.getFlowSchemaService() != null
                 ? this.getFlowSchemaService()
                         .getSchema(
-                                entity.getTableName(),
+                                entity.getDbTableName(),
                                 entity.getFlowSchemaEntityField(),
                                 entity.getFlowSchemaEntityId())
                 : Mono.just(entity.getSchema());

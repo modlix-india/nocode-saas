@@ -106,8 +106,13 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     }
 
     @Override
-    public String getTableName() {
+    public String getDbTableName() {
         return IEntitySeries.super.getTableName();
+    }
+
+    @Override
+    public String getDbEntityName() {
+        return this.getEntitySeries().getClassName();
     }
 
     @Override

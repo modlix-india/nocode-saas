@@ -22,6 +22,7 @@ public abstract class FlowSchema<I extends Serializable, U extends Serializable>
 
     private String dbSchemaName;
     private String dbTableName;
+	private String dbEntityName;
     private String dbEntityPkFieldName;
     private I dbEntityPkId;
     private Map<String, Object> schema;

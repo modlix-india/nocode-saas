@@ -49,7 +49,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.CONTENT_MISSING,
-                    this.getEntityName());
+                    this.getEntityDisplayName());
 
         return Mono.just(Note.of(noteRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createContent"));

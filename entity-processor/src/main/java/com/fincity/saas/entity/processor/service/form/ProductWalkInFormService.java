@@ -86,7 +86,7 @@ public class ProductWalkInFormService
 
     @Override
     protected String getProductEntityName() {
-        return productService.getEntityName();
+        return productService.getEntityDisplayName();
     }
 
     @Override
@@ -191,7 +191,7 @@ public class ProductWalkInFormService
             return msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.ENTITY_INACTIVE,
-                    this.getEntityName());
+                    this.getEntityDisplayName());
 
         if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL) && ticketRequest.getUserId() == null)
             return msgService.throwMessage(

@@ -12,6 +12,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.service.CacheService;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -128,7 +129,8 @@ public abstract class FlowSchemaService<
     private Map<String, Object> toFieldMap(D entity) {
 
         Schema schema = DbSchema.setEntityNameAndNamespace(
-                this.toSchema(entity.getSchema()), entity.getClass(), this.getServerNameSpace());
+                        this.toSchema(entity.getSchema()), entity.getDbEntityName(), this.getServerNameSpace())
+                .setAnyOf(List.of());
 
         return this.schemaToMap(schema);
     }

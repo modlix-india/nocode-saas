@@ -4,6 +4,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.jooq.flow.service.schema.FlowSchemaService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.entity.processor.constant.EntityProcessorConstants;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.flow.dao.ProcessorFlowSchemaDAO;
 import com.fincity.saas.entity.processor.flow.dto.ProcessorFlowSchema;
@@ -98,6 +99,13 @@ public class ProcessorFlowSchemaService
     @Autowired
     public void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
+    }
+
+    public Mono<Schema> getFlowSchema(ULong id, EntitySeries entitySeries) {
+        return this.hasAccess()
+                .flatMap(access -> this.getFlowSchema(
+                        access, this.getDbSchemaName(), entitySeries.getTable().getName(), id))
+                .map(this::toSchema);
     }
 
     private Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbTableName) {

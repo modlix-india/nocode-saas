@@ -1,7 +1,6 @@
 package com.fincity.saas.entity.processor.enums;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.util.NameUtil;
 
 public interface IEntitySeries {
 
@@ -11,7 +10,7 @@ public interface IEntitySeries {
     }
 
     @JsonIgnore
-    default String getEntityName() {
+    default String getEntityDisplayName() {
         return this.getEntitySeries().getDisplayName();
     }
 
@@ -21,10 +20,6 @@ public interface IEntitySeries {
     }
 
     @JsonIgnore
-    default String getEntityKey() {
-        return NameUtil.decapitalize(this.getEntityName());
-    }
-
     default String getTableName() {
         return this.getEntitySeries().getTable().getName();
     }

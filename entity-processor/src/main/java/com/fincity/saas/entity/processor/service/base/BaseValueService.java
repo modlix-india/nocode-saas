@@ -72,13 +72,13 @@ public abstract class BaseValueService<
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 entity.getName(),
-                                entity.getEntityName());
+                                entity.getEntityDisplayName());
 
                     if (!exists.getT2())
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.INVALID_PARENT,
-                                entity.getEntityName());
+                                entity.getEntityDisplayName());
 
                     entity.setName(NameUtil.normalize(entity.getName()));
                     return Mono.just(entity);
@@ -212,8 +212,8 @@ public abstract class BaseValueService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         ProcessorMessageResourceService.NO_VALUES_FOUND,
-                        this.getEntityName(),
-                        this.getEntityName()));
+                        this.getEntityDisplayName(),
+                        this.getEntityDisplayName()));
     }
 
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrderInternal(

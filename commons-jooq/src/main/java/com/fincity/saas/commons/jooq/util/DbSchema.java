@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class DbSchema {
+public final class DbSchema {
 
     public static final int CODE_LENGTH = 22;
 
@@ -25,8 +25,8 @@ public class DbSchema {
     private static final UnaryOperator<String> NAMESPACE_CONVERTER = Case.PASCAL.getConverter();
     private static final Duration ERROR_CORRECTION_DURATION = Duration.ofMinutes(2);
 
-    public static Schema setEntityNameAndNamespace(Schema schema, Class<?> entityClass, String serverNameSpace) {
-        String name = DbSchema.NAMESPACE_CONVERTER.apply(entityClass.getSimpleName());
+    public static Schema setEntityNameAndNamespace(Schema schema, String entityName, String serverNameSpace) {
+        String name = DbSchema.NAMESPACE_CONVERTER.apply(entityName);
 
         String nameSpace = StringUtil.safeIsBlank(serverNameSpace)
                 ? DbSchema.FLOW_NAMESPACE

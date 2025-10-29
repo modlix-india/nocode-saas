@@ -37,7 +37,7 @@ public class ProductTemplateWalkInFormService
 
     @Override
     protected String getProductEntityName() {
-        return productTemplateService.getEntityName();
+        return productTemplateService.getEntityDisplayName();
     }
 
     @Override
