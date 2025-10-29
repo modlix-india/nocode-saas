@@ -4,14 +4,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.commons.util.IClassConvertor;
-import com.fincity.saas.commons.util.StringUtil;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.UnaryOperator;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -26,15 +23,17 @@ import lombok.experimental.FieldNameConstants;
 public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends Serializable>
         extends AbstractUpdatableDTO<I, U> implements IClassConvertor {
 
-    public static final String FLOW_NAMESPACE = DbSchema.DB_NAMESPACE + "." + "Flow";
-    private static final UnaryOperator<String> NAMESPACE_CONVERTER = Case.PASCAL.getConverter();
-
     @Serial
     private static final long serialVersionUID = 295036657353428449L;
 
     private Map<String, Object> fields;
 
     public abstract String getTableName();
+
+    @JsonIgnore
+    public String getFlowSchemaEntityField() {
+        return null;
+    }
 
     @JsonIgnore
     public I getFlowSchemaEntityId() {
@@ -45,21 +44,14 @@ public abstract class AbstractFlowUpdatableDTO<I extends Serializable, U extends
         return null;
     }
 
-	@JsonIgnore
     public Schema getSchema() {
         Schema schema = this.createBaseSchema();
         this.extendSchema(schema);
         return schema;
     }
 
-    @JsonIgnore
     protected Schema createBaseSchema() {
-        String name = NAMESPACE_CONVERTER.apply(this.getClass().getSimpleName());
-        String nameSpace = StringUtil.safeIsBlank(this.getServerNameSpace())
-                ? FLOW_NAMESPACE
-                : this.getServerNameSpace() + "." + FLOW_NAMESPACE;
-
-        Schema schema = Schema.ofObject(name).setNamespace(nameSpace);
+        Schema schema = DbSchema.setEntityNameAndNamespace(new Schema(), this.getClass(), this.getServerNameSpace());
 
         Map<String, Schema> props = new LinkedHashMap<>();
         props.put(Fields.fields, DbSchema.ofJson(Fields.fields));

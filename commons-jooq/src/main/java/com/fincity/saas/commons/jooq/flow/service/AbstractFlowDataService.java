@@ -2,21 +2,15 @@ package com.fincity.saas.commons.jooq.flow.service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.validator.reactive.ReactiveSchemaValidator;
-import com.fincity.nocode.kirun.engine.util.json.JsonUtil;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowDAO;
 import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowDTO;
-import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.flow.service.schema.FlowSchemaService;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import java.io.Serializable;
-import java.util.Map;
 import org.jooq.UpdatableRecord;
-import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractFlowDataService<
@@ -26,8 +20,6 @@ public abstract class AbstractFlowDataService<
                 O extends AbstractFlowDAO<R, I, D>>
         extends AbstractJOOQDataService<R, I, D, O> {
 
-    private Gson gson;
-
     protected abstract <
                     R0 extends UpdatableRecord<R0>,
                     I0 extends Serializable,
@@ -36,48 +28,25 @@ public abstract class AbstractFlowDataService<
                     S0 extends FlowSchemaService<R0, I0, D0, O0>>
             S0 getFlowSchemaService();
 
-    @Autowired
-    public void setGson(Gson gson) {
-        this.gson = gson;
-    }
-
     @Override
     public Mono<D> create(D entity) {
-        return this.validateSchema(entity)
-                .flatMap(vEntity -> super.create(entity))
-                .switchIfEmpty(super.create(entity));
+        return this.validateSchema(entity).flatMap(vEntity -> super.create(entity));
     }
 
     private Mono<D> validateSchema(D entity) {
-
-        return FlatMapUtil.flatMapMono(
-                        () -> this.getEntitySchema(entity),
-                        schema -> ReactiveSchemaValidator.validate(null, schema, null, entity.toJsonElement()),
-                        (schema, jsonElement) -> this.toMap(jsonElement).map(vMap -> (D) entity.setFields(vMap)))
+        return FlatMapUtil.flatMapMono(() -> this.getEntitySchema(entity), schema -> ReactiveSchemaValidator.validate(
+                                null, schema, null, entity.toJsonElement())
+                        .map(validated -> entity))
                 .switchIfEmpty(Mono.just(entity));
     }
 
     private Mono<Schema> getEntitySchema(D entity) {
-
-        Schema schema = entity.getSchema();
-
-        return FlatMapUtil.flatMapMono(
-                        () -> this.getFlowSchemaService() != null
-                                ? this.getFlowSchemaService()
-                                        .getSchema(entity.getTableName(), entity.getFlowSchemaEntityId())
-                                : Mono.empty(),
-                        flowSchema -> {
-                            Map<String, Schema> props = schema.getProperties();
-                            props.put(AbstractFlowUpdatableDTO.Fields.fields, schema);
-                            return Mono.just(flowSchema.setProperties(props));
-                        })
-                .switchIfEmpty(Mono.just(schema));
-    }
-
-    private Mono<Map<String, Object>> toMap(JsonElement jsonElement) {
-
-        if (!jsonElement.isJsonObject()) return Mono.empty();
-
-        return Mono.just(JsonUtil.toMap(jsonElement.getAsJsonObject()));
+        return this.getFlowSchemaService() != null
+                ? this.getFlowSchemaService()
+                        .getSchema(
+                                entity.getTableName(),
+                                entity.getFlowSchemaEntityField(),
+                                entity.getFlowSchemaEntityId())
+                : Mono.just(entity.getSchema());
     }
 }

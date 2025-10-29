@@ -8,7 +8,6 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 import org.springframework.data.annotation.Version;
 
 @Data
@@ -21,10 +20,11 @@ public abstract class FlowSchema<I extends Serializable, U extends Serializable>
     @Version
     private int version = 1;
 
-    private String dbSchema;
+    private String dbSchemaName;
     private String dbTableName;
-    private ULong dbEntityPkId;
-    private Map<String, Object> fieldSchema;
+    private String dbEntityPkFieldName;
+    private I dbEntityPkId;
+    private Map<String, Object> schema;
 
     protected FlowSchema() {
         super();

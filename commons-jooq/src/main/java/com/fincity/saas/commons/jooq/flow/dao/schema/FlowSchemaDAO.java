@@ -26,16 +26,21 @@ public abstract class FlowSchemaDAO<R extends UpdatableRecord<R>, I extends Seri
 
     public Mono<D> getFlowSchema(AbstractCondition condition, String dbSchema, String dbTableName) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getFlowSchemaCondition(condition, dbSchema, dbTableName, null),
+                () -> this.getFlowSchemaCondition(condition, dbSchema, dbTableName, null, null),
                 super::filter,
                 (bCondition, jCondition) -> Mono.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass)));
     }
 
-    public Mono<D> getFlowSchema(AbstractCondition condition, String dbSchema, String dbTableName, ULong dbEntityPkId) {
+    public Mono<D> getFlowSchema(
+            AbstractCondition condition,
+            String dbSchemaName,
+            String dbTableName,
+            String dbEntityPkFieldName,
+            ULong dbEntityPkId) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getFlowSchemaCondition(condition, dbSchema, dbTableName, dbEntityPkId),
+                () -> this.getFlowSchemaCondition(condition, dbSchemaName, dbTableName, dbEntityPkFieldName, dbEntityPkId),
                 super::filter,
                 (bCondition, jCondition) -> Mono.from(
                                 this.dslContext.selectFrom(this.table).where(jCondition))
@@ -43,15 +48,22 @@ public abstract class FlowSchemaDAO<R extends UpdatableRecord<R>, I extends Seri
     }
 
     protected Mono<AbstractCondition> getFlowSchemaCondition(
-            AbstractCondition condition, String dbSchema, String dbTableName, ULong dbEntityPkId) {
+            AbstractCondition condition,
+            String dbSchemaName,
+            String dbTableName,
+            String dbEntityPkFieldName,
+            ULong dbEntityPkId) {
 
         List<AbstractCondition> conditions = new ArrayList<>();
 
         conditions.add(condition);
-        conditions.add(FilterCondition.make(FlowSchema.Fields.dbSchema, dbSchema));
+        conditions.add(FilterCondition.make(FlowSchema.Fields.dbSchemaName, dbSchemaName));
         conditions.add(FilterCondition.make(FlowSchema.Fields.dbTableName, dbTableName));
 
-        if (dbEntityPkId != null) conditions.add(FilterCondition.make(FlowSchema.Fields.dbEntityPkId, dbEntityPkId));
+        if (dbEntityPkFieldName != null && dbEntityPkId != null)
+            conditions.add(ComplexCondition.and(
+                    FilterCondition.make(FlowSchema.Fields.dbEntityPkFieldName, dbEntityPkFieldName),
+                    FilterCondition.make(FlowSchema.Fields.dbEntityPkId, dbEntityPkId)));
 
         return Mono.just(ComplexCondition.and(conditions));
     }

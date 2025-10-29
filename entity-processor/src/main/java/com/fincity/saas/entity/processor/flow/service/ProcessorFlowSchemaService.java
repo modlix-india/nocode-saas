@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.flow.service;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.jooq.flow.service.schema.FlowSchemaService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.entity.processor.constant.EntityProcessorConstants;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.flow.dao.ProcessorFlowSchemaDAO;
 import com.fincity.saas.entity.processor.flow.dto.ProcessorFlowSchema;
@@ -35,6 +36,11 @@ public class ProcessorFlowSchemaService
     }
 
     @Override
+    protected String getServerNameSpace() {
+        return EntityProcessorConstants.ENTITY_PROCESSOR_NAMESPACE;
+    }
+
+    @Override
     protected String getDbSchemaName() {
         return EntityProcessor.ENTITY_PROCESSOR.getName();
     }
@@ -45,8 +51,8 @@ public class ProcessorFlowSchemaService
     }
 
     @Override
-    protected Mono<Schema> getEntityIdSchema(String dbTableName, ULong dbEntityId) {
-        return this.hasAccess().flatMap(access -> this.getSchema(access, dbTableName, dbEntityId));
+    protected Mono<Schema> getEntityIdSchema(String dbTableName, String dbEntityPkFieldName, ULong dbEntityId) {
+        return this.hasAccess().flatMap(access -> this.getSchema(access, dbTableName, dbEntityPkFieldName, dbEntityId));
     }
 
     @Override
@@ -60,7 +66,7 @@ public class ProcessorFlowSchemaService
                                     super.getSchemaCache(),
                                     entity.getAppCode(),
                                     entity.getAppCode(),
-                                    entity.getDbSchema(),
+                                    entity.getDbSchemaName(),
                                     entity.getDbTableName())),
                     super.cacheService.evict(
                             this.getCacheName(),
@@ -68,7 +74,9 @@ public class ProcessorFlowSchemaService
                                     super.getSchemaCache(),
                                     entity.getAppCode(),
                                     entity.getAppCode(),
-                                    entity.getDbSchema(),
+                                    entity.getDbSchemaName(),
+                                    entity.getDbTableName(),
+                                    entity.getDbEntityPkFieldName(),
                                     entity.getDbEntityPkId())),
                     (schemaEvicted, schemaIdEvicted) -> schemaEvicted && schemaIdEvicted);
 
@@ -78,7 +86,7 @@ public class ProcessorFlowSchemaService
                         super.getSchemaCache(),
                         entity.getAppCode(),
                         entity.getAppCode(),
-                        entity.getDbSchema(),
+                        entity.getDbSchemaName(),
                         entity.getDbTableName()));
     }
 
@@ -96,8 +104,9 @@ public class ProcessorFlowSchemaService
         return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName);
     }
 
-    private Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
-        return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName, dbEntityPkId);
+    private Mono<ProcessorFlowSchema> getFlowSchema(
+            ProcessorAccess access, String dbTableName, String dbEntityPkFieldName, ULong dbEntityPkId) {
+        return this.dao.getFlowSchema(access, this.getDbSchemaName(), dbTableName, dbEntityPkFieldName, dbEntityPkId);
     }
 
     private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName) {
@@ -112,16 +121,19 @@ public class ProcessorFlowSchemaService
                         dbTableName));
     }
 
-    private Mono<Schema> getSchema(ProcessorAccess access, String dbTableName, ULong dbEntityPkId) {
+    private Mono<Schema> getSchema(
+            ProcessorAccess access, String dbTableName, String dbEntityPkFieldName, ULong dbEntityPkId) {
         return super.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.getFlowSchema(access, dbTableName, dbEntityPkId).map(super::toSchema),
+                () -> this.getFlowSchema(access, dbTableName, dbEntityPkFieldName, dbEntityPkId)
+                        .map(super::toSchema),
                 super.getCacheKey(
                         super.getSchemaCache(),
                         access.getAppCode(),
                         access.getAppCode(),
                         this.getDbSchemaName(),
                         dbTableName,
+                        dbEntityPkFieldName,
                         dbEntityPkId));
     }
 }

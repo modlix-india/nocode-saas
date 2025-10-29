@@ -3,20 +3,17 @@ package com.fincity.saas.commons.jooq.flow.service.schema;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.namespaces.Namespaces;
 import com.fincity.nocode.kirun.engine.util.string.StringFormatter;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
-import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowUpdatableDTO;
 import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.commons.util.Case;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import org.jooq.UpdatableRecord;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,10 +28,6 @@ public abstract class FlowSchemaService<
         extends AbstractJOOQUpdatableDataService<R, I, D, O> {
 
     private static final String SCHEMA_CACHE = "schema";
-    private static final String FLOW_SCHEMA_NAMESPACE =
-            Namespaces.SYSTEM + "." + AbstractFlowUpdatableDTO.FLOW_NAMESPACE;
-    private static final String FLOW_FIELD_NAMESPACE = FLOW_SCHEMA_NAMESPACE + "." + "Field";
-    private static final UnaryOperator<String> schemaNameConverter = Case.PASCAL.getConverter();
 
     protected CacheService cacheService;
 
@@ -54,19 +47,23 @@ public abstract class FlowSchemaService<
         return SCHEMA_CACHE;
     }
 
+    protected abstract String getServerNameSpace();
+
     protected abstract String getDbSchemaName();
 
     protected abstract Mono<Schema> getSchema(String dbTableName);
 
-    protected abstract Mono<Schema> getEntityIdSchema(String dbTableName, I dbEntityId);
+    protected abstract Mono<Schema> getEntityIdSchema(String dbTableName, String dbEntityPkFieldName, I dbEntityId);
 
-    public Mono<Schema> getSchema(String dbTableName, I dbEntityId) {
+    public Mono<Schema> getSchema(String dbTableName, String dbEntityPkFieldName, I dbEntityId) {
 
         if (dbTableName == null || dbTableName.isEmpty()) return Mono.empty();
 
-        if (dbEntityId == null) return this.getSchema(dbTableName);
+        if (dbEntityPkFieldName != null && dbEntityId != null)
+            return this.getEntityIdSchema(dbTableName, dbEntityPkFieldName, dbEntityId)
+                    .switchIfEmpty(this.getSchema(dbTableName));
 
-        return this.getEntityIdSchema(dbTableName, dbEntityId).switchIfEmpty(this.getSchema(dbTableName));
+        return this.getSchema(dbTableName);
     }
 
     protected String getCacheKey(String... entityNames) {
@@ -100,7 +97,7 @@ public abstract class FlowSchemaService<
     @Override
     protected Mono<D> updatableEntity(D entity) {
         return this.dao.readById(entity.getId()).flatMap(existing -> {
-            existing.setFieldSchema(entity.getFieldSchema());
+            existing.setSchema(entity.getSchema());
             return Mono.just(existing);
         });
     }
@@ -110,36 +107,34 @@ public abstract class FlowSchemaService<
         return super.create(this.updateEntity(entity));
     }
 
-    @SuppressWarnings("unchecked")
     private D updateEntity(D entity) {
 
-        entity.setDbSchema(this.getDbSchemaName());
+        entity.setDbSchemaName(this.getDbSchemaName());
         entity.setDbTableName(entity.getDbTableName());
 
-        if (!entity.getDbTableName().startsWith(entity.getDbSchema()))
+        if (!entity.getDbTableName().startsWith(entity.getDbSchemaName()))
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     StringFormatter.format(
-                            AbstractMessageService.INVALID_TABLE_NAME, entity.getDbTableName(), entity.getDbSchema()));
+                            AbstractMessageService.INVALID_TABLE_NAME,
+                            entity.getDbTableName(),
+                            entity.getDbSchemaName()));
 
-        return (D) entity.setFieldSchema(
-                this.toFieldMap(entity.getDbSchema(), entity.getDbTableName(), entity.getFieldSchema()));
+        entity.setSchema(this.toFieldMap(entity));
+
+        return entity;
     }
 
-    private Map<String, Object> toFieldMap(String dbSchema, String dbTableName, Map<String, Object> fieldSchemaMap) {
+    private Map<String, Object> toFieldMap(D entity) {
 
-        Schema schema = this.toSchema(fieldSchemaMap).setNamespace(this.getNamespace(dbSchema, dbTableName));
+        Schema schema = DbSchema.setEntityNameAndNamespace(
+                this.toSchema(entity.getSchema()), entity.getClass(), this.getServerNameSpace());
 
         return this.schemaToMap(schema);
     }
 
-    private String getNamespace(String dbSchema, String dbTableName) {
-        return FLOW_FIELD_NAMESPACE + "." + schemaNameConverter.apply(dbSchema) + "."
-                + schemaNameConverter.apply(dbTableName);
-    }
-
     protected Schema toSchema(D entity) {
-        return this.toSchema(entity.getFieldSchema());
+        return this.toSchema(entity.getSchema());
     }
 
     protected Schema toSchema(Map<String, Object> map) {

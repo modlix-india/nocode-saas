@@ -1,25 +1,39 @@
 package com.fincity.saas.commons.jooq.util;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
+import com.fincity.saas.commons.util.Case;
+import com.fincity.saas.commons.util.StringUtil;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
-
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.json.schema.string.StringFormat;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class DbSchema {
 
     public static final int CODE_LENGTH = 22;
-    public static final String DB_NAMESPACE = "Database.Schema";
+
+    private static final String DB_NAMESPACE = "Database.Schema";
+    private static final String FLOW_NAMESPACE = DbSchema.DB_NAMESPACE + "." + "Flow";
+    private static final UnaryOperator<String> NAMESPACE_CONVERTER = Case.PASCAL.getConverter();
     private static final Duration ERROR_CORRECTION_DURATION = Duration.ofMinutes(2);
+
+    public static Schema setEntityNameAndNamespace(Schema schema, Class<?> entityClass, String serverNameSpace) {
+        String name = DbSchema.NAMESPACE_CONVERTER.apply(entityClass.getSimpleName());
+
+        String nameSpace = StringUtil.safeIsBlank(serverNameSpace)
+                ? DbSchema.FLOW_NAMESPACE
+                : serverNameSpace + "." + DbSchema.FLOW_NAMESPACE + "." + name;
+
+        return schema.setName(name).setNamespace(nameSpace);
+    }
 
     public static Schema ofString(String id) {
         return Schema.ofString(id).setNamespace(DB_NAMESPACE);
@@ -80,9 +94,9 @@ public class DbSchema {
         return Schema.ofInteger(id).setNamespace(DB_NAMESPACE).setMinimum(0);
     }
 
-	public static Schema ofBoolean(String id) {
-		return Schema.ofBoolean(id).setNamespace(DB_NAMESPACE);
-	}
+    public static Schema ofBoolean(String id) {
+        return Schema.ofBoolean(id).setNamespace(DB_NAMESPACE);
+    }
 
     public static Schema ofBooleanFalse(String id) {
         return ofBoolean(id).setDefaultValue(new JsonPrimitive(Boolean.FALSE));

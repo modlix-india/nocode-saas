@@ -19,23 +19,28 @@ public class ProcessorFlowSchemaDAO extends FlowSchemaDAO<EntityProcessorFlowSch
         super(ProcessorFlowSchema.class, ENTITY_PROCESSOR_FLOW_SCHEMA, ENTITY_PROCESSOR_FLOW_SCHEMA.ID);
     }
 
-    public Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbSchema, String dbTableName) {
+    public Mono<ProcessorFlowSchema> getFlowSchema(ProcessorAccess access, String dbSchemaName, String dbTableName) {
         return super.getFlowSchema(
                 ComplexCondition.and(
                         FilterCondition.make(ProcessorFlowSchema.Fields.appCode, access.getAppCode()),
                         FilterCondition.make(ProcessorFlowSchema.Fields.clientCode, access.getEffectiveClientCode())),
-                dbSchema,
+                dbSchemaName,
                 dbTableName);
     }
 
     public Mono<ProcessorFlowSchema> getFlowSchema(
-            ProcessorAccess access, String dbSchema, String dbTableName, ULong dbEntityPkId) {
+            ProcessorAccess access,
+            String dbSchemaName,
+            String dbTableName,
+            String dbEntityPkFieldName,
+            ULong dbEntityPkId) {
         return super.getFlowSchema(
                 ComplexCondition.and(
                         FilterCondition.make(ProcessorFlowSchema.Fields.appCode, access.getAppCode()),
                         FilterCondition.make(ProcessorFlowSchema.Fields.clientCode, access.getEffectiveClientCode())),
-                dbSchema,
+                dbSchemaName,
                 dbTableName,
+                dbEntityPkFieldName,
                 dbEntityPkId);
     }
 }
