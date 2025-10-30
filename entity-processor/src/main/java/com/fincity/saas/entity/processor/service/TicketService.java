@@ -319,9 +319,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 (access, product, stage, status, partnerClient) -> this.getTicket(
                                 access, product.getId(), request.getPhoneNumber(), request.getEmail())
                         .flatMap(existing -> {
-
-							if (existing != null)
-								return super.throwDuplicateError(access, existing);
+                            if (existing != null) return super.throwDuplicateError(access, existing);
 
                             return Mono.just((Ticket) new Ticket()
                                     .setAssignedUserId(request.getAssignedUserId())
