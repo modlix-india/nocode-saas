@@ -16,6 +16,7 @@ import java.util.List;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Identity;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
@@ -77,10 +78,17 @@ public class EntityProcessorFlowSchema extends TableImpl<EntityProcessorFlowSche
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
+     * <code>entity_processor.entity_processor_flow_schema.ENTITY_NAME</code>.
+     * Name of the entity for which this flow Schema is created.
+     */
+    public final TableField<EntityProcessorFlowSchemaRecord, String> ENTITY_NAME = createField(DSL.name("ENTITY_NAME"), SQLDataType.CHAR(128).nullable(false), this, "Name of the entity for which this flow Schema is created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA_NAME</code>.
      * Schema of DB for this flow Schema.
      */
-    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_SCHEMA = createField(DSL.name("DB_SCHEMA"), SQLDataType.CHAR(22).nullable(false).defaultValue(DSL.inline("entity_processor", SQLDataType.CHAR)), this, "Schema of DB for this flow Schema.");
+    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_SCHEMA_NAME = createField(DSL.name("DB_SCHEMA_NAME"), SQLDataType.CHAR(22).nullable(false).defaultValue(DSL.inline("entity_processor", SQLDataType.CHAR)), this, "Schema of DB for this flow Schema.");
 
     /**
      * The column
@@ -91,10 +99,24 @@ public class EntityProcessorFlowSchema extends TableImpl<EntityProcessorFlowSche
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_FIELD_NAME</code>.
+     * Name of the field in this table which is primary key.
+     */
+    public final TableField<EntityProcessorFlowSchemaRecord, String> DB_ENTITY_PK_FIELD_NAME = createField(DSL.name("DB_ENTITY_PK_FIELD_NAME"), SQLDataType.CHAR(128).nullable(false), this, "Name of the field in this table which is primary key.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_ID</code>.
      * ID for Related entity of table for which this flow schema is created.
      */
     public final TableField<EntityProcessorFlowSchemaRecord, ULong> DB_ENTITY_PK_ID = createField(DSL.name("DB_ENTITY_PK_ID"), SQLDataType.BIGINTUNSIGNED, this, "ID for Related entity of table for which this flow schema is created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_flow_schema.SCHEMA_JSON</code>.
+     * Schema for this flow Schema.
+     */
+    public final TableField<EntityProcessorFlowSchemaRecord, JSON> SCHEMA_JSON = createField(DSL.name("SCHEMA_JSON"), SQLDataType.JSON.nullable(false), this, "Schema for this flow Schema.");
 
     /**
      * The column

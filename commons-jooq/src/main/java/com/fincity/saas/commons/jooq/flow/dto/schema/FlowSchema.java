@@ -20,9 +20,9 @@ public abstract class FlowSchema<I extends Serializable, U extends Serializable>
     @Version
     private int version = 1;
 
+	private String entityName;
     private String dbSchemaName;
     private String dbTableName;
-	private String dbEntityName;
     private String dbEntityPkFieldName;
     private I dbEntityPkId;
     private Map<String, Object> schema;

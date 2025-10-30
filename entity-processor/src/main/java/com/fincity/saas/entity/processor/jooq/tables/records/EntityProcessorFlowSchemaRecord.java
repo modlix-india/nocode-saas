@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorFlowSchema;
 
 import java.time.LocalDateTime;
 
+import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -78,21 +79,40 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
-     * Schema of DB for this flow Schema.
+     * <code>entity_processor.entity_processor_flow_schema.ENTITY_NAME</code>.
+     * Name of the entity for which this flow Schema is created.
      */
-    public EntityProcessorFlowSchemaRecord setDbSchema(String value) {
+    public EntityProcessorFlowSchemaRecord setEntityName(String value) {
         set(3, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA</code>.
+     * <code>entity_processor.entity_processor_flow_schema.ENTITY_NAME</code>.
+     * Name of the entity for which this flow Schema is created.
+     */
+    public String getEntityName() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA_NAME</code>.
      * Schema of DB for this flow Schema.
      */
-    public String getDbSchema() {
-        return (String) get(3);
+    public EntityProcessorFlowSchemaRecord setDbSchemaName(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_flow_schema.DB_SCHEMA_NAME</code>.
+     * Schema of DB for this flow Schema.
+     */
+    public String getDbSchemaName() {
+        return (String) get(4);
     }
 
     /**
@@ -101,7 +121,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Name of the table in this this entity is present for flow Schema.
      */
     public EntityProcessorFlowSchemaRecord setDbTableName(String value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -111,7 +131,26 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Name of the table in this this entity is present for flow Schema.
      */
     public String getDbTableName() {
-        return (String) get(4);
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_FIELD_NAME</code>.
+     * Name of the field in this table which is primary key.
+     */
+    public EntityProcessorFlowSchemaRecord setDbEntityPkFieldName(String value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_flow_schema.DB_ENTITY_PK_FIELD_NAME</code>.
+     * Name of the field in this table which is primary key.
+     */
+    public String getDbEntityPkFieldName() {
+        return (String) get(6);
     }
 
     /**
@@ -120,7 +159,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * ID for Related entity of table for which this flow schema is created.
      */
     public EntityProcessorFlowSchemaRecord setDbEntityPkId(ULong value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -130,7 +169,26 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * ID for Related entity of table for which this flow schema is created.
      */
     public ULong getDbEntityPkId() {
-        return (ULong) get(5);
+        return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_flow_schema.SCHEMA_JSON</code>.
+     * Schema for this flow Schema.
+     */
+    public EntityProcessorFlowSchemaRecord setSchemaJson(JSON value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_flow_schema.SCHEMA_JSON</code>.
+     * Schema for this flow Schema.
+     */
+    public JSON getSchemaJson() {
+        return (JSON) get(8);
     }
 
     /**
@@ -139,7 +197,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Temporary active flag for this partner.
      */
     public EntityProcessorFlowSchemaRecord setTempActive(Boolean value) {
-        set(6, value);
+        set(9, value);
         return this;
     }
 
@@ -149,7 +207,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Temporary active flag for this partner.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(6);
+        return (Boolean) get(9);
     }
 
     /**
@@ -158,7 +216,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Flag to check if this partner is active or not.
      */
     public EntityProcessorFlowSchemaRecord setIsActive(Boolean value) {
-        set(7, value);
+        set(10, value);
         return this;
     }
 
@@ -168,7 +226,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Flag to check if this partner is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(7);
+        return (Boolean) get(10);
     }
 
     /**
@@ -177,7 +235,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public EntityProcessorFlowSchemaRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(11, value);
         return this;
     }
 
@@ -187,7 +245,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(11);
     }
 
     /**
@@ -196,7 +254,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public EntityProcessorFlowSchemaRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(12, value);
         return this;
     }
 
@@ -206,7 +264,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(12);
     }
 
     /**
@@ -215,7 +273,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * of the user who updated this row.
      */
     public EntityProcessorFlowSchemaRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(13, value);
         return this;
     }
 
@@ -225,7 +283,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(13);
     }
 
     /**
@@ -234,7 +292,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is updated.
      */
     public EntityProcessorFlowSchemaRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(14, value);
         return this;
     }
 
@@ -244,7 +302,7 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -270,15 +328,18 @@ public class EntityProcessorFlowSchemaRecord extends UpdatableRecordImpl<EntityP
     /**
      * Create a detached, initialised EntityProcessorFlowSchemaRecord
      */
-    public EntityProcessorFlowSchemaRecord(ULong id, String appCode, String clientCode, String dbSchema, String dbTableName, ULong dbEntityPkId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorFlowSchemaRecord(ULong id, String appCode, String clientCode, String entityName, String dbSchemaName, String dbTableName, String dbEntityPkFieldName, ULong dbEntityPkId, JSON schemaJson, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorFlowSchema.ENTITY_PROCESSOR_FLOW_SCHEMA);
 
         setId(id);
         setAppCode(appCode);
         setClientCode(clientCode);
-        setDbSchema(dbSchema);
+        setEntityName(entityName);
+        setDbSchemaName(dbSchemaName);
         setDbTableName(dbTableName);
+        setDbEntityPkFieldName(dbEntityPkFieldName);
         setDbEntityPkId(dbEntityPkId);
+        setSchemaJson(schemaJson);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

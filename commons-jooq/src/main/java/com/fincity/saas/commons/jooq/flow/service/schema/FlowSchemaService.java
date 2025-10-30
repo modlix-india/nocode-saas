@@ -129,7 +129,7 @@ public abstract class FlowSchemaService<
     private Map<String, Object> toFieldMap(D entity) {
 
         Schema schema = DbSchema.setEntityNameAndNamespace(
-                        this.toSchema(entity.getSchema()), entity.getDbEntityName(), this.getServerNameSpace())
+                        this.toSchema(entity.getSchema()), entity.getEntityName(), this.getServerNameSpace())
                 .setAnyOf(List.of());
 
         return this.schemaToMap(schema);
