@@ -1,10 +1,13 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.model.request.ProductTemplateRequest;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -47,5 +50,18 @@ public class ProductTemplate extends BaseUpdatableDto<ProductTemplate> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_TEMPLATE;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.productTemplateType, DbSchema.ofEnum(Fields.productTemplateType, ProductTemplateType.class));
+        props.put(Fields.productTemplateWalkInFormId, DbSchema.ofNumberId(Fields.productTemplateWalkInFormId));
+
+        schema.setProperties(props);
     }
 }

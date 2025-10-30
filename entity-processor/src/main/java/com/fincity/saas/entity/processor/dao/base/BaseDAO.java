@@ -43,21 +43,8 @@ public abstract class BaseDAO<R extends UpdatableRecord<R>, D extends BaseDto<D>
         this.recordEnrichmentService = recordEnrichmentService;
     }
 
-    protected Condition isActiveTrue() {
-        return isActiveField.eq(Boolean.TRUE);
-    }
-
-    protected Condition isActiveFalse() {
-        return isActiveField.eq(Boolean.FALSE);
-    }
-
     protected Condition isActive(Boolean isActive) {
         if (isActive == null) return DSL.trueCondition();
-        return isActiveField.eq(isActive);
-    }
-
-    protected Condition isActiveWithFalse(Boolean isActive) {
-        if (isActive == null) return DSL.falseCondition();
         return isActiveField.eq(isActive);
     }
 }

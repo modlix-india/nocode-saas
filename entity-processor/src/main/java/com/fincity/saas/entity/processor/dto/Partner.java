@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
@@ -7,6 +9,7 @@ import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.ClientFieldResolver;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -27,7 +30,7 @@ public class Partner extends BaseUpdatableDto<Partner> {
     private ULong clientId;
     private ULong managerId;
     private PartnerVerificationStatus partnerVerificationStatus = PartnerVerificationStatus.INVITATION_SENT;
-    private Boolean dnc = Boolean.FALSE;
+    private boolean dnc;
 
     public Partner() {
         super();
@@ -44,15 +47,31 @@ public class Partner extends BaseUpdatableDto<Partner> {
     }
 
     public static Partner of(PartnerRequest partnerRequest) {
-        return new Partner()
-                .setName(partnerRequest.getName())
-                .setDescription(partnerRequest.getDescription())
-                .setClientId(partnerRequest.getClientId())
-                .setDnc(partnerRequest.getDnc());
+        return new Partner().setClientId(partnerRequest.getClientId()).setDnc(partnerRequest.getDnc());
     }
 
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PARTNER;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.clientId, DbSchema.ofNumberId(Fields.clientId));
+        props.put(Fields.managerId, DbSchema.ofNumberId(Fields.managerId));
+        props.put(
+                Fields.partnerVerificationStatus,
+                DbSchema.ofEnum(
+                        Fields.partnerVerificationStatus,
+                        PartnerVerificationStatus.class,
+                        PartnerVerificationStatus.INVITATION_SENT));
+        props.put(Fields.dnc, DbSchema.ofBooleanFalse(Fields.dnc));
+
+        schema.setProperties(props);
     }
 }

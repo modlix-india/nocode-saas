@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.util.CloneUtil;
@@ -9,6 +11,7 @@ import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
 import com.fincity.saas.entity.processor.model.common.ValueContainer;
 import java.io.Serial;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -26,12 +29,12 @@ public class SimpleRule extends BaseRule<SimpleRule> {
     @Serial
     private static final long serialVersionUID = 1248302700338268L;
 
-    private boolean hasParent = false;
+    private boolean hasParent;
     private String field;
     private ComparisonOperator comparisonOperator = ComparisonOperator.EQUALS;
     private ValueContainer value;
-    private boolean isValueField = false;
-    private boolean isToValueField = false;
+    private boolean isValueField;
+    private boolean isToValueField;
     private ComparisonOperator matchOperator = ComparisonOperator.EQUALS;
 
     public SimpleRule() {
@@ -87,5 +90,27 @@ public class SimpleRule extends BaseRule<SimpleRule> {
         this.value = new ValueContainer().setValue(value).setToValue(toValue);
         if (multiValue != null) this.value.setMultiValue(multiValue);
         return this;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.hasParent, DbSchema.ofBooleanFalse(Fields.hasParent));
+        props.put(Fields.field, DbSchema.ofCharNull(Fields.field, 255));
+        props.put(
+                Fields.comparisonOperator,
+                DbSchema.ofEnum(Fields.comparisonOperator, ComparisonOperator.class, ComparisonOperator.EQUALS));
+        props.put(Fields.value, ValueContainer.getSchema());
+        props.put(Fields.isValueField, DbSchema.ofBooleanFalse(Fields.isValueField));
+        props.put(Fields.isToValueField, DbSchema.ofBooleanFalse(Fields.isToValueField));
+        props.put(
+                Fields.matchOperator,
+                DbSchema.ofEnum(Fields.matchOperator, ComparisonOperator.class, ComparisonOperator.EQUALS));
+
+        schema.setProperties(props);
     }
 }

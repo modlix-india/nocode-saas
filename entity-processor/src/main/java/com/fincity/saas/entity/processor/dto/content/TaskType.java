@@ -1,9 +1,11 @@
 package com.fincity.saas.entity.processor.dto.content;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.content.TaskTypeRequest;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -33,5 +35,15 @@ public class TaskType extends BaseUpdatableDto<TaskType> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TASK_TYPE;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        schema.setProperties(props);
     }
 }

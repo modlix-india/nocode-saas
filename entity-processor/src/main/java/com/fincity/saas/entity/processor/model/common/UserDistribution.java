@@ -2,19 +2,28 @@ package com.fincity.saas.entity.processor.model.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
+import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
+import com.google.gson.JsonArray;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
 import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
+@FieldNameConstants
 public class UserDistribution implements Serializable {
 
     @Serial
@@ -51,6 +60,37 @@ public class UserDistribution implements Serializable {
         this.priority = userDistribution.priority;
         this.hybridWeights = CloneUtil.cloneMapObject(userDistribution.hybridWeights);
         this.currentCount = userDistribution.currentCount;
+    }
+
+    public static Schema getSchema() {
+        return Schema.ofObject(Case.PASCAL.getConverter().apply(UserDistribution.class.getSimpleName()))
+                .setProperties(Map.of(
+                        Fields.profileIds,
+                        Schema.ofArray(Fields.profileIds, DbSchema.ofNumberId("profileId"))
+                                .setDefaultValue(new JsonArray()),
+                        Fields.userIds,
+                        Schema.ofArray(Fields.userIds, DbSchema.ofNumberId("userId"))
+                                .setDefaultValue(new JsonArray()),
+                        Fields.percentage,
+                        Schema.ofInteger(Fields.percentage).setMinimum(0).setMaximum(100),
+                        Fields.weight,
+                        Schema.ofInteger(Fields.weight).setMinimum(0),
+                        Fields.maxLoad,
+                        Schema.ofInteger(Fields.maxLoad).setMinimum(1),
+                        Fields.priority,
+                        Schema.ofInteger(Fields.priority).setMinimum(0),
+                        Fields.hybridWeights,
+                        Schema.ofObject(Fields.hybridWeights)
+                                .setName(Fields.hybridWeights)
+                                .setProperties(Arrays.stream(DistributionType.values())
+                                        .collect(Collectors.toMap(
+                                                Enum::name,
+                                                type -> Schema.ofInteger(type.name())
+                                                        .setMinimum(0),
+                                                (a, b) -> b,
+                                                () -> HashMap.newHashMap(DistributionType.values().length)))),
+                        Fields.currentCount,
+                        Schema.ofInteger(Fields.currentCount).setMinimum(0)));
     }
 
     @JsonIgnore

@@ -104,7 +104,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .flatMap(existing -> {
                     existing.setManagerId(entity.getManagerId());
                     existing.setPartnerVerificationStatus(entity.getPartnerVerificationStatus());
-                    existing.setDnc(entity.getDnc());
+                    existing.setDnc(entity.isDnc());
                     return Mono.just(existing);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updatableEntity"));
@@ -134,7 +134,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
                                         client.getLevelType(),
-                                        this.getEntityName(),
+                                        this.getEntityDisplayName(),
                                         BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
 
                             return super.createInternal(
@@ -169,10 +169,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> toggleLoggedInPartnerDnc() {
         return FlatMapUtil.flatMapMono(
                         this::getLoggedInPartner,
-                        partner -> super.update(partner.setDnc(!partner.getDnc())),
+                        partner -> super.update(partner.setDnc(!partner.isDnc())),
                         (partner, uPartner) -> this.evictCache(partner),
                         (partner, uPartner, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
+                                .updateTicketDncByClientId(partner.getClientId(), !partner.isDnc())
                                 .then(Mono.just(uPartner)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.toggleLoggedInPartnerDnc"));
     }
@@ -190,10 +190,10 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readIdentityWithAccess(access, partnerId),
-                        (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
+                        (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.isDnc())),
                         (access, partner, updated) -> this.evictCache(partner),
                         (access, partner, updated, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
+                                .updateTicketDncByClientId(partner.getClientId(), !partner.isDnc())
                                 .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
@@ -213,7 +213,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         return this.getPartnerByClientId(
                         access, ULongUtil.valueOf(access.getUser().getClientId()))
-                .map(partner -> partner.getDnc() != null && partner.getDnc())
+                .map(Partner::isDnc)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerDnc"));
     }
 
@@ -323,7 +323,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
 
-        String partnerEntityKey = this.getEntityKey();
+        String partnerEntityKey = NameUtil.decapitalize(this.getEntityDisplayName());
 
         partners.forEach(partner -> {
             Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
@@ -375,7 +375,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
-                    String ticketKey = ticketBucketService.getEntityKey();
+                    String ticketKey = NameUtil.decapitalize(ticketBucketService.getEntityDisplayName());
 
                     partners.forEach(partner -> {
                         StatusEntityCount count = status.get(partner.getClientId());
@@ -432,7 +432,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     Map<ULong, StatusEntityCount> status = statusCounts.stream()
                             .collect(Collectors.toMap(StatusEntityCount::getId, Function.identity()));
 
-                    String ticketKey = ticketBucketService.getEntityKey();
+                    String ticketKey = NameUtil.decapitalize(ticketBucketService.getEntityDisplayName());
 
                     userMapByIds.forEach((key, value) -> {
                         StatusEntityCount count = status.get(ULongUtil.valueOf(key));

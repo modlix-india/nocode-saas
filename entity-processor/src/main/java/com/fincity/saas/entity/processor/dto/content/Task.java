@@ -1,11 +1,14 @@
 package com.fincity.saas.entity.processor.dto.content;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -76,5 +79,26 @@ public class Task extends BaseContentDto<Task> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.TASK;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.taskTypeId, DbSchema.ofNumberId(Fields.taskTypeId));
+        props.put(Fields.dueDate, DbSchema.ofFutureEpochTime(Fields.dueDate));
+        props.put(Fields.taskPriority, DbSchema.ofEnum(Fields.taskPriority, TaskPriority.class));
+        props.put(Fields.isCompleted, DbSchema.ofBooleanFalse(Fields.isCompleted));
+        props.put(Fields.completedDate, DbSchema.ofFutureEpochTime(Fields.completedDate));
+        props.put(Fields.isCancelled, DbSchema.ofBooleanFalse(Fields.isCancelled));
+        props.put(Fields.cancelledDate, DbSchema.ofFutureEpochTime(Fields.cancelledDate));
+        props.put(Fields.isDelayed, DbSchema.ofBooleanFalse(Fields.isDelayed));
+        props.put(Fields.hasReminder, DbSchema.ofBooleanFalse(Fields.hasReminder));
+        props.put(Fields.nextReminder, DbSchema.ofFutureEpochTime(Fields.nextReminder));
+
+        schema.setProperties(props);
     }
 }

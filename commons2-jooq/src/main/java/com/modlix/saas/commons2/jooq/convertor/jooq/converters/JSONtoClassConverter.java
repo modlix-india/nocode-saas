@@ -1,7 +1,6 @@
 package com.modlix.saas.commons2.jooq.convertor.jooq.converters;
 
 import java.io.Serial;
-
 import org.jooq.JSON;
 
 public class JSONtoClassConverter<T, U> extends AbstractJooqConverter<JSON, U> {
@@ -19,15 +18,13 @@ public class JSONtoClassConverter<T, U> extends AbstractJooqConverter<JSON, U> {
 
     @Override
     protected String toData(JSON databaseObject) {
-        if (databaseObject == null)
-            return null;
+        if (databaseObject == null) return null;
         return databaseObject.data();
     }
 
     @Override
     protected JSON toJson(String string) {
-        if (string == null)
-            return null;
+        if (string == null) return null;
 
         return JSON.jsonOrNull(string);
     }

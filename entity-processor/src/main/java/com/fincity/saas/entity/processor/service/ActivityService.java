@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.jooq.flow.dao.schema.FlowSchemaDAO;
+import com.fincity.saas.commons.jooq.flow.dto.schema.FlowSchema;
+import com.fincity.saas.commons.jooq.flow.service.schema.FlowSchemaService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -33,11 +36,13 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -96,6 +101,17 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .getUserInternal(actorId.toBigInteger(), null)
                 .map(this::getUserIdAndValue)
                 .switchIfEmpty(this.getLoggedInUser());
+    }
+
+    @Override
+    protected <
+                    R0 extends UpdatableRecord<R0>,
+                    I0 extends Serializable,
+                    D0 extends FlowSchema<I0, I0>,
+                    O0 extends FlowSchemaDAO<R0, I0, D0>,
+                    S0 extends FlowSchemaService<R0, I0, D0, O0>>
+            S0 getFlowSchemaService() {
+        return null;
     }
 
     @Override
@@ -182,9 +198,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createActivityInternal"));
     }
 
-    public Mono<Void> acCreate(Ticket ticket) {
-        return this.hasAccess()
-                .flatMap(access -> this.acCreate(access, ticket, null))
+    public Mono<Void> acCreate(ProcessorAccess access, Ticket ticket) {
+        return this.acCreate(access, ticket, null)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
@@ -206,12 +221,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                                 ticket.getSubSource())
                                         : Map.of(Ticket.Fields.source, ticket.getSource())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
-    }
-
-    public Mono<Void> acReInquiry(Ticket ticket, String source, String subSource) {
-        return super.hasAccess()
-                .flatMap(access -> this.acReInquiry(access, ticket, null, source, subSource))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReInquiry"));
     }
 
     public Mono<Void> acReInquiry(

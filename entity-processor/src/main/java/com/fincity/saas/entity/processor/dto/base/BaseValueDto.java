@@ -1,9 +1,12 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -23,7 +26,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
 
     private Platform platform = Platform.PRE_QUALIFICATION;
     private ULong productTemplateId;
-    private Boolean isParent;
+    private Boolean isParent = Boolean.TRUE;
     private ULong parentLevel0;
     private ULong parentLevel1;
     private Integer order;
@@ -43,6 +46,7 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
         this.order = baseValueDto.order;
     }
 
+    @SuppressWarnings("unchecked")
     public T setOrder(Integer order) {
         this.order = order;
         return (T) this;
@@ -87,5 +91,22 @@ public abstract class BaseValueDto<T extends BaseValueDto<T>> extends BaseUpdata
     public ULong setParentLevel_1(ULong parentLevel1) {
         this.parentLevel1 = parentLevel1;
         return parentLevel1;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.platform, DbSchema.ofEnum(Fields.platform, Platform.class));
+        props.put(Fields.productTemplateId, DbSchema.ofNumberId(Fields.productTemplateId));
+        props.put(Fields.isParent, DbSchema.ofBooleanTrue(Fields.isParent));
+        props.put(Fields.parentLevel0, DbSchema.ofNumberId(Fields.parentLevel0));
+        props.put(Fields.parentLevel1, DbSchema.ofNumberId(Fields.parentLevel1));
+        props.put(Fields.order, DbSchema.ofInt(Fields.order).setMinimum(0));
+
+        schema.setProperties(props);
     }
 }

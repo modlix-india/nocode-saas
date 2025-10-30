@@ -44,7 +44,7 @@ public class ReportUtil {
                     (StatusNameCount status) -> TOTAL.equalsIgnoreCase(status.getName()) ? 0 : 1)
             .thenComparing(statusNameComparator);
 
-    public static Flux<DateStatusCount> toDateStatusCounts(
+    public static Flux<DateStatusCount> toDateStatusCounts( // NOSONAR
             DatePair totalDatePair,
             TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,

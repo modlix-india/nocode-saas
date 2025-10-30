@@ -65,7 +65,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                                             msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                             ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                             String.join(", ", names),
-                                            this.getEntityName())
+                                            this.getEntityDisplayName())
                                     : Flux.fromIterable(taskTypeRequests)
                                             .flatMap(req -> super.createInternal(access, TaskType.of(req))));
                 })

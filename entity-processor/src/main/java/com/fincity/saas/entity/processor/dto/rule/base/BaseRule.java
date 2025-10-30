@@ -1,8 +1,11 @@
 package com.fincity.saas.entity.processor.dto.rule.base;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -42,16 +45,19 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
         this.negate = baseRule.negate;
     }
 
+    @SuppressWarnings("unchecked")
     public T setProductTemplateRuleId(ULong productTemplateRuleId) {
         this.productTemplateRuleId = productTemplateRuleId;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setProductStageRuleId(ULong productStageRuleId) {
         this.productStageRuleId = productStageRuleId;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setNegate(boolean negate) {
         this.negate = negate;
         return (T) this;
@@ -64,5 +70,20 @@ public abstract class BaseRule<T extends BaseRule<T>> extends BaseUpdatableDto<T
     public ULong getRuleId(EntitySeries entitySeries) {
         if (entitySeries.equals(EntitySeries.PRODUCT_STAGE_RULE)) return this.getProductStageRuleId();
         return this.getProductTemplateRuleId();
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.version, DbSchema.ofVersion(Fields.version));
+        props.put(Fields.productTemplateRuleId, DbSchema.ofNumberId(Fields.productTemplateRuleId));
+        props.put(Fields.productStageRuleId, DbSchema.ofNumberId(Fields.productStageRuleId));
+        props.put(Fields.negate, DbSchema.ofBooleanFalse(Fields.negate));
+
+        schema.setProperties(props);
     }
 }

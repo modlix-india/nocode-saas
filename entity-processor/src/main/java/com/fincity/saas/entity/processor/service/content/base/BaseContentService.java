@@ -149,7 +149,7 @@ public abstract class BaseContentService<
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
-                    this.ticketService.getEntityName());
+                    this.ticketService.getEntityDisplayName());
 
         return this.ticketService.checkAndUpdateIdentityWithAccess(access, ticketId);
     }
@@ -160,7 +160,7 @@ public abstract class BaseContentService<
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
-                    this.ownerService.getEntityName());
+                    this.ownerService.getEntityDisplayName());
 
         if (ticketId == null || ticketId.isNull())
             return this.ownerService.checkAndUpdateIdentityWithAccess(access, ownerId);
@@ -203,7 +203,7 @@ public abstract class BaseContentService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.ticketService.getEntityName(),
+                        this.ticketService.getEntityDisplayName(),
                         content.getTicketId()));
     }
 
@@ -217,7 +217,7 @@ public abstract class BaseContentService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.ownerService.getEntityName(),
+                        this.ownerService.getEntityDisplayName(),
                         content.getTicketId()));
     }
 

@@ -93,7 +93,7 @@ public abstract class BaseWalkInFormService<
             return msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
-                    stageService.getEntityName());
+                    stageService.getEntityDisplayName());
 
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,

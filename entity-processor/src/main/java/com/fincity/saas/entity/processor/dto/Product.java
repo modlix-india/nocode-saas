@@ -1,10 +1,13 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.ProductRequest;
 import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -23,7 +26,7 @@ public class Product extends BaseProcessorDto<Product> {
     private static final long serialVersionUID = 8028699089699178352L;
 
     private ULong productTemplateId;
-    private Boolean forPartner = Boolean.FALSE;
+    private boolean forPartner;
     private ULong productWalkInFormId;
     private FileDetail logoFileDetail;
     private FileDetail bannerFileDetail;
@@ -55,5 +58,21 @@ public class Product extends BaseProcessorDto<Product> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.productTemplateId, DbSchema.ofNumberId(Fields.productTemplateId));
+        props.put(Fields.forPartner, DbSchema.ofBooleanFalse(Fields.forPartner));
+        props.put(Fields.productWalkInFormId, DbSchema.ofNumberId(Fields.productWalkInFormId));
+        props.put(Fields.logoFileDetail, Schema.ofObject(Fields.logoFileDetail));
+        props.put(Fields.bannerFileDetail, Schema.ofObject(Fields.bannerFileDetail));
+
+        schema.setProperties(props);
     }
 }

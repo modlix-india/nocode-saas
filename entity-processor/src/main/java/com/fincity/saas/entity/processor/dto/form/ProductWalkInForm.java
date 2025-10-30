@@ -1,7 +1,10 @@
 package com.fincity.saas.entity.processor.dto.form;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -34,5 +37,17 @@ public class ProductWalkInForm extends BaseWalkInFormDto<ProductWalkInForm> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.PRODUCT_WALK_IN_FORMS;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
+
+        schema.setProperties(props);
     }
 }

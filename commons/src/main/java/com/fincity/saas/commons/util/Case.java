@@ -16,12 +16,14 @@ public enum Case {
     UNKNOWN("^$", str -> str),
     /** Snake case (e.g., "hello_world"). */
     SNAKE("^[a-z0-9_]+$", Case::toSnakeCase),
+    /** Screaming snake case (e.g., "HELLO_WORLD"). */
+    SCREAMING_SNAKE_CASE("^[A-Z0-9_]+$", Case::toScreamingSnakeCase),
     /** Camel case (e.g., "helloWorld"). */
     CAMEL("^[a-z][a-zA-Z0-9]*$", Case::toCamelCase),
     /** Pascal case (e.g., "HelloWorld"). */
     PASCAL("^[A-Z][a-zA-Z0-9]*$", Case::toPascalCase),
     /** Kebab case (e.g., "hello-world"). */
-    KEBAB("^[a-z0-9-]+$", Case::toKebabCase);
+    KEBAB("^[a-z0-9-]+$", Case::toKebabCase),;
 
     private static final Map<Case, Pattern> CASE_PATTERNS = initializeCasePatterns();
     private final Pattern pattern;
@@ -42,6 +44,10 @@ public enum Case {
 
     private static String toSnakeCase(String str) {
         return str.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase();
+    }
+
+    private static String toScreamingSnakeCase(String str) {
+        return str.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toUpperCase();
     }
 
     private static String toCamelCase(String str) {

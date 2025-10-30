@@ -26,6 +26,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.rule.ProductStageRuleService;
 import java.util.Objects;
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
@@ -97,7 +98,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_MISSING,
-                    this.productService.getEntityName());
+                    this.productService.getEntityDisplayName());
 
         return FlatMapUtil.flatMapMono(
                         () -> this.setAssignmentAndStage(ticket, access),
@@ -212,7 +213,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
-                    this.getEntityName());
+                    this.getEntityDisplayName());
 
         if (!ticketRequest.hasSourceInfo())
             return this.msgService.throwMessage(
@@ -241,7 +242,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, isDuplicate, pTicket, created) ->
                                 this.createNote(access, ticketRequest, created),
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
-                                this.activityService.acCreate(created).thenReturn(created))
+                                this.activityService.acCreate(access, created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 
@@ -363,7 +364,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         if (ticketStatusRequest.getStageId() == null
                 || ticketStatusRequest.getStageId().isNull())
-            return this.identityMissingError(this.stageService.getEntityName());
+            return this.identityMissingError(this.stageService.getEntityDisplayName());
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,

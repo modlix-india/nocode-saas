@@ -58,7 +58,7 @@ public abstract class BaseUpdatableService<
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.OUTSIDE_USER_ACCESS,
                 action,
-                this.getEntityName());
+                this.getEntityDisplayName());
     }
 
     protected String getCacheKey(String... entityNames) {
@@ -225,7 +225,7 @@ public abstract class BaseUpdatableService<
                                 msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
                                 ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
                                 entity.getName(),
-                                this.getEntityName())
+                                this.getEntityDisplayName())
                         : Mono.just(entity));
     }
 
@@ -308,7 +308,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.IDENTITY_MISSING,
-                this.getEntityName());
+                this.getEntityDisplayName());
     }
 
     protected <T> Mono<T> identityMissingError(String entityName) {
@@ -326,7 +326,7 @@ public abstract class BaseUpdatableService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
+                        this.getEntityDisplayName(),
                         id));
     }
 
@@ -339,13 +339,13 @@ public abstract class BaseUpdatableService<
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                                        this.getEntityName(),
+                                        this.getEntityDisplayName(),
                                         identity.getCode()))
                         : this.readById(identity.getULongId()))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
+                        this.getEntityDisplayName(),
                         identity.getId()));
     }
 
@@ -362,13 +362,13 @@ public abstract class BaseUpdatableService<
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
+                                this.getEntityDisplayName(),
                                 identity.getCode()))
                 : this.readById(access, identity.getULongId())
                         .switchIfEmpty(this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
+                                this.getEntityDisplayName(),
                                 identity.getId()));
     }
 
@@ -398,7 +398,7 @@ public abstract class BaseUpdatableService<
                     .switchIfEmpty(this.msgService.throwMessage(
                             msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                             ProcessorMessageResourceService.IDENTITY_WRONG,
-                            this.getEntityName(),
+                            this.getEntityDisplayName(),
                             identity.getId()));
 
         return this.readByCode(access, identity.getCode())
@@ -406,7 +406,7 @@ public abstract class BaseUpdatableService<
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
+                        this.getEntityDisplayName(),
                         identity.getCode()));
     }
 
@@ -456,7 +456,7 @@ public abstract class BaseUpdatableService<
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.MISSING_PARAMETERS,
                 paramName,
-                this.getEntityName());
+                this.getEntityDisplayName());
     }
 
     protected <T> Mono<T> throwInvalidParam(String paramName) {
@@ -464,6 +464,6 @@ public abstract class BaseUpdatableService<
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
                 paramName,
-                this.getEntityName());
+                this.getEntityDisplayName());
     }
 }

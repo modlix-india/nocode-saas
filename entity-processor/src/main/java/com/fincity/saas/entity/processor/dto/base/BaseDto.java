@@ -1,11 +1,13 @@
 package com.fincity.saas.entity.processor.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.commons.jooq.flow.dto.AbstractFlowDTO;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
-import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.UniqueUtil;
+import com.fincity.saas.entity.processor.constant.EntityProcessorConstants;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.relations.IRelationMap;
@@ -30,7 +32,7 @@ import org.jooq.types.ULong;
 @ToString(callSuper = true)
 @FieldNameConstants
 public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULong, ULong>
-        implements IClassConvertor, IEntitySeries, IRelationMap {
+        implements IEntitySeries, IRelationMap {
 
     public static final int CODE_LENGTH = 22;
 
@@ -43,6 +45,9 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
     @JsonIgnore
     protected transient SetValuedMap<Class<? extends RelationResolver>, String> relationsResolverMap =
             new HashSetValuedHashMap<>();
+
+    private String appCode;
+    private String clientCode;
 
     private String code = UniqueUtil.shortUUID();
 
@@ -77,17 +82,20 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
         this.isActive = baseDto.isActive;
     }
 
+    @SuppressWarnings("unchecked")
     public T setCode() {
         if (this.code != null) return (T) this;
         this.code = UniqueUtil.shortUUID();
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setName(String name) {
         this.name = name;
         return (T) this;
     }
 
+    @SuppressWarnings("unchecked")
     public T setDescription(String description) {
         this.description = description;
         return (T) this;
@@ -95,5 +103,37 @@ public abstract class BaseDto<T extends BaseDto<T>> extends AbstractFlowDTO<ULon
 
     public BaseResponse toBaseResponse() {
         return BaseResponse.of(this.getId(), this.code, this.name);
+    }
+
+    @Override
+    public String getDbTableName() {
+        return IEntitySeries.super.getTableName();
+    }
+
+    @Override
+    public String getDbEntityName() {
+        return this.getEntitySeries().getClassName();
+    }
+
+    @Override
+    public String getServerNameSpace() {
+        return EntityProcessorConstants.ENTITY_PROCESSOR_NAMESPACE;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.appCode, DbSchema.ofAppCode(Fields.appCode));
+        props.put(Fields.clientCode, DbSchema.ofClientCode(Fields.clientCode));
+        props.put(Fields.code, DbSchema.ofShortUUID(Fields.code));
+        props.put(Fields.name, DbSchema.ofChar(Fields.name, 512));
+        props.put(Fields.description, DbSchema.ofChar(Fields.description));
+        props.put(Fields.isActive, DbSchema.ofBooleanTrue(Fields.isActive));
+
+        schema.setProperties(props);
     }
 }

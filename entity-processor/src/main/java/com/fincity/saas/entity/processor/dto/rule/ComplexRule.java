@@ -1,5 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
@@ -8,6 +10,7 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.LogicalOperator;
 import java.io.Serial;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -68,5 +71,20 @@ public class ComplexRule extends BaseRule<ComplexRule> {
     @Override
     public EntitySeries getEntitySeries() {
         return EntitySeries.COMPLEX_RULE;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.parentConditionId, DbSchema.ofNumberId(Fields.parentConditionId));
+        props.put(Fields.logicalOperator, DbSchema.ofEnum(Fields.logicalOperator, LogicalOperator.class));
+        props.put(Fields.hasComplexChild, DbSchema.ofBooleanFalse(Fields.hasComplexChild));
+        props.put(Fields.hasSimpleChild, DbSchema.ofBooleanFalse(Fields.hasSimpleChild));
+
+        schema.setProperties(props);
     }
 }

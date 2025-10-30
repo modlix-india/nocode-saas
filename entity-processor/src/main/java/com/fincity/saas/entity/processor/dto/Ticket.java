@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -10,7 +12,9 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -39,7 +43,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String source;
     private String subSource;
     private ULong campaignId;
-    private Boolean dnc = Boolean.FALSE;
+    private boolean dnc;
 
     public Ticket() {
         super();
@@ -165,5 +169,31 @@ public class Ticket extends BaseProcessorDto<Ticket> {
 
         this.subSource = NameUtil.normalize(subSource);
         return this;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(Fields.ownerId, DbSchema.ofNumberId(Fields.ownerId));
+        props.put(Fields.assignedUserId, DbSchema.ofNumberId(Fields.assignedUserId));
+        props.put(
+                Fields.dialCode,
+                DbSchema.ofDialCode(Fields.dialCode)
+                        .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
+        props.put(Fields.phoneNumber, DbSchema.ofPhoneNumber(Fields.phoneNumber));
+        props.put(Fields.email, DbSchema.ofEmail(Fields.email));
+        props.put(Fields.productId, DbSchema.ofNumberId(Fields.productId));
+        props.put(Fields.stage, DbSchema.ofNumberId(Fields.stage));
+        props.put(Fields.status, DbSchema.ofNumberId(Fields.status));
+        props.put(Fields.source, DbSchema.ofChar(Fields.source, 32));
+        props.put(Fields.subSource, DbSchema.ofCharNull(Fields.subSource, 32));
+        props.put(Fields.campaignId, DbSchema.ofNumberId(Fields.campaignId));
+        props.put(Fields.dnc, DbSchema.ofBooleanFalse(Fields.dnc));
+
+        schema.setProperties(props);
     }
 }

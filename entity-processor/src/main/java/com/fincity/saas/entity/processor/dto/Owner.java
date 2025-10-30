@@ -1,12 +1,16 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.jooq.util.DbSchema;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import com.google.gson.JsonPrimitive;
 import java.io.Serial;
+import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -92,5 +96,24 @@ public class Owner extends BaseProcessorDto<Owner> {
 
         this.subSource = NameUtil.normalize(subSource);
         return this;
+    }
+
+    @Override
+    public void extendSchema(Schema schema) {
+
+        super.extendSchema(schema);
+
+        Map<String, Schema> props = schema.getProperties();
+
+        props.put(
+                Fields.dialCode,
+                DbSchema.ofDialCode(Fields.dialCode)
+                        .setDefaultValue(new JsonPrimitive(PhoneUtil.getDefaultCallingCode())));
+        props.put(Fields.phoneNumber, DbSchema.ofPhoneNumber(Fields.phoneNumber));
+        props.put(Fields.email, DbSchema.ofEmail(Fields.email));
+        props.put(Fields.source, DbSchema.ofChar(Ticket.Fields.source, 32));
+        props.put(Fields.subSource, DbSchema.ofCharNull(Ticket.Fields.subSource, 32));
+
+        schema.setProperties(props);
     }
 }

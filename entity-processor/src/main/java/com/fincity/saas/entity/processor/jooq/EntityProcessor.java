@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorFlowSchema;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
@@ -59,6 +60,11 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_complex_rules</code>.
      */
     public final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
+
+    /**
+     * The table <code>entity_processor.entity_processor_flow_schema</code>.
+     */
+    public final EntityProcessorFlowSchema ENTITY_PROCESSOR_FLOW_SCHEMA = EntityProcessorFlowSchema.ENTITY_PROCESSOR_FLOW_SCHEMA;
 
     /**
      * The table <code>entity_processor.entity_processor_notes</code>.
@@ -165,6 +171,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
             EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
+            EntityProcessorFlowSchema.ENTITY_PROCESSOR_FLOW_SCHEMA,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
