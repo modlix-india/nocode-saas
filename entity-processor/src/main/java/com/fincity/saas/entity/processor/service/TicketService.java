@@ -18,6 +18,7 @@ import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
@@ -304,6 +305,49 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 .acCreate(access, created, null)
                                 .thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
+    }
+
+    public Mono<Ticket> createForPartnerImportDCRM(TicketPartnerRequest request) {
+
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.productService.readIdentityWithAccess(access, request.getProductId()),
+                (access, product) -> this.stageService.readIdentityWithAccess(access, request.getStageId()),
+                (access, product, stage) -> this.stageService.readIdentityWithAccess(access, request.getStatusId()),
+                (access, product, stage, status) ->
+                        this.securityService.getClientById(request.getClientId().toBigInteger()),
+                (access, product, stage, status, partnerClient) -> this.getTicket(
+                                access, product.getId(), request.getPhoneNumber(), request.getEmail())
+                        .flatMap(existing -> {
+
+							if (existing != null)
+								return super.throwDuplicateError(access, existing);
+
+                            return Mono.just((Ticket) new Ticket()
+                                    .setAssignedUserId(request.getAssignedUserId())
+                                    .setDialCode(request.getPhoneNumber().getCountryCode())
+                                    .setPhoneNumber(request.getPhoneNumber().getNumber())
+                                    .setEmail(
+                                            request.getEmail() != null
+                                                    ? request.getEmail().getAddress()
+                                                    : null)
+                                    .setSource(request.getSource())
+                                    .setSubSource(request.getSubSource())
+                                    .setProductId(product.getId())
+                                    .setStage(stage.getId())
+                                    .setStatus(status.getId())
+                                    .setClientId(partnerClient.getId())
+                                    .setCreatedBy(request.getAssignedUserId())
+                                    .setCreatedAt(request.getCreatedDate()));
+                        }),
+                (access, product, stage, status, partnerClient, ticket) -> this.ownerService
+                        .getOrCreateTicketOwner(access, ticket)
+                        .flatMap(owner -> this.updateTicketFromOwner(ticket, owner)),
+                (access, product, stage, status, partnerClient, ticket, oTicket) ->
+                        super.createInternal(access, ticket),
+                (access, product, stage, status, partnerClient, ticket, oTicket, created) -> this.activityService
+                        .acDcrmImport(access, ticket, null, request.getActivityJson())
+                        .thenReturn(ticket));
     }
 
     private Mono<Boolean> getDnc(ProcessorAccess access, TicketRequest ticketRequest) {
