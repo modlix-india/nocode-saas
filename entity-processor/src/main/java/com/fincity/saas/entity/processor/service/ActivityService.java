@@ -208,6 +208,16 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCreate"));
     }
 
+    public Mono<Void> acDcrmImport(
+            ProcessorAccess access, Ticket ticket, String comment, Map<String, Object> metadata) {
+        return this.createActivityInternal(
+                access,
+                ActivityAction.DCRM_IMPORT,
+                null,
+                comment,
+                Map.of(Activity.Fields.ticketId, ticket.getId(), "DCRM Activities", metadata));
+    }
+
     public Mono<Void> acReInquiry(Ticket ticket, String source, String subSource) {
         return super.hasAccess()
                 .flatMap(access -> this.acReInquiry(access, ticket, null, source, subSource))
