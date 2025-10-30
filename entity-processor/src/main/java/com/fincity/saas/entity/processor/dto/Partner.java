@@ -44,11 +44,7 @@ public class Partner extends BaseUpdatableDto<Partner> {
     }
 
     public static Partner of(PartnerRequest partnerRequest) {
-        return new Partner()
-                .setName(partnerRequest.getName())
-                .setDescription(partnerRequest.getDescription())
-                .setClientId(partnerRequest.getClientId())
-                .setDnc(partnerRequest.getDnc());
+        return new Partner().setClientId(partnerRequest.getClientId()).setDnc(partnerRequest.getDnc());
     }
 
     @Override

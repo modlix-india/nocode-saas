@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
@@ -27,6 +28,8 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/entity/processor/tickets")
 public class TicketController
         extends BaseProcessorController<EntityProcessorTicketsRecord, Ticket, TicketDAO, TicketService> {
+
+    public static final String DCRM_REQ_PATH = REQ_PATH + "/DCRM";
 
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<Ticket>> createFromRequest(@RequestBody TicketRequest ticketRequest) {
@@ -54,5 +57,10 @@ public class TicketController
         return this.service
                 .getTicketProductComm(identity, connectionType, connectionSubType)
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(DCRM_REQ_PATH)
+    public Mono<ResponseEntity<Ticket>> createFromWebsite(@RequestBody TicketPartnerRequest ticketPartnerRequest) {
+        return this.service.createForPartnerImportDCRM(ticketPartnerRequest).map(ResponseEntity::ok);
     }
 }
