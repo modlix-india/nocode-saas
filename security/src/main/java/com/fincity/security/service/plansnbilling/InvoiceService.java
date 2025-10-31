@@ -11,9 +11,6 @@ import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceRecord;
 import com.fincity.security.service.AbstractSecurityUpdatableDataService;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 @Service
 public class InvoiceService
         extends AbstractSecurityUpdatableDataService<SecurityInvoiceRecord, ULong, Invoice, InvoiceDAO> {
@@ -33,9 +30,7 @@ public class InvoiceService
         return SecuritySoxLogObjectName.INVOICE;
     }
 
-    public Mono<Void> createInvoices() {
+    // public Mono<Void> createInvoices() {
 
-        Flux.from(planDAO.getClientPlansForInvoiceGeneration())
-        .flatMap(clientPlan -> {
-    }
+    // }
 }

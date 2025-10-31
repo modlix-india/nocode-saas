@@ -23,3 +23,6 @@ ALTER TABLE security.security_invoice
 
 CREATE UNIQUE INDEX UK_INVOICE_PERIOD
   ON security.security_invoice (CLIENT_ID, PLAN_ID, CYCLE_ID, PERIOD_START);
+
+ALTER TABLE `security`.`security_client_plan`
+  ADD COLUMN `NEXT_INVOICE_DATE` TIMESTAMP NOT NULL AFTER `END_DATE`;
