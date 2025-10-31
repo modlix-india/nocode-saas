@@ -49,6 +49,6 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/open/**",
                 "/api/entity/processor/products/internal",
                 "/api/entity/processor/products/internal/**",
-		        "/api/entity/processor/tickets/req/DCRM");
+                "/api/entity/processor/tickets/req/DCRM");
     }
 }

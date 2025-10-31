@@ -65,6 +65,8 @@ public class TicketController
             @RequestHeader String appCode,
             @RequestHeader String clientCode,
             @RequestBody TicketPartnerRequest ticketPartnerRequest) {
-        return this.service.createForPartnerImportDCRM(appCode, clientCode, ticketPartnerRequest).map(ResponseEntity::ok);
+        return this.service
+                .createForPartnerImportDCRM(appCode, clientCode, ticketPartnerRequest)
+                .map(ResponseEntity::ok);
     }
 }
