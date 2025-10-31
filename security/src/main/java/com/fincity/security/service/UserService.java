@@ -1429,4 +1429,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.dao.getUsersForNotification(request.getUserIds(), request.getAppCode(), request.getClientId(),
                 request.getClientCode());
     }
+
+    public Mono<List<String>> getEmailsOfUsers(List<ULong> userIds) {
+        return this.dao.getEmailsOfUsers(userIds);
+    }
 }

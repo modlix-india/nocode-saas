@@ -33,68 +33,69 @@ public class PlanCycleDAO extends AbstractUpdatableDAO<SecurityPlanCycleRecord, 
 
     public Mono<Boolean> deleteCycles(ULong planId) {
         return Mono.from(this.dslContext.update(SECURITY_PLAN_CYCLE)
-                        .set(SECURITY_PLAN_CYCLE.STATUS, SecurityPlanCycleStatus.DELETED)
-                        .where(SECURITY_PLAN_CYCLE.PLAN_ID.eq(planId)))
+                .set(SECURITY_PLAN_CYCLE.STATUS, SecurityPlanCycleStatus.DELETED)
+                .where(SECURITY_PLAN_CYCLE.PLAN_ID.eq(planId)))
                 .map(e -> e > 0);
     }
 
     public Mono<List<PlanCycle>> updateCycles(ULong planId, List<PlanCycle> cycles) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> Flux
-                                .from(this.dslContext.selectFrom(SECURITY_PLAN_CYCLE).where(SECURITY_PLAN_CYCLE.ID.eq(planId)))
-                                .map(rec -> rec.into(PlanCycle.class)).collectMap(PlanCycle::getId),
+                () -> Flux
+                        .from(this.dslContext.selectFrom(SECURITY_PLAN_CYCLE).where(SECURITY_PLAN_CYCLE.ID.eq(planId)))
+                        .map(rec -> rec.into(PlanCycle.class)).collectMap(PlanCycle::getId),
 
-                        existingMap -> {
+                existingMap -> {
 
-                            Set<PlanCycle> cyclesForUpdate = new HashSet<>();
-                            Set<PlanCycle> cyclesForCreate = new HashSet<>();
-                            Set<ULong> cyclesForDelete = new HashSet<>();
+                    Set<PlanCycle> cyclesForUpdate = new HashSet<>();
+                    Set<PlanCycle> cyclesForCreate = new HashSet<>();
+                    Set<ULong> cyclesForDelete = new HashSet<>();
 
-                            for (PlanCycle cycle : cycles) {
-                                if (cycle.getId() == null) {
-                                    cyclesForCreate.add(cycle);
-                                } else if (existingMap.containsKey(cycle.getId())) {
-                                    if (existingMap.get(cycle.getId()).getStatus() != SecurityPlanCycleStatus.DELETED)
-                                        cyclesForUpdate.add(cycle);
-                                } else {
-                                    cyclesForDelete.add(cycle.getId());
-                                }
-                            }
+                    for (PlanCycle cycle : cycles) {
+                        if (cycle.getId() == null) {
+                            cyclesForCreate.add(cycle);
+                        } else if (existingMap.containsKey(cycle.getId())) {
+                            if (existingMap.get(cycle.getId()).getStatus() != SecurityPlanCycleStatus.DELETED)
+                                cyclesForUpdate.add(cycle);
+                        } else {
+                            cyclesForDelete.add(cycle.getId());
+                        }
+                    }
 
-                            return Mono.just(Tuples.of(cyclesForUpdate, cyclesForCreate, cyclesForDelete));
-                        },
+                    return Mono.just(Tuples.of(cyclesForUpdate, cyclesForCreate, cyclesForDelete));
+                },
 
-                        (existingMap, tup) -> tup.getT3().isEmpty() ? Mono.just(true)
-                                : Mono.from(this.dslContext.update(SECURITY_PLAN_CYCLE)
-                                        .set(SECURITY_PLAN_CYCLE.STATUS, SecurityPlanCycleStatus.DELETED)
-                                        .where(SECURITY_PLAN_CYCLE.ID.in(tup.getT3())))
+                (existingMap, tup) -> tup.getT3().isEmpty() ? Mono.just(true)
+                        : Mono.from(this.dslContext.update(SECURITY_PLAN_CYCLE)
+                                .set(SECURITY_PLAN_CYCLE.STATUS, SecurityPlanCycleStatus.DELETED)
+                                .where(SECURITY_PLAN_CYCLE.ID.in(tup.getT3())))
                                 .map(e -> e > 0),
 
-                        (existingMap, tup, deleted) -> {
+                (existingMap, tup, deleted) -> {
 
-                            if (tup.getT2().isEmpty()) return Mono.just(true);
+                    if (tup.getT2().isEmpty())
+                        return Mono.just(true);
 
-                            return Flux.fromIterable(tup.getT2())
-                                    .map(cycle -> cycle.setPlanId(planId))
-                                    .flatMap(this::create)
-                                    .collectList()
-                                    .map(created -> created.size() == tup.getT2().size());
-                        },
+                    return Flux.fromIterable(tup.getT2())
+                            .map(cycle -> cycle.setPlanId(planId))
+                            .flatMap(this::create)
+                            .collectList()
+                            .map(created -> created.size() == tup.getT2().size());
+                },
 
-                        (existingMap, tup, deleted, created) -> {
+                (existingMap, tup, deleted, created) -> {
 
-                            if (tup.getT1().isEmpty()) return Mono.just(true);
+                    if (tup.getT1().isEmpty())
+                        return Mono.just(true);
 
-                            return Flux.fromIterable(tup.getT1())
-                                    .map(cycle -> cycle.setPlanId(planId))
-                                    .flatMap(this::update)
-                                    .collectList()
-                                    .map(updated -> updated.size() == tup.getT1().size());
-                        },
+                    return Flux.fromIterable(tup.getT1())
+                            .map(cycle -> cycle.setPlanId(planId))
+                            .flatMap(this::update)
+                            .collectList()
+                            .map(updated -> updated.size() == tup.getT1().size());
+                },
 
-                        (existingMap, tup, deleted, created, updated) -> this.getCycles(planId)
-                )
+                (existingMap, tup, deleted, created, updated) -> this.getCycles(planId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanCycleDao.updateCycles"));
     }
 

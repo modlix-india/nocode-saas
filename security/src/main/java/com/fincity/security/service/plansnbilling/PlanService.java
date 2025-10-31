@@ -49,6 +49,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     private final PlanCycleDAO planCycleDAO;
     private final PlanLimitDAO planLimitDAO;
+    private final InvoiceService invoiceService;
 
     private final ClientService clientService;
     private final AppService appService;
@@ -57,10 +58,12 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     private final CacheService cacheService;
 
-    public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, ClientService clientService,
+    public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, InvoiceService invoiceService,
+            ClientService clientService,
             AppService appService, SecurityMessageResourceService messageResourceService, CacheService cacheService) {
         this.planCycleDAO = planCycleDAO;
         this.planLimitDAO = planLimitDAO;
+        this.invoiceService = invoiceService;
         this.clientService = clientService;
         this.appService = appService;
         this.messageResourceService = messageResourceService;
@@ -334,9 +337,14 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                                         .anyMatch(cycle -> cycle.getId()
                                                 .equals(cycleId))),
 
-                (ca, hasAccess, conflictPlans, urlClient, plan) -> this.dao.addClientToPlan(clientId,
-                        planId, cycleId,
-                        endDate))
+                (ca, hasAccess, conflictPlans, urlClient, plan) -> {
+
+                    LocalDateTime startDate = LocalDateTime.now();
+
+                    return this.invoiceService.getNextInvoiceDate(planId, cycleId, startDate, null)
+                            .flatMap(nextInvoiceDate -> this.dao
+                                    .addClientToPlan(clientId, planId, cycleId, startDate, endDate, nextInvoiceDate));
+                })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 SecurityMessageResourceService.FORBIDDEN_CREATE,
