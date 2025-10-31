@@ -215,7 +215,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ActivityAction.DCRM_IMPORT,
                 null,
                 comment,
-                Map.of(Activity.Fields.ticketId, ticket.getId(), "DCRM Activities", metadata));
+                Map.of(Activity.Fields.ticketId, ticket.getId(), "activities_dcrm", metadata));
     }
 
     public Mono<Void> acReInquiry(Ticket ticket, String source, String subSource) {
