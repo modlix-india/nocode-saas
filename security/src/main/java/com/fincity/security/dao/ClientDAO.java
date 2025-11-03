@@ -196,7 +196,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                         .from(SECURITY_CLIENT)
                         .where(SECURITY_CLIENT.STATUS_CODE.eq(SecurityClientStatusCode.ACTIVE))
                         .and(SECURITY_CLIENT.ID.in(clientIds)))
-                .map(count -> count.value1() > 0);
+                .map(count -> count.value1() == clientIds.size());
     }
 
     public Mono<Boolean> createProfileRestrictions(ULong clientId, List<ULong> profileIds) {
