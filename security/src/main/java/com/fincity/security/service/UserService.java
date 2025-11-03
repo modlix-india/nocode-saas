@@ -594,6 +594,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             e.setMiddleName(entity.getMiddleName());
             e.setLocaleCode(entity.getLocaleCode());
             e.setStatusCode(entity.getStatusCode());
+            e.setDesignationId(entity.getDesignationId());
+            e.setReportingTo(entity.getReportingTo());
             // Note: reportingTo is not updated here as it requires a separate API call
             // Note: designationId is not updated here as it requires a separate API call
             return e;
