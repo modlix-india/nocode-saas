@@ -164,8 +164,11 @@ public class UserSubOrganizationService
                                         : Mono.just(uUser)),
                         (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
                             ULong oldReportingTo = validUser.getReportingTo();
-                            return super.update(validUser.setReportingTo(managerId))
-                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                            return this.dao.updateManager(validUser.getId(),managerId)
+                                    .flatMap(e -> {
+                                        validUser.setReportingTo(managerId);
+                                        return this.evictHierarchyCaches(validUser, oldReportingTo, managerId);
+                                    });
                         },
                         (ca, uUser, sysOrManaged, validUser, updated) ->
                                 this.evictTokens(updated.getId()).<User>map(evicted -> updated))

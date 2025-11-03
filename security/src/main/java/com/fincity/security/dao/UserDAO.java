@@ -708,4 +708,15 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .setEmailId(r.getValue(SECURITY_USER.EMAIL_ID)))
                 .collectList();
     }
+
+    public Mono<Boolean> updateManager(ULong userId, ULong managerId) {
+        return Mono
+                .from(this.dslContext.update(SecurityUser.SECURITY_USER)
+                        .set(SECURITY_USER.REPORTING_TO, managerId)
+                        .where(SecurityUser.SECURITY_USER.ID.eq(userId)))
+                .map(e -> e > 0);
+    }
+
+
+
 }
