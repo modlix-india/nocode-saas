@@ -313,17 +313,21 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                 () -> this.productService.readIdentityWithAccess(access, request.getProductId()),
-                product -> this.stageService.readIdentityWithAccess(access, request.getStageId()),
-                (product, stage) -> this.stageService.readIdentityWithAccess(access, request.getStatusId()),
-                (product, stage, status) ->
+                product -> this.stageService
+                        .getParentChild(
+                                access, product.getProductTemplateId(), request.getStageId(), request.getStatusId())
+                        .switchIfEmpty(this.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.STAGE_MISSING)),
+                (product, stageStatusEntity) ->
                         this.securityService.getClientById(request.getClientId().toBigInteger()),
-                (product, stage, status, partnerClient) -> this.getTicket(
+                (product, stageStatusEntity, partnerClient) -> this.getTicket(
                                 access, product.getId(), request.getPhoneNumber(), request.getEmail())
                         .flatMap(existing -> existing.getId() != null
                                 ? super.throwDuplicateError(access, existing)
                                 : Mono.just(Boolean.FALSE))
                         .switchIfEmpty(Mono.just(Boolean.TRUE)),
-                (product, stage, status, partnerClient, existing) -> Mono.just((Ticket) new Ticket()
+                (product, stageStatusEntity, partnerClient, existing) -> Mono.just((Ticket) new Ticket()
                         .setAssignedUserId(request.getAssignedUserId())
                         .setDialCode(request.getPhoneNumber().getCountryCode())
                         .setPhoneNumber(request.getPhoneNumber().getNumber())
@@ -332,17 +336,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         .setSource(request.getSource())
                         .setSubSource(request.getSubSource())
                         .setProductId(product.getId())
-                        .setStage(stage.getId())
-                        .setStatus(status.getId())
+                        .setStage(stageStatusEntity.getKey().getId())
+                        .setStatus(stageStatusEntity.getValue().getFirst().getId())
                         .setClientId(partnerClient.getId())
                         .setCreatedBy(request.getAssignedUserId())
                         .setCreatedAt(request.getCreatedDate())),
-                (product, stage, status, partnerClient, existing, ticket) -> this.ownerService
+                (product, stageStatusEntity, partnerClient, existing, ticket) -> this.ownerService
                         .getOrCreateTicketOwner(access, ticket)
                         .flatMap(owner -> this.updateTicketFromOwner(ticket, owner)),
-                (product, stage, status, partnerClient, existing, ticket, oTicket) ->
+                (product, stageStatusEntity, partnerClient, existing, ticket, oTicket) ->
                         super.createInternal(access, ticket),
-                (product, stage, status, partnerClient, existing, ticket, oTicket, created) -> this.activityService
+                (product, stageStatusEntity, partnerClient, existing, ticket, oTicket, created) -> this.activityService
                         .acDcrmImport(access, created, null, request.getActivityJson())
                         .thenReturn(created));
     }
