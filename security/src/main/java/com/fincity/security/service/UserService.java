@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.fincity.security.dto.*;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,12 +53,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
-import com.fincity.security.dto.Client;
-import com.fincity.security.dto.ClientHierarchy;
-import com.fincity.security.dto.Profile;
-import com.fincity.security.dto.TokenObject;
-import com.fincity.security.dto.User;
-import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -560,6 +555,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 },
                 (clientType, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
                 (clientType, userExists, updated) -> this.evictCache(updated.getId(), updated.getClientId())
+
                         .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
@@ -594,8 +590,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             e.setMiddleName(entity.getMiddleName());
             e.setLocaleCode(entity.getLocaleCode());
             e.setStatusCode(entity.getStatusCode());
-            // Note: reportingTo is not updated here as it requires a separate API call
-            // Note: designationId is not updated here as it requires a separate API call
+            e.setDesignationId(entity.getDesignationId());
+            e.setReportingTo(entity.getReportingTo());
             return e;
         });
     }
@@ -1339,11 +1335,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                 : Mono.just(user)),
-                (ca, user, sysOrManaged, validUser) -> this.dao.addDesignation(userId, designationId)
-                        .map(e -> validUser.setDesignationId(designationId)),
+                (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
+
                 (ca, user, sysOrManaged, validUser, updated) -> this.evictCache(
                         updated.getId(), updated.getClientId())
                         .<User>map(evicted -> updated))
+
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));

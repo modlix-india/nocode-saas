@@ -164,11 +164,8 @@ public class UserSubOrganizationService
                                         : Mono.just(uUser)),
                         (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
                             ULong oldReportingTo = validUser.getReportingTo();
-                            return this.dao.updateManager(validUser.getId(),managerId)
-                                    .flatMap(e -> {
-                                        validUser.setReportingTo(managerId);
-                                        return this.evictHierarchyCaches(validUser, oldReportingTo, managerId);
-                                    });
+                            return super.update(validUser.setReportingTo(managerId))
+                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
                         },
                         (ca, uUser, sysOrManaged, validUser, updated) ->
                                 this.evictTokens(updated.getId()).<User>map(evicted -> updated))
@@ -303,5 +300,13 @@ public class UserSubOrganizationService
     public Flux<User> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
         return this.mapIdsToUser(this.getUserSubOrg(appCode, clientId, userId, managerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgUsers"));
+    }
+
+    @Override
+    protected Mono<User> updatableEntity(User entity) {
+        return this.read(entity.getId()).map(e -> {
+            e.setReportingTo(entity.getReportingTo());
+            return e;
+        });
     }
 }
