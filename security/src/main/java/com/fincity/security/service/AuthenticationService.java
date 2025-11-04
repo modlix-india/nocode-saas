@@ -630,7 +630,10 @@ public class AuthenticationService implements IAuthenticationService {
 
                     return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
                 })
-                .onErrorResume(e -> this.makeAnonymousSpringAuthentication(request))
+                .onErrorResume(e -> {
+                    logger.error("AuthenticationService.getAuthentication: {}", e.getMessage());
+                    return this.makeAnonymousSpringAuthentication(request);
+                })
                 .flatMap(e -> {
                     if (e instanceof ContextAuthentication ca && ca.isAuthenticated()) {
 
