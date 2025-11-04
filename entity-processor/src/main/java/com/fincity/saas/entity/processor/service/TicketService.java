@@ -328,6 +328,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 : Mono.just(Boolean.FALSE))
                         .switchIfEmpty(Mono.just(Boolean.TRUE)),
                 (product, stageStatusEntity, partnerClient, existing) -> Mono.just((Ticket) new Ticket()
+                        .setName(request.getName())
+                        .setDescription(request.getDescription())
                         .setAssignedUserId(request.getAssignedUserId())
                         .setDialCode(request.getPhoneNumber().getCountryCode())
                         .setPhoneNumber(request.getPhoneNumber().getNumber())
