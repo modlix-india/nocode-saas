@@ -58,8 +58,8 @@ public class InvoiceService
     private static final Logger logger = LoggerFactory.getLogger(InvoiceService.class);
 
     public InvoiceService(InvoiceDAO invoiceDAO, PlanCycleDAO planCycleDAO, PlanDAO planDAO,
-            ClientService clientService, SecurityMessageResourceService messageResourceService,
-            EventCreationService eventCreationService, AppService appService, ClientUrlService clientUrlService) {
+                          ClientService clientService, SecurityMessageResourceService messageResourceService,
+                          EventCreationService eventCreationService, AppService appService, ClientUrlService clientUrlService) {
         this.invoiceDAO = invoiceDAO;
         this.planCycleDAO = planCycleDAO;
         this.planDAO = planDAO;
@@ -76,7 +76,7 @@ public class InvoiceService
     }
 
     public Mono<LocalDateTime> getNextInvoiceDate(ULong planId, ULong cycleId, LocalDateTime startDate,
-            LocalDateTime lastestInvoiceDate) {
+                                                  LocalDateTime lastestInvoiceDate) {
         return FlatMapUtil.flatMapMono(
 
                 () -> this.planDAO.readById(planId),
@@ -109,7 +109,7 @@ public class InvoiceService
     }
 
     private LocalDateTime calculateNextInvoiceDate(LocalDateTime startDate, LocalDateTime lastestInvoiceDate,
-            PlanCycle cycle) {
+                                                   PlanCycle cycle) {
 
         LocalDateTime nextInvoiceDate = switch (cycle.getIntervalType()) {
             case WEEK -> lastestInvoiceDate.plusWeeks(1);
@@ -208,7 +208,8 @@ public class InvoiceService
 
                 (plan, cycle) -> this.invoiceDAO.getInvoiceCount(clientPlan.getClientId(), plan.getAppId()),
 
-                (plan, cycle, count) -> this.generateInvoiceItems(clientPlan, plan, cycle),
+                (plan, cycle, count) -> plan.isPrepaid() ? this.generatePrepaidInvoiceItems(clientPlan, plan, cycle)
+                        : this.generatePostpaidInvoiceItems(clientPlan, plan, cycle),
 
                 (plan, cycle, count, invoiceItems) -> {
 
@@ -283,7 +284,17 @@ public class InvoiceService
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.createEvent"));
     }
 
-    private Mono<List<InvoiceItem>> generateInvoiceItems(ClientPlan clientPlan, Plan plan, PlanCycle cycle) {
+    private Mono<List<InvoiceItem>> generatePrepaidInvoiceItems(ClientPlan clientPlan, Plan plan, PlanCycle cycle) {
+
+//        return FlatMapUtil.flatMapMono(
+//
+//        )
+//                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.generatePrepaidInvoiceItems"));
+
+        return Mono.empty();
+    }
+
+    private Mono<List<InvoiceItem>> generatePostpaidInvoiceItems(ClientPlan clientPlan, Plan plan, PlanCycle cycle) {
         return Mono.just(new ArrayList<>());
     }
 }

@@ -300,7 +300,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Boolean> addPlanAndCyCle(ClientPlanRequest request) {
 
         if (StringUtil.safeIsBlank(request.getUrlClientCode()))
-            this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
+            return this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
                     .flatMap(urlClientCode -> this.addPlanAndCyCle(request.getClientId(), urlClientCode,
                             request.getPlanId(), request.getCycleId(), request.getEndDate()));
 
