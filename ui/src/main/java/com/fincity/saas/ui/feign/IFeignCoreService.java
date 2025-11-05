@@ -18,14 +18,16 @@ public interface IFeignCoreService {
 	String PATH_VARIABLE_NAME = "name";
 
 	@GetMapping(PATH)
-	Mono<String> executeWith(@RequestHeader String appCode,
+	Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader String appCode,
 			@RequestHeader String clientCode,
 			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
 			@PathVariable(PATH_VARIABLE_NAME) String name,
 			@RequestParam MultiValueMap<String, String> queryParams);
 
 	@PostMapping(PATH)
-	Mono<String> executeWith(@RequestHeader String appCode,
+	Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader String appCode,
 			@RequestHeader String clientCode,
 			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
 			@PathVariable(PATH_VARIABLE_NAME) String name,
