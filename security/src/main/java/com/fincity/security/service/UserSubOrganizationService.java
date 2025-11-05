@@ -135,6 +135,14 @@ public class UserSubOrganizationService
         return this.tokenService.evictTokensOfUser(id);
     }
 
+    @Override
+    protected Mono<User> updatableEntity(User entity) {
+        return this.read(entity.getId()).map(e -> {
+            e.setReportingTo(entity.getReportingTo());
+            return e;
+        });
+    }
+
     @PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
@@ -299,13 +307,5 @@ public class UserSubOrganizationService
     public Flux<User> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
         return this.mapIdsToUser(this.getUserSubOrg(appCode, clientId, userId, managerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgUsers"));
-    }
-
-    @Override
-    protected Mono<User> updatableEntity(User entity) {
-        return this.read(entity.getId()).map(e -> {
-            e.setReportingTo(entity.getReportingTo());
-            return e;
-        });
     }
 }
