@@ -139,7 +139,7 @@ public class UserSubOrganizationService
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
-                    if (user.getReportingTo().equals(managerId)) return Mono.just(user);
+                    if (user.getReportingTo() != null && user.getReportingTo().equals(managerId)) return Mono.just(user);
                     return this.updateManager(user, managerId);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"));
@@ -163,9 +163,8 @@ public class UserSubOrganizationService
                                                 SecurityMessageResourceService.USER_REPORTING_ERROR)
                                         : Mono.just(uUser)),
                         (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
-                            ULong oldReportingTo = validUser.getReportingTo();
                             return super.update(validUser.setReportingTo(managerId))
-                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                                    .flatMap(updated -> this.evictHierarchyCaches(updated, validUser.getReportingTo(), managerId));
                         },
                         (ca, uUser, sysOrManaged, validUser, updated) ->
                                 this.evictTokens(updated.getId()).<User>map(evicted -> updated))
@@ -175,11 +174,11 @@ public class UserSubOrganizationService
 
     private Mono<User> evictHierarchyCaches(User updatedUser, ULong oldReportingTo, ULong newReportingTo) {
 
-        ULong clientId = updatedUser.getClientId();
+        if (oldReportingTo == null || newReportingTo == null) return Mono.just(updatedUser);
 
-        return Flux.fromIterable(Set.of(oldReportingTo, newReportingTo))
+        return Flux.fromIterable(List.of(oldReportingTo, newReportingTo))
                 .filter(Objects::nonNull)
-                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
+                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(updatedUser.getClientId(), managerId)))
                 .then(Mono.just(updatedUser))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictHierarchyCaches"));
     }
