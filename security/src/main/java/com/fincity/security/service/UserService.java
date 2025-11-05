@@ -560,6 +560,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 },
                 (clientType, userExists) -> Boolean.TRUE.equals(userExists) ? Mono.empty() : super.update(entity),
                 (clientType, userExists, updated) -> this.evictCache(updated.getId(), updated.getClientId())
+
                         .<User>map(evicted -> updated))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user"));
     }
@@ -594,8 +595,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             e.setMiddleName(entity.getMiddleName());
             e.setLocaleCode(entity.getLocaleCode());
             e.setStatusCode(entity.getStatusCode());
-            // Note: reportingTo is not updated here as it requires a separate API call
-            // Note: designationId is not updated here as it requires a separate API call
+            e.setDesignationId(entity.getDesignationId());
+            e.setReportingTo(entity.getReportingTo());
             return e;
         });
     }
@@ -1340,9 +1341,11 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                         SecurityMessageResourceService.USER_DESIGNATION_MISMATCH)
                                 : Mono.just(user)),
                 (ca, user, sysOrManaged, validUser) -> super.update(user.setDesignationId(designationId)),
+
                 (ca, user, sysOrManaged, validUser, updated) -> this.evictCache(
                         updated.getId(), updated.getClientId())
                         .<User>map(evicted -> updated))
+
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateDesignation"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user designation"));
