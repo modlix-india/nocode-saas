@@ -854,7 +854,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                             return Mono.zip(hasAppWriteAccess, hasDepAppReadAccess).flatMap( t -> {
 
-                               if( BooleanUtil.safeValueOf(t.getT1()) && BooleanUtil.safeValueOf(t.getT2()))
+                               if( !BooleanUtil.safeValueOf(t.getT1()) || !BooleanUtil.safeValueOf(t.getT2()))
                                    return Mono.empty();
 
                                 return this.clientService
