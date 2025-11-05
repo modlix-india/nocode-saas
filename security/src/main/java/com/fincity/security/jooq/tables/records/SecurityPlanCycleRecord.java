@@ -4,6 +4,7 @@
 package com.fincity.security.jooq.tables.records;
 
 
+import com.fincity.security.jooq.enums.SecurityPlanCycleIntervalType;
 import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 import com.fincity.security.jooq.tables.SecurityPlanCycle;
 
@@ -291,20 +292,50 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
     }
 
     /**
-     * Setter for <code>security.security_plan_cycle.INTERVAL</code>. Interval
-     * of the plan in days
+     * Setter for <code>security.security_plan_cycle.INTERVAL_TYPE</code>.
      */
-    public SecurityPlanCycleRecord setInterval(Integer value) {
+    public SecurityPlanCycleRecord setIntervalType(SecurityPlanCycleIntervalType value) {
         set(16, value);
         return this;
     }
 
     /**
-     * Getter for <code>security.security_plan_cycle.INTERVAL</code>. Interval
-     * of the plan in days
+     * Getter for <code>security.security_plan_cycle.INTERVAL_TYPE</code>.
      */
-    public Integer getInterval() {
-        return (Integer) get(16);
+    public SecurityPlanCycleIntervalType getIntervalType() {
+        return (SecurityPlanCycleIntervalType) get(16);
+    }
+
+    /**
+     * Setter for
+     * <code>security.security_plan_cycle.REMiNDER_INTERVAL_DAYS</code>.
+     */
+    public SecurityPlanCycleRecord setReminderIntervalDays(Integer value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>security.security_plan_cycle.REMiNDER_INTERVAL_DAYS</code>.
+     */
+    public Integer getReminderIntervalDays() {
+        return (Integer) get(17);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_cycle.PAYMENT_TERMS_DAYS</code>.
+     */
+    public SecurityPlanCycleRecord setPaymentTermsDays(Integer value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_cycle.PAYMENT_TERMS_DAYS</code>.
+     */
+    public Integer getPaymentTermsDays() {
+        return (Integer) get(18);
     }
 
     /**
@@ -312,7 +343,7 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
      * the cycle in a plan
      */
     public SecurityPlanCycleRecord setStatus(SecurityPlanCycleStatus value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -321,7 +352,7 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
      * the cycle in a plan
      */
     public SecurityPlanCycleStatus getStatus() {
-        return (SecurityPlanCycleStatus) get(17);
+        return (SecurityPlanCycleStatus) get(19);
     }
 
     // -------------------------------------------------------------------------
@@ -347,7 +378,7 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
     /**
      * Create a detached, initialised SecurityPlanCycleRecord
      */
-    public SecurityPlanCycleRecord(ULong id, String name, String description, ULong planId, BigDecimal cost, String currency, BigDecimal tax1, String tax1Name, BigDecimal tax2, String tax2Name, BigDecimal tax3, String tax3Name, BigDecimal tax4, String tax4Name, BigDecimal tax5, String tax5Name, Integer interval, SecurityPlanCycleStatus status) {
+    public SecurityPlanCycleRecord(ULong id, String name, String description, ULong planId, BigDecimal cost, String currency, BigDecimal tax1, String tax1Name, BigDecimal tax2, String tax2Name, BigDecimal tax3, String tax3Name, BigDecimal tax4, String tax4Name, BigDecimal tax5, String tax5Name, SecurityPlanCycleIntervalType intervalType, Integer reminderIntervalDays, Integer paymentTermsDays, SecurityPlanCycleStatus status) {
         super(SecurityPlanCycle.SECURITY_PLAN_CYCLE);
 
         setId(id);
@@ -366,7 +397,9 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
         setTax4Name(tax4Name);
         setTax5(tax5);
         setTax5Name(tax5Name);
-        setInterval(interval);
+        setIntervalType(intervalType);
+        setReminderIntervalDays(reminderIntervalDays);
+        setPaymentTermsDays(paymentTermsDays);
         setStatus(status);
         resetTouchedOnNotNull();
     }

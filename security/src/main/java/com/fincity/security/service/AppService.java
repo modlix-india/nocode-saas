@@ -844,15 +844,24 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                         (ca, app) -> this.dao.getByAppCode(dependentAppCode),
 
                         (ca, app, depApp) -> {
-                            if (!app.getClientId().equals(depApp.getClientId()))
-                                return Mono.empty();
 
                             if (ca.isSystemClient())
                                 return Mono.just(true);
 
-                            return this.clientService
-                                    .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
-                                    .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
+                            Mono<Boolean> hasAppWriteAccess = this.hasWriteAccess(appCode, ca.getClientCode());
+
+                            Mono<Boolean> hasDepAppReadAccess = this.hasReadAccess(dependentAppCode, ca.getClientCode());
+
+                            return Mono.zip(hasAppWriteAccess, hasDepAppReadAccess).flatMap( t -> {
+
+                               if( !BooleanUtil.safeValueOf(t.getT1()) || !BooleanUtil.safeValueOf(t.getT2()))
+                                   return Mono.empty();
+
+                                return this.clientService
+                                        .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
+                                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
+
+                            });
                         },
 
                         (ca, app, depApp, hasAccess) -> this.dao.addAppDependency(app.getId(), depApp.getId()))

@@ -117,6 +117,21 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
         return (LocalDateTime) get(5);
     }
 
+    /**
+     * Setter for <code>security.security_client_plan.NEXT_INVOICE_DATE</code>.
+     */
+    public SecurityClientPlanRecord setNextInvoiceDate(LocalDateTime value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_plan.NEXT_INVOICE_DATE</code>.
+     */
+    public LocalDateTime getNextInvoiceDate() {
+        return (LocalDateTime) get(6);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -140,7 +155,7 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
     /**
      * Create a detached, initialised SecurityClientPlanRecord
      */
-    public SecurityClientPlanRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, LocalDateTime startDate, LocalDateTime endDate) {
+    public SecurityClientPlanRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, LocalDateTime startDate, LocalDateTime endDate, LocalDateTime nextInvoiceDate) {
         super(SecurityClientPlan.SECURITY_CLIENT_PLAN);
 
         setId(id);
@@ -149,6 +164,7 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
         setCycleId(cycleId);
         setStartDate(startDate);
         setEndDate(endDate);
+        setNextInvoiceDate(nextInvoiceDate);
         resetTouchedOnNotNull();
     }
 }
