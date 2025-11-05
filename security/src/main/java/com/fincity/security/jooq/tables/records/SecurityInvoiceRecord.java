@@ -253,6 +253,40 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
         return (String) get(13);
     }
 
+    /**
+     * Setter for <code>security.security_invoice.PERIOD_START</code>. Service
+     * period start (UTC)
+     */
+    public SecurityInvoiceRecord setPeriodStart(LocalDateTime value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.PERIOD_START</code>. Service
+     * period start (UTC)
+     */
+    public LocalDateTime getPeriodStart() {
+        return (LocalDateTime) get(14);
+    }
+
+    /**
+     * Setter for <code>security.security_invoice.PERIOD_END</code>. Service
+     * period end (UTC)
+     */
+    public SecurityInvoiceRecord setPeriodEnd(LocalDateTime value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice.PERIOD_END</code>. Service
+     * period end (UTC)
+     */
+    public LocalDateTime getPeriodEnd() {
+        return (LocalDateTime) get(15);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -276,7 +310,7 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
     /**
      * Create a detached, initialised SecurityInvoiceRecord
      */
-    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String invoiceReason) {
+    public SecurityInvoiceRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, String invoiceNumber, LocalDateTime invoiceDate, LocalDateTime invoiceDueDate, BigDecimal invoiceAmount, SecurityInvoiceInvoiceStatus invoiceStatus, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, String invoiceReason, LocalDateTime periodStart, LocalDateTime periodEnd) {
         super(SecurityInvoice.SECURITY_INVOICE);
 
         setId(id);
@@ -293,6 +327,8 @@ public class SecurityInvoiceRecord extends UpdatableRecordImpl<SecurityInvoiceRe
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
         setInvoiceReason(invoiceReason);
+        setPeriodStart(periodStart);
+        setPeriodEnd(periodEnd);
         resetTouchedOnNotNull();
     }
 }

@@ -6,6 +6,7 @@ package com.fincity.security.jooq.tables;
 
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityPlanCycleIntervalType;
 import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
 import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
@@ -156,10 +157,20 @@ public class SecurityPlanCycle extends TableImpl<SecurityPlanCycleRecord> {
     public final TableField<SecurityPlanCycleRecord, String> TAX5_NAME = createField(DSL.name("TAX5_NAME"), SQLDataType.VARCHAR(256), this, "Tax5 name of the plan");
 
     /**
-     * The column <code>security.security_plan_cycle.INTERVAL</code>. Interval
-     * of the plan in days
+     * The column <code>security.security_plan_cycle.INTERVAL_TYPE</code>.
      */
-    public final TableField<SecurityPlanCycleRecord, Integer> INTERVAL = createField(DSL.name("INTERVAL"), SQLDataType.INTEGER.nullable(false), this, "Interval of the plan in days");
+    public final TableField<SecurityPlanCycleRecord, SecurityPlanCycleIntervalType> INTERVAL_TYPE = createField(DSL.name("INTERVAL_TYPE"), SQLDataType.VARCHAR(7).nullable(false).asEnumDataType(SecurityPlanCycleIntervalType.class), this, "");
+
+    /**
+     * The column
+     * <code>security.security_plan_cycle.REMiNDER_INTERVAL_DAYS</code>.
+     */
+    public final TableField<SecurityPlanCycleRecord, Integer> REMINDER_INTERVAL_DAYS = createField(DSL.name("REMiNDER_INTERVAL_DAYS"), SQLDataType.INTEGER, this, "");
+
+    /**
+     * The column <code>security.security_plan_cycle.PAYMENT_TERMS_DAYS</code>.
+     */
+    public final TableField<SecurityPlanCycleRecord, Integer> PAYMENT_TERMS_DAYS = createField(DSL.name("PAYMENT_TERMS_DAYS"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("7", SQLDataType.INTEGER)), this, "");
 
     /**
      * The column <code>security.security_plan_cycle.STATUS</code>. Status of

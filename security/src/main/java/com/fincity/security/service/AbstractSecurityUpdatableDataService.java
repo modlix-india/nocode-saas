@@ -82,19 +82,7 @@ public abstract class AbstractSecurityUpdatableDataService<R extends UpdatableRe
 
 	@Override
 	protected Mono<D> updatableEntity(D entity) {
-		return super.update(entity).map(e -> {
-
-			this.dao.getPojoClass()
-			        .map(Class::getSimpleName)
-			        .flatMap(description -> soxLogService
-			                .create(new SoxLog().setActionName(SecuritySoxLogActionName.UPDATE)
-			                        .setObjectName(getSoxObjectName())
-			                        .setObjectId(ULongUtil.valueOf(e.getId()))
-			                        .setDescription(description + UPDATED)))
-			        .subscribe();
-
-			return e;
-		});
+		return Mono.just(entity);
 	}
 
 	@Override

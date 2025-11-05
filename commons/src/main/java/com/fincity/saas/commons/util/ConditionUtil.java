@@ -2,6 +2,7 @@ package com.fincity.saas.commons.util;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -12,42 +13,44 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 
 public class ConditionUtil {
 
-	public static AbstractCondition parameterMapToMap(Map<String, List<String>> multiValueMap) {
+    public static AbstractCondition parameterMapToMap(Map<String, List<String>> multiValueMap, String... ignoreFields) {
 
-		List<AbstractCondition> conditions = multiValueMap.entrySet()
-		        .stream()
-		        .map(e ->
-				{
-			        List<String> value = e.getValue();
-			        if (value == null || value.isEmpty())
-				        return new FilterCondition().setField(e.getKey())
-				                .setOperator(FilterConditionOperator.EQUALS)
-				                .setValue("");
+        Set<String> ignoreFieldsSet = Set.of(ignoreFields);
 
-			        if (value.size() == 1)
-				        return new FilterCondition().setField(e.getKey())
-				                .setOperator(FilterConditionOperator.EQUALS)
-				                .setValue(value.get(0));
+        List<AbstractCondition> conditions = multiValueMap.entrySet()
+                .stream()
+                .filter(e -> !ignoreFieldsSet.contains(e.getKey()))
+                .map(e -> {
+                    List<String> value = e.getValue();
+                    if (value == null || value.isEmpty())
+                        return new FilterCondition().setField(e.getKey())
+                                .setOperator(FilterConditionOperator.EQUALS)
+                                .setValue("");
 
-			        return new FilterCondition().setField(e.getKey())
-			                .setOperator(FilterConditionOperator.IN)
-			                .setValue(value.stream()
-			                        .map(v -> v.replace(",", "\\,"))
-			                        .collect(Collectors.joining(",")));
-		        })
-		        .map(AbstractCondition.class::cast)
-		        .toList();
+                    if (value.size() == 1)
+                        return new FilterCondition().setField(e.getKey())
+                                .setOperator(FilterConditionOperator.EQUALS)
+                                .setValue(value.get(0));
 
-		if (conditions.isEmpty())
-			return null;
+                    return new FilterCondition().setField(e.getKey())
+                            .setOperator(FilterConditionOperator.IN)
+                            .setValue(value.stream()
+                                    .map(v -> v.replace(",", "\\,"))
+                                    .collect(Collectors.joining(",")));
+                })
+                .map(AbstractCondition.class::cast)
+                .toList();
 
-		if (conditions.size() == 1)
-			return conditions.get(0);
+        if (conditions.isEmpty())
+            return null;
 
-		return new ComplexCondition().setConditions(conditions)
-		        .setOperator(ComplexConditionOperator.AND);
-	}
+        if (conditions.size() == 1)
+            return conditions.get(0);
 
-	private ConditionUtil() {
-	}
+        return new ComplexCondition().setConditions(conditions)
+                .setOperator(ComplexConditionOperator.AND);
+    }
+
+    private ConditionUtil() {
+    }
 }
