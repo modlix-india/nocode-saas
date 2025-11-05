@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.google.gson.JsonElement;
 import java.math.BigInteger;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +34,8 @@ public abstract class BaseRuleService<
 
     private static final String DEFAULT_KEY = "default";
 
+    private static final String USER_KEY = "user";
+
     private static final int DEFAULT_ORDER = BigInteger.ZERO.intValue();
 
     protected RuleExecutionService ruleExecutionService;
@@ -41,9 +44,6 @@ public abstract class BaseRuleService<
     protected abstract Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId);
 
     protected abstract Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds);
-
-    protected abstract Mono<ULong> getUserAssignment(
-            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data);
 
     @Autowired
     private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
@@ -142,6 +142,19 @@ public abstract class BaseRuleService<
                         .setAppCode(access.getAppCode())
                         .setClientCode(access.getClientCode()))),
                 super::create);
+    }
+
+    public Mono<Set<ULong>> getUserIds(ProcessorAccess access, Identity entityId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.getUserIds(access, entityId),
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), entityId, USER_KEY));
+    }
+
+    private Mono<Set<ULong>> getUserIds(ProcessorAccess access, ULong entityId) {
+        return this.getRules(access, entityId, null, Boolean.TRUE).map(rules -> rules.stream()
+                .flatMap(rule -> new HashSet<>(rule.getUserDistribution().getUserIds()).stream())
+                .collect(Collectors.toCollection(HashSet::new)));
     }
 
     public Mono<Map<Integer, D>> getRulesWithOrder(ProcessorAccess access, ULong entityId, ULong stageId) {

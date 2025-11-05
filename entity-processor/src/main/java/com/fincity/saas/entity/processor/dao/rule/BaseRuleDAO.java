@@ -36,15 +36,6 @@ public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRu
                         .collectList());
     }
 
-    public Mono<D> getDefaultRule(ProcessorAccess access, ULong entityId) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.getBaseConditionsWithDefault(access, entityId, null, Boolean.TRUE),
-                super::filter,
-                (pCondition, jCondition) -> Mono.from(
-                                dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
-                        .map(rec -> rec.into(this.pojoClass)));
-    }
-
     public Mono<List<D>> getRules(ProcessorAccess access, ULong entityId, ULong stageId) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getStageCondition(access, entityId, stageId),

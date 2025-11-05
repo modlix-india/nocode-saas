@@ -32,14 +32,6 @@ public enum ComparisonOperator implements EnumType {
         return EnumType.lookupLiteral(ComparisonOperator.class, literal);
     }
 
-    public static ComparisonOperator lookup(FilterConditionOperator operator) {
-        return lookupLiteral(operator.name());
-    }
-
-    public FilterConditionOperator getConditionOperator() {
-        return FilterConditionOperator.valueOf(this.name());
-    }
-
     @Override
     public String getLiteral() {
         return literal;
@@ -49,6 +41,4 @@ public enum ComparisonOperator implements EnumType {
     public String getName() {
         return null;
     }
-
-    public static void main(String[] args) {}
 }

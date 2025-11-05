@@ -6,7 +6,6 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
-import com.google.gson.JsonElement;
 import java.util.List;
 import java.util.Set;
 import org.jooq.types.ULong;
@@ -27,12 +26,6 @@ public class ProductTicketRuRuleService
 
     @Override
     protected Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
-        return null;
-    }
-
-    @Override
-    protected Mono<ULong> getUserAssignment(
-            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
         return null;
     }
 
