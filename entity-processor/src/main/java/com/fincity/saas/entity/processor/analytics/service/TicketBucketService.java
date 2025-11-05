@@ -67,7 +67,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
     public Flux<DateStatusCount> getTicketPerAssignedUserStageSourceDateCount(TicketBucketFilter filter) {
         return FlatMapUtil.flatMapFlux(
                         () -> super.hasAccess().flux(),
-                        (access) -> resolveStages(access, filter).flux(),
+                        access -> resolveStages(access, filter).flux(),
                         (access, sFilter) -> this.dao
                                 .getTicketPerAssignedUserStageSourceDateCount(access, sFilter)
                                 .collectList()

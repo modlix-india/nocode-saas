@@ -13,8 +13,12 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketCRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
@@ -80,6 +84,18 @@ public class Tables {
 
     /**
      * The table
+     * <code>entity_processor.entity_processor_product_template_ticket_c_rules</code>.
+     */
+    public static final EntityProcessorProductTemplateTicketCRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_C_RULES = EntityProcessorProductTemplateTicketCRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_C_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_template_ticket_ru_rules</code>.
+     */
+    public static final EntityProcessorProductTemplateTicketRuRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_RU_RULES = EntityProcessorProductTemplateTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_RU_RULES;
+
+    /**
+     * The table
      * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>.
      */
     public static final EntityProcessorProductTemplateWalkInForms ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS = EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS;
@@ -89,6 +105,18 @@ public class Tables {
      * <code>entity_processor.entity_processor_product_templates</code>.
      */
     public static final EntityProcessorProductTemplates ENTITY_PROCESSOR_PRODUCT_TEMPLATES = EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>.
+     */
+    public static final EntityProcessorProductTicketCRules ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES = EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules</code>.
+     */
+    public static final EntityProcessorProductTicketRuRules ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES = EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES;
 
     /**
      * The table

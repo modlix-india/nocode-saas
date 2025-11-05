@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.rule.LogicalOperator;
+import com.fincity.saas.entity.processor.enums.baseRuleDto.LogicalOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 
 import java.time.LocalDateTime;

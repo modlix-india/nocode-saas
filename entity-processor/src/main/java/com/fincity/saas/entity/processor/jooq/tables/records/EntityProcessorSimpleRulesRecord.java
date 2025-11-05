@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.rule.ComparisonOperator;
+import com.fincity.saas.entity.processor.enums.baseRuleDto.ComparisonOperator;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.model.common.ValueContainer;
 

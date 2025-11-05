@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.controller.open;
 
-import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;

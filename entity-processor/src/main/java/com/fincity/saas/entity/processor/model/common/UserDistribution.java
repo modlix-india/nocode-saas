@@ -76,10 +76,17 @@ public class UserDistribution implements Serializable {
         return profileIds.stream().map(ULong::toBigInteger).toList();
     }
 
-    @JsonIgnore
-    public UserDistribution transformToValid() {
-        this.setProfileIds(this.profileIds.stream().distinct().toList());
-        this.setUserIds(this.userIds.stream().distinct().toList());
+    public UserDistribution update(UserDistribution userDistribution) {
+
+        this.profileIds = CloneUtil.cloneMapList(userDistribution.profileIds);
+        this.userIds = CloneUtil.cloneMapList(userDistribution.userIds);
+        this.percentage = userDistribution.percentage;
+        this.maxLoad = userDistribution.maxLoad;
+        this.weight = userDistribution.weight;
+        this.priority = userDistribution.priority;
+        this.hybridWeights = CloneUtil.cloneMapObject(userDistribution.hybridWeights);
+        this.currentCount = userDistribution.currentCount;
+
         return this;
     }
 }

@@ -5,7 +5,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.entity.processor.dto.rule.Rule;
+import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
@@ -26,18 +26,11 @@ public class RuleExecutionService {
 
     private static final ULong ANO_USER_ID = ULong.MIN;
 
-    private final SimpleRuleService simpleRuleService;
-    private final ComplexRuleService complexRuleService;
     private final IFeignSecurityService securityService;
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
-    public RuleExecutionService(
-            SimpleRuleService simpleRuleService,
-            ComplexRuleService complexRuleService,
-            IFeignSecurityService securityService) {
-        this.simpleRuleService = simpleRuleService;
-        this.complexRuleService = complexRuleService;
+    public RuleExecutionService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
@@ -74,12 +67,12 @@ public class RuleExecutionService {
         return Mono.just(userDistribution.getUserIds());
     }
 
-    public <T extends Rule<T>> Mono<T> executeRules(Map<Integer, T> rules, String prefix, JsonElement data) {
+    public <T extends BaseRuleDto<T>> Mono<T> executeRules(Map<Integer, T> rules, String prefix, JsonElement data) {
         return executeRules(rules, prefix, null, data)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    public <T extends Rule<T>> Mono<T> executeRules(
+    public <T extends BaseRuleDto<T>> Mono<T> executeRules(
             Map<Integer, T> rules, String prefix, ULong userId, JsonElement data) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
@@ -92,7 +85,7 @@ public class RuleExecutionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    private <T extends Rule<T>> Mono<T> distributeUsers(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> distributeUsers(T rule, List<ULong> userIds) {
 
         if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
@@ -111,7 +104,7 @@ public class RuleExecutionService {
         };
     }
 
-    private <T extends Rule<T>> Mono<T> handleRoundRobin(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleRoundRobin(T rule, List<ULong> userIds) {
 
         TreeSet<ULong> sortedUserIds = new TreeSet<>(userIds);
 
@@ -124,13 +117,13 @@ public class RuleExecutionService {
         return Mono.just(addAssignedUser(rule, nextUserId));
     }
 
-    private <T extends Rule<T>> Mono<T> getRandom(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> getRandom(T rule, List<ULong> userIds) {
         return Mono.just(userIds.get(random.nextInt(userIds.size()))).map(userId -> this.addAssignedUser(rule, userId));
     }
 
     // TODO will need to update all these according to requirements right now will focus on ROUND ROBIN
 
-    private <T extends Rule<T>> Mono<T> handlePercentage(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handlePercentage(T rule, List<ULong> userIds) {
 
         UserDistribution distribution = rule.getUserDistribution();
 
@@ -142,7 +135,7 @@ public class RuleExecutionService {
                 .map(userId -> this.addAssignedUser(rule, userId));
     }
 
-    private <T extends Rule<T>> Mono<T> handleWeighted(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleWeighted(T rule, List<ULong> userIds) {
 
         UserDistribution distribution = rule.getUserDistribution();
 
@@ -152,7 +145,7 @@ public class RuleExecutionService {
         return Mono.just(userIds.get(count - 1)).map(userId -> this.addAssignedUser(rule, userId));
     }
 
-    private <T extends Rule<T>> Mono<T> handleLoadBalanced(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleLoadBalanced(T rule, List<ULong> userIds) {
 
         UserDistribution distribution = rule.getUserDistribution();
 
@@ -167,7 +160,7 @@ public class RuleExecutionService {
         return Mono.just(userIds.get(currentCount % userIds.size())).map(userId -> this.addAssignedUser(rule, userId));
     }
 
-    private <T extends Rule<T>> Mono<T> handlePriorityQueue(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handlePriorityQueue(T rule, List<ULong> userIds) {
 
         UserDistribution distribution = rule.getUserDistribution();
 
@@ -177,7 +170,7 @@ public class RuleExecutionService {
         return Mono.just(userIds.get(count)).map(userId -> this.addAssignedUser(rule, userId));
     }
 
-    private <T extends Rule<T>> Mono<T> handleHybrid(T rule, List<ULong> userIds) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleHybrid(T rule, List<ULong> userIds) {
 
         UserDistribution distribution = rule.getUserDistribution();
 
@@ -194,11 +187,12 @@ public class RuleExecutionService {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Rule<T>> T addAssignedUser(T rule, ULong assignedUserId) {
+    private <T extends BaseRuleDto<T>> T addAssignedUser(T rule, ULong assignedUserId) {
         return (T) rule.setLastAssignedUserId(assignedUserId);
     }
 
-    private <T extends Rule<T>> Mono<T> findMatchedRules(Map<Integer, T> rules, String prefix, JsonElement data) {
+    private <T extends BaseRuleDto<T>> Mono<T> findMatchedRules(
+            Map<Integer, T> rules, String prefix, JsonElement data) {
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
         List<T> sortedRules = rules.entrySet().stream()
@@ -220,17 +214,12 @@ public class RuleExecutionService {
                 .next();
     }
 
-    private <T extends Rule<T>> Mono<AbstractCondition> getConditionForRule(T rule) {
+    private <T extends BaseRuleDto<T>> Mono<AbstractCondition> getConditionForRule(T rule) {
         if (rule == null) return Mono.empty();
-
-        if (rule.isSimple()) return simpleRuleService.getCondition(rule.getId(), rule.getEntitySeries(), Boolean.FALSE);
-
-        if (rule.isComplex()) return complexRuleService.getCondition(rule.getId(), rule.getEntitySeries());
-
-        return Mono.empty();
+        return Mono.just(rule.getCondition());
     }
 
-    private <T extends Rule<T>> Mono<T> handleDefaultRule(Map<Integer, T> rules, ULong finalUserId) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleDefaultRule(Map<Integer, T> rules, ULong finalUserId) {
         T defaultRule = rules.get(0);
         if (defaultRule == null) return Mono.empty();
 
@@ -244,7 +233,7 @@ public class RuleExecutionService {
         });
     }
 
-    private <T extends Rule<T>> Mono<T> handleMatchedRule(T matchedRule, ULong finalUserId) {
+    private <T extends BaseRuleDto<T>> Mono<T> handleMatchedRule(T matchedRule, ULong finalUserId) {
         return this.getUsersForDistribution(matchedRule.getUserDistribution()).flatMap(userIds -> {
             // Case 1: finalUserId is provided and exists in the rule's userIds
             if (finalUserId != null && userIds.contains(finalUserId))

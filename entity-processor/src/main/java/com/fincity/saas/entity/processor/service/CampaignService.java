@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCamp
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;

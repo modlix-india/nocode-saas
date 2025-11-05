@@ -9,6 +9,8 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketCRules.EntityProcessorProductTemplateTicketCRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketRuRules.EntityProcessorProductTemplateTicketRuRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
@@ -301,6 +303,34 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
             _entityProcessorProducts = new EntityProcessorProductsPath(this, null, Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID.getInverseKey());
 
         return _entityProcessorProducts;
+    }
+
+    private transient EntityProcessorProductTemplateTicketCRulesPath _entityProcessorProductTemplateTicketCRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_ticket_c_rules</code>
+     * table
+     */
+    public EntityProcessorProductTemplateTicketCRulesPath entityProcessorProductTemplateTicketCRules() {
+        if (_entityProcessorProductTemplateTicketCRules == null)
+            _entityProcessorProductTemplateTicketCRules = new EntityProcessorProductTemplateTicketCRulesPath(this, null, Keys.FK1_PTTCR_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorProductTemplateTicketCRules;
+    }
+
+    private transient EntityProcessorProductTemplateTicketRuRulesPath _entityProcessorProductTemplateTicketRuRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_ticket_ru_rules</code>
+     * table
+     */
+    public EntityProcessorProductTemplateTicketRuRulesPath entityProcessorProductTemplateTicketRuRules() {
+        if (_entityProcessorProductTemplateTicketRuRules == null)
+            _entityProcessorProductTemplateTicketRuRules = new EntityProcessorProductTemplateTicketRuRulesPath(this, null, Keys.FK1_PTTRUR_PRODUCT_TEMPLATE_ID.getInverseKey());
+
+        return _entityProcessorProductTemplateTicketRuRules;
     }
 
     private transient EntityProcessorStagesPath _entityProcessorStages;
