@@ -4,8 +4,9 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.baseRuleDto.DistributionType;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 
@@ -330,21 +331,21 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTIONS</code>.
-     * User distributions for this Rule.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION</code>.
+     * User distribution for this Rule.
      */
-    public EntityProcessorProductTicketRuRulesRecord setUserDistributions(JSON value) {
+    public EntityProcessorProductTicketRuRulesRecord setUserDistribution(UserDistribution value) {
         set(16, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTIONS</code>.
-     * User distributions for this Rule.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION</code>.
+     * User distribution for this Rule.
      */
-    public JSON getUserDistributions() {
-        return (JSON) get(16);
+    public UserDistribution getUserDistribution() {
+        return (UserDistribution) get(16);
     }
 
     /**
@@ -522,7 +523,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Create a detached, initialised EntityProcessorProductTicketRuRulesRecord
      */
-    public EntityProcessorProductTicketRuRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Boolean overrideTemplate, ULong stageId, UInteger order, Boolean isDefault, Boolean breakAtFirstMatch, Boolean isSimple, Boolean isComplex, DistributionType userDistributionType, JSON userDistributions, ULong lastAssignedUserId, JSON condition, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTicketRuRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Boolean overrideTemplate, ULong stageId, UInteger order, Boolean isDefault, Boolean breakAtFirstMatch, Boolean isSimple, Boolean isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, JSON condition, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES);
 
         setId(id);
@@ -541,7 +542,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
         setIsSimple(isSimple);
         setIsComplex(isComplex);
         setUserDistributionType(userDistributionType);
-        setUserDistributions(userDistributions);
+        setUserDistribution(userDistribution);
         setLastAssignedUserId(lastAssignedUserId);
         setCondition(condition);
         setTempActive(tempActive);

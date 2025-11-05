@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.entity.processor.enums.baseRuleDto.LogicalOperator;
+import com.fincity.saas.entity.processor.enums.rule.LogicalOperator;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;

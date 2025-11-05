@@ -4,7 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
-import com.fincity.saas.entity.processor.enums.baseRuleDto.DistributionType;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 

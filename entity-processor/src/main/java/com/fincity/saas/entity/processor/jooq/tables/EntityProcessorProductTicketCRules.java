@@ -4,12 +4,14 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
-import com.fincity.saas.entity.processor.enums.baseRuleDto.DistributionType;
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
+import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -172,10 +174,10 @@ public class EntityProcessorProductTicketCRules extends TableImpl<EntityProcesso
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_ticket_c_rules.USER_DISTRIBUTIONS</code>.
-     * User distributions for this Rule.
+     * <code>entity_processor.entity_processor_product_ticket_c_rules.USER_DISTRIBUTION</code>.
+     * User distribution for this Rule.
      */
-    public final TableField<EntityProcessorProductTicketCRulesRecord, JSON> USER_DISTRIBUTIONS = createField(DSL.name("USER_DISTRIBUTIONS"), SQLDataType.JSON, this, "User distributions for this Rule.");
+    public final TableField<EntityProcessorProductTicketCRulesRecord, UserDistribution> USER_DISTRIBUTION = createField(DSL.name("USER_DISTRIBUTION"), SQLDataType.JSON, this, "User distribution for this Rule.", new JSONtoClassConverter<JSON, UserDistribution>(JSON.class, UserDistribution.class));
 
     /**
      * The column
