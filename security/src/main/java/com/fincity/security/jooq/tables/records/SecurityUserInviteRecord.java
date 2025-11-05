@@ -190,11 +190,28 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
     }
 
     /**
+     * Setter for <code>security.security_user_invite.REPORTING_TO</code>.
+     * Reporting to ID for which this user belongs to
+     */
+    public SecurityUserInviteRecord setReportingTo(ULong value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_user_invite.REPORTING_TO</code>.
+     * Reporting to ID for which this user belongs to
+     */
+    public ULong getReportingTo() {
+        return (ULong) get(10);
+    }
+
+    /**
      * Setter for <code>security.security_user_invite.CREATED_BY</code>. ID of
      * the user who created this row
      */
     public SecurityUserInviteRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -203,7 +220,7 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
      * the user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -211,7 +228,7 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
      * when this row is created
      */
     public SecurityUserInviteRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -220,7 +237,7 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -246,7 +263,7 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
     /**
      * Create a detached, initialised SecurityUserInviteRecord
      */
-    public SecurityUserInviteRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String inviteCode, ULong profileId, ULong designationId, ULong createdBy, LocalDateTime createdAt) {
+    public SecurityUserInviteRecord(ULong id, ULong clientId, String userName, String emailId, String phoneNumber, String firstName, String lastName, String inviteCode, ULong profileId, ULong designationId, ULong reportingTo, ULong createdBy, LocalDateTime createdAt) {
         super(SecurityUserInvite.SECURITY_USER_INVITE);
 
         setId(id);
@@ -259,6 +276,7 @@ public class SecurityUserInviteRecord extends UpdatableRecordImpl<SecurityUserIn
         setInviteCode(inviteCode);
         setProfileId(profileId);
         setDesignationId(designationId);
+        setReportingTo(reportingTo);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();

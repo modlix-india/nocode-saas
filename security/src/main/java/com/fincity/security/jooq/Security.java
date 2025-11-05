@@ -40,7 +40,6 @@ import com.fincity.security.jooq.tables.SecurityPayment;
 import com.fincity.security.jooq.tables.SecurityPaymentGateway;
 import com.fincity.security.jooq.tables.SecurityPermission;
 import com.fincity.security.jooq.tables.SecurityPlan;
-import com.fincity.security.jooq.tables.SecurityPlanApp;
 import com.fincity.security.jooq.tables.SecurityPlanCycle;
 import com.fincity.security.jooq.tables.SecurityPlanLimit;
 import com.fincity.security.jooq.tables.SecurityProfile;
@@ -264,11 +263,6 @@ public class Security extends SchemaImpl {
     public final SecurityPlan SECURITY_PLAN = SecurityPlan.SECURITY_PLAN;
 
     /**
-     * The table <code>security.security_plan_app</code>.
-     */
-    public final SecurityPlanApp SECURITY_PLAN_APP = SecurityPlanApp.SECURITY_PLAN_APP;
-
-    /**
      * The table <code>security.security_plan_cycle</code>.
      */
     public final SecurityPlanCycle SECURITY_PLAN_CYCLE = SecurityPlanCycle.SECURITY_PLAN_CYCLE;
@@ -415,7 +409,6 @@ public class Security extends SchemaImpl {
             SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY,
             SecurityPermission.SECURITY_PERMISSION,
             SecurityPlan.SECURITY_PLAN,
-            SecurityPlanApp.SECURITY_PLAN_APP,
             SecurityPlanCycle.SECURITY_PLAN_CYCLE,
             SecurityPlanLimit.SECURITY_PLAN_LIMIT,
             SecurityProfile.SECURITY_PROFILE,

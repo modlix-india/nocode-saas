@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
@@ -39,6 +40,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -145,6 +147,18 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
      */
     public final TableField<SecurityInvoiceRecord, String> INVOICE_REASON = createField(DSL.name("INVOICE_REASON"), SQLDataType.VARCHAR(256), this, "Invoice reason");
 
+    /**
+     * The column <code>security.security_invoice.PERIOD_START</code>. Service
+     * period start (UTC)
+     */
+    public final TableField<SecurityInvoiceRecord, LocalDateTime> PERIOD_START = createField(DSL.name("PERIOD_START"), SQLDataType.LOCALDATETIME(0), this, "Service period start (UTC)");
+
+    /**
+     * The column <code>security.security_invoice.PERIOD_END</code>. Service
+     * period end (UTC)
+     */
+    public final TableField<SecurityInvoiceRecord, LocalDateTime> PERIOD_END = createField(DSL.name("PERIOD_END"), SQLDataType.LOCALDATETIME(0), this, "Service period end (UTC)");
+
     private SecurityInvoice(Name alias, Table<SecurityInvoiceRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -224,7 +238,7 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
 
     @Override
     public List<UniqueKey<SecurityInvoiceRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_SECURITY_INVOICE_UK1_INVOICE_CLIENT_ID_INVOICE_NUMBER);
+        return Arrays.asList(Keys.KEY_SECURITY_INVOICE_UK1_INVOICE_CLIENT_ID_INVOICE_NUMBER, Keys.KEY_SECURITY_INVOICE_UK_INVOICE_PERIOD);
     }
 
     @Override
@@ -295,6 +309,13 @@ public class SecurityInvoice extends TableImpl<SecurityInvoiceRecord> {
             _securityPayment = new SecurityPaymentPath(this, null, Keys.FK1_PAYMENT_INVOICE_ID.getInverseKey());
 
         return _securityPayment;
+    }
+
+    @Override
+    public List<Check<SecurityInvoiceRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("CHK_INVOICE_PERIOD_VALID"), "((`PERIOD_START` is null) or (`PERIOD_END` is null) or (`PERIOD_START` < `PERIOD_END`))", true)
+        );
     }
 
     @Override

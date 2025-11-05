@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
+import com.fincity.security.jooq.enums.SecurityPlanCycleIntervalType;
 import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 
 import lombok.Data;
@@ -39,6 +40,8 @@ public class PlanCycle extends AbstractUpdatableDTO<ULong, ULong> {
     private BigDecimal tax5;
     private String tax5Name;
 
-    private Integer interval;
+    private SecurityPlanCycleIntervalType intervalType;
+    private Integer reminderIntervalDays;
+    private Integer paymentTermsDays;
     private SecurityPlanCycleStatus status;
 }

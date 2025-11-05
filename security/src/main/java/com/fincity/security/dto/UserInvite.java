@@ -1,13 +1,14 @@
 package com.fincity.security.dto;
 
+import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -27,4 +28,5 @@ public class UserInvite extends AbstractDTO<ULong, ULong> {
 
     private ULong profileId;
     private ULong designationId;
+    private ULong reportingTo;
 }
