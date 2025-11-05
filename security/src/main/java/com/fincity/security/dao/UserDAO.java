@@ -510,23 +510,41 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
 
+        if (reportingTo == null || reportingTo.equals(userId)) return Mono.just(Boolean.FALSE);
+
+        if (userId == null) return Mono.just(Boolean.TRUE);
+
         return FlatMapUtil.flatMapMono(
-                () -> Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(
-                        SECURITY_USER.ID.eq(reportingTo),
-                        SECURITY_USER.CLIENT_ID.eq(clientId)
-                ))).map(r -> r.value1() == 1),
+                        () -> Mono.from(this.dslContext
+                                        .selectCount()
+                                        .from(SECURITY_USER)
+                                        .where(DSL.and(
+                                                SECURITY_USER.ID.eq(reportingTo),
+                                                SECURITY_USER.CLIENT_ID.eq(clientId))))
+                                .map(r -> r.value1() == 1),
+                        sameClient -> {
+                            if (!BooleanUtil.safeValueOf(sameClient)) return Mono.just(Boolean.FALSE);
 
-                sameClient -> {
-                    if (!BooleanUtil.safeValueOf(sameClient) || reportingTo.equals(userId)) return Mono.just(false);
-                    if (userId == null) return Mono.just(true);
+                            return Mono.just(List.of(userId))
+                                    .expand(userList -> {
+                                        if (userList.isEmpty()) return Mono.empty();
 
-                    return Mono.just(List.of(userId))
-                            .expand(userList -> Flux.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER).where(SECURITY_USER.REPORTING_TO.in(userList))).map(Record1::value1).collectList())
-                            .map(userList -> userList.contains(reportingTo))
-                            .reduce(Boolean::logicalAnd);
-                }
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
+                                        return Flux.from(this.dslContext
+                                                        .select(SECURITY_USER.ID)
+                                                        .from(SECURITY_USER)
+                                                        .where(SECURITY_USER.REPORTING_TO.in(userList)))
+                                                .map(Record1::value1)
+                                                .collectList();
+                                    })
+                                    .takeWhile(userList -> !userList.isEmpty())
+                                    .map(userList -> !userList.contains(reportingTo))
+                                    .reduce(Boolean::logicalAnd)
+                                    .defaultIfEmpty(Boolean.FALSE);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
+
+
 
     public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds) {
 
