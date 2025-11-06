@@ -85,6 +85,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String FETCH_CLIENT = "fetchClients";
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClients";
     private static final String FETCH_CREATED_BY = "fetchCreatedBy";
+    private static final String FETCH_DESIGNATION = "fetchDesignation";
+    private static final String FETCH_REPORTING_TO = "fetchReportingTo";
 
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
@@ -1406,6 +1408,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         boolean fetchClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CLIENT));
         boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
         boolean fetchCreatedBy = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY));
+        boolean fetchDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_DESIGNATION));
+        boolean fetchReportingTo = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_REPORTING_TO));
 
         Flux<User> userFlux = Flux.fromIterable(users);
 
@@ -1425,6 +1429,27 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
                     .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
+        if (fetchDesignation){
+            userFlux = userFlux.flatMap(user -> {
+                if(user.getDesignationId() == null) {
+                    return Mono.just(user);
+                }
+                return this.designationService.read(user.getDesignationId())
+                        .map(user::setDesignationData)
+                        .defaultIfEmpty(user);
+            });
+        }
+
+        if (fetchReportingTo){
+            userFlux = userFlux.flatMap(user -> {
+                if(user.getReportingTo() == null) {
+                    return Mono.just(user);
+                }
+                return this.read(user.getReportingTo())
+                        .map(user::setReportingUser)
+                        .defaultIfEmpty(user);
+            });
+        }
         return userFlux.collectList();
     }
 
