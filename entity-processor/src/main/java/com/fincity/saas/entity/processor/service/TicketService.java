@@ -484,7 +484,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (uTicket, cTask) -> this.activityService
                                 .acStageStatus(access, uTicket, comment, oldStage)
                                 .thenReturn(uTicket),
-                        (uTicket, cTask, fTicket) -> this.reassignForStage(access, ticket, reassignUserId, true))
+                        (uTicket, cTask, fTicket) -> this.reassignForStage(access, fTicket, reassignUserId, true))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
     }
 
@@ -558,7 +558,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         aTicket -> super.updateInternal(access, aTicket),
                         (aTicket, uTicket) -> this.activityService
                                 .acReassign(
-                                        uTicket.getId(), comment, oldUserId, uTicket.getAssignedUserId(), isAutomatic)
+                                        access,
+                                        uTicket.getId(),
+                                        comment,
+                                        oldUserId,
+                                        uTicket.getAssignedUserId(),
+                                        isAutomatic)
                                 .thenReturn(uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketForReassignment"));
     }
