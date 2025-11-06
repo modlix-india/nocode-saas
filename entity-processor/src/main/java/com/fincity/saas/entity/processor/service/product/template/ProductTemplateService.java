@@ -5,7 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.template.ProductTemplateDAO;
 import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
-import com.fincity.saas.entity.processor.dto.product.template.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;

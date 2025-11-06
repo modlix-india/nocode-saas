@@ -10,7 +10,6 @@ import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules.EntityProcessorProductTicketRuRulesPath;
@@ -352,19 +351,6 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         return _entityProcessorProductComms;
     }
 
-    private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_stage_rules</code> table
-     */
-    public EntityProcessorProductStageRulesPath entityProcessorProductStageRules() {
-        if (_entityProcessorProductStageRules == null)
-            _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, null, Keys.FK1_PRODUCT_RULES_PRODUCT_ID.getInverseKey());
-
-        return _entityProcessorProductStageRules;
-    }
-
     private transient EntityProcessorProductTicketCRulesPath _entityProcessorProductTicketCRules;
 
     /**
@@ -374,7 +360,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      */
     public EntityProcessorProductTicketCRulesPath entityProcessorProductTicketCRules() {
         if (_entityProcessorProductTicketCRules == null)
-            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK1_PTCR_PRODUCT_TEMPLATE_ID.getInverseKey());
+            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK1_PTCR_PID.getInverseKey());
 
         return _entityProcessorProductTicketCRules;
     }
@@ -388,7 +374,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
      */
     public EntityProcessorProductTicketRuRulesPath entityProcessorProductTicketRuRules() {
         if (_entityProcessorProductTicketRuRules == null)
-            _entityProcessorProductTicketRuRules = new EntityProcessorProductTicketRuRulesPath(this, null, Keys.FK1_PTRUR_PRODUCT_TEMPLATE_ID.getInverseKey());
+            _entityProcessorProductTicketRuRules = new EntityProcessorProductTicketRuRulesPath(this, null, Keys.FK1_PTRUR_PID.getInverseKey());
 
         return _entityProcessorProductTicketRuRules;
     }

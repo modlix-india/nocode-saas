@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.controller.product;
 
 import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.product.template.ProductTemplateDAO;
-import com.fincity.saas.entity.processor.dto.product.template.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.product.teamplate.ProductTemplateRequest;

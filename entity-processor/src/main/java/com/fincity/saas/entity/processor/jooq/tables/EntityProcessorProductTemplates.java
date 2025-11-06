@@ -8,10 +8,9 @@ import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketCRules.EntityProcessorProductTemplateTicketCRulesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketRuRules.EntityProcessorProductTemplateTicketRuRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules.EntityProcessorProductTicketRuRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
@@ -278,20 +277,6 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
         return _entityProcessorProductTemplateWalkInForms;
     }
 
-    private transient EntityProcessorProductTemplateRulesPath _entityProcessorProductTemplateRules;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_template_rules</code>
-     * table
-     */
-    public EntityProcessorProductTemplateRulesPath entityProcessorProductTemplateRules() {
-        if (_entityProcessorProductTemplateRules == null)
-            _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK1_PRODUCT_TEMPLATE_RULES_PRODUCT_TEMPLATE_ID.getInverseKey());
-
-        return _entityProcessorProductTemplateRules;
-    }
-
     private transient EntityProcessorProductsPath _entityProcessorProducts;
 
     /**
@@ -305,32 +290,32 @@ public class EntityProcessorProductTemplates extends TableImpl<EntityProcessorPr
         return _entityProcessorProducts;
     }
 
-    private transient EntityProcessorProductTemplateTicketCRulesPath _entityProcessorProductTemplateTicketCRules;
+    private transient EntityProcessorProductTicketCRulesPath _entityProcessorProductTicketCRules;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_template_ticket_c_rules</code>
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>
      * table
      */
-    public EntityProcessorProductTemplateTicketCRulesPath entityProcessorProductTemplateTicketCRules() {
-        if (_entityProcessorProductTemplateTicketCRules == null)
-            _entityProcessorProductTemplateTicketCRules = new EntityProcessorProductTemplateTicketCRulesPath(this, null, Keys.FK1_PTTCR_PRODUCT_TEMPLATE_ID.getInverseKey());
+    public EntityProcessorProductTicketCRulesPath entityProcessorProductTicketCRules() {
+        if (_entityProcessorProductTicketCRules == null)
+            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK1_PTCR_PTID.getInverseKey());
 
-        return _entityProcessorProductTemplateTicketCRules;
+        return _entityProcessorProductTicketCRules;
     }
 
-    private transient EntityProcessorProductTemplateTicketRuRulesPath _entityProcessorProductTemplateTicketRuRules;
+    private transient EntityProcessorProductTicketRuRulesPath _entityProcessorProductTicketRuRules;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_template_ticket_ru_rules</code>
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules</code>
      * table
      */
-    public EntityProcessorProductTemplateTicketRuRulesPath entityProcessorProductTemplateTicketRuRules() {
-        if (_entityProcessorProductTemplateTicketRuRules == null)
-            _entityProcessorProductTemplateTicketRuRules = new EntityProcessorProductTemplateTicketRuRulesPath(this, null, Keys.FK1_PTTRUR_PRODUCT_TEMPLATE_ID.getInverseKey());
+    public EntityProcessorProductTicketRuRulesPath entityProcessorProductTicketRuRules() {
+        if (_entityProcessorProductTicketRuRules == null)
+            _entityProcessorProductTicketRuRules = new EntityProcessorProductTicketRuRulesPath(this, null, Keys.FK1_PTRUR_PTID.getInverseKey());
 
-        return _entityProcessorProductTemplateTicketRuRules;
+        return _entityProcessorProductTicketRuRules;
     }
 
     private transient EntityProcessorStagesPath _entityProcessorStages;

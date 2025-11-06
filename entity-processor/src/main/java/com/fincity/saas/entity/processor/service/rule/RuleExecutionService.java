@@ -6,7 +6,6 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
-import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.google.gson.JsonElement;
 import java.util.ArrayList;
@@ -89,18 +88,10 @@ public class RuleExecutionService {
 
         if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
-        DistributionType type = rule.getUserDistributionType();
-
-        if (type == null) type = DistributionType.RANDOM;
-
-        return switch (type) {
+        return switch (rule.getUserDistributionType()) {
             case ROUND_ROBIN -> this.handleRoundRobin(rule, userIds);
             case RANDOM -> this.getRandom(rule, userIds);
-            case PERCENTAGE -> this.handlePercentage(rule, userIds);
-            case WEIGHTED -> this.handleWeighted(rule, userIds);
-            case LOAD_BALANCED -> this.handleLoadBalanced(rule, userIds);
-            case PRIORITY_QUEUE -> this.handlePriorityQueue(rule, userIds);
-            case HYBRID -> this.handleHybrid(rule, userIds);
+            default -> Mono.empty();
         };
     }
 
@@ -122,69 +113,6 @@ public class RuleExecutionService {
     }
 
     // TODO will need to update all these according to requirements right now will focus on ROUND ROBIN
-
-    private <T extends BaseRuleDto<T>> Mono<T> handlePercentage(T rule, List<ULong> userIds) {
-
-        UserDistribution distribution = rule.getUserDistribution();
-
-        if (distribution.getPercentage() == null || distribution.getPercentage() <= 0)
-            return this.getRandom(rule, userIds);
-
-        int count = (int) Math.ceil((distribution.getPercentage() / 100.0) * userIds.size());
-        return Mono.just(userIds.get(Math.min(count - 1, userIds.size() - 1)))
-                .map(userId -> this.addAssignedUser(rule, userId));
-    }
-
-    private <T extends BaseRuleDto<T>> Mono<T> handleWeighted(T rule, List<ULong> userIds) {
-
-        UserDistribution distribution = rule.getUserDistribution();
-
-        if (distribution.getWeight() == null || distribution.getWeight() <= 0) return this.getRandom(rule, userIds);
-
-        int count = Math.min(distribution.getWeight(), userIds.size());
-        return Mono.just(userIds.get(count - 1)).map(userId -> this.addAssignedUser(rule, userId));
-    }
-
-    private <T extends BaseRuleDto<T>> Mono<T> handleLoadBalanced(T rule, List<ULong> userIds) {
-
-        UserDistribution distribution = rule.getUserDistribution();
-
-        if (distribution.getMaxLoad() == null || distribution.getMaxLoad() <= 0) return this.getRandom(rule, userIds);
-
-        Integer currentCount = distribution.getCurrentCount();
-        if (currentCount == null) currentCount = 0;
-
-        if (currentCount >= distribution.getMaxLoad()) return this.getRandom(rule, userIds);
-
-        distribution.setCurrentCount(currentCount + 1);
-        return Mono.just(userIds.get(currentCount % userIds.size())).map(userId -> this.addAssignedUser(rule, userId));
-    }
-
-    private <T extends BaseRuleDto<T>> Mono<T> handlePriorityQueue(T rule, List<ULong> userIds) {
-
-        UserDistribution distribution = rule.getUserDistribution();
-
-        if (distribution.getPriority() == null || distribution.getPriority() < 0) return this.getRandom(rule, userIds);
-
-        int count = Math.min(distribution.getPriority(), userIds.size() - 1);
-        return Mono.just(userIds.get(count)).map(userId -> this.addAssignedUser(rule, userId));
-    }
-
-    private <T extends BaseRuleDto<T>> Mono<T> handleHybrid(T rule, List<ULong> userIds) {
-
-        UserDistribution distribution = rule.getUserDistribution();
-
-        if (distribution.getHybridWeights() == null
-                || distribution.getHybridWeights().isEmpty()) return this.getRandom(rule, userIds);
-
-        Map<DistributionType, Integer> weights = distribution.getHybridWeights();
-        int totalWeight = weights.values().stream().mapToInt(Integer::intValue).sum();
-
-        if (totalWeight <= 0) return this.getRandom(rule, userIds);
-
-        int selectedIndex = random.nextInt(totalWeight);
-        return Mono.just(userIds.get(selectedIndex % userIds.size())).map(userId -> this.addAssignedUser(rule, userId));
-    }
 
     @SuppressWarnings("unchecked")
     private <T extends BaseRuleDto<T>> T addAssignedUser(T rule, ULong assignedUserId) {

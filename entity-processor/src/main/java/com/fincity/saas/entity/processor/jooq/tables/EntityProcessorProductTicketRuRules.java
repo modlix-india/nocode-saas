@@ -5,13 +5,14 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts.EntityProcessorProductsPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions.EntityProcessorTicketRuUserDistributionsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
-import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -77,16 +78,16 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
     /**
      * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.APP_CODE</code>.
-     * App Code on which this Product Rule Config was created.
+     * App Code on which this Rule Config was created.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Product Rule Config was created.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "App Code on which this Rule Config was created.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CLIENT_CODE</code>.
-     * Client Code who created this Product Rule Config.
+     * Client Code who created this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Product Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client Code who created this Rule Config.");
 
     /**
      * The column
@@ -98,44 +99,37 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
     /**
      * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.NAME</code>.
-     * Name of the Product Rule Config.
+     * Name of the Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(64).nullable(false), this, "Name of the Product Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(64).nullable(false), this, "Name of the Rule Config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.DESCRIPTION</code>.
-     * Description for the Product Rule Config.
+     * Description for the Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Product Rule Config.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> ADDED_BY_USER_ID = createField(DSL.name("ADDED_BY_USER_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "User which added this Product Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Rule Config.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_ID</code>.
-     * Product Rule ID related to this Product Rule Config.
+     * Product id related to this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Rule ID related to this Product Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_ID = createField(DSL.name("PRODUCT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product id related to this Rule Config.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.OVERRIDE_TEMPLATE</code>.
-     * Flag to tell if product template should be overridden or not.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template id related to this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> OVERRIDE_TEMPLATE = createField(DSL.name("OVERRIDE_TEMPLATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell if product template should be overridden or not.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template id related to this Rule Config.");
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.STAGE_ID</code>.
-     * Stage Id to which this product Rule config is assigned
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.CAN_EDIT</code>.
+     * Flag to check if for this rule ticket can be edited or not.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage Id to which this product Rule config is assigned");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> CAN_EDIT = createField(DSL.name("CAN_EDIT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if for this rule ticket can be edited or not.");
 
     /**
      * The column
@@ -146,34 +140,6 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_DEFAULT</code>.
-     * Flag to tell weather for this stage this is default Rule or not.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> IS_DEFAULT = createField(DSL.name("IS_DEFAULT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this stage this is default Rule or not.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.BREAK_AT_FIRST_MATCH</code>.
-     * Flag to check if execution should break at first match.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> BREAK_AT_FIRST_MATCH = createField(DSL.name("BREAK_AT_FIRST_MATCH"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to check if execution should break at first match.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_SIMPLE</code>.
-     * Flag to tell weather for this is a simple Rule or not.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> IS_SIMPLE = createField(DSL.name("IS_SIMPLE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this is a simple Rule or not.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_COMPLEX</code>.
-     * Flag to tell weather for this is a complex Rule or not.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, Boolean> IS_COMPLEX = createField(DSL.name("IS_COMPLEX"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell weather for this is a complex Rule or not.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION_TYPE</code>.
      * User distribution strategy for this Rule.
      */
@@ -181,24 +147,10 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION</code>.
-     * User distribution for this Rule.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, UserDistribution> USER_DISTRIBUTION = createField(DSL.name("USER_DISTRIBUTION"), SQLDataType.JSON, this, "User distribution for this Rule.", new JSONtoClassConverter<JSON, UserDistribution>(JSON.class, UserDistribution.class));
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.LAST_ASSIGNED_USER_ID</code>.
-     * Last User id used in this Rule.
-     */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> LAST_ASSIGNED_USER_ID = createField(DSL.name("LAST_ASSIGNED_USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Last User id used in this Rule.");
-
-    /**
-     * The column
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CONDITION</code>.
      * Condition to match for Rule
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, JSON> CONDITION = createField(DSL.name("CONDITION"), SQLDataType.JSON.nullable(false), this, "Condition to match for Rule");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, AbstractCondition> CONDITION = createField(DSL.name("CONDITION"), SQLDataType.JSON.nullable(false), this, "Condition to match for Rule", new JSONtoClassConverter<JSON, AbstractCondition>(JSON.class, AbstractCondition.class));
 
     /**
      * The column
@@ -327,12 +279,12 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
 
     @Override
     public List<UniqueKey<EntityProcessorProductTicketRuRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK1_PTRUR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK2_PTRUR_AC_CC_PRODUCT_TEMPLATE_ID_ORDER);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK1_PTRUR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK2_PTRUR_AC_CC_PID_PTID_ORDER);
     }
 
     @Override
     public List<ForeignKey<EntityProcessorProductTicketRuRulesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PTRUR_PRODUCT_TEMPLATE_ID, Keys.FK2_PTRUR_STAGE_ID);
+        return Arrays.asList(Keys.FK1_PTRUR_PID, Keys.FK1_PTRUR_PTID);
     }
 
     private transient EntityProcessorProductsPath _entityProcessorProducts;
@@ -343,22 +295,36 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
      */
     public EntityProcessorProductsPath entityProcessorProducts() {
         if (_entityProcessorProducts == null)
-            _entityProcessorProducts = new EntityProcessorProductsPath(this, Keys.FK1_PTRUR_PRODUCT_TEMPLATE_ID, null);
+            _entityProcessorProducts = new EntityProcessorProductsPath(this, Keys.FK1_PTRUR_PID, null);
 
         return _entityProcessorProducts;
     }
 
-    private transient EntityProcessorStagesPath _entityProcessorStages;
+    private transient EntityProcessorProductTemplatesPath _entityProcessorProductTemplates;
 
     /**
      * Get the implicit join path to the
-     * <code>entity_processor.entity_processor_stages</code> table.
+     * <code>entity_processor.entity_processor_product_templates</code> table.
      */
-    public EntityProcessorStagesPath entityProcessorStages() {
-        if (_entityProcessorStages == null)
-            _entityProcessorStages = new EntityProcessorStagesPath(this, Keys.FK2_PTRUR_STAGE_ID, null);
+    public EntityProcessorProductTemplatesPath entityProcessorProductTemplates() {
+        if (_entityProcessorProductTemplates == null)
+            _entityProcessorProductTemplates = new EntityProcessorProductTemplatesPath(this, Keys.FK1_PTRUR_PTID, null);
 
-        return _entityProcessorStages;
+        return _entityProcessorProductTemplates;
+    }
+
+    private transient EntityProcessorTicketRuUserDistributionsPath _entityProcessorTicketRuUserDistributions;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions</code>
+     * table
+     */
+    public EntityProcessorTicketRuUserDistributionsPath entityProcessorTicketRuUserDistributions() {
+        if (_entityProcessorTicketRuUserDistributions == null)
+            _entityProcessorTicketRuUserDistributions = new EntityProcessorTicketRuUserDistributionsPath(this, null, Keys.FK1_TRUUD_RULE_ID.getInverseKey());
+
+        return _entityProcessorTicketRuUserDistributions;
     }
 
     @Override

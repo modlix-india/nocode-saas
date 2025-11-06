@@ -15,7 +15,6 @@ public class ProductTicketRURuleDAO
         super(
                 ProductTicketRURuleDto.class,
                 ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES,
-                ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.ID,
-                ProductTicketRURuleDto.Fields.productId);
+                ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.ID);
     }
 }

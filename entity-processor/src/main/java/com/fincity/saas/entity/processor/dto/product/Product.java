@@ -23,7 +23,8 @@ public class Product extends BaseProcessorDto<Product> {
     private static final long serialVersionUID = 8028699089699178352L;
 
     private ULong productTemplateId;
-    private Boolean forPartner = Boolean.FALSE;
+    private boolean forPartner;
+    private boolean overrideTemplate = Boolean.TRUE;
     private ULong productWalkInFormId;
     private FileDetail logoFileDetail;
     private FileDetail bannerFileDetail;
@@ -38,6 +39,7 @@ public class Product extends BaseProcessorDto<Product> {
         super(product);
         this.productTemplateId = product.productTemplateId;
         this.forPartner = product.forPartner;
+        this.overrideTemplate = product.overrideTemplate;
         this.productWalkInFormId = product.productWalkInFormId;
         this.logoFileDetail = product.logoFileDetail;
         this.bannerFileDetail = product.bannerFileDetail;

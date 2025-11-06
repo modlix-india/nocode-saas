@@ -1,13 +1,5 @@
 package com.fincity.saas.entity.processor.service.product.template;
 
-import java.util.List;
-import java.util.Set;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.template.ProductTemplateTicketRURuleDAO;
@@ -16,8 +8,12 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
-import com.google.gson.JsonElement;
-
+import java.util.List;
+import java.util.Set;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -28,35 +24,34 @@ public class ProductTemplateTicketRURuleService
                 ProductTemplateTicketRURuleDto,
                 ProductTemplateTicketRURuleDAO> {
 
-	private static final String PRODUCT_TEMPLATE_TICKET_C_RULE = "productTemplateTicketRURule";
+    private static final String PRODUCT_TEMPLATE_TICKET_C_RULE = "productTemplateTicketRURule";
 
-	private ProductTemplateService productTemplateService;
+    private ProductTemplateService productTemplateService;
 
-	@Lazy
-	@Autowired
-	private void setValueTemplateService(ProductTemplateService productTemplateService) {
-		this.productTemplateService = productTemplateService;
-	}
+    @Lazy
+    @Autowired
+    private void setValueTemplateService(ProductTemplateService productTemplateService) {
+        this.productTemplateService = productTemplateService;
+    }
 
-
-	@Override
+    @Override
     protected Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId) {
-		return productTemplateService.checkAndUpdateIdentityWithAccess(access, entityId);
+        return productTemplateService.checkAndUpdateIdentityWithAccess(access, entityId);
     }
 
     @Override
     protected Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
-	    return FlatMapUtil.flatMapMono(
-					    () -> productTemplateService.readIdentityInternal(entityId),
-					    productTemplate -> super.stageService.getAllStages(
-							    access,
-							    productTemplate.getId(),
-							    stageIds != null ? stageIds.toArray(new ULong[0]) : null))
-			    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageIds"));
+        return FlatMapUtil.flatMapMono(
+                        () -> productTemplateService.readIdentityInternal(entityId),
+                        productTemplate -> super.stageService.getAllStages(
+                                access,
+                                productTemplate.getId(),
+                                stageIds != null ? stageIds.toArray(new ULong[0]) : null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageIds"));
     }
 
     @Override
     protected String getCacheName() {
-	    return PRODUCT_TEMPLATE_TICKET_C_RULE;
+        return PRODUCT_TEMPLATE_TICKET_C_RULE;
     }
 }

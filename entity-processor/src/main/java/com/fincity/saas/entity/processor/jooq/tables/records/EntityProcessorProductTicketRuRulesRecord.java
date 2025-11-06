@@ -4,13 +4,12 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
-import com.fincity.saas.entity.processor.model.common.UserDistribution;
 
 import java.time.LocalDateTime;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.UInteger;
@@ -47,7 +46,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.APP_CODE</code>.
-     * App Code on which this Product Rule Config was created.
+     * App Code on which this Rule Config was created.
      */
     public EntityProcessorProductTicketRuRulesRecord setAppCode(String value) {
         set(1, value);
@@ -57,7 +56,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.APP_CODE</code>.
-     * App Code on which this Product Rule Config was created.
+     * App Code on which this Rule Config was created.
      */
     public String getAppCode() {
         return (String) get(1);
@@ -66,7 +65,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CLIENT_CODE</code>.
-     * Client Code who created this Product Rule Config.
+     * Client Code who created this Rule Config.
      */
     public EntityProcessorProductTicketRuRulesRecord setClientCode(String value) {
         set(2, value);
@@ -76,7 +75,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CLIENT_CODE</code>.
-     * Client Code who created this Product Rule Config.
+     * Client Code who created this Rule Config.
      */
     public String getClientCode() {
         return (String) get(2);
@@ -104,7 +103,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.NAME</code>.
-     * Name of the Product Rule Config.
+     * Name of the Rule Config.
      */
     public EntityProcessorProductTicketRuRulesRecord setName(String value) {
         set(4, value);
@@ -114,7 +113,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.NAME</code>.
-     * Name of the Product Rule Config.
+     * Name of the Rule Config.
      */
     public String getName() {
         return (String) get(4);
@@ -123,7 +122,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Setter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.DESCRIPTION</code>.
-     * Description for the Product Rule Config.
+     * Description for the Rule Config.
      */
     public EntityProcessorProductTicketRuRulesRecord setDescription(String value) {
         set(5, value);
@@ -133,7 +132,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Getter for
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.DESCRIPTION</code>.
-     * Description for the Product Rule Config.
+     * Description for the Rule Config.
      */
     public String getDescription() {
         return (String) get(5);
@@ -141,78 +140,59 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_ID</code>.
+     * Product id related to this Rule Config.
      */
-    public EntityProcessorProductTicketRuRulesRecord setAddedByUserId(ULong value) {
+    public EntityProcessorProductTicketRuRulesRecord setProductId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.ADDED_BY_USER_ID</code>.
-     * User which added this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_ID</code>.
+     * Product id related to this Rule Config.
      */
-    public ULong getAddedByUserId() {
+    public ULong getProductId() {
         return (ULong) get(6);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_ID</code>.
-     * Product Rule ID related to this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template id related to this Rule Config.
      */
-    public EntityProcessorProductTicketRuRulesRecord setProductId(ULong value) {
+    public EntityProcessorProductTicketRuRulesRecord setProductTemplateId(ULong value) {
         set(7, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_ID</code>.
-     * Product Rule ID related to this Product Rule Config.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_TEMPLATE_ID</code>.
+     * Product Template id related to this Rule Config.
      */
-    public ULong getProductId() {
+    public ULong getProductTemplateId() {
         return (ULong) get(7);
     }
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.OVERRIDE_TEMPLATE</code>.
-     * Flag to tell if product template should be overridden or not.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.CAN_EDIT</code>.
+     * Flag to check if for this rule ticket can be edited or not.
      */
-    public EntityProcessorProductTicketRuRulesRecord setOverrideTemplate(Boolean value) {
+    public EntityProcessorProductTicketRuRulesRecord setCanEdit(Boolean value) {
         set(8, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.OVERRIDE_TEMPLATE</code>.
-     * Flag to tell if product template should be overridden or not.
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules.CAN_EDIT</code>.
+     * Flag to check if for this rule ticket can be edited or not.
      */
-    public Boolean getOverrideTemplate() {
+    public Boolean getCanEdit() {
         return (Boolean) get(8);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.STAGE_ID</code>.
-     * Stage Id to which this product Rule config is assigned
-     */
-    public EntityProcessorProductTicketRuRulesRecord setStageId(ULong value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.STAGE_ID</code>.
-     * Stage Id to which this product Rule config is assigned
-     */
-    public ULong getStageId() {
-        return (ULong) get(9);
     }
 
     /**
@@ -221,7 +201,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Order of execution of this Rule for a stage
      */
     public EntityProcessorProductTicketRuRulesRecord setOrder(UInteger value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -231,83 +211,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Order of execution of this Rule for a stage
      */
     public UInteger getOrder() {
-        return (UInteger) get(10);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_DEFAULT</code>.
-     * Flag to tell weather for this stage this is default Rule or not.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setIsDefault(Boolean value) {
-        set(11, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_DEFAULT</code>.
-     * Flag to tell weather for this stage this is default Rule or not.
-     */
-    public Boolean getIsDefault() {
-        return (Boolean) get(11);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.BREAK_AT_FIRST_MATCH</code>.
-     * Flag to check if execution should break at first match.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setBreakAtFirstMatch(Boolean value) {
-        set(12, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.BREAK_AT_FIRST_MATCH</code>.
-     * Flag to check if execution should break at first match.
-     */
-    public Boolean getBreakAtFirstMatch() {
-        return (Boolean) get(12);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_SIMPLE</code>.
-     * Flag to tell weather for this is a simple Rule or not.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setIsSimple(Boolean value) {
-        set(13, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_SIMPLE</code>.
-     * Flag to tell weather for this is a simple Rule or not.
-     */
-    public Boolean getIsSimple() {
-        return (Boolean) get(13);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_COMPLEX</code>.
-     * Flag to tell weather for this is a complex Rule or not.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setIsComplex(Boolean value) {
-        set(14, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.IS_COMPLEX</code>.
-     * Flag to tell weather for this is a complex Rule or not.
-     */
-    public Boolean getIsComplex() {
-        return (Boolean) get(14);
+        return (UInteger) get(9);
     }
 
     /**
@@ -316,7 +220,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * User distribution strategy for this Rule.
      */
     public EntityProcessorProductTicketRuRulesRecord setUserDistributionType(DistributionType value) {
-        set(15, value);
+        set(10, value);
         return this;
     }
 
@@ -326,45 +230,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * User distribution strategy for this Rule.
      */
     public DistributionType getUserDistributionType() {
-        return (DistributionType) get(15);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION</code>.
-     * User distribution for this Rule.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setUserDistribution(UserDistribution value) {
-        set(16, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.USER_DISTRIBUTION</code>.
-     * User distribution for this Rule.
-     */
-    public UserDistribution getUserDistribution() {
-        return (UserDistribution) get(16);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.LAST_ASSIGNED_USER_ID</code>.
-     * Last User id used in this Rule.
-     */
-    public EntityProcessorProductTicketRuRulesRecord setLastAssignedUserId(ULong value) {
-        set(17, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_product_ticket_ru_rules.LAST_ASSIGNED_USER_ID</code>.
-     * Last User id used in this Rule.
-     */
-    public ULong getLastAssignedUserId() {
-        return (ULong) get(17);
+        return (DistributionType) get(10);
     }
 
     /**
@@ -372,8 +238,8 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CONDITION</code>.
      * Condition to match for Rule
      */
-    public EntityProcessorProductTicketRuRulesRecord setCondition(JSON value) {
-        set(18, value);
+    public EntityProcessorProductTicketRuRulesRecord setCondition(AbstractCondition value) {
+        set(11, value);
         return this;
     }
 
@@ -382,8 +248,8 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.CONDITION</code>.
      * Condition to match for Rule
      */
-    public JSON getCondition() {
-        return (JSON) get(18);
+    public AbstractCondition getCondition() {
+        return (AbstractCondition) get(11);
     }
 
     /**
@@ -392,7 +258,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Temporary active flag for this product Rule config.
      */
     public EntityProcessorProductTicketRuRulesRecord setTempActive(Boolean value) {
-        set(19, value);
+        set(12, value);
         return this;
     }
 
@@ -402,7 +268,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Temporary active flag for this product Rule config.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(19);
+        return (Boolean) get(12);
     }
 
     /**
@@ -411,7 +277,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Flag to check if this product Rule config is active or not.
      */
     public EntityProcessorProductTicketRuRulesRecord setIsActive(Boolean value) {
-        set(20, value);
+        set(13, value);
         return this;
     }
 
@@ -421,7 +287,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Flag to check if this product Rule config is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(20);
+        return (Boolean) get(13);
     }
 
     /**
@@ -430,7 +296,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * ID of the user who created this row.
      */
     public EntityProcessorProductTicketRuRulesRecord setCreatedBy(ULong value) {
-        set(21, value);
+        set(14, value);
         return this;
     }
 
@@ -440,7 +306,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(14);
     }
 
     /**
@@ -449,7 +315,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Time when this row is created.
      */
     public EntityProcessorProductTicketRuRulesRecord setCreatedAt(LocalDateTime value) {
-        set(22, value);
+        set(15, value);
         return this;
     }
 
@@ -459,7 +325,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -468,7 +334,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * ID of the user who updated this row.
      */
     public EntityProcessorProductTicketRuRulesRecord setUpdatedBy(ULong value) {
-        set(23, value);
+        set(16, value);
         return this;
     }
 
@@ -478,7 +344,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(23);
+        return (ULong) get(16);
     }
 
     /**
@@ -487,7 +353,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Time when this row is updated.
      */
     public EntityProcessorProductTicketRuRulesRecord setUpdatedAt(LocalDateTime value) {
-        set(24, value);
+        set(17, value);
         return this;
     }
 
@@ -497,7 +363,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(24);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -523,7 +389,7 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
     /**
      * Create a detached, initialised EntityProcessorProductTicketRuRulesRecord
      */
-    public EntityProcessorProductTicketRuRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong addedByUserId, ULong productId, Boolean overrideTemplate, ULong stageId, UInteger order, Boolean isDefault, Boolean breakAtFirstMatch, Boolean isSimple, Boolean isComplex, DistributionType userDistributionType, UserDistribution userDistribution, ULong lastAssignedUserId, JSON condition, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTicketRuRulesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong productId, ULong productTemplateId, Boolean canEdit, UInteger order, DistributionType userDistributionType, AbstractCondition condition, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES);
 
         setId(id);
@@ -532,18 +398,11 @@ public class EntityProcessorProductTicketRuRulesRecord extends UpdatableRecordIm
         setCode(code);
         setName(name);
         setDescription(description);
-        setAddedByUserId(addedByUserId);
         setProductId(productId);
-        setOverrideTemplate(overrideTemplate);
-        setStageId(stageId);
+        setProductTemplateId(productTemplateId);
+        setCanEdit(canEdit);
         setOrder(order);
-        setIsDefault(isDefault);
-        setBreakAtFirstMatch(breakAtFirstMatch);
-        setIsSimple(isSimple);
-        setIsComplex(isComplex);
         setUserDistributionType(userDistributionType);
-        setUserDistribution(userDistribution);
-        setLastAssignedUserId(lastAssignedUserId);
         setCondition(condition);
         setTempActive(tempActive);
         setIsActive(isActive);

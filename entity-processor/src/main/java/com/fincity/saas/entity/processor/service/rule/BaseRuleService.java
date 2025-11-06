@@ -1,5 +1,18 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -7,23 +20,10 @@ import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.model.common.UserDistribution;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.google.gson.JsonElement;
-import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -33,8 +33,6 @@ public abstract class BaseRuleService<
         extends BaseUpdatableService<R, D, O> {
 
     private static final String DEFAULT_KEY = "default";
-
-    private static final String USER_KEY = "user";
 
     private static final int DEFAULT_ORDER = BigInteger.ZERO.intValue();
 
@@ -105,7 +103,6 @@ public abstract class BaseRuleService<
     @Override
     protected Mono<D> updatableEntity(D rule) {
         return super.updatableEntity(rule).flatMap(existing -> {
-            existing.setStageId(rule.getStageId());
 
             if (rule.getOrder() == DEFAULT_ORDER) {
                 existing.setOrder(0);
@@ -114,10 +111,7 @@ public abstract class BaseRuleService<
 
             if (rule.getOrder() > DEFAULT_ORDER) existing.setOrder(rule.getOrder());
 
-            existing.setBreakAtFirstMatch(rule.isBreakAtFirstMatch());
             existing.setUserDistributionType(rule.getUserDistributionType());
-            existing.setUserDistribution(existing.getUserDistribution().update(rule.getUserDistribution()));
-            existing.setLastAssignedUserId(rule.getLastAssignedUserId());
             existing.setCondition(rule.getCondition());
 
             return Mono.just(existing);
@@ -125,7 +119,6 @@ public abstract class BaseRuleService<
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Mono<D> create(D entity) {
 
         if (entity.getCondition() == null || entity.getCondition().isEmpty())
@@ -134,27 +127,7 @@ public abstract class BaseRuleService<
                     ProcessorMessageResourceService.RULE_CONDITION_MISSING,
                     entity.getOrder());
 
-        if (entity.getUserDistribution() == null) entity.setUserDistribution(new UserDistribution());
-
-        return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> Mono.just((D) entity.setUserDistribution(entity.getUserDistribution()
-                        .setAppCode(access.getAppCode())
-                        .setClientCode(access.getClientCode()))),
-                super::create);
-    }
-
-    public Mono<Set<ULong>> getUserIds(ProcessorAccess access, Identity entityId) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.getUserIds(access, entityId),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), entityId, USER_KEY));
-    }
-
-    private Mono<Set<ULong>> getUserIds(ProcessorAccess access, ULong entityId) {
-        return this.getRules(access, entityId, null, Boolean.TRUE).map(rules -> rules.stream()
-                .flatMap(rule -> new HashSet<>(rule.getUserDistribution().getUserIds()).stream())
-                .collect(Collectors.toCollection(HashSet::new)));
+        return super.create(entity);
     }
 
     public Mono<Map<Integer, D>> getRulesWithOrder(ProcessorAccess access, ULong entityId, ULong stageId) {
@@ -241,13 +214,9 @@ public abstract class BaseRuleService<
                     Integer order = entry.getKey();
                     D incomingRule = entry.getValue();
                     incomingRule.setOrder(order);
-                    incomingRule.setUserDistribution(incomingRule
-                            .getUserDistribution()
-                            .setAppCode(access.getAppCode())
-                            .setClientCode(access.getClientCode()));
 
                     if (order == DEFAULT_ORDER)
-                        incomingRule.setIsDefault(Boolean.TRUE).setStageId(null);
+                        incomingRule.setIsDefault(Boolean.TRUE);
 
                     D existingRule = existingRules.get(order);
 

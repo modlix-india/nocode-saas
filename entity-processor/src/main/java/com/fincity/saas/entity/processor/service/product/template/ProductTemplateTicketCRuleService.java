@@ -51,25 +51,25 @@ public class ProductTemplateTicketCRuleService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getStageIds"));
     }
 
-	@Override
+    @Override
     protected String getCacheName() {
         return PRODUCT_TEMPLATE_TICKET_C_RULE;
     }
 
-	public Mono<ULong> getUserAssignment(
-			ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
-		return FlatMapUtil.flatMapMono(
-						() -> this.getRulesWithOrder(access, entityId, stageId),
-						productTemplateRules -> super.ruleExecutionService.executeRules(
-								productTemplateRules, tokenPrefix, userId, data),
-						(productTemplateRules, eRule) -> super.updateInternalForOutsideUser(eRule),
-						(productTemplateRules, eRule, uRule) -> {
-							ULong assignedUserId = uRule.getLastAssignedUserId();
-							if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
+    public Mono<ULong> getUserAssignment(
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getRulesWithOrder(access, entityId, stageId),
+                        productTemplateRules -> super.ruleExecutionService.executeRules(
+                                productTemplateRules, tokenPrefix, userId, data),
+                        (productTemplateRules, eRule) -> super.updateInternalForOutsideUser(eRule),
+                        (productTemplateRules, eRule, uRule) -> {
+                            ULong assignedUserId = uRule.getLastAssignedUserId();
+                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
 
-							return Mono.just(assignedUserId);
-						})
-				.onErrorResume(e -> Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getUserAssignment"));
-	}
+                            return Mono.just(assignedUserId);
+                        })
+                .onErrorResume(e -> Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateRuleService.getUserAssignment"));
+    }
 }

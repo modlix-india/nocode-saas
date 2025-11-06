@@ -63,28 +63,28 @@ public class ProductTicketCRuleService
         return PRODUCT_TICKET_C_RULE;
     }
 
-	public Mono<ULong> getUserAssignment(
-			ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
-		return FlatMapUtil.flatMapMono(
-						() -> this.getRulesWithOrder(access, entityId, stageId),
-						productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
-						(productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
-						(productRule, eRule, uRule) -> {
-							ULong assignedUserId = uRule.getLastAssignedUserId();
-							if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
-							return Mono.just(assignedUserId);
-						})
-				.switchIfEmpty(this.getUserAssignmentFromTemplate(access, entityId, stageId, tokenPrefix, userId, data))
-				.onErrorResume(e -> Mono.empty())
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
-	}
+    public Mono<ULong> getUserAssignment(
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.getRulesWithOrder(access, entityId, stageId),
+                        productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
+                        (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
+                        (productRule, eRule, uRule) -> {
+                            ULong assignedUserId = uRule.getLastAssignedUserId();
+                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
+                            return Mono.just(assignedUserId);
+                        })
+                .switchIfEmpty(this.getUserAssignmentFromTemplate(access, entityId, stageId, tokenPrefix, userId, data))
+                .onErrorResume(e -> Mono.empty())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
+    }
 
-	private Mono<ULong> getUserAssignmentFromTemplate(
-			ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
-		return FlatMapUtil.flatMapMono(
-						() -> productService.readById(entityId),
-						product -> this.productTemplateTicketCRuleService.getUserAssignment(
-								access, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
-	}
+    private Mono<ULong> getUserAssignmentFromTemplate(
+            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
+        return FlatMapUtil.flatMapMono(
+                        () -> productService.readById(entityId),
+                        product -> this.productTemplateTicketCRuleService.getUserAssignment(
+                                access, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
+    }
 }

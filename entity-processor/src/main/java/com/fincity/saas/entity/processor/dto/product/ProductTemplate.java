@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.dto.product.template;
+package com.fincity.saas.entity.processor.dto.product;
 
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;

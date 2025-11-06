@@ -6,26 +6,21 @@ package com.fincity.saas.entity.processor.jooq;
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketCRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 
@@ -46,11 +41,6 @@ public class Tables {
     public static final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
 
     /**
-     * The table <code>entity_processor.entity_processor_complex_rules</code>.
-     */
-    public static final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
-
-    /**
      * The table <code>entity_processor.entity_processor_notes</code>.
      */
     public static final EntityProcessorNotes ENTITY_PROCESSOR_NOTES = EntityProcessorNotes.ENTITY_PROCESSOR_NOTES;
@@ -69,30 +59,6 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_product_comms</code>.
      */
     public static final EntityProcessorProductComms ENTITY_PROCESSOR_PRODUCT_COMMS = EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_product_stage_rules</code>.
-     */
-    public static final EntityProcessorProductStageRules ENTITY_PROCESSOR_PRODUCT_STAGE_RULES = EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_product_template_rules</code>.
-     */
-    public static final EntityProcessorProductTemplateRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES = EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_product_template_ticket_c_rules</code>.
-     */
-    public static final EntityProcessorProductTemplateTicketCRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_C_RULES = EntityProcessorProductTemplateTicketCRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_C_RULES;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_product_template_ticket_ru_rules</code>.
-     */
-    public static final EntityProcessorProductTemplateTicketRuRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_RU_RULES = EntityProcessorProductTemplateTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_TICKET_RU_RULES;
 
     /**
      * The table
@@ -130,17 +96,6 @@ public class Tables {
     public static final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
 
     /**
-     * The table
-     * <code>entity_processor.entity_processor_simple_complex_rule_relations</code>.
-     */
-    public static final EntityProcessorSimpleComplexRuleRelations ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS = EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS;
-
-    /**
-     * The table <code>entity_processor.entity_processor_simple_rules</code>.
-     */
-    public static final EntityProcessorSimpleRules ENTITY_PROCESSOR_SIMPLE_RULES = EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES;
-
-    /**
      * The table <code>entity_processor.entity_processor_stages</code>.
      */
     public static final EntityProcessorStages ENTITY_PROCESSOR_STAGES = EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
@@ -154,6 +109,18 @@ public class Tables {
      * The table <code>entity_processor.entity_processor_tasks</code>.
      */
     public static final EntityProcessorTasks ENTITY_PROCESSOR_TASKS = EntityProcessorTasks.ENTITY_PROCESSOR_TASKS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions</code>.
+     */
+    public static final EntityProcessorTicketCUserDistributions ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS = EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions</code>.
+     */
+    public static final EntityProcessorTicketRuUserDistributions ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS = EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS;
 
     /**
      * The table <code>entity_processor.entity_processor_tickets</code>.
