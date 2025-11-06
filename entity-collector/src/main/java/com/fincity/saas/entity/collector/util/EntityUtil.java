@@ -34,16 +34,17 @@ public final class EntityUtil {
         return request.getHeaders().getFirst(FORWARDED_HOST);
     }
 
-    public static Mono<Map<String, Object>> sendEntityToTarget(EntityIntegration integration, EntityResponse leadData) {
+    public static Mono<Map<String, Object>> sendEntityToTarget(
+            EntityIntegration integration, EntityResponse leadData, String productURL) {
 
-        return FlatMapUtil.flatMapMono(
-
-                () -> sendToUrl(integration.getPrimaryTarget(), leadData),
-
-                result -> {
-                    String secondary = integration.getSecondaryTarget();
-                    return (secondary != null && !secondary.isBlank()) ? sendToUrl(secondary, leadData) : Mono.just(result);
-                });
+        if (leadData.getCampaignDetails() == null && productURL != null) {
+            return sendToUrl(productURL, leadData);
+        } else {
+            return FlatMapUtil.flatMapMono(() -> sendToUrl(integration.getPrimaryTarget(), leadData), result -> {
+                String secondary = integration.getSecondaryTarget();
+                return (secondary != null && !secondary.isBlank()) ? sendToUrl(secondary, leadData) : Mono.just(result);
+            });
+        }
     }
 
     private static Mono<Map<String, Object>> sendToUrl(String url, EntityResponse body) {

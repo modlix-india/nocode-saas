@@ -101,7 +101,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                                                 .getMessage(
                                                         EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
                                                 .flatMap(successMessage -> EntityUtil.sendEntityToTarget(
-                                                                integration, response)
+                                                                integration, response, null)
                                                         .then(entityCollectorLogService.update(
                                                                 logId,
                                                                 mapper.convertValue(response, new TypeReference<>() {}),
@@ -130,7 +130,7 @@ public class EntityCollectorService extends AbstractConnectionService {
                 (host, integration, logId, response) ->
                         msgService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE),
 
-                (host, integration, logId, response, sMessage) -> EntityUtil.sendEntityToTarget(integration, response),
+                (host, integration, logId, response, sMessage) -> EntityUtil.sendEntityToTarget(integration, response, websiteBody.getProductURL()),
 
                 (host, integration, logId, response, sMessage, result) -> this.entityCollectorLogService.update(
                         logId,
