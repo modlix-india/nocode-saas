@@ -27,4 +27,5 @@ public class ClientPlan extends AbstractUpdatableDTO<ULong, ULong> {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private LocalDateTime nextInvoiceDate;
+    private int cycleNumber;
 }

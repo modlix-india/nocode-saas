@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityPlanCycleIntervalType;
 import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
+import com.fincity.security.jooq.tables.SecurityInvoiceItem.SecurityInvoiceItemPath;
 import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.records.SecurityPlanCycleRecord;
 
@@ -278,6 +279,19 @@ public class SecurityPlanCycle extends TableImpl<SecurityPlanCycleRecord> {
             _securityPlan = new SecurityPlanPath(this, Keys.FK1_PLAN_CYCLE_PLAN_ID, null);
 
         return _securityPlan;
+    }
+
+    private transient SecurityInvoiceItemPath _securityInvoiceItem;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_invoice_item</code> table
+     */
+    public SecurityInvoiceItemPath securityInvoiceItem() {
+        if (_securityInvoiceItem == null)
+            _securityInvoiceItem = new SecurityInvoiceItemPath(this, null, Keys.FK1_INVOICE_ITEM_CYCLE_ID.getInverseKey());
+
+        return _securityInvoiceItem;
     }
 
     private transient SecurityInvoicePath _securityInvoice;

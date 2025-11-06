@@ -82,6 +82,11 @@ public class SecurityClientPlan extends TableImpl<SecurityClientPlanRecord> {
     public final TableField<SecurityClientPlanRecord, ULong> CYCLE_ID = createField(DSL.name("CYCLE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Cycle ID");
 
     /**
+     * The column <code>security.security_client_plan.CYCLE_NUMBER</code>.
+     */
+    public final TableField<SecurityClientPlanRecord, Integer> CYCLE_NUMBER = createField(DSL.name("CYCLE_NUMBER"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("1", SQLDataType.INTEGER)), this, "");
+
+    /**
      * The column <code>security.security_client_plan.START_DATE</code>. Start
      * date of the plan
      */
