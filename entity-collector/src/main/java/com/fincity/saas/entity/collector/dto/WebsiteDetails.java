@@ -21,4 +21,5 @@ public class WebsiteDetails extends AbstractLeadBase<WebsiteDetails> {
     private String utmSource;
     private String utmCustomer;
     private String utmLoginCustomer;
+    private String productURL;
 }
