@@ -251,9 +251,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         userConditions.add(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED));
 
         return Mono.from(
-                        this.dslContext.selectCount().from(SECURITY_USER)
-                                .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
-                                .where(DSL.and(userConditions)))
+                this.dslContext.selectCount().from(SECURITY_USER)
+                        .leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID))
+                        .where(DSL.and(userConditions)))
                 .map(e -> e.value1() > 0);
     }
 
@@ -274,7 +274,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     }
 
     public Mono<Integer> setPassword(ULong userId, ULong currentUserId, String password,
-                                     AuthenticationPasswordType passwordType) {
+            AuthenticationPasswordType passwordType) {
 
         String encryptedPassword = encoder.encode((userId + password));
 
@@ -290,8 +290,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         return Mono.from(this.dslContext
                 .insertInto(SECURITY_PAST_PASSWORDS, SECURITY_PAST_PASSWORDS.USER_ID, SECURITY_PAST_PASSWORDS.PASSWORD,
                         SECURITY_PAST_PASSWORDS.PASSWORD_HASHED, SECURITY_PAST_PASSWORDS.CREATED_BY)
-                .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId)).flatMap(x ->
-                Mono.from(this.dslContext.update(SECURITY_USER)
+                .values(userId, encryptedPassword, ByteUtil.ONE, currentUserId))
+                .flatMap(x -> Mono.from(this.dslContext.update(SECURITY_USER)
                         .set(SECURITY_USER.PASSWORD, encryptedPassword)
                         .set(SECURITY_USER.PASSWORD_HASHED, ByteUtil.ONE)
                         .set(SECURITY_USER.UPDATED_BY, currentUserId)
@@ -301,9 +301,9 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     private Mono<Integer> setPin(ULong userId, ULong currentUserId, String encryptedPin) {
 
         return Mono.from(this.dslContext
-                        .insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
-                                SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
-                        .values(userId, encryptedPin, ByteUtil.ONE, currentUserId))
+                .insertInto(SECURITY_PAST_PINS, SECURITY_PAST_PINS.USER_ID, SECURITY_PAST_PINS.PIN,
+                        SECURITY_PAST_PINS.PIN_HASHED, SECURITY_PAST_PINS.CREATED_BY)
+                .values(userId, encryptedPin, ByteUtil.ONE, currentUserId))
                 .flatMap(x -> Mono.from(this.dslContext.update(SECURITY_USER)
                         .set(SECURITY_USER.PIN, encryptedPin)
                         .set(SECURITY_USER.PIN_HASHED, ByteUtil.ONE)
@@ -313,8 +313,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     public Mono<User> readInternal(ULong id) {
         return Mono.from(this.dslContext.selectFrom(this.table)
-                        .where(this.idField.eq(id))
-                        .limit(1))
+                .where(this.idField.eq(id))
+                .limit(1))
                 .map(e -> e.into(this.pojoClass));
     }
 
@@ -329,12 +329,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
         return Mono.from(
 
-                        this.dslContext.selectCount()
-                                .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
-                                .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID.eq(roleId)
-                                        .and(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId)))
+                this.dslContext.selectCount()
+                        .from(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                        .where(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID.eq(roleId)
+                                .and(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(userId)))
 
-                )
+        )
                 .map(Record1::value1)
                 .map(count -> count == 1);
     }
@@ -343,11 +343,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
         return Mono.from(
 
-                        this.dslContext
-                                .insertInto(SecurityV2UserRole.SECURITY_V2_USER_ROLE,
-                                        SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID,
-                                        SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
-                                .values(userId, roleId))
+                this.dslContext
+                        .insertInto(SecurityV2UserRole.SECURITY_V2_USER_ROLE,
+                                SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID,
+                                SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID)
+                        .values(userId, roleId))
                 .map(value -> value > 0);
     }
 
@@ -359,7 +359,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     }
 
     public Mono<List<User>> getUsersBy(String userName, ULong userId, String clientCode, String appCode,
-                                       AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
+            AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
 
         SelectConditionStep<Record> query = this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode,
                 authenticationIdentifierType, userStatusCodes, SECURITY_USER.fields());
@@ -374,9 +374,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     }
 
     private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
-                                                               String appCode, AuthenticationIdentifierType authenticationIdentifierType,
-                                                               SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
-
+            String appCode, AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -510,22 +509,38 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     public Mono<Boolean> canReportTo(ULong clientId, ULong reportingTo, ULong userId) {
 
+        if (reportingTo == null || reportingTo.equals(userId)) return Mono.just(Boolean.FALSE);
+
+        if (userId == null) return Mono.just(Boolean.TRUE);
+
         return FlatMapUtil.flatMapMono(
-                () -> Mono.from(this.dslContext.selectCount().from(SECURITY_USER).where(DSL.and(
-                        SECURITY_USER.ID.eq(reportingTo),
-                        SECURITY_USER.CLIENT_ID.eq(clientId)
-                ))).map(r -> r.value1() == 1),
+                        () -> Mono.from(this.dslContext
+                                        .selectCount()
+                                        .from(SECURITY_USER)
+                                        .where(DSL.and(
+                                                SECURITY_USER.ID.eq(reportingTo),
+                                                SECURITY_USER.CLIENT_ID.eq(clientId))))
+                                .map(r -> r.value1() == 1),
+                        sameClient -> {
+                            if (!BooleanUtil.safeValueOf(sameClient)) return Mono.just(Boolean.FALSE);
 
-                sameClient -> {
-                    if (!BooleanUtil.safeValueOf(sameClient) || reportingTo.equals(userId)) return Mono.just(false);
-                    if (userId == null) return Mono.just(true);
+                            return Mono.just(List.of(userId))
+                                    .expand(userList -> {
+                                        if (userList.isEmpty()) return Mono.empty();
 
-                    return Mono.just(List.of(userId))
-                            .expand(userList -> Flux.from(this.dslContext.select(SECURITY_USER.ID).from(SECURITY_USER).where(SECURITY_USER.REPORTING_TO.in(userList))).map(Record1::value1).collectList())
-                            .map(userList -> userList.contains(reportingTo))
-                            .reduce(Boolean::logicalAnd);
-                }
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
+                                        return Flux.from(this.dslContext
+                                                        .select(SECURITY_USER.ID)
+                                                        .from(SECURITY_USER)
+                                                        .where(SECURITY_USER.REPORTING_TO.in(userList)))
+                                                .map(Record1::value1)
+                                                .collectList();
+                                    })
+                                    .takeWhile(userList -> !userList.isEmpty())
+                                    .map(userList -> !userList.contains(reportingTo))
+                                    .reduce(Boolean::logicalAnd)
+                                    .defaultIfEmpty(Boolean.FALSE);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserDAO.canReportTo"));
     }
 
     public Flux<ULong> getUserIdsByClientId(ULong clientId, List<ULong> userIds) {
@@ -670,21 +685,24 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .join(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
                         .where(DSL.and(
                                 SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID),
-                                codeCondition
-                        ))
-        );
+                                codeCondition)));
     }
 
-    public Mono<List<NotificationUser>> getUsersForNotification(List<Long> userIds, String appCode, Long clientId, String clientCode) {
+    public Mono<List<NotificationUser>> getUsersForNotification(List<Long> userIds, String appCode, Long clientId,
+            String clientCode) {
 
-        if (appCode == null) return Mono.just(List.of());
-        
-        var query = this.dslContext.select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID).from(SECURITY_USER)
-                    .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER).on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
-                    .leftJoin(SecurityProfile.SECURITY_PROFILE).on(SecurityProfile.SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
-                    .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
+        if (appCode == null)
+            return Mono.just(List.of());
 
-        Condition condition = DSL.trueCondition();        
+        var query = this.dslContext.select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
+                .from(SECURITY_USER)
+                .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER)
+                .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
+                .leftJoin(SecurityProfile.SECURITY_PROFILE)
+                .on(SecurityProfile.SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
+                .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
+
+        Condition condition = DSL.trueCondition();
 
         if (clientCode != null) {
             query = query.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID));
@@ -695,7 +713,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
             if (userIds.size() == 1) {
                 condition = condition.and(SECURITY_USER.ID.eq(ULongUtil.valueOf(userIds.get(0))));
             } else {
-            condition = condition.and(SECURITY_USER.ID.in(userIds.stream().map(ULongUtil::valueOf).toList()));
+                condition = condition.and(SECURITY_USER.ID.in(userIds.stream().map(ULongUtil::valueOf).toList()));
             }
         }
 
@@ -706,6 +724,17 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                         .setId(r.getValue(SECURITY_USER.ID).longValue())
                         .setClientId(r.getValue(SECURITY_USER.CLIENT_ID).longValue())
                         .setEmailId(r.getValue(SECURITY_USER.EMAIL_ID)))
+                .collectList();
+    }
+
+    public Mono<List<String>> getEmailsOfUsers(List<ULong> userIds) {
+        return Flux
+                .from(this.dslContext.select(SECURITY_USER.EMAIL_ID).from(SECURITY_USER)
+                        .where(DSL.and(SECURITY_USER.ID.in(userIds),
+                                SECURITY_USER.EMAIL_ID.isNotNull(),
+                                SECURITY_USER.EMAIL_ID.ne("NONE"),
+                                SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
+                .map(Record1::value1)
                 .collectList();
     }
 }

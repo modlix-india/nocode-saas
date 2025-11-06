@@ -12,7 +12,6 @@ import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityClientPlan.SecurityClientPlanPath;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
 import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
-import com.fincity.security.jooq.tables.SecurityPlanApp.SecurityPlanAppPath;
 import com.fincity.security.jooq.tables.SecurityPlanCycle.SecurityPlanCyclePath;
 import com.fincity.security.jooq.tables.SecurityPlanLimit.SecurityPlanLimitPath;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
@@ -79,6 +78,11 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
     public final TableField<SecurityPlanRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "URL Client ID for which this plan belongs to");
 
     /**
+     * The column <code>security.security_plan.APP_ID</code>.
+     */
+    public final TableField<SecurityPlanRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED, this, "");
+
+    /**
      * The column <code>security.security_plan.NAME</code>. Name of the package
      */
     public final TableField<SecurityPlanRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(256).nullable(false), this, "Name of the package");
@@ -88,6 +92,11 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
      * of the package
      */
     public final TableField<SecurityPlanRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description of the package");
+
+    /**
+     * The column <code>security.security_plan.PREPAID</code>.
+     */
+    public final TableField<SecurityPlanRecord, Byte> PREPAID = createField(DSL.name("PREPAID"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "");
 
     /**
      * The column <code>security.security_plan.FEATURES</code>. Features of the
@@ -243,7 +252,20 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
 
     @Override
     public List<ForeignKey<SecurityPlanRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PLAN_CLIENT_ID, Keys.FK1_PLAN_FALL_BACK_PLAN_ID, Keys.FK1_PLAN_FOR_CLIENT_ID);
+        return Arrays.asList(Keys.FK1_PLAN_APP_ID, Keys.FK1_PLAN_CLIENT_ID, Keys.FK1_PLAN_FALL_BACK_PLAN_ID, Keys.FK1_PLAN_FOR_CLIENT_ID);
+    }
+
+    private transient SecurityAppPath _securityApp;
+
+    /**
+     * Get the implicit join path to the <code>security.security_app</code>
+     * table.
+     */
+    public SecurityAppPath securityApp() {
+        if (_securityApp == null)
+            _securityApp = new SecurityAppPath(this, Keys.FK1_PLAN_APP_ID, null);
+
+        return _securityApp;
     }
 
     private transient SecurityClientPath _fk1PlanClientId;
@@ -283,19 +305,6 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
             _fk1PlanForClientId = new SecurityClientPath(this, Keys.FK1_PLAN_FOR_CLIENT_ID, null);
 
         return _fk1PlanForClientId;
-    }
-
-    private transient SecurityPlanAppPath _securityPlanApp;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>security.security_plan_app</code> table
-     */
-    public SecurityPlanAppPath securityPlanApp() {
-        if (_securityPlanApp == null)
-            _securityPlanApp = new SecurityPlanAppPath(this, null, Keys.FK1_PLAN_APP_PLAN_ID.getInverseKey());
-
-        return _securityPlanApp;
     }
 
     private transient SecurityPlanCyclePath _securityPlanCycle;
@@ -356,14 +365,6 @@ public class SecurityPlan extends TableImpl<SecurityPlanRecord> {
      */
     public SecurityClientPath securityClient() {
         return securityClientPlan().securityClient();
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>security.security_app</code> table
-     */
-    public SecurityAppPath securityApp() {
-        return securityPlanApp().securityApp();
     }
 
     @Override

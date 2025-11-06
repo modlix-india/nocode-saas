@@ -55,10 +55,25 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
     }
 
     /**
+     * Setter for <code>security.security_plan.APP_ID</code>.
+     */
+    public SecurityPlanRecord setAppId(ULong value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.APP_ID</code>.
+     */
+    public ULong getAppId() {
+        return (ULong) get(2);
+    }
+
+    /**
      * Setter for <code>security.security_plan.NAME</code>. Name of the package
      */
     public SecurityPlanRecord setName(String value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -66,7 +81,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Getter for <code>security.security_plan.NAME</code>. Name of the package
      */
     public String getName() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
@@ -74,7 +89,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * of the package
      */
     public SecurityPlanRecord setDescription(String value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -83,7 +98,22 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * of the package
      */
     public String getDescription() {
-        return (String) get(3);
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>security.security_plan.PREPAID</code>.
+     */
+    public SecurityPlanRecord setPrepaid(Byte value) {
+        set(5, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan.PREPAID</code>.
+     */
+    public Byte getPrepaid() {
+        return (Byte) get(5);
     }
 
     /**
@@ -91,7 +121,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * plan
      */
     public SecurityPlanRecord setFeatures(String value) {
-        set(4, value);
+        set(6, value);
         return this;
     }
 
@@ -100,14 +130,14 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * plan
      */
     public String getFeatures() {
-        return (String) get(4);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>security.security_plan.STATUS</code>. Status of the plan
      */
     public SecurityPlanRecord setStatus(SecurityPlanStatus value) {
-        set(5, value);
+        set(7, value);
         return this;
     }
 
@@ -115,7 +145,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Getter for <code>security.security_plan.STATUS</code>. Status of the plan
      */
     public SecurityPlanStatus getStatus() {
-        return (SecurityPlanStatus) get(5);
+        return (SecurityPlanStatus) get(7);
     }
 
     /**
@@ -123,7 +153,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * who created this row
      */
     public SecurityPlanRecord setCreatedBy(ULong value) {
-        set(6, value);
+        set(8, value);
         return this;
     }
 
@@ -132,7 +162,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(6);
+        return (ULong) get(8);
     }
 
     /**
@@ -140,7 +170,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * row is created
      */
     public SecurityPlanRecord setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(9, value);
         return this;
     }
 
@@ -149,7 +179,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -157,7 +187,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * who updated this row
      */
     public SecurityPlanRecord setUpdatedBy(ULong value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -166,7 +196,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(10);
     }
 
     /**
@@ -174,7 +204,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * row is updated
      */
     public SecurityPlanRecord setUpdatedAt(LocalDateTime value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -183,7 +213,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -191,7 +221,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Fallback plan ID
      */
     public SecurityPlanRecord setFallBackPlanId(ULong value) {
-        set(10, value);
+        set(12, value);
         return this;
     }
 
@@ -200,14 +230,14 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Fallback plan ID
      */
     public ULong getFallBackPlanId() {
-        return (ULong) get(10);
+        return (ULong) get(12);
     }
 
     /**
      * Setter for <code>security.security_plan.PLAN_CODE</code>. Plan code
      */
     public SecurityPlanRecord setPlanCode(String value) {
-        set(11, value);
+        set(13, value);
         return this;
     }
 
@@ -215,7 +245,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Getter for <code>security.security_plan.PLAN_CODE</code>. Plan code
      */
     public String getPlanCode() {
-        return (String) get(11);
+        return (String) get(13);
     }
 
     /**
@@ -223,7 +253,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Indicator if this plan is for registration
      */
     public SecurityPlanRecord setForRegistration(Byte value) {
-        set(12, value);
+        set(14, value);
         return this;
     }
 
@@ -232,7 +262,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * Indicator if this plan is for registration
      */
     public Byte getForRegistration() {
-        return (Byte) get(12);
+        return (Byte) get(14);
     }
 
     /**
@@ -240,7 +270,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * of the plan
      */
     public SecurityPlanRecord setOrderNumber(Integer value) {
-        set(13, value);
+        set(15, value);
         return this;
     }
 
@@ -249,7 +279,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * of the plan
      */
     public Integer getOrderNumber() {
-        return (Integer) get(13);
+        return (Integer) get(15);
     }
 
     /**
@@ -257,7 +287,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * this plan is the default plan
      */
     public SecurityPlanRecord setDefaultPlan(Byte value) {
-        set(14, value);
+        set(16, value);
         return this;
     }
 
@@ -266,7 +296,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * this plan is the default plan
      */
     public Byte getDefaultPlan() {
-        return (Byte) get(14);
+        return (Byte) get(16);
     }
 
     /**
@@ -274,7 +304,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * for which this plan is applicable
      */
     public SecurityPlanRecord setForClientId(ULong value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -283,7 +313,7 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
      * for which this plan is applicable
      */
     public ULong getForClientId() {
-        return (ULong) get(15);
+        return (ULong) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -309,13 +339,15 @@ public class SecurityPlanRecord extends UpdatableRecordImpl<SecurityPlanRecord> 
     /**
      * Create a detached, initialised SecurityPlanRecord
      */
-    public SecurityPlanRecord(ULong id, ULong clientId, String name, String description, String features, SecurityPlanStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, ULong fallBackPlanId, String planCode, Byte forRegistration, Integer orderNumber, Byte defaultPlan, ULong forClientId) {
+    public SecurityPlanRecord(ULong id, ULong clientId, ULong appId, String name, String description, Byte prepaid, String features, SecurityPlanStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt, ULong fallBackPlanId, String planCode, Byte forRegistration, Integer orderNumber, Byte defaultPlan, ULong forClientId) {
         super(SecurityPlan.SECURITY_PLAN);
 
         setId(id);
         setClientId(clientId);
+        setAppId(appId);
         setName(name);
         setDescription(description);
+        setPrepaid(prepaid);
         setFeatures(features);
         setStatus(status);
         setCreatedBy(createdBy);

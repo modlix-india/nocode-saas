@@ -1,8 +1,9 @@
 package com.fincity.security.dto.plansnbilling;
 
-import org.jooq.types.ULong;
-import java.time.LocalDateTime;
 import java.io.Serial;
+import java.time.LocalDateTime;
+
+import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
@@ -16,7 +17,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 public class ClientPlan extends AbstractUpdatableDTO<ULong, ULong> {
-    
+
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -25,4 +26,5 @@ public class ClientPlan extends AbstractUpdatableDTO<ULong, ULong> {
     private ULong cycleId;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private LocalDateTime nextInvoiceDate;
 }

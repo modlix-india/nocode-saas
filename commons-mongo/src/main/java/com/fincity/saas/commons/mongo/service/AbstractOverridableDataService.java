@@ -1,11 +1,10 @@
 package com.fincity.saas.commons.mongo.service;
 
-import java.lang.reflect.InvocationTargetException;
-
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMonoWithNull;
 import static com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService.FORBIDDEN_CREATE;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -35,8 +35,8 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
-import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.document.Version;
 import com.fincity.saas.commons.mongo.model.ListResultObject;
 import com.fincity.saas.commons.mongo.model.TransportObject;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -89,7 +89,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     @Autowired // NOSONAR
     protected com.fincity.saas.commons.mongo.repository.InheritanceService inheritanceService;
 
-    private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page", "sort");
+    private static final Set<String> READ_LRO_PARAMETERS_IGNORE = Set.of(CLIENT_CODE, APP_CODE, "size", "page", "sort", "eager");
 
     protected static final TypeReference<Map<String, Object>> TYPE_REFERENCE_MAP = new TypeReference<Map<String, Object>>() {
     };
@@ -315,9 +315,9 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
                         (evict1, evict2) -> Mono.just(evict1 && evict2))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).evictRecursively"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME,
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).evictRecursively"));
     }
-
 
     @Override
     public Mono<Boolean> delete(String id) {
@@ -498,7 +498,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         return Character.toLowerCase(cName.charAt(0)) + cName.substring(1);
     }
 
-    public Mono<Page<ListResultObject>> readPageFilterLRO(Pageable pageable, MultiValueMap<String, String> params) { // NOSONAR
+    public Mono<Page<ListResultObject<D>>> readPageFilterLRO(boolean eager, Pageable pageable,
+                                                             MultiValueMap<String, String> params) { // NOSONAR
 
         final String appCode = params.getFirst(APP_CODE) == null ? "" : params.getFirst(APP_CODE);
         final String clientCode = params.getFirst(CLIENT_CODE);
@@ -509,6 +510,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
         if (params.containsKey("size"))
             ignoreCount++;
         if (params.containsKey("sort"))
+            ignoreCount++;
+        if (params.containsKey("eager"))
             ignoreCount++;
 
         Mono<Tuple2<Boolean, String>> accessCheck = FlatMapUtil.flatMapMono(
@@ -538,7 +541,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         AbstractMongoMessageResourceService.FORBIDDEN_APP_ACCESS, appCode)));
 
-        Mono<Page<ListResultObject>> returnList = FlatMapUtil.flatMapMono(
+        Mono<Page<ListResultObject<D>>> returnList = FlatMapUtil.flatMapMono(
 
                         SecurityContextUtil::getUsersContextAuthentication,
 
@@ -553,15 +556,15 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                         new Criteria().orOperator(Criteria.where("notOverridable").ne(Boolean.TRUE),
                                                 Criteria.where(CLIENT_CODE).is(ac.getT2()))))
                                         .with(pageable.getSort()),
-                                ListResultObject.class, this.getCollectionName()).collectList(),
+                                ListResultObject.class, this.getCollectionName()).map(obj -> (ListResultObject<D>) obj).collectList(),
 
                         (ca, ac, tup, crit, list) -> {
 
-                            Map<String, ListResultObject> things = new HashMap<>();
+                            Map<String, ListResultObject<D>> things = new HashMap<>();
 
                             String inClientCode = tup.getT2().isEmpty() ? null : tup.getT2().get(tup.getT2().size() - 1);
 
-                            for (ListResultObject lro : list) {
+                            for (ListResultObject<D> lro : list) {
 
                                 if (!things.containsKey(lro.getName())) {
                                     things.put(lro.getName(), lro);
@@ -573,10 +576,15 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 }
                             }
 
-                            Tuple2<Integer, List<ListResultObject>> nList = filterBasedOnPageSize(pageable, list, things);
+                            Tuple2<Integer, List<ListResultObject<D>>> nList = filterBasedOnPageSize(pageable, list, things);
 
-                            return Mono.just((Page<ListResultObject>) new PageImpl<>(nList.getT2(), pageable, nList.getT1()));
+                            if (!eager)
+                                return Mono.just((Page<ListResultObject<D>>) new PageImpl<>(nList.getT2(), pageable, nList.getT1()));
 
+                            return Flux.fromIterable(nList.getT2())
+                                    .flatMap(e -> this.read(e.getId()).map(e::setData))
+                                    .collectList()
+                                    .map(e -> (Page<ListResultObject<D>>) new PageImpl<>(e, pageable, nList.getT1()));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readPageFilterLRO"))
@@ -594,22 +602,22 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                             "" + pageable.getPageNumber(),
                             ":",
                             "" + pageable.getPageSize(),
-                            ":",
+                            ":" + eager + ":",
                             pageable.getSort().toString()));
 
         return returnList;
     }
 
-    private Tuple2<Integer, List<ListResultObject>> filterBasedOnPageSize(Pageable pageable,
-                                                                          List<ListResultObject> list,
-                                                                          Map<String, ListResultObject> things) {
+    private Tuple2<Integer, List<ListResultObject<D>>> filterBasedOnPageSize(Pageable pageable,
+                                                                             List<ListResultObject<D>> list,
+                                                                             Map<String, ListResultObject<D>> things) {
 
         Set<String> ids = things.values()
                 .stream()
                 .map(ListResultObject::getId)
                 .collect(Collectors.toSet());
 
-        List<ListResultObject> nList = list.stream()
+        List<ListResultObject<D>> nList = list.stream()
                 .sequential()
                 .filter(e -> ids.contains(e.getId()))
                 .toList();
@@ -743,7 +751,8 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
     }
 
-    protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode, String clientCode) {
+    protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode,
+                                                       String clientCode) {
         // Just one complexity point is not a reason to break this function
 
         return FlatMapUtil.flatMapMonoWithNull(
@@ -902,22 +911,21 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                             if (!BooleanUtil.safeValueOf(hasAccess)) {
                                 return Mono.empty();
                             }
-                            return this.repo.findByAppCodeAndClientCode(appCode, clientCode).map(AbstractOverridableDTO::getName).collectList();
+                            return this.repo.findByAppCodeAndClientCode(appCode, clientCode)
+                                    .map(AbstractOverridableDTO::getName).collectList();
                         },
 
-                        (ca, order, hasAccess, names) ->
-                                this.repo.deleteByAppCodeAndClientCode(appCode, clientCode),
+                        (ca, order, hasAccess, names) -> this.repo.deleteByAppCodeAndClientCode(appCode, clientCode),
 
-                        (ca, order, hasAccess, names, count) ->
-                                this.versionService.deleteBy(appCode, clientCode, this.getObjectName().toUpperCase()),
+                        (ca, order, hasAccess, names, count) -> this.versionService.deleteBy(appCode, clientCode,
+                                this.getObjectName().toUpperCase()),
 
-                        (ca, order, hasAccess, names, count, vCount) ->
-                                cacheService
-                                        .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
+                        (ca, order, hasAccess, names, count, vCount) -> cacheService
+                                .evictAll(this.getCacheName(appCode, this.getObjectName()) + READ_PAGE),
 
-                        (ca, order, hasAccess, names, count, vCount, pageCache) ->
-                                Flux.fromIterable(names).map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList().<Boolean>map(e -> true)
-                )
+                        (ca, order, hasAccess, names, count, vCount, pageCache) -> Flux.fromIterable(names)
+                                .map(n -> cacheService.evictAll(this.getCacheName(appCode, n))).collectList()
+                                .<Boolean>map(e -> true))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).deleteEverything"));
     }

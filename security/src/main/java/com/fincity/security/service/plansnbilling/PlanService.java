@@ -3,7 +3,6 @@ package com.fincity.security.service.plansnbilling;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 import org.jooq.types.ULong;
 import org.springframework.aop.framework.AopContext;
@@ -39,8 +38,6 @@ import com.fincity.security.service.SecurityMessageResourceService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 @Service
 public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRecord, ULong, Plan, PlanDAO> {
@@ -52,6 +49,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     private final PlanCycleDAO planCycleDAO;
     private final PlanLimitDAO planLimitDAO;
+    private final InvoiceService invoiceService;
 
     private final ClientService clientService;
     private final AppService appService;
@@ -60,10 +58,12 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     private final CacheService cacheService;
 
-    public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, ClientService clientService,
+    public PlanService(PlanCycleDAO planCycleDAO, PlanLimitDAO planLimitDAO, InvoiceService invoiceService,
+            ClientService clientService,
             AppService appService, SecurityMessageResourceService messageResourceService, CacheService cacheService) {
         this.planCycleDAO = planCycleDAO;
         this.planLimitDAO = planLimitDAO;
+        this.invoiceService = invoiceService;
         this.clientService = clientService;
         this.appService = appService;
         this.messageResourceService = messageResourceService;
@@ -74,7 +74,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     @Override
     public Mono<Plan> create(Plan entity) {
 
-        if (entity.isDefaultPlan() && entity.getApps() == null || entity.getApps().size() != 1)
+        if (entity.isDefaultPlan() && entity.getAppId() == null)
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.PLAN_DEFAULT_PLAN_MUST_HAVE_ONE_APP);
 
@@ -95,17 +95,11 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 (ca, managed) -> this.appAccesses(entity),
 
-                (ca, managed, hasWriteAccess) -> super.create(entity),
+                (ca, managed, hasWriteAccess) -> this.fallbackPlanAccess(entity),
 
-                (ca, managed, hasWriteAccess,
-                        created) -> entity.getApps() == null || entity.getApps().isEmpty()
-                                ? Mono.just(true)
-                                : this.dao.addApps(created.getId(), entity.getApps()
-                                        .stream().map(App::getId).toList()),
+                (ca, managed, hasWriteAccess, fallbackPlanAccess) -> super.create(entity),
 
-                (ca, managed, hasWriteAccess, created, appsAdded) -> {
-
-                    created.setApps(entity.getApps());
+                (ca, managed, hasWriteAccess, fallbackPlanAccess, created) -> {
 
                     if (entity.getCycles() == null || entity.getCycles().isEmpty())
                         return Mono.just(created);
@@ -116,7 +110,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                             .map(created::setCycles);
                 },
 
-                (ca, managed, hasWriteAccess, created, appsAdded, cyclesAdded) -> {
+                (ca, managed, hasWriteAccess, fallbackPlanAccess, created, cyclesAdded) -> {
 
                     if (entity.getLimits() == null || entity.getLimits().isEmpty())
                         return Mono.just(created);
@@ -135,26 +129,32 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                 .flatMap(
                         e -> e.isDefaultPlan()
                                 ? this.cacheService.<Plan>evictFunctionWithKeyFunction(CACHE_NAME_DEFAULT_PLAN_ID,
-                                        p -> p.getApps().getFirst().getId().toString()).apply(e)
+                                        p -> p.getAppId().toString()).apply(e)
                                 : Mono.just(e))
                 .flatMap(this.cacheService.evictFunctionWithKeyFunction(CACHE_NAME_PLAN_ID, p -> p.getId().toString()));
     }
 
-    private Mono<Boolean> appAccesses(Plan entity) {
-        if (entity.getApps() == null || entity.getApps().isEmpty())
+    private Mono<Boolean> fallbackPlanAccess(Plan entity) {
+        if (entity.getFallBackPlanId() == null)
             return Mono.just(true);
 
-        return Flux.fromIterable(entity.getApps())
-                .flatMap(app -> this.appService.hasWriteAccess(app.getId(), entity.getClientId()))
-                .all(BooleanUtil::safeValueOf)
+        return this.readInternal(entity.getFallBackPlanId())
+                .map(plan -> plan.getClientId().equals(entity.getClientId()))
                 .filter(BooleanUtil::safeValueOf);
+    }
+
+    private Mono<Boolean> appAccesses(Plan entity) {
+        if (entity.getAppId() == null)
+            return Mono.just(true);
+
+        return this.appService.hasWriteAccess(entity.getAppId(), entity.getClientId());
     }
 
     @PreAuthorize("hasAuthority('Authorities.Plan_UPDATE')")
     @Override
     public Mono<Plan> update(Plan entity) {
 
-        if (entity.isDefaultPlan() && entity.getApps() == null || entity.getApps().size() != 1)
+        if (entity.isDefaultPlan() && entity.getAppId() == null)
             return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     SecurityMessageResourceService.PLAN_DEFAULT_PLAN_MUST_HAVE_ONE_APP);
 
@@ -163,16 +163,11 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 ca -> this.appAccesses(entity),
 
-                (ca, hasWriteAccess) -> super.update(entity),
+                (ca, hasWriteAccess) -> this.fallbackPlanAccess(entity),
 
-                (ca, hasWriteAccess, updated) -> entity.getApps() == null || entity.getApps().isEmpty()
-                        ? Mono.just(true)
-                        : this.dao.updateApps(updated.getId(),
-                                entity.getApps().stream().map(App::getId).toList()),
+                (ca, hasWriteAccess, fallbackPlanAccess) -> super.update(entity),
 
-                (ca, hasWriteAccess, updated, appsAdded) -> {
-
-                    updated.setApps(entity.getApps());
+                (ca, hasWriteAccess, fallbackPlanAccess, updated) -> {
 
                     if (entity.getCycles() == null || entity.getCycles().isEmpty())
                         return this.planCycleDAO.deleteCycles(updated.getId())
@@ -182,7 +177,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                             .map(updated::setCycles);
                 },
 
-                (ca, hasWriteAccess, updated, appsAdded, cyclesAdded) -> {
+                (ca, hasWriteAccess, fallbackPlanAccess, updated, cyclesAdded) -> {
 
                     if (entity.getLimits() == null || entity.getLimits().isEmpty())
                         return this.planLimitDAO.deleteLimits(cyclesAdded.getId())
@@ -196,10 +191,10 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                 .flatMap(
                         e -> e.isDefaultPlan()
                                 ? this.cacheService.<Plan>evictFunctionWithKeyFunction(CACHE_NAME_DEFAULT_PLAN_ID,
-                                        p -> p.getApps().getFirst().getId().toString()).apply(e)
+                                        p -> p.getAppId().toString()).apply(e)
                                 : Mono.just(e))
                 .flatMap(this.cacheService.evictFunctionWithKeyFunction(CACHE_NAME_PLAN_ID, p -> p.getId().toString()))
-                .flatMap(e -> this.evictClientPlanByPlanId(e));
+                .flatMap(this::evictClientPlanByPlanId);
     }
 
     @Override
@@ -214,7 +209,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     existing.setDescription(entity.getDescription());
                     existing.setStatus(entity.getStatus());
                     existing.setFeatures(entity.getFeatures());
-                    existing.setApps(entity.getApps());
+                    existing.setAppId(entity.getAppId());
                     existing.setCycles(entity.getCycles());
                     existing.setLimits(entity.getLimits());
                     existing.setPlanCode(entity.getPlanCode());
@@ -223,6 +218,8 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     existing.setOrderNumber(entity.getOrderNumber());
                     existing.setDefaultPlan(entity.isDefaultPlan());
                     existing.setForClientId(entity.getForClientId());
+                    existing.setPrepaid(entity.isPrepaid());
+
                     return Mono.just(existing);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.updatableEntity"));
     }
@@ -250,7 +247,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                                 e -> existing.isDefaultPlan()
                                         ? this.cacheService
                                                 .<Plan>evictFunctionWithKeyFunction(CACHE_NAME_DEFAULT_PLAN_ID,
-                                                        p -> p.getApps().getFirst().getId().toString())
+                                                        p -> p.getAppId().toString())
                                                 .apply(existing).thenReturn(e)
                                         : Mono.just(e)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanService.delete"))
@@ -282,19 +279,17 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
                 () -> Flux.fromIterable(plans).map(Plan::getId).collectList(),
 
-                planIds -> this.dao.readApps(planIds).flatMapIterable(Map::entrySet)
-                        .flatMap(entry -> Flux.fromIterable(entry.getValue())
-                                .flatMap(this.appService::getAppById)
-                                .collectList()
-                                .map(apps -> Tuples.of(entry.getKey(), apps)))
-                        .collectMap(Tuple2::getT1, Tuple2::getT2),
+                planIds -> Flux.fromIterable(plans)
+                        .map(Plan::getAppId)
+                        .flatMap(this.appService::getAppById)
+                        .collectMap(App::getId),
 
                 (planIds, appMap) -> this.planCycleDAO.readCyclesMap(planIds),
 
                 (planIds, appMap, cycleMap) -> this.planLimitDAO.readLimitsMap(planIds),
 
                 (planIds, appMap, cycleMap, limitMap) -> Flux.fromIterable(plans).map(p -> {
-                    p.setApps(appMap.get(p.getId()));
+                    p.setApp(appMap.get(p.getAppId()));
                     p.setCycles(cycleMap.get(p.getId()));
                     p.setLimits(limitMap.get(p.getId()));
                     return p;
@@ -305,7 +300,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Boolean> addPlanAndCyCle(ClientPlanRequest request) {
 
         if (StringUtil.safeIsBlank(request.getUrlClientCode()))
-            this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
+            return this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
                     .flatMap(urlClientCode -> this.addPlanAndCyCle(request.getClientId(), urlClientCode,
                             request.getPlanId(), request.getCycleId(), request.getEndDate()));
 
@@ -342,9 +337,14 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                                         .anyMatch(cycle -> cycle.getId()
                                                 .equals(cycleId))),
 
-                (ca, hasAccess, conflictPlans, urlClient, plan) -> this.dao.addClientToPlan(clientId,
-                        planId, cycleId,
-                        endDate))
+                (ca, hasAccess, conflictPlans, urlClient, plan) -> {
+
+                    LocalDateTime startDate = LocalDateTime.now();
+
+                    return this.invoiceService.getNextInvoiceDate(planId, cycleId, startDate, null)
+                            .flatMap(nextInvoiceDate -> this.dao
+                                    .addClientToPlan(clientId, planId, cycleId, startDate, endDate, nextInvoiceDate));
+                })
                 .switchIfEmpty(Mono.defer(() -> this.messageResourceService
                         .throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                 SecurityMessageResourceService.FORBIDDEN_CREATE,
@@ -404,8 +404,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                         CACHE_NAME_CLIENT_PLAN,
 
                         () -> this.dao.getClientPlan(appId, clientId),
-
-                        appId.toString() + "_" + clientId.toString()),
+                        (appId == null ? "null" : appId.toString()) + "_" + clientId.toString()),
 
                 clientPlan -> {
                     if (clientPlan.getEndDate().isBefore(LocalDateTime.now()))
@@ -426,11 +425,9 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
     public Mono<Plan> evictClientPlanByPlanId(Plan plan) {
 
-        List<String> appIds = plan.getApps().stream().map(App::getId).map(ULong::toString).toList();
-
         return this.dao.getClientsForPlan(plan.getId())
-                .flatMap(clientId -> Flux.fromIterable(appIds).flatMap(
-                        appId -> this.cacheService.evict(CACHE_NAME_CLIENT_PLAN, appId + "_" + clientId.toString())))
+                .flatMap(clientId -> this.cacheService.evict(CACHE_NAME_CLIENT_PLAN,
+                        plan.getAppId() + "_" + clientId.toString()))
                 .collectList()
                 .map(x -> plan);
     }
@@ -438,9 +435,9 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Boolean> evictClientPlanByClientId(ULong planId, ULong clientId) {
 
         return this.readInternal(planId)
-                .flatMapMany(plan -> Flux.fromIterable(plan.getApps()).map(App::getId).map(ULong::toString))
+                .map(Plan::getAppId)
+                .map(appId -> appId == null ? "null" : appId.toString())
                 .flatMap(appId -> this.cacheService.evict(CACHE_NAME_CLIENT_PLAN, appId + "_" + clientId.toString()))
-                .collectList()
                 .map(x -> true);
     }
 }

@@ -1,5 +1,22 @@
 package com.fincity.security.service;
 
+import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
@@ -18,24 +35,9 @@ import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.UserRegistrationRequest;
-import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 
 @Service
 public class UserInviteService
@@ -79,7 +81,16 @@ public class UserInviteService
                             .map(x -> entity);
                 },
 
-                (ca, invite) -> invite.getProfileId() == null
+                (ca, invite) -> {
+
+                    if (entity.getReportingTo() == null)
+                        return Mono.just(Boolean.TRUE);
+
+                    return this.userDao.readById(entity.getReportingTo())
+                            .filter(user -> user.getClientId().equals(entity.getClientId()))
+                            .map(x -> Boolean.TRUE);
+                },
+                (ca, invite, reportingToInSameClient) -> invite.getProfileId() == null
                         ? Mono.just(true)
                         : this.profileService
                                 .hasAccessToProfiles(
@@ -88,7 +99,7 @@ public class UserInviteService
                                         Set.of(invite.getProfileId()))
                                 .filter(BooleanUtil::safeValueOf),
 
-                (ca, invite, hasAccess) -> this.userDao
+                (ca, invite, reportingToInSameClient, hasAccess) -> this.userDao
                         .checkUserExistsForInvite(
                                 entity.getClientId(),
                                 entity.getUserName(),
