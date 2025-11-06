@@ -279,6 +279,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     private Mono<Void> acStatusCreate(ProcessorAccess access, Ticket ticket, String comment) {
+
+        if (ticket.getStatus() == null) return Mono.empty();
+
         return FlatMapUtil.flatMapMono(
                         () -> this.stageService.readByIdInternal(ticket.getStatus()),
                         status -> this.createActivityInternal(
@@ -580,13 +583,13 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acAssign"));
     }
 
-    public Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser, boolean isAutomatic) {
+    public Mono<Void> acReassign(ProcessorAccess access, ULong ticketId, String comment, ULong oldUser, ULong newUser, boolean isAutomatic) {
         return isAutomatic
-                ? acReassignSystem(ticketId, comment, oldUser, newUser)
-                : acReassign(ticketId, comment, oldUser, newUser);
+                ? acReassignSystem(access, ticketId, comment, oldUser, newUser)
+                : acReassign(access, ticketId, comment, oldUser, newUser);
     }
 
-    private Mono<Void> acReassign(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
+    private Mono<Void> acReassign(ProcessorAccess access, ULong ticketId, String comment, ULong oldUser, ULong newUser) {
 
         return FlatMapUtil.flatMapMono(
                         () -> Mono.zip(
@@ -597,7 +600,9 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                         .getUserInternal(newUser.toBigInteger(), null)
                                         .map(this::getUserIdAndValue)),
                         users -> this.createActivityInternal(
+								access,
                                 ActivityAction.REASSIGN,
+								null,
                                 comment,
                                 Map.of(
                                         Activity.Fields.ticketId,
@@ -609,9 +614,11 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassign"));
     }
 
-    private Mono<Void> acReassignSystem(ULong ticketId, String comment, ULong oldUser, ULong newUser) {
+    private Mono<Void> acReassignSystem(ProcessorAccess access, ULong ticketId, String comment, ULong oldUser, ULong newUser) {
         return this.createActivityInternal(
+				access,
                         ActivityAction.REASSIGN_SYSTEM,
+						null,
                         comment,
                         Map.of(
                                 Activity.Fields.ticketId,
