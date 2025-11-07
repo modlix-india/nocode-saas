@@ -25,7 +25,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.net.URI;
@@ -57,7 +56,7 @@ public class FilesConfiguration extends AbstractJooqBaseConfiguration
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else
                 log.debug(v);
         }));

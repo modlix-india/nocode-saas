@@ -1,8 +1,9 @@
 package com.fincity.security.dto.invoicesnpayments;
 
-import org.jooq.types.ULong;
 import java.io.Serial;
 import java.math.BigDecimal;
+
+import org.jooq.types.ULong;
 
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 
@@ -28,4 +29,15 @@ public class InvoiceItem extends AbstractUpdatableDTO<ULong, ULong> {
     private BigDecimal itemTax3;
     private BigDecimal itemTax4;
     private BigDecimal itemTax5;
+
+    private ULong cycleId;
+
+    public BigDecimal getItemTotalAmount() {
+        return this.itemAmount.add(this.itemTax1).add(this.itemTax2).add(this.itemTax3).add(this.itemTax4)
+                .add(this.itemTax5);
+    }
+
+    public BigDecimal getItemTotalTax() {
+        return this.itemTax1.add(this.itemTax2).add(this.itemTax3).add(this.itemTax4).add(this.itemTax5);
+    }
 }

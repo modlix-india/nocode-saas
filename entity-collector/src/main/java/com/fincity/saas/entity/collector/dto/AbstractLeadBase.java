@@ -77,7 +77,7 @@ public abstract class AbstractLeadBase<T extends AbstractLeadBase<T>> implements
             this.setSubSource(LeadSubSource.FACEBOOK);
         } else if ("GOOGLE".equalsIgnoreCase(details.getUtmSource())){
             this.setPlatform("Google");
-            this.setSource(LeadSource.WEBSITE);
+            this.setSource(LeadSource.SOCIAL_MEDIA);
             this.setSubSource(LeadSubSource.GOOGLE);
         }else {
                 this.setPlatform("Website");
