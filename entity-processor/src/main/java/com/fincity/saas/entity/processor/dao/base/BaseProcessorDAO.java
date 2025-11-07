@@ -16,7 +16,6 @@ import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
@@ -201,10 +200,5 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                 .setField(field)
                 .setOperator(FilterConditionOperator.IN)
                 .setMultiValue(values);
-    }
-
-    @SuppressWarnings("unchecked")
-    public Flux<D> updateAll(Flux<D> entities) {
-        return entities.flatMap(super::update);
     }
 }
