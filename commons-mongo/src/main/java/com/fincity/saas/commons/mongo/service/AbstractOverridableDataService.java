@@ -260,7 +260,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 this::applyOverride)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal (id)"));
     }
 
     @Override
@@ -742,13 +742,12 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                         (ca, uClientCode) -> this.readInternal(name, appCode, uClientCode, clientCode))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"));
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read (name, appCode, clientCode)"));
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String clientCode) {
         return this.readInternal(name, appCode, clientCode, clientCode)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getObjectName() + "Service).readInternal (name, appCode, clientCode)"));
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode,
@@ -792,7 +791,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 new ObjectWithUniqueID<>(mEntity, checksumCode), key);
 
                     return this.applyChange(name, appCode, clientCode, clonedEntity, checksumCode);
-                });
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, this.getObjectName() + "Service).readInternal (name, appCode, urlClientCode, clientCode)"));
     }
 
     protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
@@ -806,11 +805,13 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                             if (lst.isEmpty())
                                 return Mono.empty();
                             if (lst.size() == 1)
-                                return Mono.just(lst.get(0));
+                                return Mono.just(lst.getFirst());
 
-                            for (D item : lst) {
-                                if (clientCode.equals(item.getClientCode()))
-                                    return Mono.just(item);
+                            for (String cc : clientCodes.reversed()) {
+                                for (D item : lst) {
+                                    if (cc.equals(item.getClientCode()))
+                                        return Mono.just(item);
+                                }
                             }
 
                             return Mono.empty();

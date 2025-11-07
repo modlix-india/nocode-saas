@@ -7,6 +7,7 @@ package com.fincity.security.jooq.tables;
 import com.fincity.security.jooq.Keys;
 import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityInvoice.SecurityInvoicePath;
+import com.fincity.security.jooq.tables.SecurityPlanCycle.SecurityPlanCyclePath;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceItemRecord;
 
 import java.math.BigDecimal;
@@ -69,6 +70,12 @@ public class SecurityInvoiceItem extends TableImpl<SecurityInvoiceItemRecord> {
      * Invoice ID
      */
     public final TableField<SecurityInvoiceItemRecord, ULong> INVOICE_ID = createField(DSL.name("INVOICE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Invoice ID");
+
+    /**
+     * The column <code>security.security_invoice_item.CYCLE_ID</code>. Cycle ID
+     * in case of prorated credit
+     */
+    public final TableField<SecurityInvoiceItemRecord, ULong> CYCLE_ID = createField(DSL.name("CYCLE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Cycle ID in case of prorated credit");
 
     /**
      * The column <code>security.security_invoice_item.ITEM_NAME</code>. Item
@@ -204,7 +211,20 @@ public class SecurityInvoiceItem extends TableImpl<SecurityInvoiceItemRecord> {
 
     @Override
     public List<ForeignKey<SecurityInvoiceItemRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_INVOICE_ITEM_INVOICE_ID);
+        return Arrays.asList(Keys.FK1_INVOICE_ITEM_CYCLE_ID, Keys.FK1_INVOICE_ITEM_INVOICE_ID);
+    }
+
+    private transient SecurityPlanCyclePath _securityPlanCycle;
+
+    /**
+     * Get the implicit join path to the
+     * <code>security.security_plan_cycle</code> table.
+     */
+    public SecurityPlanCyclePath securityPlanCycle() {
+        if (_securityPlanCycle == null)
+            _securityPlanCycle = new SecurityPlanCyclePath(this, Keys.FK1_INVOICE_ITEM_CYCLE_ID, null);
+
+        return _securityPlanCycle;
     }
 
     private transient SecurityInvoicePath _securityInvoice;
