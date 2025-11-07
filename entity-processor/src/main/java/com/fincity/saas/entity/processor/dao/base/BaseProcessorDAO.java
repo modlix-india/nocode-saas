@@ -202,9 +202,4 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                 .setOperator(FilterConditionOperator.IN)
                 .setMultiValue(values);
     }
-
-    @SuppressWarnings("unchecked")
-    public Flux<D> updateAll(Flux<D> entities) {
-        return entities.flatMap(super::update);
-    }
 }
