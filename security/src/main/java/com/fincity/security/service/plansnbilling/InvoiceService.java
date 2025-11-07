@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,6 @@ import reactor.util.context.Context;
 public class InvoiceService
         extends AbstractSecurityUpdatableDataService<SecurityInvoiceRecord, ULong, Invoice, InvoiceDAO> {
 
-    private final InvoiceDAO invoiceDAO;
     private final PlanDAO planDAO;
     private final PlanCycleDAO planCycleDAO;
     private final ClientService clientService;
@@ -57,10 +57,9 @@ public class InvoiceService
 
     private static final Logger logger = LoggerFactory.getLogger(InvoiceService.class);
 
-    public InvoiceService(InvoiceDAO invoiceDAO, PlanCycleDAO planCycleDAO, PlanDAO planDAO,
-                          ClientService clientService, SecurityMessageResourceService messageResourceService,
-                          EventCreationService eventCreationService, AppService appService, ClientUrlService clientUrlService) {
-        this.invoiceDAO = invoiceDAO;
+    public InvoiceService(PlanCycleDAO planCycleDAO, PlanDAO planDAO,
+            ClientService clientService, SecurityMessageResourceService messageResourceService,
+            EventCreationService eventCreationService, AppService appService, ClientUrlService clientUrlService) {
         this.planCycleDAO = planCycleDAO;
         this.planDAO = planDAO;
         this.clientService = clientService;
@@ -76,7 +75,7 @@ public class InvoiceService
     }
 
     public Mono<LocalDateTime> getNextInvoiceDate(ULong planId, ULong cycleId, LocalDateTime startDate,
-                                                  LocalDateTime lastestInvoiceDate) {
+            LocalDateTime latestInvoiceData) {
         return FlatMapUtil.flatMapMono(
 
                 () -> this.planDAO.readById(planId),
@@ -90,16 +89,16 @@ public class InvoiceService
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 SecurityMessageResourceService.PLAN_CYCLE_NOT_FOUND);
 
-                    LocalDateTime nextInvoiceDate = LocalDateTime.now();
+                    LocalDateTime nextInvoiceDate;
                     if (plan.isPrepaid()) {
 
-                        if (lastestInvoiceDate == null)
+                        if (latestInvoiceData == null)
                             nextInvoiceDate = startDate;
                         else
-                            nextInvoiceDate = this.calculateNextInvoiceDate(startDate, lastestInvoiceDate, cycle);
+                            nextInvoiceDate = this.calculateNextInvoiceDate(startDate, latestInvoiceData, cycle);
                     } else {
                         nextInvoiceDate = this.calculateNextInvoiceDate(startDate,
-                                lastestInvoiceDate == null ? startDate : lastestInvoiceDate, cycle);
+                                latestInvoiceData == null ? startDate : latestInvoiceData, cycle);
                     }
 
                     return Mono.just(nextInvoiceDate);
@@ -108,14 +107,14 @@ public class InvoiceService
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.getNextInvoiceDate"));
     }
 
-    private LocalDateTime calculateNextInvoiceDate(LocalDateTime startDate, LocalDateTime lastestInvoiceDate,
-                                                   PlanCycle cycle) {
+    private LocalDateTime calculateNextInvoiceDate(LocalDateTime startDate, LocalDateTime latestInvoiceData,
+            PlanCycle cycle) {
 
         LocalDateTime nextInvoiceDate = switch (cycle.getIntervalType()) {
-            case WEEK -> lastestInvoiceDate.plusWeeks(1);
-            case MONTH -> lastestInvoiceDate.plusMonths(1);
-            case QUARTER -> lastestInvoiceDate.plusMonths(3);
-            case ANNUAL -> lastestInvoiceDate.plusYears(1);
+            case WEEK -> latestInvoiceData.plusWeeks(1);
+            case MONTH -> latestInvoiceData.plusMonths(1);
+            case QUARTER -> latestInvoiceData.plusMonths(3);
+            case ANNUAL -> latestInvoiceData.plusYears(1);
         };
 
         if (nextInvoiceDate.getDayOfMonth() == startDate.getDayOfMonth())
@@ -206,7 +205,7 @@ public class InvoiceService
 
                 plan -> this.planCycleDAO.readById(clientPlan.getCycleId()),
 
-                (plan, cycle) -> this.invoiceDAO.getInvoiceCount(clientPlan.getClientId(), plan.getAppId()),
+                (plan, cycle) -> this.dao.getInvoiceCount(clientPlan.getClientId(), plan.getAppId()),
 
                 (plan, cycle, count) -> plan.isPrepaid() ? this.generatePrepaidInvoiceItems(clientPlan, plan, cycle)
                         : this.generatePostpaidInvoiceItems(clientPlan, plan, cycle),
@@ -228,7 +227,7 @@ public class InvoiceService
                                     count));
                     invoice.setInvoiceDate(clientPlan.getNextInvoiceDate());
                     invoice.setInvoiceDueDate(clientPlan.getNextInvoiceDate().plusDays(cycle.getPaymentTermsDays()));
-                    invoice.setInvoiceAmount(invoiceItems.stream().map(InvoiceItem::getItemAmount)
+                    invoice.setInvoiceAmount(invoiceItems.stream().map(InvoiceItem::getItemTotalAmount)
                             .reduce(BigDecimal.ZERO, BigDecimal::add));
                     invoice.setInvoiceStatus(SecurityInvoiceInvoiceStatus.PENDING);
 
@@ -286,15 +285,168 @@ public class InvoiceService
 
     private Mono<List<InvoiceItem>> generatePrepaidInvoiceItems(ClientPlan clientPlan, Plan plan, PlanCycle cycle) {
 
-//        return FlatMapUtil.flatMapMono(
-//
-//        )
-//                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.generatePrepaidInvoiceItems"));
+        return FlatMapUtil.flatMapMonoWithNull(
 
-        return Mono.empty();
+                () -> clientPlan.getCycleNumber() > 1 ? Mono.<ClientPlan>empty()
+                        : this.planDAO.getPreviousPlan(plan.getAppId(), clientPlan.getClientId(), clientPlan.getId()),
+
+                pcp -> {
+                    if (pcp == null)
+                        return Mono.empty();
+
+                    return this.dao.getLastPaidInvoice(pcp.getPlanId(), pcp.getCycleId(), pcp.getClientId());
+                },
+
+                (pcp, pInvoice) -> pInvoice != null
+                        ? this.planDAO.readById(pcp.getPlanId())
+                                .flatMap(p -> this.planCycleDAO.getCycles(pcp.getPlanId()).map(p::setCycles))
+                        : Mono.<Plan>empty(),
+
+                (pcp, pInvoice, pPlan) -> {
+
+                    List<InvoiceItem> invoiceItems = new ArrayList<>();
+
+                    if (pPlan != null && pPlan.getCycles() != null && !pPlan.getCycles().isEmpty()) {
+
+                        int factor = pPlan.isPrepaid() ? -1 : 1;
+                        // Calculating prorated credit
+                        PlanCycle previousCycle = pPlan.getCycles().stream()
+                                .filter(c -> c.getId().equals(pcp.getCycleId())).findFirst().orElse(null);
+                        if (previousCycle != null) {
+                            var start = pInvoice.getPeriodStart();
+                            var end = pInvoice.getPeriodEnd();
+                            var totalDays = start.until(end, ChronoUnit.DAYS);
+                            var unUsedDays = clientPlan.getStartDate().until(end, ChronoUnit.DAYS);
+                            var proratedAmount = factor * previousCycle.getCost().doubleValue() * unUsedDays
+                                    / totalDays;
+                            var proratedTax1 = previousCycle.getTax1() != null
+                                    ? factor * proratedAmount * previousCycle.getTax1().doubleValue() / 100
+                                    : 0;
+                            var proratedTax2 = previousCycle.getTax2() != null
+                                    ? factor * proratedAmount * previousCycle.getTax2().doubleValue() / 100
+                                    : 0;
+                            var proratedTax3 = previousCycle.getTax3() != null
+                                    ? factor * proratedAmount * previousCycle.getTax3().doubleValue() / 100
+                                    : 0;
+                            var proratedTax4 = previousCycle.getTax4() != null
+                                    ? factor * proratedAmount * previousCycle.getTax4().doubleValue() / 100
+                                    : 0;
+                            var proratedTax5 = previousCycle.getTax5() != null
+                                    ? factor * proratedAmount * previousCycle.getTax5().doubleValue() / 100
+                                    : 0;
+                            invoiceItems.add(new InvoiceItem()
+                                    .setItemName("Prorated credit - " + previousCycle.getName())
+                                    .setItemAmount(BigDecimal.valueOf(proratedAmount))
+                                    .setItemTax1(BigDecimal.valueOf(proratedTax1))
+                                    .setItemTax2(BigDecimal.valueOf(proratedTax2))
+                                    .setItemTax3(BigDecimal.valueOf(proratedTax3))
+                                    .setItemTax4(BigDecimal.valueOf(proratedTax4))
+                                    .setItemTax5(BigDecimal.valueOf(proratedTax5))
+                                    .setCycleId(previousCycle.getId()));
+                        }
+                    }
+
+                    var amount = cycle.getCost().doubleValue();
+                    var tax1 = cycle.getTax1() != null ? amount * cycle.getTax1().doubleValue() / 100 : 0;
+                    var tax2 = cycle.getTax2() != null ? amount * cycle.getTax2().doubleValue() / 100 : 0;
+                    var tax3 = cycle.getTax3() != null ? amount * cycle.getTax3().doubleValue() / 100 : 0;
+                    var tax4 = cycle.getTax4() != null ? amount * cycle.getTax4().doubleValue() / 100 : 0;
+                    var tax5 = cycle.getTax5() != null ? amount * cycle.getTax5().doubleValue() / 100 : 0;
+                    invoiceItems.add(new InvoiceItem()
+                            .setItemName(cycle.getName())
+                            .setItemAmount(BigDecimal.valueOf(amount))
+                            .setItemTax1(BigDecimal.valueOf(tax1))
+                            .setItemTax2(BigDecimal.valueOf(tax2))
+                            .setItemTax3(BigDecimal.valueOf(tax3))
+                            .setItemTax4(BigDecimal.valueOf(tax4))
+                            .setItemTax5(BigDecimal.valueOf(tax5))
+                            .setCycleId(cycle.getId()));
+
+                    return Mono.just(invoiceItems);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.generatePrepaidInvoiceItems"));
     }
 
     private Mono<List<InvoiceItem>> generatePostpaidInvoiceItems(ClientPlan clientPlan, Plan plan, PlanCycle cycle) {
-        return Mono.just(new ArrayList<>());
+        return FlatMapUtil.flatMapMonoWithNull(
+
+                () -> clientPlan.getCycleNumber() > 1 ? Mono.<ClientPlan>empty()
+                        : this.planDAO.getPreviousPlan(plan.getAppId(), clientPlan.getClientId(), clientPlan.getId()),
+
+                pcp -> {
+                    if (pcp == null)
+                        return Mono.empty();
+
+                    return this.dao.getLastPaidInvoice(pcp.getPlanId(), pcp.getCycleId(), pcp.getClientId());
+                },
+
+                (pcp, pInvoice) -> pInvoice != null
+                        ? this.planDAO.readById(pcp.getPlanId())
+                                .flatMap(p -> this.planCycleDAO.getCycles(pcp.getPlanId()).map(p::setCycles))
+                        : Mono.<Plan>empty(),
+
+                (pcp, pInvoice, pPlan) -> {
+
+                    List<InvoiceItem> invoiceItems = new ArrayList<>();
+
+                    if (pPlan != null && pPlan.getCycles() != null && !pPlan.getCycles().isEmpty()) {
+
+                        int factor = pPlan.isPrepaid() ? -1 : 1;
+                        // Calculating prorated credit
+                        PlanCycle previousCycle = pPlan.getCycles().stream()
+                                .filter(c -> c.getId().equals(pcp.getCycleId())).findFirst().orElse(null);
+                        if (previousCycle != null) {
+                            var start = pInvoice.getPeriodStart();
+                            var end = pInvoice.getPeriodEnd();
+                            var totalDays = start.until(end, ChronoUnit.DAYS);
+                            var unUsedDays = clientPlan.getStartDate().until(end, ChronoUnit.DAYS);
+                            var proratedAmount = factor * previousCycle.getCost().doubleValue() * unUsedDays
+                                    / totalDays;
+                            var proratedTax1 = previousCycle.getTax1() != null
+                                    ? factor * proratedAmount * previousCycle.getTax1().doubleValue() / 100
+                                    : 0;
+                            var proratedTax2 = previousCycle.getTax2() != null
+                                    ? factor * proratedAmount * previousCycle.getTax2().doubleValue() / 100
+                                    : 0;
+                            var proratedTax3 = previousCycle.getTax3() != null
+                                    ? factor * proratedAmount * previousCycle.getTax3().doubleValue() / 100
+                                    : 0;
+                            var proratedTax4 = previousCycle.getTax4() != null
+                                    ? factor * proratedAmount * previousCycle.getTax4().doubleValue() / 100
+                                    : 0;
+                            var proratedTax5 = previousCycle.getTax5() != null
+                                    ? factor * proratedAmount * previousCycle.getTax5().doubleValue() / 100
+                                    : 0;
+                            invoiceItems.add(new InvoiceItem()
+                                    .setItemName("Prorated credit - " + previousCycle.getName())
+                                    .setItemAmount(BigDecimal.valueOf(proratedAmount))
+                                    .setItemTax1(BigDecimal.valueOf(proratedTax1))
+                                    .setItemTax2(BigDecimal.valueOf(proratedTax2))
+                                    .setItemTax3(BigDecimal.valueOf(proratedTax3))
+                                    .setItemTax4(BigDecimal.valueOf(proratedTax4))
+                                    .setItemTax5(BigDecimal.valueOf(proratedTax5))
+                                    .setCycleId(previousCycle.getId()));
+                        }
+                    }
+
+                    var amount = cycle.getCost().doubleValue();
+                    var tax1 = cycle.getTax1() != null ? amount * cycle.getTax1().doubleValue() / 100 : 0;
+                    var tax2 = cycle.getTax2() != null ? amount * cycle.getTax2().doubleValue() / 100 : 0;
+                    var tax3 = cycle.getTax3() != null ? amount * cycle.getTax3().doubleValue() / 100 : 0;
+                    var tax4 = cycle.getTax4() != null ? amount * cycle.getTax4().doubleValue() / 100 : 0;
+                    var tax5 = cycle.getTax5() != null ? amount * cycle.getTax5().doubleValue() / 100 : 0;
+                    invoiceItems.add(new InvoiceItem()
+                            .setItemName(cycle.getName())
+                            .setItemAmount(BigDecimal.valueOf(amount))
+                            .setItemTax1(BigDecimal.valueOf(tax1))
+                            .setItemTax2(BigDecimal.valueOf(tax2))
+                            .setItemTax3(BigDecimal.valueOf(tax3))
+                            .setItemTax4(BigDecimal.valueOf(tax4))
+                            .setItemTax5(BigDecimal.valueOf(tax5))
+                            .setCycleId(cycle.getId()));
+
+                    return Mono.just(invoiceItems);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "InvoiceService.generatePostpaidInvoiceItems"));
     }
 }

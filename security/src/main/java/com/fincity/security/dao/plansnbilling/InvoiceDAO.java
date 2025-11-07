@@ -1,9 +1,5 @@
 package com.fincity.security.dao.plansnbilling;
 
-import static com.fincity.security.jooq.tables.SecurityInvoice.SECURITY_INVOICE;
-import static com.fincity.security.jooq.tables.SecurityInvoiceItem.SECURITY_INVOICE_ITEM;
-import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
-
 import java.util.List;
 
 import org.jooq.Record1;
@@ -13,6 +9,10 @@ import org.springframework.stereotype.Component;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.security.dto.invoicesnpayments.Invoice;
 import com.fincity.security.dto.invoicesnpayments.InvoiceItem;
+import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
+import static com.fincity.security.jooq.tables.SecurityInvoice.SECURITY_INVOICE;
+import static com.fincity.security.jooq.tables.SecurityInvoiceItem.SECURITY_INVOICE_ITEM;
+import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceItemRecord;
 import com.fincity.security.jooq.tables.records.SecurityInvoiceRecord;
 
@@ -29,9 +29,9 @@ public class InvoiceDAO extends AbstractUpdatableDAO<SecurityInvoiceRecord, ULon
     public Mono<Integer> getInvoiceCount(ULong clientId, ULong appId) {
 
         return Mono.from(this.dslContext.selectCount().from(SECURITY_INVOICE)
-                        .join(SECURITY_PLAN).on(SECURITY_INVOICE.PLAN_ID.eq(SECURITY_PLAN.ID))
-                        .where(SECURITY_INVOICE.CLIENT_ID.eq(clientId).and(
-                                SECURITY_PLAN.APP_ID.eq(appId))))
+                .join(SECURITY_PLAN).on(SECURITY_INVOICE.PLAN_ID.eq(SECURITY_PLAN.ID))
+                .where(SECURITY_INVOICE.CLIENT_ID.eq(clientId).and(
+                        SECURITY_PLAN.APP_ID.eq(appId))))
                 .map(Record1::value1);
     }
 
@@ -47,5 +47,16 @@ public class InvoiceDAO extends AbstractUpdatableDAO<SecurityInvoiceRecord, ULon
                                     .returning(SECURITY_INVOICE_ITEM.ID))
                             .map(r -> r.get(0, ULong.class)).map(item::setId).map(InvoiceItem.class::cast);
                 }).collectList();
+    }
+
+    public Mono<Invoice> getLastPaidInvoice(ULong planId, ULong cycleId, ULong clientId) {
+        return Mono.from(this.dslContext.selectFrom(SECURITY_INVOICE)
+                .where(SECURITY_INVOICE.CLIENT_ID.eq(clientId)
+                        .and(SECURITY_INVOICE.PLAN_ID.eq(planId))
+                        .and(SECURITY_INVOICE.CYCLE_ID.eq(cycleId)))
+                .orderBy(SECURITY_INVOICE.INVOICE_DATE.desc())
+                .limit(1))
+                .map(e -> e.into(Invoice.class))
+                .filter(i -> i.getInvoiceStatus().equals(SecurityInvoiceInvoiceStatus.PAID));
     }
 }
