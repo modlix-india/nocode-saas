@@ -1,10 +1,5 @@
 package com.fincity.security.dao.plansnbilling;
 
-import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
-import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
-import static com.fincity.security.jooq.tables.SecurityClientPlan.SECURITY_CLIENT_PLAN;
-import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +20,10 @@ import com.fincity.security.dao.AbstractClientCheckDAO;
 import com.fincity.security.dto.plansnbilling.ClientPlan;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.jooq.enums.SecurityPlanStatus;
+import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientPlan.SECURITY_CLIENT_PLAN;
+import static com.fincity.security.jooq.tables.SecurityPlan.SECURITY_PLAN;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
 
 import reactor.core.publisher.Flux;
@@ -148,8 +147,23 @@ public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, P
 
     public Mono<Boolean> updateNextInvoiceDate(ULong cycleId, LocalDateTime nextInvoiceDate) {
         return Mono.from(this.dslContext.update(SECURITY_CLIENT_PLAN)
+                .set(SECURITY_CLIENT_PLAN.CYCLE_NUMBER, SECURITY_CLIENT_PLAN.CYCLE_NUMBER.add(1))
                 .set(SECURITY_CLIENT_PLAN.NEXT_INVOICE_DATE, nextInvoiceDate)
                 .where(SECURITY_CLIENT_PLAN.CYCLE_ID.eq(cycleId)))
                 .map(e -> e > 0);
+    }
+
+    public Mono<ClientPlan> getPreviousPlan(ULong appId, ULong clientId, ULong clientPlanId) {
+
+        return Mono.from(
+                this.dslContext.select(SECURITY_CLIENT_PLAN.fields()).from(SECURITY_CLIENT_PLAN)
+                        .leftJoin(SECURITY_PLAN).on(SECURITY_CLIENT_PLAN.PLAN_ID.eq(SECURITY_PLAN.ID))
+                        .where(SECURITY_CLIENT_PLAN.CLIENT_ID.eq(clientId)
+                                .and(SECURITY_CLIENT_PLAN.ID.ne(clientPlanId))
+                                .and(SECURITY_PLAN.APP_ID.eq(appId)))
+                        .orderBy(SECURITY_CLIENT_PLAN.START_DATE.desc())
+                        .limit(1))
+                .map(rec -> rec.into(
+                        ClientPlan.class));
     }
 }

@@ -30,7 +30,9 @@ public class InvoiceItem extends AbstractUpdatableDTO<ULong, ULong> {
     private BigDecimal itemTax4;
     private BigDecimal itemTax5;
 
-    private BigDecimal getItemTotalAmount() {
+    private ULong cycleId;
+
+    public BigDecimal getItemTotalAmount() {
         return this.itemAmount.add(this.itemTax1).add(this.itemTax2).add(this.itemTax3).add(this.itemTax4)
                 .add(this.itemTax5);
     }
