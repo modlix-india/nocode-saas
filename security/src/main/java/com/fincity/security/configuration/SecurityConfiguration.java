@@ -37,7 +37,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else
                 log.debug(v);
         }));
@@ -123,9 +123,9 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/plans/internal/limits",
 
-		        "/api/security/otp/generate",
+                "/api/security/otp/generate",
 
-		        "/api/security/otp/verify");
+                "/api/security/otp/verify");
     }
 
 }
