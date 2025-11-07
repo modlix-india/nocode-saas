@@ -84,11 +84,26 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
     }
 
     /**
+     * Setter for <code>security.security_client_plan.CYCLE_NUMBER</code>.
+     */
+    public SecurityClientPlanRecord setCycleNumber(Integer value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_client_plan.CYCLE_NUMBER</code>.
+     */
+    public Integer getCycleNumber() {
+        return (Integer) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_client_plan.START_DATE</code>. Start
      * date of the plan
      */
     public SecurityClientPlanRecord setStartDate(LocalDateTime value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -97,7 +112,7 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
      * date of the plan
      */
     public LocalDateTime getStartDate() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(5);
     }
 
     /**
@@ -105,7 +120,7 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
      * of the plan
      */
     public SecurityClientPlanRecord setEndDate(LocalDateTime value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -114,14 +129,14 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
      * of the plan
      */
     public LocalDateTime getEndDate() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(6);
     }
 
     /**
      * Setter for <code>security.security_client_plan.NEXT_INVOICE_DATE</code>.
      */
     public SecurityClientPlanRecord setNextInvoiceDate(LocalDateTime value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -129,7 +144,7 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
      * Getter for <code>security.security_client_plan.NEXT_INVOICE_DATE</code>.
      */
     public LocalDateTime getNextInvoiceDate() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(7);
     }
 
     // -------------------------------------------------------------------------
@@ -155,13 +170,14 @@ public class SecurityClientPlanRecord extends UpdatableRecordImpl<SecurityClient
     /**
      * Create a detached, initialised SecurityClientPlanRecord
      */
-    public SecurityClientPlanRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, LocalDateTime startDate, LocalDateTime endDate, LocalDateTime nextInvoiceDate) {
+    public SecurityClientPlanRecord(ULong id, ULong clientId, ULong planId, ULong cycleId, Integer cycleNumber, LocalDateTime startDate, LocalDateTime endDate, LocalDateTime nextInvoiceDate) {
         super(SecurityClientPlan.SECURITY_CLIENT_PLAN);
 
         setId(id);
         setClientId(clientId);
         setPlanId(planId);
         setCycleId(cycleId);
+        setCycleNumber(cycleNumber);
         setStartDate(startDate);
         setEndDate(endDate);
         setNextInvoiceDate(nextInvoiceDate);

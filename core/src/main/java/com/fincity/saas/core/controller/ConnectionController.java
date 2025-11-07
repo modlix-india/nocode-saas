@@ -1,14 +1,5 @@
 package com.fincity.saas.core.controller;
 
-import com.fincity.saas.commons.core.document.Connection;
-
-import com.fincity.saas.commons.core.enums.ConnectionType;
-import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
-import com.fincity.saas.commons.core.repository.ConnectionRepository;
-import com.fincity.saas.commons.core.service.ConnectionService;
-import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
-import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -18,9 +9,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
 
-import java.util.Map;
+import com.fincity.saas.commons.core.document.Connection;
+import com.fincity.saas.commons.core.enums.ConnectionType;
+import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
+import com.fincity.saas.commons.core.repository.ConnectionRepository;
+import com.fincity.saas.commons.core.service.ConnectionService;
+import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
+import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
+
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/core/connections")
@@ -49,7 +47,8 @@ public class ConnectionController
     }
 
     @GetMapping("/internal/oauth2/token/{connectionName}")
-    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName, ServerHttpRequest request) {
+    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName,
+            ServerHttpRequest request) {
 
         String appCode = request.getHeaders().getFirst("appCode");
         String clientCode = request.getHeaders().getFirst("clientCode");

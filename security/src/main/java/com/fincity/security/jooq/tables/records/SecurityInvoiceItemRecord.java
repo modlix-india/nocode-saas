@@ -54,11 +54,28 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
     }
 
     /**
+     * Setter for <code>security.security_invoice_item.CYCLE_ID</code>. Cycle ID
+     * in case of prorated credit
+     */
+    public SecurityInvoiceItemRecord setCycleId(ULong value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_invoice_item.CYCLE_ID</code>. Cycle ID
+     * in case of prorated credit
+     */
+    public ULong getCycleId() {
+        return (ULong) get(2);
+    }
+
+    /**
      * Setter for <code>security.security_invoice_item.ITEM_NAME</code>. Item
      * name
      */
     public SecurityInvoiceItemRecord setItemName(String value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -67,7 +84,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * name
      */
     public String getItemName() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
@@ -75,7 +92,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * Item description
      */
     public SecurityInvoiceItemRecord setItemDescription(String value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -84,7 +101,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * Item description
      */
     public String getItemDescription() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
@@ -92,7 +109,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * amount
      */
     public SecurityInvoiceItemRecord setItemAmount(BigDecimal value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -101,7 +118,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * amount
      */
     public BigDecimal getItemAmount() {
-        return (BigDecimal) get(4);
+        return (BigDecimal) get(5);
     }
 
     /**
@@ -109,7 +126,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax1
      */
     public SecurityInvoiceItemRecord setItemTax1(BigDecimal value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -118,7 +135,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax1
      */
     public BigDecimal getItemTax1() {
-        return (BigDecimal) get(5);
+        return (BigDecimal) get(6);
     }
 
     /**
@@ -126,7 +143,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax2
      */
     public SecurityInvoiceItemRecord setItemTax2(BigDecimal value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -135,7 +152,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax2
      */
     public BigDecimal getItemTax2() {
-        return (BigDecimal) get(6);
+        return (BigDecimal) get(7);
     }
 
     /**
@@ -143,7 +160,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax3
      */
     public SecurityInvoiceItemRecord setItemTax3(BigDecimal value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -152,7 +169,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax3
      */
     public BigDecimal getItemTax3() {
-        return (BigDecimal) get(7);
+        return (BigDecimal) get(8);
     }
 
     /**
@@ -160,7 +177,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax4
      */
     public SecurityInvoiceItemRecord setItemTax4(BigDecimal value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -169,7 +186,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax4
      */
     public BigDecimal getItemTax4() {
-        return (BigDecimal) get(8);
+        return (BigDecimal) get(9);
     }
 
     /**
@@ -177,7 +194,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax5
      */
     public SecurityInvoiceItemRecord setItemTax5(BigDecimal value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -186,7 +203,7 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
      * tax5
      */
     public BigDecimal getItemTax5() {
-        return (BigDecimal) get(9);
+        return (BigDecimal) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -212,11 +229,12 @@ public class SecurityInvoiceItemRecord extends UpdatableRecordImpl<SecurityInvoi
     /**
      * Create a detached, initialised SecurityInvoiceItemRecord
      */
-    public SecurityInvoiceItemRecord(ULong id, ULong invoiceId, String itemName, String itemDescription, BigDecimal itemAmount, BigDecimal itemTax1, BigDecimal itemTax2, BigDecimal itemTax3, BigDecimal itemTax4, BigDecimal itemTax5) {
+    public SecurityInvoiceItemRecord(ULong id, ULong invoiceId, ULong cycleId, String itemName, String itemDescription, BigDecimal itemAmount, BigDecimal itemTax1, BigDecimal itemTax2, BigDecimal itemTax3, BigDecimal itemTax4, BigDecimal itemTax5) {
         super(SecurityInvoiceItem.SECURITY_INVOICE_ITEM);
 
         setId(id);
         setInvoiceId(invoiceId);
+        setCycleId(cycleId);
         setItemName(itemName);
         setItemDescription(itemDescription);
         setItemAmount(itemAmount);
