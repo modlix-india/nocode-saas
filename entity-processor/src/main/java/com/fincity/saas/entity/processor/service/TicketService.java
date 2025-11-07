@@ -166,11 +166,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ticket.setOwnerId(owner.getId());
 
-        if (owner.getName() != null && !ticket.getName().equals(owner.getName())) ticket.setName(owner.getName());
+        if (owner.getName() != null && !owner.getName().equals(ticket.getName())) ticket.setName(owner.getName());
 
-        if (owner.getEmail() != null && !ticket.getEmail().equals(owner.getEmail())) ticket.setEmail(owner.getEmail());
+        if (owner.getEmail() != null && !owner.getEmail().equals(ticket.getEmail())) ticket.setEmail(owner.getEmail());
 
-        if (owner.getPhoneNumber() != null && !ticket.getPhoneNumber().equals(owner.getPhoneNumber())) {
+        if (owner.getPhoneNumber() != null && !owner.getPhoneNumber().equals(ticket.getPhoneNumber())) {
             ticket.setDialCode(owner.getDialCode());
             ticket.setPhoneNumber(owner.getPhoneNumber());
         }
