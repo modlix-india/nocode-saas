@@ -169,10 +169,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> toggleLoggedInPartnerDnc() {
         return FlatMapUtil.flatMapMono(
                         this::getLoggedInPartner,
-                        partner -> super.update(partner.setDnc(!partner.getDnc())),
-                        (partner, uPartner) -> this.evictCache(partner),
-                        (partner, uPartner, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
+                        partner -> super.hasAccess(),
+                        (partner, access) -> super.update(access, partner.setDnc(!partner.getDnc())),
+                        (partner, access, uPartner) -> this.evictCache(partner),
+                        (partner, access, uPartner, evicted) -> this.ticketService
+                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
                                 .then(Mono.just(uPartner)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.toggleLoggedInPartnerDnc"));
     }
@@ -193,7 +194,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
                         (access, partner, updated) -> this.evictCache(partner),
                         (access, partner, updated, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(partner.getClientId(), !partner.getDnc())
+                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
                                 .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
