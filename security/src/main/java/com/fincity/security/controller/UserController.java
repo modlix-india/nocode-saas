@@ -196,7 +196,8 @@ public class UserController
     @GetMapping("/internal/clients")
     public Mono<ResponseEntity<List<User>>> getClientUsersInternal(
             @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
-        return this.service.readByClientIds(clientIds, queryParams).map(ResponseEntity::ok);
+
+        return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams).map(ResponseEntity::ok);
     }
 
     @GetMapping("/exists")

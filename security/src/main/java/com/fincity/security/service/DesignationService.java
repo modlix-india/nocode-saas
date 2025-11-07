@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -25,6 +26,8 @@ import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.dto.appregistration.AppRegistrationDesignation;
 import com.fincity.security.jooq.tables.records.SecurityDesignationRecord;
 
+import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -34,6 +37,9 @@ public class DesignationService
         extends AbstractJOOQUpdatableDataService<SecurityDesignationRecord, ULong, Designation, DesignationDAO> {
 
     private static final String DESIGNATION = "Designation";
+    private static final String FETCH_PARENT_DESIGNATION = "fetchParentDesignation";
+    private static final String FETCH_NEXT_DESIGNATION = "fetchNextDesignation";
+    private static final String FETCH_DEPARTMENT = "fetchDepartment";
 
     private static final String NAME = "name";
     private static final String DESCRIPTION = "description";
@@ -41,13 +47,21 @@ public class DesignationService
     private static final String NEXT_DESIGNATION_ID = "nextDesignationId";
     private static final String DEPARTMENT_ID = "departmentId";
 
+    private static final String CACHE_NAME_DESIGNATION = "designation";
+
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
+    private final DepartmentService departmentService;
+    private final CacheService cacheService;
 
     public DesignationService(SecurityMessageResourceService securityMessageResourceService,
-                              ClientService clientService) {
+                              ClientService clientService,
+                              DepartmentService departmentService,
+                              CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
+        this.departmentService = departmentService;
+        this.cacheService = cacheService;
     }
 
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
@@ -159,5 +173,29 @@ public class DesignationService
     public Mono<Boolean> canAssignDesignation(ULong clientId, ULong designationId) {
         if (designationId == null) return Mono.just(true);
         return this.dao.canAssignDesignation(clientId, designationId);
+    }
+
+    public Mono<Designation> readInternal(ULong designationId) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_DESIGNATION, () -> this.dao.readInternal(designationId), designationId);
+    }
+
+    public Mono<List<Designation>> fillDetails(List<Designation> designations, MultiValueMap<String, String> queryParams) {
+
+        boolean fetchParentDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARENT_DESIGNATION));
+        boolean fetchNextDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_NEXT_DESIGNATION));
+        boolean fetchDepartment = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_DEPARTMENT));
+
+        Flux<Designation> designationFlux = Flux.fromIterable(designations);
+
+        if (fetchParentDesignation)
+            designationFlux = designationFlux.filter(designation -> designation.getParentDesignationId() != null && designation.getParentDesignationId().intValue() != 0).flatMap(designation -> this.readInternal(designation.getParentDesignationId()).map(designation::setParentDesignation));
+
+        if (fetchNextDesignation)
+            designationFlux = designationFlux.filter(designation -> designation.getNextDesignationId() != null && designation.getNextDesignationId().intValue() != 0).flatMap(designation -> this.readInternal(designation.getNextDesignationId()).map(designation::setNextDesignation));
+
+        if (fetchDepartment)
+            designationFlux = designationFlux.filter(designation -> designation.getDepartmentId() != null && designation.getDepartmentId().intValue() != 0).flatMap(designation -> this.departmentService.readInternal(designation.getDepartmentId()).map(designation::setDepartment));
+
+        return designationFlux.collectList();
     }
 }

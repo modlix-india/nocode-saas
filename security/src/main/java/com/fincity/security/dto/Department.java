@@ -21,4 +21,6 @@ public class Department extends AbstractUpdatableDTO<ULong, ULong> {
     private String name;
     private String description;
     private ULong parentDepartmentId;
+
+    private Department parentDepartment;
 }
