@@ -742,7 +742,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                         (ca, uClientCode) -> this.readInternal(name, appCode, uClientCode, clientCode))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read"));
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).read (name, appCode, clientCode)"));
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String clientCode) {
