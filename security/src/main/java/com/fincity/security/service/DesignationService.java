@@ -121,7 +121,11 @@ public class DesignationService
 
                         managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                        (managed, canBeUpdated) -> super.update(entity)
+                        (managed, canBeUpdated) -> super.update(entity),
+                        (managed, canBeUpdated, updatedDesignation) ->
+                                this.cacheService
+                                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                                .thenReturn(updatedDesignation)
 
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
@@ -136,7 +140,10 @@ public class DesignationService
                         () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
 
                         canBeUpdated -> super.update(key, fields)
-
+                                .flatMap(updatedDesignation ->
+                                        this.cacheService
+                                                .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                                        .thenReturn(updatedDesignation))
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(

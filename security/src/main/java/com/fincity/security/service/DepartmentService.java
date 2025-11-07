@@ -108,8 +108,11 @@ public class DepartmentService
 
                         managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                        (managed, canBeUpdated) -> super.update(entity)
-
+                        (managed, canBeUpdated) -> super.update(entity),
+                        (managed, canBeUpdated, updatedDepartment) ->
+                                this.cacheService
+                                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                                .thenReturn(updatedDepartment)
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
@@ -121,7 +124,12 @@ public class DepartmentService
     public Mono<Department> update(ULong key, Map<String, Object> fields) {
         return this.dao.canBeUpdated(key)
                 .filter(BooleanUtil::safeValueOf)
-                .flatMap(x -> super.update(key, fields))
+                .flatMap(x -> super.update(key, fields)
+                        .flatMap(updatedDepartment ->
+                                this.cacheService
+                                        .evict(CACHE_NAME_DEPARTMENT,updatedDepartment.getId())
+                                .thenReturn(updatedDepartment))
+                )
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
     }
