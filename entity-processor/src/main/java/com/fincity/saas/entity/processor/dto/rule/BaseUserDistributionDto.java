@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -25,16 +26,17 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
     private ULong profileId;
     private ULong designationId;
 
-	protected BaseUserDistributionDto() {
-		super();
-	}
+    protected BaseUserDistributionDto() {
+        super();
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
+    }
 
-	protected BaseUserDistributionDto(BaseUserDistributionDto<T> userDistribution) {
-		super(userDistribution);
-		this.ruleId = userDistribution.ruleId;
-		this.userId = userDistribution.userId;
-		this.roleId = userDistribution.roleId;
-		this.profileId = userDistribution.profileId;
-		this.designationId = userDistribution.designationId;
-	}
+    protected BaseUserDistributionDto(BaseUserDistributionDto<T> userDistribution) {
+        super(userDistribution);
+        this.ruleId = userDistribution.ruleId;
+        this.userId = userDistribution.userId;
+        this.roleId = userDistribution.roleId;
+        this.profileId = userDistribution.profileId;
+        this.designationId = userDistribution.designationId;
+    }
 }

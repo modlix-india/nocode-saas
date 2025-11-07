@@ -1,25 +1,27 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
+import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
+import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
+import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import java.util.List;
-
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
-
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
-import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
-import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.service.product.ProductService;
-import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class BaseRuleService<
                 R extends UpdatableRecord<R>, D extends BaseRuleDto<D>, O extends BaseRuleDAO<R, D>>
@@ -46,6 +48,12 @@ public abstract class BaseRuleService<
         this.ruleExecutionService = ruleExecutionService;
     }
 
+    protected abstract <
+                    S extends UpdatableRecord<S>,
+                    E extends BaseUserDistributionDto<E>,
+                    P extends BaseUserDistributionDAO<S, E>>
+            BaseUserDistributionService<S, E, P> getUserDistributionService();
+
     @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
@@ -53,6 +61,12 @@ public abstract class BaseRuleService<
 
     @Override
     protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
+
+        if (entity.getCondition() == null || entity.getCondition().isEmpty())
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.RULE_CONDITION_MISSING,
+                    entity.getOrder());
 
         if (entity.getOrder() == null)
             return this.msgService.throwMessage(
@@ -116,27 +130,35 @@ public abstract class BaseRuleService<
         });
     }
 
-    @Override
-    public Mono<D> create(D entity) {
-
-        if (entity.getCondition() == null || entity.getCondition().isEmpty())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.RULE_CONDITION_MISSING,
-                    entity.getOrder());
-
-        return super.create(entity);
+    public Mono<D> createWithDistribution(RuleRequest<D> ruleRequest) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.create(access, ruleRequest.getEntity()),
+                        (access, entity) -> this.getUserDistributionService()
+                                .createDistributions(
+                                        access,
+                                        entity.getId(),
+                                        ruleRequest.getUserId(),
+                                        ruleRequest.getRoleId(),
+                                        ruleRequest.getProfileId(),
+                                        ruleRequest.getDesignationId())
+                                .then(Mono.just(entity)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.createWithDistribution"));
     }
 
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.readById(access, id),
-                (access, entity) ->
-                        this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
-                (access, entity, rules) ->
-                        this.shiftOrdersAndUpdate(access, entity, rules).then(super.deleteInternal(access, entity)));
+                        super::hasAccess,
+                        access -> super.readById(access, id),
+                        (access, entity) ->
+                                this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
+                        (access, entity, rules) -> this.shiftOrdersAndUpdate(access, entity, rules)
+                                .then(super.deleteInternal(access, entity)),
+                        (access, entity, rules, deleted) -> this.getUserDistributionService()
+                                .deleteByRuleId(access, id)
+                                .then(Mono.just(deleted)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
     }
 
     private Mono<Void> shiftOrdersAndUpdate(ProcessorAccess access, D entity, List<D> rules) {

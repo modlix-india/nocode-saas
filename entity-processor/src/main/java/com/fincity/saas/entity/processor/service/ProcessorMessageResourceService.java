@@ -58,7 +58,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String DUPLICATE_RULE_ORDER = "duplicate_rule_order";
     public static final String INVALID_RULE_ORDER = "invalid_rule_order";
     public static final String RULE_ORDER_MISSING = "rule_order_missing";
-	public static final String RULE_PRODUCT_MISSING = "rule_product_missing";
+    public static final String RULE_PRODUCT_MISSING = "rule_product_missing";
     public static final String RULE_CONDITION_MISSING = "rule_condition_missing";
     public static final String RULES_MISSING = "rules_missing";
 

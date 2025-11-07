@@ -1,26 +1,28 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
+import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
 import com.google.gson.JsonElement;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.Getter;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -33,9 +35,17 @@ public class ProductTicketCRuleService
 
     private StageService stageService;
 
+    @Getter
+    private TicketCUserDistributionService userDistributionService;
+
     @Autowired
     private void setStageService(StageService stageService) {
         this.stageService = stageService;
+    }
+
+    @Autowired
+    private void setUserDistributionService(TicketCUserDistributionService userDistributionService) {
+        this.userDistributionService = userDistributionService;
     }
 
     @Override
@@ -45,9 +55,48 @@ public class ProductTicketCRuleService
 
     @Override
     protected Mono<ProductTicketCRuleDto> checkEntity(ProductTicketCRuleDto entity, ProcessorAccess access) {
+
+        if (entity.getStageId() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.STAGE_MISSING);
+
         return FlatMapUtil.flatMapMono(() -> super.checkEntity(entity, access), cEntity -> this.stageService
                 .getStage(access, cEntity.getProductTemplateId(), cEntity.getStageId())
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.TEMPLATE_STAGE_INVALID,
+                        cEntity.getStageId(),
+                        cEntity.getProductTemplateId()))
                 .thenReturn(cEntity));
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(ProductTicketCRuleDto entity) {
+
+        if (entity.getProductId() != null)
+            return Mono.zip(
+                    super.evictCache(entity),
+                    super.cacheService.evict(
+                            this.getCacheName(),
+                            super.getCacheKey(
+                                    entity.getAppCode(),
+                                    entity.getClientCode(),
+                                    entity.getProductId(),
+                                    entity.getProductTemplateId(),
+                                    entity.getStageId())),
+                    (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
+
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(
+                                entity.getAppCode(),
+                                entity.getClientCode(),
+                                entity.getProductTemplateId(),
+                                entity.getStageId())),
+                (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
     }
 
     public Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrder(
