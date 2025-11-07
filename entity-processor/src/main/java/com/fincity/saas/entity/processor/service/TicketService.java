@@ -166,12 +166,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ticket.setOwnerId(owner.getId());
 
-        if (owner.getDialCode() != null && ticket.getDialCode() != null) ticket.setDialCode(owner.getDialCode());
+        if (owner.getName() != null && !owner.getName().equals(ticket.getName())) ticket.setName(owner.getName());
 
-        if (owner.getPhoneNumber() != null && ticket.getPhoneNumber() != null)
+        if (owner.getEmail() != null && !owner.getEmail().equals(ticket.getEmail())) ticket.setEmail(owner.getEmail());
+
+        if (owner.getPhoneNumber() != null && !owner.getPhoneNumber().equals(ticket.getPhoneNumber())) {
+            ticket.setDialCode(owner.getDialCode());
             ticket.setPhoneNumber(owner.getPhoneNumber());
-
-        if (owner.getEmail() != null && ticket.getEmail() != null) ticket.setEmail(owner.getEmail());
+        }
 
         return Mono.just(ticket).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketFromOwner"));
     }
