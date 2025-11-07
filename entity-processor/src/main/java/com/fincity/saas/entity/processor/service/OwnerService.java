@@ -65,16 +65,17 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
     }
 
-	@Override
-	public Mono<Owner> update(Owner entity) {
-		return FlatMapUtil.flatMapMono(
-				super::hasAccess,
-				access -> super.update(access, entity),
-				(access, updated) -> this.updateOwnerTickets(access, updated).thenReturn(updated))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.update"));
-	}
+    @Override
+    public Mono<Owner> update(Owner entity) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.update(access, entity),
+                        (access, updated) ->
+                                this.updateOwnerTickets(access, updated).thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.update"));
+    }
 
-	public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
+    public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getOwnerId() != null)
             return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
@@ -93,8 +94,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     public Mono<Ticket> updateTicketOwner(ProcessorAccess access, Ticket ticket) {
-        return this.readById(ticket.getOwnerId())
-		        .flatMap(owner -> {
+        return this.readById(ticket.getOwnerId()).flatMap(owner -> {
             owner.setName(ticket.getName());
             owner.setEmail(ticket.getEmail());
             return this.update(access, owner).thenReturn(ticket);

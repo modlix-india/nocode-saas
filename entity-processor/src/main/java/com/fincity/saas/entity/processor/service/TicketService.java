@@ -1,12 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import java.util.Objects;
-
-import org.jooq.types.ULong;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.CloneUtil;
@@ -34,7 +27,11 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
-
+import java.util.Objects;
+import org.jooq.types.ULong;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -180,11 +177,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Flux<Ticket> updateOwnerTickets(ProcessorAccess access, Owner owner) {
-	    return this.dao.getAllOwnerTickets(owner.getId())
-			    .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner))
-			    .transform(tickets -> super.updateAll(access, tickets))
-			    .flatMap(updatedTicket -> this.evictCache(updatedTicket).thenReturn(updatedTicket))
-			    .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
+        return this.dao
+                .getAllOwnerTickets(owner.getId())
+                .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner))
+                .transform(tickets -> super.updateAll(access, tickets))
+                .flatMap(updatedTicket -> this.evictCache(updatedTicket).thenReturn(updatedTicket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
     @Override
@@ -247,15 +245,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
     }
 
-	@Override
-	public Mono<Ticket> update(Ticket entity) {
-		return FlatMapUtil.flatMapMono(
-				super::hasAccess,
-				access -> super.update(access, entity),
-				this.ownerService::updateTicketOwner);
-	}
+    @Override
+    public Mono<Ticket> update(Ticket entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, access -> super.update(access, entity), this.ownerService::updateTicketOwner);
+    }
 
-	public Mono<Ticket> createForCampaign(CampaignTicketRequest cTicketRequest) {
+    public Mono<Ticket> createForCampaign(CampaignTicketRequest cTicketRequest) {
 
         ProcessorAccess access =
                 ProcessorAccess.of(cTicketRequest.getAppCode(), cTicketRequest.getClientCode(), true, null, null);
@@ -589,11 +585,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
-	    return this.dao.getAllClientTicketsByDnc(clientId, !dnc)
-			    .map(ticket -> ticket.setDnc(dnc))
-			    .transform(tickets -> super.updateAll(access, tickets))
-			    .flatMap(uTicket -> super.evictCache(uTicket).thenReturn(uTicket))
-			    .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
+        return this.dao
+                .getAllClientTicketsByDnc(clientId, !dnc)
+                .map(ticket -> ticket.setDnc(dnc))
+                .transform(tickets -> super.updateAll(access, tickets))
+                .flatMap(uTicket -> super.evictCache(uTicket).thenReturn(uTicket))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 
     public Mono<ProductComm> getTicketProductComm(

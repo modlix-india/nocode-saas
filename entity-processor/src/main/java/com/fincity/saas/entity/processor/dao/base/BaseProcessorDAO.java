@@ -16,7 +16,6 @@ import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
