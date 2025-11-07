@@ -260,7 +260,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
 
                 this::applyOverride)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal (id)"));
     }
 
     @Override
@@ -746,9 +746,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String clientCode) {
-        return this.readInternal(name, appCode, clientCode, clientCode)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        ABSTRACT_OVERRIDABLE_SERVICE + this.getObjectName() + "Service).readInternal"));
+        return this.readInternal(name, appCode, clientCode, clientCode);
     }
 
     protected Mono<ObjectWithUniqueID<D>> readInternal(String name, String appCode, String urlClientCode,
@@ -792,7 +790,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                                 new ObjectWithUniqueID<>(mEntity, checksumCode), key);
 
                     return this.applyChange(name, appCode, clientCode, clonedEntity, checksumCode);
-                });
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, this.getObjectName() + "Service).readInternal (name, appCode, clientCode)"));
     }
 
     protected Mono<D> readIfExistsInBase(String name, String appCode, String urlClientCode, String clientCode) {
@@ -806,7 +804,7 @@ public abstract class AbstractOverridableDataService<D extends AbstractOverridab
                             if (lst.isEmpty())
                                 return Mono.empty();
                             if (lst.size() == 1)
-                                return Mono.just(lst.get(0));
+                                return Mono.just(lst.getFirst());
 
                             for (D item : lst) {
                                 if (clientCode.equals(item.getClientCode()))
