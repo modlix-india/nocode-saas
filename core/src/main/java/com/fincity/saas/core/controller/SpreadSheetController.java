@@ -1,9 +1,11 @@
 package com.fincity.saas.core.controller;
 
-import com.fincity.saas.commons.file.DataFileWriter;
-import com.fincity.saas.core.dto.SpreadSheetCreateRequest;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.data.util.StreamUtils;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
@@ -13,13 +15,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
 
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.fincity.saas.commons.file.DataFileWriter;
+import com.fincity.saas.core.dto.SpreadSheetCreateRequest;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("api/core/spreadsheet")
@@ -51,7 +53,8 @@ public class SpreadSheetController {
                 int i = request.isSkipHeader() ? 1 : 0;
                 request.setSkipHeader(true);
                 headers = new ArrayList<>();
-                for (int j = 0; j < firstElement.getAsJsonArray().size(); j++) headers.add("" + j);
+                for (int j = 0; j < firstElement.getAsJsonArray().size(); j++)
+                    headers.add("" + j);
 
                 StreamUtils.createStreamFromIterator(jsonElement.getAsJsonArray().iterator()).skip(i).map(e -> {
                     Map<String, Object> row = new HashMap<>();
@@ -71,13 +74,15 @@ public class SpreadSheetController {
 
                 StreamUtils.createStreamFromIterator(jsonElement.getAsJsonArray().iterator()).map(e -> {
                     Map<String, Object> row = new HashMap<>();
-                    e.getAsJsonObject().entrySet().forEach(entry -> row.put(entry.getKey(), entry.getValue().getAsString()));
+                    e.getAsJsonObject().entrySet()
+                            .forEach(entry -> row.put(entry.getKey(), entry.getValue().getAsString()));
                     return row;
                 }).forEach(rows::add);
             }
         } else if (jsonElement.isJsonObject()) {
             boolean noHeaders = headers == null || headers.isEmpty();
-            if (noHeaders) headers = new ArrayList<>();
+            if (headers == null || headers.isEmpty())
+                headers = new ArrayList<>();
             Map<String, Object> row = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : jsonElement.getAsJsonObject().entrySet()) {
                 if (noHeaders) {
@@ -88,9 +93,7 @@ public class SpreadSheetController {
             rows.add(row);
         }
 
-        try {
-            DataFileWriter writer = new DataFileWriter(headers, request.getType(), bAOS, !request.isSkipHeader());
-
+        try (DataFileWriter writer = new DataFileWriter(headers, request.getType(), bAOS, !request.isSkipHeader())) {
             for (Map<String, Object> row : rows) {
                 writer.write(row);
             }
@@ -105,7 +108,9 @@ public class SpreadSheetController {
 
         response.getHeaders().setContentDisposition(ContentDisposition
                 .builder(request.isDownloadable() ? "attachment" : "inline")
-                .filename(request.getName() == null ? "spreadSheet." + request.getType().name().toLowerCase() : request.getName()).build());
+                .filename(request.getName() == null ? "spreadSheet." + request.getType().name().toLowerCase()
+                        : request.getName())
+                .build());
 
         return zeroCopyResponse.writeWith(Mono.just(response.bufferFactory()
                 .wrap(bytes)));

@@ -32,7 +32,7 @@ public class GatewayConfiguration extends AbstractBaseConfiguration {
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else
                 log.debug(v);
         }));

@@ -8,7 +8,9 @@ import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.service.MessageResourceService;
 import jakarta.annotation.PostConstruct;
+
 import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -34,7 +36,8 @@ public class MessageConfiguration extends AbstractJooqBaseConfiguration implemen
         super.initialize(messageResourceService);
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
-            if (name != null) log.debug("{} - {}", name, v.length() > 500 ? v.substring(0, 500) + "..." : v);
+            if (name != null)
+                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else log.debug(v);
         }));
     }
