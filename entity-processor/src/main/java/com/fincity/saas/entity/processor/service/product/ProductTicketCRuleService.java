@@ -1,21 +1,26 @@
 package com.fincity.saas.entity.processor.service.product;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
-import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.service.product.template.ProductTemplateTicketCRuleService;
+import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.google.gson.JsonElement;
-import java.util.List;
-import java.util.Set;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -26,36 +31,11 @@ public class ProductTicketCRuleService
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
-    private ProductService productService;
-    private ProductTemplateTicketCRuleService productTemplateTicketCRuleService;
+    private StageService stageService;
 
-    @Lazy
     @Autowired
-    private void setProductService(ProductService productService) {
-        this.productService = productService;
-    }
-
-    @Lazy
-    @Autowired
-    private void setProductTemplateTicketCRuleService(
-            ProductTemplateTicketCRuleService productTemplateTicketCRuleService) {
-        this.productTemplateTicketCRuleService = productTemplateTicketCRuleService;
-    }
-
-    @Override
-    protected Mono<Identity> getEntityId(ProcessorAccess access, Identity entityId) {
-        return productService.checkAndUpdateIdentityWithAccess(access, entityId);
-    }
-
-    @Override
-    protected Mono<Set<ULong>> getStageIds(ProcessorAccess access, Identity entityId, List<ULong> stageIds) {
-        return FlatMapUtil.flatMapMono(
-                        () -> productService.readIdentityInternal(entityId),
-                        product -> super.stageService.getAllStages(
-                                access,
-                                product.getProductTemplateId(),
-                                stageIds != null ? stageIds.toArray(new ULong[0]) : null))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getStageIds"));
+    private void setStageService(StageService stageService) {
+        this.stageService = stageService;
     }
 
     @Override
@@ -63,10 +43,96 @@ public class ProductTicketCRuleService
         return PRODUCT_TICKET_C_RULE;
     }
 
+    @Override
+    protected Mono<ProductTicketCRuleDto> checkEntity(ProductTicketCRuleDto entity, ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(() -> super.checkEntity(entity, access), cEntity -> this.stageService
+                .getStage(access, cEntity.getProductTemplateId(), cEntity.getStageId())
+                .thenReturn(cEntity));
+    }
+
+    public Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrder(
+            ProcessorAccess access, ULong productId, ULong stageId) {
+
+        return super.productService
+                .readById(access, productId)
+                .flatMap(product -> product.isOverrideTemplate()
+                        ? this.getRulesWithOrderWithTemplateOverride(access, product, stageId)
+                        : this.getRulesWithOrderWithTemplateCombine(access, product, stageId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.getRulesWithOrder"));
+    }
+
+    private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateOverride(
+            ProcessorAccess access, Product product, ULong stageId) {
+
+        if (!product.isOverrideTemplate()) return Mono.empty();
+
+        return this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+                .switchIfEmpty(this.getProductTemplateRules(access, product.getProductTemplateId(), stageId));
+    }
+
+    private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateCombine(
+            ProcessorAccess access, Product product, ULong stageId) {
+
+        if (!product.isOverrideTemplate()) return Mono.empty();
+
+        return Mono.zip(
+                this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+                        .switchIfEmpty(Mono.just(Map.of())),
+                this.getProductTemplateRules(access, product.getProductTemplateId(), stageId)
+                        .switchIfEmpty(Mono.just(Map.of())),
+                (rules, templateRules) -> {
+                    int totalSize = rules.size() + templateRules.size();
+                    Map<Integer, ProductTicketCRuleDto> combined = new LinkedHashMap<>(totalSize);
+
+                    AtomicInteger orderCounter = new AtomicInteger(totalSize - 1);
+
+                    rules.entrySet().stream()
+                            .sorted(Map.Entry.<Integer, ProductTicketCRuleDto>comparingByKey()
+                                    .reversed())
+                            .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
+
+                    templateRules.entrySet().stream()
+                            .sorted(Map.Entry.<Integer, ProductTicketCRuleDto>comparingByKey()
+                                    .reversed())
+                            .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
+
+                    return combined;
+                });
+    }
+
+    private Mono<Map<Integer, ProductTicketCRuleDto>> getProductRules(
+            ProcessorAccess access, ULong productId, ULong productTemplateId, ULong stageId) {
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao
+                        .getRules(access, productId, productTemplateId, stageId)
+                        .map(rules -> rules.stream()
+                                .collect(Collectors.toMap(ProductTicketCRuleDto::getOrder, Function.identity()))),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, productTemplateId, stageId));
+    }
+
+    private Mono<Map<Integer, ProductTicketCRuleDto>> getProductTemplateRules(
+            ProcessorAccess access, ULong productTemplateId, ULong stageId) {
+
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao
+                        .getRules(access, null, productTemplateId, stageId)
+                        .map(rules -> rules.stream()
+                                .collect(Collectors.toMap(ProductTicketCRuleDto::getOrder, Function.identity()))),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, stageId));
+    }
+
     public Mono<ULong> getUserAssignment(
-            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
+            ProcessorAccess access,
+            ULong productId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.getRulesWithOrder(access, entityId, stageId),
+                        () -> this.getRulesWithOrder(access, productId, stageId),
                         productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
                         (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
                         (productRule, eRule, uRule) -> {
@@ -74,17 +140,7 @@ public class ProductTicketCRuleService
                             if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
                             return Mono.just(assignedUserId);
                         })
-                .switchIfEmpty(this.getUserAssignmentFromTemplate(access, entityId, stageId, tokenPrefix, userId, data))
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
-    }
-
-    private Mono<ULong> getUserAssignmentFromTemplate(
-            ProcessorAccess access, ULong entityId, ULong stageId, String tokenPrefix, ULong userId, JsonElement data) {
-        return FlatMapUtil.flatMapMono(
-                        () -> productService.readById(entityId),
-                        product -> this.productTemplateTicketCRuleService.getUserAssignment(
-                                access, product.getProductTemplateId(), stageId, tokenPrefix, userId, data))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignmentFromTemplate"));
     }
 }

@@ -26,7 +26,7 @@ import lombok.experimental.FieldNameConstants;
 @FieldNameConstants
 public abstract class BaseRuleDto<T extends BaseRuleDto<T>> extends BaseUpdatableDto<T> {
 
-	private static final int DEFAULT_ORDER = BigInteger.ZERO.intValue();
+	public static final int DEFAULT_ORDER = BigInteger.ZERO.intValue();
 
     @Serial
     private static final long serialVersionUID = 3634716140733876196L;

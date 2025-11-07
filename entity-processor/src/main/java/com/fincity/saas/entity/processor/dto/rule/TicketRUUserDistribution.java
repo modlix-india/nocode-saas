@@ -13,7 +13,7 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class TicketRUUserDistribution extends BaseUserDistribution<TicketRUUserDistribution> {
+public class TicketRUUserDistribution extends BaseUserDistributionDto<TicketRUUserDistribution> {
 
     @Serial
     private static final long serialVersionUID = 6659011787175377491L;

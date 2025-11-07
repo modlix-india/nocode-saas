@@ -27,27 +27,4 @@ public abstract class BaseRuleController<
 
     private static final String ORDER_PATH_ID = REQ_PATH_ID + "/order";
 
-    @PostMapping(ORDER_PATH_ID)
-    public Mono<ResponseEntity<Map<Integer, D>>> createWithOrder(
-            @PathVariable(PATH_VARIABLE_ID) Identity entityId, @RequestBody Map<Integer, D> ruleRequests) {
-        return this.service.createWithOrder(entityId, ruleRequests).map(ResponseEntity::ok);
-    }
-
-    @PutMapping(ORDER_PATH_ID)
-    public Mono<ResponseEntity<Map<Integer, D>>> updateOrder(
-            @PathVariable(PATH_VARIABLE_ID) Identity entityId, @RequestBody Map<Integer, Identity> ruleRequests) {
-        return this.service.updateOrder(entityId, ruleRequests).map(ResponseEntity::ok);
-    }
-
-    @GetMapping(ORDER_PATH_ID)
-    public Mono<ResponseEntity<Map<Integer, D>>> getRulesWithOrder(
-            @PathVariable(PATH_VARIABLE_ID) Identity entityId,
-            @RequestParam(required = false) List<ULong> stageIds,
-            @RequestParam(required = false) Boolean includeDefault) {
-        return this.service
-                .getRulesWithOrder(entityId, stageIds, includeDefault)
-                .map(ResponseEntity::ok)
-                .switchIfEmpty(
-                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
-    }
 }

@@ -28,7 +28,7 @@ public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRu
     public Mono<List<D>> getRules(
             AbstractCondition condition, ProcessorAccess access, ULong productId, ULong productTemplateId) {
 		return FlatMapUtil.flatMapMono(
-				() -> this.getBaseConditions(condition, access, productId, productTemplateId),
+				() -> this.getBaseConditions(condition, access, productId, productTemplateId, null),
 				super::filter,
 				(pCondition, jCondition) -> Flux.from(
 								dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
@@ -36,18 +36,30 @@ public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRu
 						.collectList());
 	}
 
+	public Mono<D> getRule(
+			AbstractCondition condition, ProcessorAccess access, ULong productId, ULong productTemplateId, Integer order) {
+		return FlatMapUtil.flatMapMono(
+				() -> this.getBaseConditions(condition, access, productId, productTemplateId, order),
+				super::filter,
+				(pCondition, jCondition) -> Mono.from(
+								dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
+						.map(rec -> rec.into(this.pojoClass)));
+	}
+
     private Mono<AbstractCondition> getBaseConditions(
-            AbstractCondition condition, ProcessorAccess access, ULong productId, ULong productTemplateId) {
+            AbstractCondition condition, ProcessorAccess access, ULong productId, ULong productTemplateId, Integer order) {
         AbstractCondition productCondition = FilterCondition.make(BaseRuleDto.Fields.productId, productId);
         AbstractCondition productTemplateCondition =
                 FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId);
 
+		AbstractCondition orderCondition = FilterCondition.make(BaseRuleDto.Fields.order, order);
+
         if (condition == null) {
             return super.processorAccessCondition(
-                    ComplexCondition.and(productCondition, productTemplateCondition), access);
+                    ComplexCondition.and(productCondition, productTemplateCondition, orderCondition), access);
         } else {
             return super.processorAccessCondition(
-                    ComplexCondition.and(condition, productCondition, productTemplateCondition), access);
+                    ComplexCondition.and(condition, productCondition, productTemplateCondition, orderCondition), access);
         }
     }
 }

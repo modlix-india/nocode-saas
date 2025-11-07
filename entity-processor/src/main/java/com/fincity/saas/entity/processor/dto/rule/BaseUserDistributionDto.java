@@ -14,7 +14,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseUserDistribution<T extends BaseUserDistribution<T>> extends BaseUpdatableDto<T> {
+public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<T>> extends BaseUpdatableDto<T> {
 
     @Serial
     private static final long serialVersionUID = 3292745048951337839L;
@@ -25,11 +25,11 @@ public abstract class BaseUserDistribution<T extends BaseUserDistribution<T>> ex
     private ULong profileId;
     private ULong designationId;
 
-	protected BaseUserDistribution() {
+	protected BaseUserDistributionDto() {
 		super();
 	}
 
-	protected BaseUserDistribution(BaseUserDistribution<T> userDistribution) {
+	protected BaseUserDistributionDto(BaseUserDistributionDto<T> userDistribution) {
 		super(userDistribution);
 		this.ruleId = userDistribution.ruleId;
 		this.userId = userDistribution.userId;
