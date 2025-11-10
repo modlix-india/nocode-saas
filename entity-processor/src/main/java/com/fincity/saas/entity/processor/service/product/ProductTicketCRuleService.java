@@ -131,7 +131,7 @@ public class ProductTicketCRuleService
                         .switchIfEmpty(Mono.just(Map.of())),
                 (rules, templateRules) -> {
                     int totalSize = rules.size() + templateRules.size();
-                    Map<Integer, ProductTicketCRuleDto> combined = new LinkedHashMap<>(totalSize);
+                    Map<Integer, ProductTicketCRuleDto> combined = LinkedHashMap.newLinkedHashMap(totalSize);
 
                     AtomicInteger orderCounter = new AtomicInteger(totalSize - 1);
 
@@ -182,7 +182,8 @@ public class ProductTicketCRuleService
             JsonElement data) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getRulesWithOrder(access, productId, stageId),
-                        productRule -> super.ruleExecutionService.executeRules(productRule, tokenPrefix, userId, data),
+                        productRule ->
+                                super.ruleExecutionService.executeRules(access, productRule, tokenPrefix, userId, data),
                         (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
                         (productRule, eRule, uRule) -> {
                             ULong assignedUserId = uRule.getLastAssignedUserId();
