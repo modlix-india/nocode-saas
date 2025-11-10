@@ -166,23 +166,24 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ticket.setOwnerId(owner.getId());
 
-        if (owner.getDialCode() != null && ticket.getDialCode() != null) ticket.setDialCode(owner.getDialCode());
+        if (owner.getName() != null && !owner.getName().equals(ticket.getName())) ticket.setName(owner.getName());
 
-        if (owner.getPhoneNumber() != null && ticket.getPhoneNumber() != null)
+        if (owner.getEmail() != null && !owner.getEmail().equals(ticket.getEmail())) ticket.setEmail(owner.getEmail());
+
+        if (owner.getPhoneNumber() != null && !owner.getPhoneNumber().equals(ticket.getPhoneNumber())) {
+            ticket.setDialCode(owner.getDialCode());
             ticket.setPhoneNumber(owner.getPhoneNumber());
-
-        if (owner.getEmail() != null && ticket.getEmail() != null) ticket.setEmail(owner.getEmail());
+        }
 
         return Mono.just(ticket).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketFromOwner"));
     }
 
-    public Flux<Ticket> updateOwnerTickets(Owner owner) {
-        Flux<Ticket> ticketsFlux =
-                this.dao.getAllOwnerTickets(owner.getId()).flatMap(ticket -> this.updateTicketFromOwner(ticket, owner));
-
+    public Flux<Ticket> updateOwnerTickets(ProcessorAccess access, Owner owner) {
         return this.dao
-                .updateAll(ticketsFlux)
-                .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
+                .getAllOwnerTickets(owner.getId())
+                .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner))
+                .transform(tickets -> super.updateAll(access, tickets))
+                .flatMap(updatedTicket -> this.evictCache(updatedTicket).thenReturn(updatedTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
@@ -202,7 +203,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
                     if (onlyStageStatusUpdate) return Mono.just(existing);
 
-                    return this.ownerService.updateOwner(existing);
+                    return Mono.just(existing);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
@@ -244,6 +245,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (access, productIdentity, isDuplicate, pTicket, created, noteCreated) ->
                                 this.activityService.acCreate(created).thenReturn(created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.create[TicketRequest]"));
+    }
+
+    @Override
+    public Mono<Ticket> update(Ticket entity) {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess, access -> super.update(access, entity), this.ownerService::updateTicketOwner);
     }
 
     public Mono<Ticket> createForCampaign(CampaignTicketRequest cTicketRequest) {
@@ -579,13 +586,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
-    public Flux<Ticket> updateTicketDncByClientId(ULong clientId, Boolean dnc) {
-        Flux<Ticket> tickets =
-                this.dao.getAllClientTicketsByDnc(clientId, !dnc).flatMap(ticket -> Mono.just(ticket.setDnc(dnc)));
-
+    public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
         return this.dao
-                .updateAll(tickets)
-                .flatMap(uTicket -> super.evictCache(uTicket).map(updated -> uTicket))
+                .getAllClientTicketsByDnc(clientId, !dnc)
+                .map(ticket -> ticket.setDnc(dnc))
+                .transform(tickets -> super.updateAll(access, tickets))
+                .flatMap(uTicket -> super.evictCache(uTicket).thenReturn(uTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 

@@ -54,7 +54,6 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
                     return Mono.just(existing);
                 })
-                .flatMap(this::updateTickets)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updatableEntity"));
     }
 
@@ -64,6 +63,16 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                         access -> this.checkDuplicate(access, ownerRequest),
                         (access, isDuplicate) -> super.create(access, Owner.of(ownerRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
+    }
+
+    @Override
+    public Mono<Owner> update(Owner entity) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.update(access, entity),
+                        (access, updated) ->
+                                this.updateOwnerTickets(access, updated).thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.update"));
     }
 
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
@@ -76,19 +85,19 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
     }
 
-    private Mono<Owner> updateTickets(Owner owner) {
+    private Mono<Owner> updateOwnerTickets(ProcessorAccess access, Owner owner) {
         return this.ticketService
-                .updateOwnerTickets(owner)
+                .updateOwnerTickets(access, owner)
                 .collectList()
                 .map(tickets -> owner)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
     }
 
-    public Mono<Ticket> updateOwner(Ticket ticket) {
+    public Mono<Ticket> updateTicketOwner(ProcessorAccess access, Ticket ticket) {
         return this.readById(ticket.getOwnerId()).flatMap(owner -> {
             owner.setName(ticket.getName());
             owner.setEmail(ticket.getEmail());
-            return this.dao.update(owner).thenReturn(ticket);
+            return this.update(access, owner).thenReturn(ticket);
         });
     }
 
