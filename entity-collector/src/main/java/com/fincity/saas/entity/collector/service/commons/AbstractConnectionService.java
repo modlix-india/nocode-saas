@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
 public abstract class AbstractConnectionService {
 
     private static final String CACHE_NAME_REST_OAUTH2 = "RestOAuthToken";
@@ -40,10 +43,23 @@ public abstract class AbstractConnectionService {
     }
 
     private Mono<String> getCoreToken(String appCode, String clientCode, String connectionName) {
-        return this.cacheService.cacheValueOrGet(
-                CACHE_NAME_REST_OAUTH2,
-                () -> coreService.getConnectionOAuth2Token( clientCode, appCode, connectionName ),
-                this.getCacheKey(connectionName, clientCode, appCode));
+
+        return this.cacheService
+                .<Map<String, Object>>get(CACHE_NAME_REST_OAUTH2, this.getCacheKey(connectionName, clientCode, appCode))
+                .flatMap(coreToken -> {
+
+                    Object expObj = coreToken.get("expiresAt");
+                    LocalDateTime expiresAt = (expObj instanceof LocalDateTime) ? (LocalDateTime) expObj : null;
+                    boolean valid = (expiresAt == null) || expiresAt.isAfter(LocalDateTime.now());
+
+                    if (valid) {
+                        Object tokenObj = coreToken.get("token");
+                        return Mono.justOrEmpty(tokenObj).map(Object::toString);
+                    }
+
+                    return this.getConnectionOAuth2Token(appCode, clientCode, connectionName);
+                })
+                .switchIfEmpty(this.getConnectionOAuth2Token(appCode, clientCode, connectionName));
     }
 
     private String getCacheKey(String... entityNames) {
