@@ -33,6 +33,7 @@ public abstract class BaseUserDistributionService<
         extends BaseUpdatableService<R, D, O> {
 
     private static final String USER_DISTRIBUTION = "userDistribution";
+    private static final String USER_DISTRIBUTION_MAPS = "userDistributionMaps";
 
     @Override
     protected boolean canOutsideCreate() {
@@ -51,6 +52,10 @@ public abstract class BaseUserDistributionService<
 
     private String getUserDistributionCacheName(String appCode, String clientCode) {
         return super.getCacheKey(appCode, clientCode, USER_DISTRIBUTION);
+    }
+
+    private String getUserDistributionMapCacheKey() {
+        return USER_DISTRIBUTION_MAPS;
     }
 
     @Override
@@ -178,27 +183,27 @@ public abstract class BaseUserDistributionService<
         return super.cacheService.cacheValueOrGet(
                 this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
                 () -> this.getAllUserForClient(access).map(this::buildMaps),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), "USER_MAPS"));
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), this.getUserDistributionMapCacheKey()));
     }
 
     private UserMaps buildMaps(List<EntityProcessorUser> users) {
 
-        Map<ULong, Set<ULong>> role = new HashMap<>();
-        Map<ULong, Set<ULong>> profile = new HashMap<>();
-        Map<ULong, Set<ULong>> desig = new HashMap<>();
-        Map<ULong, Set<ULong>> dept = new HashMap<>();
+        Map<ULong, Set<ULong>> roles = new HashMap<>();
+        Map<ULong, Set<ULong>> profiles = new HashMap<>();
+        Map<ULong, Set<ULong>> designations = new HashMap<>();
+        Map<ULong, Set<ULong>> departments = new HashMap<>();
 
-        if (users == null || users.isEmpty()) return new UserMaps(role, profile, desig, dept);
+        if (users == null || users.isEmpty()) return new UserMaps(roles, profiles, designations, departments);
 
         for (EntityProcessorUser u : users) {
             ULong userId = ULong.valueOf(u.getId());
-            this.addToMap(role, u.getRoleId(), userId);
-	        this.addToMap(desig, u.getDesignationId(), userId);
-	        this.addToMap(dept, u.getDepartmentId(), userId);
-	        this.addListToMap(profile, u.getProfileIds(), userId);
+            this.addToMap(roles, u.getRoleId(), userId);
+            this.addToMap(designations, u.getDesignationId(), userId);
+            this.addToMap(departments, u.getDepartmentId(), userId);
+            this.addListToMap(profiles, u.getProfileIds(), userId);
         }
 
-        return new UserMaps(role, profile, desig, dept);
+        return new UserMaps(roles, profiles, designations, departments);
     }
 
     private void addToMap(Map<ULong, Set<ULong>> map, Long key, ULong userId) {
@@ -208,10 +213,7 @@ public abstract class BaseUserDistributionService<
 
     private void addListToMap(Map<ULong, Set<ULong>> map, Set<Long> keys, ULong userId) {
         if (keys == null) return;
-        for (Long key : keys) {
-            if (key != null)
-                map.computeIfAbsent(ULong.valueOf(key), k -> new HashSet<>()).add(userId);
-        }
+        keys.stream().filter(Objects::nonNull).forEach(key -> this.addToMap(map, key, userId));
     }
 
     private Mono<List<D>> getUserDistributions(ProcessorAccess access, ULong ruleId) {

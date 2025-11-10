@@ -17,5 +17,5 @@ public class RuleRequest<D extends BaseRuleDto<D>> {
     private List<ULong> roleIds;
     private List<ULong> profileIds;
     private List<ULong> designationIds;
-	private List<ULong> departmentIds;
+    private List<ULong> departmentIds;
 }

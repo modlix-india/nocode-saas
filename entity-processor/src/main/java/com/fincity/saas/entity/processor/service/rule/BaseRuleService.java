@@ -142,7 +142,7 @@ public abstract class BaseRuleService<
                                         ruleRequest.getRoleIds(),
                                         ruleRequest.getProfileIds(),
                                         ruleRequest.getDesignationIds(),
-		                                ruleRequest.getDepartmentIds())
+                                        ruleRequest.getDepartmentIds())
                                 .then(Mono.just(entity)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.createWithDistribution"));
     }
