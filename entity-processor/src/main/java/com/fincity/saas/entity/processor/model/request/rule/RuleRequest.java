@@ -13,8 +13,9 @@ import org.jooq.types.ULong;
 public class RuleRequest<D extends BaseRuleDto<D>> {
 
     private D entity;
-    private List<ULong> userId;
-    private List<ULong> roleId;
-    private List<ULong> profileId;
-    private List<ULong> designationId;
+    private List<ULong> userIds;
+    private List<ULong> roleIds;
+    private List<ULong> profileIds;
+    private List<ULong> designationIds;
+	private List<ULong> departmentIds;
 }

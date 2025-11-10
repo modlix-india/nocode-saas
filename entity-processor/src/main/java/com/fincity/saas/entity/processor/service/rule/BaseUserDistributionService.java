@@ -2,6 +2,8 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
+import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
@@ -10,8 +12,12 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.util.ReflectionUtil;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -26,9 +32,25 @@ public abstract class BaseUserDistributionService<
                 O extends BaseUserDistributionDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
+    private static final String USER_DISTRIBUTION = "userDistribution";
+
     @Override
     protected boolean canOutsideCreate() {
         return Boolean.FALSE;
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(D entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
+                (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted);
+    }
+
+    private String getUserDistributionCacheName(String appCode, String clientCode) {
+        return super.getCacheKey(appCode, clientCode, USER_DISTRIBUTION);
     }
 
     @Override
@@ -38,6 +60,7 @@ public abstract class BaseUserDistributionService<
             else if (existing.getRoleId() != null) existing.setRoleId(entity.getRoleId());
             else if (existing.getProfileId() != null) existing.setProfileId(entity.getProfileId());
             else if (existing.getDesignationId() != null) existing.setDesignationId(entity.getDesignationId());
+            else if (existing.getDepartmentId() != null) existing.setDepartmentId(entity.getDepartmentId());
 
             return Mono.just(existing);
         });
@@ -61,7 +84,8 @@ public abstract class BaseUserDistributionService<
             List<ULong> userIds,
             List<ULong> roleIds,
             List<ULong> profileIds,
-            List<ULong> designationIds) {
+            List<ULong> designationIds,
+            List<ULong> departmentIds) {
 
         if (ruleId == null) return this.throwFluxMissingParam(BaseUserDistributionDto.Fields.ruleId);
 
@@ -71,6 +95,7 @@ public abstract class BaseUserDistributionService<
         this.addDistributionItems(items, roleIds, BaseUserDistributionDto::setRoleId);
         this.addDistributionItems(items, profileIds, BaseUserDistributionDto::setProfileId);
         this.addDistributionItems(items, designationIds, BaseUserDistributionDto::setDesignationId);
+        this.addDistributionItems(items, departmentIds, BaseUserDistributionDto::setDepartmentId);
 
         if (items.isEmpty()) return this.throwFluxMissingParam("distributionIds");
 
@@ -98,52 +123,6 @@ public abstract class BaseUserDistributionService<
             ids.stream().filter(Objects::nonNull).forEach(id -> items.add(new DistributionItem<>(id, setter)));
     }
 
-    public Flux<D> createUserDistributions(ULong ruleId, List<ULong> userIds) {
-        return this.createDistributionsByType(
-                        ruleId, userIds, BaseUserDistributionDto.Fields.userId, BaseUserDistributionDto::setUserId)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.createUserDistributions"));
-    }
-
-    public Flux<D> createRoleDistributions(ULong ruleId, List<ULong> roleIds) {
-        return this.createDistributionsByType(
-                        ruleId, roleIds, BaseUserDistributionDto.Fields.roleId, BaseUserDistributionDto::setRoleId)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.createRoleDistributions"));
-    }
-
-    public Flux<D> createProfileDistributions(ULong ruleId, List<ULong> profileIds) {
-        return this.createDistributionsByType(
-                        ruleId,
-                        profileIds,
-                        BaseUserDistributionDto.Fields.profileId,
-                        BaseUserDistributionDto::setProfileId)
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.createProfileDistributions"));
-    }
-
-    public Flux<D> createDesignationDistributions(ULong ruleId, List<ULong> designationIds) {
-        return this.createDistributionsByType(
-                        ruleId,
-                        designationIds,
-                        BaseUserDistributionDto.Fields.designationId,
-                        BaseUserDistributionDto::setDesignationId)
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.createDesignationDistributions"));
-    }
-
-    private Flux<D> createDistributionsByType(
-            ULong ruleId, List<ULong> ids, String fieldName, BiConsumer<D, ULong> setter) {
-
-        if (ruleId == null) return this.throwFluxMissingParam(BaseUserDistributionDto.Fields.ruleId);
-
-        if (ids == null || ids.isEmpty()) return this.throwFluxMissingParam(fieldName);
-
-        List<DistributionItem<D>> items = new ArrayList<>();
-        this.addDistributionItems(items, ids, setter);
-
-        return Mono.zip(this.hasAccess(), this.getPojoClass())
-                .flatMapMany(tuple -> this.createDistributionsInternal(tuple.getT1(), ruleId, items, tuple.getT2()));
-    }
-
     public Mono<Integer> deleteByRuleId(ProcessorAccess access, ULong ruleId) {
 
         if (ruleId == null) return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
@@ -158,6 +137,95 @@ public abstract class BaseUserDistributionService<
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.deleteByRuleId"));
     }
+
+    public Mono<Set<ULong>> getUsersByRuleId(ProcessorAccess access, ULong ruleId) {
+        if (ruleId == null) return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
+
+        return Mono.zip(this.getAllUserMappings(access), this.getUserDistributions(access, ruleId))
+                .map(tuple -> {
+                    UserMaps maps = tuple.getT1();
+                    List<D> userDistributions = tuple.getT2();
+
+                    Set<ULong> userIds = new HashSet<>();
+
+                    for (BaseUserDistributionDto<D> dto : userDistributions) {
+
+                        userIds.add(dto.getUserId());
+
+                        userIds.addAll(Objects.requireNonNullElse(maps.roleMap().get(dto.getRoleId()), Set.of()));
+                        userIds.addAll(
+                                Objects.requireNonNullElse(maps.profileMap().get(dto.getProfileId()), Set.of()));
+                        userIds.addAll(
+                                Objects.requireNonNullElse(maps.desigMap().get(dto.getDesignationId()), Set.of()));
+                        userIds.addAll(Objects.requireNonNullElse(maps.deptMap().get(dto.getDepartmentId()), Set.of()));
+                    }
+
+                    userIds.remove(null);
+                    return userIds;
+                });
+    }
+
+    public Mono<List<EntityProcessorUser>> getAllUserForClient(ProcessorAccess access) {
+        return super.cacheService.cacheValueOrGet(
+                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
+                () -> super.securityService.getUsersForEntityProcessor(new UsersListRequest()
+                        .setClientCode(access.getClientCode())
+                        .setAppCode(access.getAppCode())),
+                super.getCacheKey(access.getAppCode(), access.getClientCode()));
+    }
+
+    private Mono<UserMaps> getAllUserMappings(ProcessorAccess access) {
+        return super.cacheService.cacheValueOrGet(
+                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
+                () -> this.getAllUserForClient(access).map(this::buildMaps),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), "USER_MAPS"));
+    }
+
+    private UserMaps buildMaps(List<EntityProcessorUser> users) {
+
+        Map<ULong, Set<ULong>> role = new HashMap<>();
+        Map<ULong, Set<ULong>> profile = new HashMap<>();
+        Map<ULong, Set<ULong>> desig = new HashMap<>();
+        Map<ULong, Set<ULong>> dept = new HashMap<>();
+
+        if (users == null || users.isEmpty()) return new UserMaps(role, profile, desig, dept);
+
+        for (EntityProcessorUser u : users) {
+            ULong userId = ULong.valueOf(u.getId());
+            this.addToMap(role, u.getRoleId(), userId);
+	        this.addToMap(desig, u.getDesignationId(), userId);
+	        this.addToMap(dept, u.getDepartmentId(), userId);
+	        this.addListToMap(profile, u.getProfileIds(), userId);
+        }
+
+        return new UserMaps(role, profile, desig, dept);
+    }
+
+    private void addToMap(Map<ULong, Set<ULong>> map, Long key, ULong userId) {
+        if (key != null)
+            map.computeIfAbsent(ULong.valueOf(key), k -> new HashSet<>()).add(userId);
+    }
+
+    private void addListToMap(Map<ULong, Set<ULong>> map, Set<Long> keys, ULong userId) {
+        if (keys == null) return;
+        for (Long key : keys) {
+            if (key != null)
+                map.computeIfAbsent(ULong.valueOf(key), k -> new HashSet<>()).add(userId);
+        }
+    }
+
+    private Mono<List<D>> getUserDistributions(ProcessorAccess access, ULong ruleId) {
+        return super.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getUserDistributions(access, ruleId),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), ruleId));
+    }
+
+    private record UserMaps(
+            Map<ULong, Set<ULong>> roleMap,
+            Map<ULong, Set<ULong>> profileMap,
+            Map<ULong, Set<ULong>> desigMap,
+            Map<ULong, Set<ULong>> deptMap) {}
 
     private record DistributionItem<D>(ULong id, BiConsumer<D, ULong> setter) {}
 }

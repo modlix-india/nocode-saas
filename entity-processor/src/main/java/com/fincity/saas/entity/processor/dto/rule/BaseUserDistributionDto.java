@@ -1,14 +1,17 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
-import java.io.Serial;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-import org.jooq.types.ULong;
 
 @Data
 @Accessors(chain = true)
@@ -25,6 +28,7 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
     private ULong roleId;
     private ULong profileId;
     private ULong designationId;
+    private ULong departmentId;
 
     protected BaseUserDistributionDto() {
         super();
@@ -38,5 +42,6 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
         this.roleId = userDistribution.roleId;
         this.profileId = userDistribution.profileId;
         this.designationId = userDistribution.designationId;
+        this.departmentId = userDistribution.departmentId;
     }
 }
