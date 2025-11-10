@@ -1,28 +1,43 @@
 package com.modlix.saas.commons2.util;
 
+import lombok.NonNull;
+
 public class CommonsUtil {
 
-	@SuppressWarnings("unchecked")
-	public static <T> T nonNullValue(T... values) {
+    public static <T> @NonNull T colease(T value1, T value2) {
+        if (value1 != null) return value1;
+        if (value2 != null) return value2;
+        throw new NullPointerException();
+    }
 
-		for (T eachValue : values) {
-			if (eachValue != null)
-				return eachValue;
-		}
+    public static <T> @NonNull T colease(T value1, T value2, T value3) {
+        if (value1 != null) return value1;
+        if (value2 != null) return value2;
+        if (value3 != null) return value3;
+        throw new NullPointerException();
+    }
 
-		return null;
-	}
+    @SuppressWarnings("unchecked")
+    public static <T> T nonNullValue(T... values) {
 
-	public static boolean safeEquals(Object a, Object b) {
-		if (a == b)
-			return true;
+        for (T eachValue : values) {
+            if (eachValue != null)
+                return eachValue;
+        }
 
-		if (a == null || b == null)
-			return false;
+        return null;
+    }
 
-		return a.equals(b);
-	}
+    public static boolean safeEquals(Object a, Object b) {
+        if (a == b)
+            return true;
 
-	private CommonsUtil() {
-	}
+        if (a == null || b == null)
+            return false;
+
+        return a.equals(b);
+    }
+
+    private CommonsUtil() {
+    }
 }

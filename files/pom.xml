@@ -6,15 +6,14 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.1</version>
-        <relativePath/>
-        <!-- lookup parent from repository -->
+        <version>3.4.9</version>
+        <relativePath/> <!-- lookup parent from a repository -->
     </parent>
-    <groupId>com.fincity.saas</groupId>
+    <groupId>com.modlix.saas</groupId>
     <artifactId>files</artifactId>
     <version>2.0.0</version>
     <name>Files</name>
-    <description>Fincity SAAS File server</description>
+    <description>Modlix SAAS File server</description>
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0-RC1</spring-cloud.version>
@@ -84,15 +83,6 @@
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-resolver-dns-native-macos</artifactId>
-            <classifier>osx-aarch_64</classifier>
-        </dependency>
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
@@ -107,24 +97,14 @@
             <version>${jooq.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons</artifactId>
-            <version>${saas-commons-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-jooq</artifactId>
+            <groupId>com.modlix.saas</groupId>
+            <artifactId>commons2-jooq</artifactId>
             <version>${saas-commons-jooq-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-security</artifactId>
+            <groupId>com.modlix.saas</groupId>
+            <artifactId>commons2-security</artifactId>
             <version>${saas-commons-security-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>reactor-flatmap-util</artifactId>
-            <version>${nocode-flatmap-util-version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -145,7 +125,7 @@
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>netty-nio-client</artifactId>
+            <artifactId>apache-client</artifactId>
         </dependency>
         <dependency>
             <groupId>com.twelvemonkeys.imageio</groupId>
@@ -314,7 +294,7 @@
                                     <fluentSetters>true</fluentSetters>
                                 </generate>
                                 <target>
-                                    <packageName>com.fincity.saas.files.jooq</packageName>
+                                    <packageName>com.modlix.saas.files.jooq</packageName>
                                     <directory>src/main/java</directory>
                                 </target>
                             </generator>
