@@ -65,6 +65,6 @@ public abstract class BaseConnectionService extends AbstractCoreService<Connecti
 
                     return this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName);
                 })
-                .switchIfEmpty(this.getConnectionOAuth2Token(appCode, clientCode, connectionName));
+                .switchIfEmpty(this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName));
     }
 }
