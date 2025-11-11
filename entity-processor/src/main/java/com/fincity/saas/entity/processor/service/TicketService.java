@@ -6,8 +6,8 @@ import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
-import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
@@ -27,6 +27,9 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.content.NoteService;
 import com.fincity.saas.entity.processor.service.content.TaskService;
+import com.fincity.saas.entity.processor.service.product.ProductCommService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
 import java.util.Objects;
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
@@ -45,7 +48,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final OwnerService ownerService;
     private final ProductService productService;
     private final StageService stageService;
-    private final ProductStageRuleService productStageRuleService;
+    private final ProductTicketCRuleService productTicketCRuleService;
     private final ActivityService activityService;
     private final TaskService taskService;
     private final NoteService noteService;
@@ -57,7 +60,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy OwnerService ownerService,
             ProductService productService,
             StageService stageService,
-            ProductStageRuleService productStageRuleService,
+            ProductTicketCRuleService productTicketCRuleService,
             ActivityService activityService,
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
@@ -67,7 +70,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
-        this.productStageRuleService = productStageRuleService;
+        this.productTicketCRuleService = productTicketCRuleService;
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
@@ -122,7 +125,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.productService.readById(ticket.getProductId()),
                         product -> this.setDefaultStage(access, ticket, product.getProductTemplateId()),
-                        (product, sTicket) -> this.productStageRuleService.getUserAssignment(
+                        (product, sTicket) -> this.productTicketCRuleService.getUserAssignment(
                                 access,
                                 product.getId(),
                                 sTicket.getStage(),
@@ -543,7 +546,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             return this.updateTicketForReassignment(access, ticket, userId, AUTOMATIC_REASSIGNMENT, isAutomatic);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.productStageRuleService.getUserAssignment(
+                        () -> this.productTicketCRuleService.getUserAssignment(
                                 access,
                                 ticket.getProductId(),
                                 ticket.getStage(),
