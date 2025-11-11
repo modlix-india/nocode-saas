@@ -59,7 +59,7 @@ public abstract class AbstractConnectionService {
 
                     return this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName);
                 })
-                .switchIfEmpty(this.getConnectionOAuth2Token(appCode, clientCode, connectionName));
+                .switchIfEmpty(this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName));
     }
 
     private String getCacheKey(String... entityNames) {
