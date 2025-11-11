@@ -19,6 +19,7 @@ import com.modlix.saas.commons2.model.Query;
 import com.modlix.saas.commons2.security.dto.App;
 import com.modlix.saas.commons2.security.dto.Client;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.model.EntityProcessorUser;
 import com.modlix.saas.commons2.security.model.NotificationUser;
 import com.modlix.saas.commons2.security.model.User;
 import com.modlix.saas.commons2.security.model.UsersListRequest;
@@ -209,4 +210,7 @@ public interface IFeignSecurityService {
 
     @PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
     List<NotificationUser> getUsersForNotification(@RequestBody UsersListRequest request);
+
+	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
+	List<EntityProcessorUser> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
 }

@@ -42,6 +42,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -1435,5 +1436,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
     public Mono<List<String>> getEmailsOfUsers(List<ULong> userIds) {
         return this.dao.getEmailsOfUsers(userIds);
+    }
+
+    public Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(UsersListRequest request) {
+        return this.dao.getUsersForEntityProcessor(
+                request.getUserIds(), request.getAppCode(), request.getClientId(), request.getClientCode());
     }
 }

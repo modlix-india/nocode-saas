@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.controller;
 
 import com.fincity.saas.entity.processor.controller.base.BaseProcessorController;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
-import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;

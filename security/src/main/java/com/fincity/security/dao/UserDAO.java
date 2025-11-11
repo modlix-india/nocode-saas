@@ -14,10 +14,11 @@ import static com.fincity.security.jooq.tables.SecurityV2Role.SECURITY_V2_ROLE;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -39,6 +40,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
@@ -46,6 +48,9 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
+import com.fincity.security.jooq.tables.SecurityApp;
+import com.fincity.security.jooq.tables.SecurityClient;
+import com.fincity.security.jooq.tables.SecurityDesignation;
 import com.fincity.security.jooq.tables.SecurityProfile;
 import com.fincity.security.jooq.tables.SecurityProfileUser;
 import com.fincity.security.jooq.tables.SecurityUser;
@@ -688,38 +693,40 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                                 codeCondition)));
     }
 
-    public Mono<List<NotificationUser>> getUsersForNotification(List<Long> userIds, String appCode, Long clientId,
-            String clientCode) {
+    private Condition buildUserFilterServerCondition(
+            List<Long> userIds, String appCode, Long clientId, String clientCode) {
+        Condition condition = DSL.trueCondition();
 
-        if (appCode == null)
-            return Mono.just(List.of());
+        if (clientCode != null) condition = condition.and(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode));
+        else if (clientId != null)
+            condition = condition.and(SecurityUser.SECURITY_USER.CLIENT_ID.eq(ULongUtil.valueOf(clientId)));
+        else if (userIds != null && !userIds.isEmpty())
+            condition = condition.and(SecurityUser.SECURITY_USER.ID.in(
+                    userIds.stream().map(ULongUtil::valueOf).toList()));
 
-        var query = this.dslContext.select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
+        return condition.and(SecurityApp.SECURITY_APP.APP_CODE.eq(appCode));
+    }
+
+    public Mono<List<NotificationUser>> getUsersForNotification(
+            List<Long> userIds, String appCode, Long clientId, String clientCode) {
+
+        if (appCode == null) return Mono.just(List.of());
+
+        var query = this.dslContext
+                .select(SECURITY_USER.ID, SECURITY_USER.CLIENT_ID, SECURITY_USER.EMAIL_ID)
                 .from(SECURITY_USER)
                 .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER)
                 .on(SECURITY_PROFILE_USER.USER_ID.eq(SECURITY_USER.ID))
                 .leftJoin(SecurityProfile.SECURITY_PROFILE)
                 .on(SecurityProfile.SECURITY_PROFILE.ID.eq(SECURITY_PROFILE_USER.PROFILE_ID))
-                .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
+                .leftJoin(SECURITY_APP)
+                .on(SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
 
-        Condition condition = DSL.trueCondition();
+		if (clientCode != null)
+			query = query.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID));
 
-        if (clientCode != null) {
-            query = query.leftJoin(SECURITY_CLIENT).on(SECURITY_CLIENT.ID.eq(SECURITY_USER.CLIENT_ID));
-            condition = condition.and(SECURITY_CLIENT.CODE.eq(clientCode));
-        } else if (clientId != null) {
-            condition = condition.and(SECURITY_USER.CLIENT_ID.eq(ULongUtil.valueOf(clientId)));
-        } else if (userIds != null && !userIds.isEmpty()) {
-            if (userIds.size() == 1) {
-                condition = condition.and(SECURITY_USER.ID.eq(ULongUtil.valueOf(userIds.get(0))));
-            } else {
-                condition = condition.and(SECURITY_USER.ID.in(userIds.stream().map(ULongUtil::valueOf).toList()));
-            }
-        }
-
-        condition = condition.and(SECURITY_APP.APP_CODE.eq(appCode));
-
-        return Flux.from(query.where(condition))
+        return Flux.from(
+                        query.where(this.buildUserFilterServerCondition(userIds, appCode, clientId, clientCode)))
                 .map(r -> new NotificationUser()
                         .setId(r.getValue(SECURITY_USER.ID).longValue())
                         .setClientId(r.getValue(SECURITY_USER.CLIENT_ID).longValue())
@@ -728,13 +735,76 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     }
 
     public Mono<List<String>> getEmailsOfUsers(List<ULong> userIds) {
-        return Flux
-                .from(this.dslContext.select(SECURITY_USER.EMAIL_ID).from(SECURITY_USER)
-                        .where(DSL.and(SECURITY_USER.ID.in(userIds),
+        return Flux.from(this.dslContext
+                        .select(SECURITY_USER.EMAIL_ID)
+                        .from(SECURITY_USER)
+                        .where(DSL.and(
+                                SECURITY_USER.ID.in(userIds),
                                 SECURITY_USER.EMAIL_ID.isNotNull(),
                                 SECURITY_USER.EMAIL_ID.ne("NONE"),
                                 SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
                 .map(Record1::value1)
                 .collectList();
+    }
+
+    public Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(
+            List<Long> userIds, String appCode, Long clientId, String clientCode) {
+
+        if (appCode == null) return Mono.just(List.of());
+
+        var condition = this.buildUserFilterServerCondition(userIds, appCode, clientId, clientCode);
+
+        var query = super.dslContext
+                .select(
+                        SecurityUser.SECURITY_USER.ID,
+                        SecurityUser.SECURITY_USER.DESIGNATION_ID,
+                        SecurityDesignation.SECURITY_DESIGNATION.DEPARTMENT_ID,
+                        SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID,
+                        SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID)
+                .from(SecurityUser.SECURITY_USER)
+                .leftJoin(SecurityDesignation.SECURITY_DESIGNATION)
+                .on(SecurityDesignation.SECURITY_DESIGNATION.ID.eq(SecurityUser.SECURITY_USER.DESIGNATION_ID))
+                .leftJoin(SecurityV2UserRole.SECURITY_V2_USER_ROLE)
+                .on(SecurityV2UserRole.SECURITY_V2_USER_ROLE.USER_ID.eq(SecurityUser.SECURITY_USER.ID))
+                .leftJoin(SecurityProfileUser.SECURITY_PROFILE_USER)
+                .on(SecurityProfileUser.SECURITY_PROFILE_USER.USER_ID.eq(SecurityUser.SECURITY_USER.ID))
+                .leftJoin(SecurityProfile.SECURITY_PROFILE)
+                .on(SecurityProfile.SECURITY_PROFILE.ID.eq(SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID))
+                .leftJoin(SecurityApp.SECURITY_APP)
+                .on(SecurityApp.SECURITY_APP.ID.eq(SecurityProfile.SECURITY_PROFILE.APP_ID));
+
+        if (clientCode != null)
+            query = query.leftJoin(SecurityClient.SECURITY_CLIENT)
+                    .on(SecurityClient.SECURITY_CLIENT.ID.eq(SecurityUser.SECURITY_USER.CLIENT_ID));
+
+        return Flux.from(query.where(condition)).collectList().map(this::mapUsers);
+    }
+
+    private List<EntityProcessorUser> mapUsers(List<? extends Record> records) {
+        Map<Long, EntityProcessorUser> userMap = new LinkedHashMap<>();
+
+        for (Record rec : records) {
+
+            Long userId = rec.get(SecurityUser.SECURITY_USER.ID).longValue();
+            Long designationId = this.getLongValue(rec.get(SecurityUser.SECURITY_USER.DESIGNATION_ID));
+            Long departmentId = this.getLongValue(rec.get(SecurityDesignation.SECURITY_DESIGNATION.DEPARTMENT_ID));
+            Long roleId = this.getLongValue(rec.get(SecurityV2UserRole.SECURITY_V2_USER_ROLE.ROLE_ID));
+            Long profileId = this.getLongValue(rec.get(SecurityProfileUser.SECURITY_PROFILE_USER.PROFILE_ID));
+
+            EntityProcessorUser user = userMap.computeIfAbsent(userId, id -> new EntityProcessorUser()
+                    .setId(id)
+                    .setDesignationId(designationId)
+                    .setDepartmentId(departmentId)
+                    .setRoleId(roleId)
+                    .setProfileIds(new HashSet<>()));
+
+            if (profileId != null) user.getProfileIds().add(profileId);
+        }
+
+        return new ArrayList<>(userMap.values());
+    }
+
+    private Long getLongValue(ULong value) {
+        return value != null ? value.longValue() : null;
     }
 }

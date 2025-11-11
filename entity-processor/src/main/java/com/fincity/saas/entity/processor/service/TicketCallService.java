@@ -2,8 +2,8 @@ package com.fincity.saas.entity.processor.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.entity.processor.dto.ProductComm;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletRequest;
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
+import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
