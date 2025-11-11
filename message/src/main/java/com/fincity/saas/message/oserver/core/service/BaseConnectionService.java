@@ -63,8 +63,8 @@ public abstract class BaseConnectionService extends AbstractCoreService<Connecti
                         return Mono.justOrEmpty(tokenObj).map(Object::toString);
                     }
 
-                    return this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName);
+                    return this.coreService.getConnectionOAuth2Token(clientCode, appCode, connectionName);
                 })
-                .switchIfEmpty(this.coreService.getConnectionOAuth2Token(appCode, clientCode, connectionName));
+                .switchIfEmpty(this.coreService.getConnectionOAuth2Token(clientCode, appCode, connectionName));
     }
 }
