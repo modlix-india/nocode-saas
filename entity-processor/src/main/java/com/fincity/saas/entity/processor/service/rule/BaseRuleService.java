@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
@@ -18,6 +19,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -28,6 +30,8 @@ public abstract class BaseRuleService<
                 D extends BaseRuleDto<U, D>,
                 O extends BaseRuleDAO<R, U, D>>
         extends BaseUpdatableService<R, D, O> {
+
+    private static final String FETCH_USER_DISTRIBUTIONS = "fetchUserDistributions";
 
     protected TicketCRuleExecutionService ticketCRuleExecutionService;
     protected ProductService productService;
@@ -115,9 +119,6 @@ public abstract class BaseRuleService<
     @Override
     protected Mono<D> updatableEntity(D rule) {
         return super.updatableEntity(rule).flatMap(existing -> {
-            existing.setProductId(rule.getProductId());
-            existing.setProductTemplateId(rule.getProductTemplateId());
-
             if (rule.getOrder() == BaseRuleDto.DEFAULT_ORDER) existing.setOrder(0);
 
             if (rule.getOrder() > BaseRuleDto.DEFAULT_ORDER) existing.setOrder(rule.getOrder());
@@ -189,5 +190,22 @@ public abstract class BaseRuleService<
                     return super.updateInternal(access, rule);
                 })
                 .then();
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<List<D>> fillDetails(List<D> rules, MultiValueMap<String, String> queryParams) {
+
+        boolean fetchUserDistributions = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_DISTRIBUTIONS));
+
+        Flux<D> userFlux = Flux.fromIterable(rules);
+
+        return FlatMapUtil.flatMapFlux(
+                        () -> super.hasAccess().flux(),
+                        access -> fetchUserDistributions
+                                ? userFlux.flatMap(rule -> this.getUserDistributionService()
+                                        .getUserDistributions(access, rule.getId())
+                                        .map(userDistributions -> (D) rule.setUserDistributions(userDistributions)))
+                                : userFlux)
+                .collectList();
     }
 }
