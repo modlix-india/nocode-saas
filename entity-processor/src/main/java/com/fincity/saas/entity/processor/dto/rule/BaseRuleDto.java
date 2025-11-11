@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.rule.DistributionType;
 import java.io.Serial;
 import java.math.BigInteger;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -22,7 +23,8 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseRuleDto<T extends BaseRuleDto<T>> extends BaseUpdatableDto<T> {
+public abstract class BaseRuleDto<U extends BaseUserDistributionDto<U>, T extends BaseRuleDto<U, T>>
+        extends BaseUpdatableDto<T> {
 
     public static final int DEFAULT_ORDER = BigInteger.ZERO.intValue();
 
@@ -40,13 +42,15 @@ public abstract class BaseRuleDto<T extends BaseRuleDto<T>> extends BaseUpdatabl
 
     private AbstractCondition condition;
 
+    private List<U> userDistributions;
+
     protected BaseRuleDto() {
         super();
         this.relationsMap.put(Fields.productId, EntitySeries.PRODUCT.getTable());
         this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
-    protected BaseRuleDto(BaseRuleDto<T> baseRuleDto) {
+    protected BaseRuleDto(BaseRuleDto<U, T> baseRuleDto) {
         super(baseRuleDto);
         this.productId = baseRuleDto.productId;
         this.productTemplateId = baseRuleDto.productTemplateId;
@@ -54,6 +58,7 @@ public abstract class BaseRuleDto<T extends BaseRuleDto<T>> extends BaseUpdatabl
         this.userDistributionType = baseRuleDto.userDistributionType;
         this.lastAssignedUserId = baseRuleDto.lastAssignedUserId;
         this.condition = CloneUtil.cloneObject(baseRuleDto.condition);
+        this.userDistributions = CloneUtil.cloneMapList(baseRuleDto.userDistributions);
     }
 
     public boolean isSimple() {

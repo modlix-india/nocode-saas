@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -24,10 +25,13 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 public abstract class BaseRuleService<
-                R extends UpdatableRecord<R>, D extends BaseRuleDto<D>, O extends BaseRuleDAO<R, D>>
+                R extends UpdatableRecord<R>,
+                U extends BaseUserDistributionDto<U>,
+                D extends BaseRuleDto<U, D>,
+                O extends BaseRuleDAO<R, U, D>>
         extends BaseUpdatableService<R, D, O> {
 
-    protected RuleExecutionService ruleExecutionService;
+    protected TicketCRuleExecutionService ticketCRuleExecutionService;
     protected ProductService productService;
     private ProductTemplateService productTemplateService;
 
@@ -44,15 +48,12 @@ public abstract class BaseRuleService<
     }
 
     @Autowired
-    private void setRuleExecutionService(RuleExecutionService ruleExecutionService) {
-        this.ruleExecutionService = ruleExecutionService;
+    private void setRuleExecutionService(TicketCRuleExecutionService ticketCRuleExecutionService) {
+        this.ticketCRuleExecutionService = ticketCRuleExecutionService;
     }
 
-    protected abstract <
-                    S extends UpdatableRecord<S>,
-                    E extends BaseUserDistributionDto<E>,
-                    P extends BaseUserDistributionDAO<S, E>>
-            BaseUserDistributionService<S, E, P> getUserDistributionService();
+    protected abstract <S extends UpdatableRecord<S>, P extends BaseUserDistributionDAO<S, U>>
+            BaseUserDistributionService<S, U, P> getUserDistributionService();
 
     @Override
     protected boolean canOutsideCreate() {
@@ -130,7 +131,11 @@ public abstract class BaseRuleService<
         });
     }
 
-    public Mono<D> createWithDistribution(RuleRequest<D> ruleRequest) {
+    @SuppressWarnings("unchecked")
+    public Mono<D> createWithDistribution(RuleRequest<U, D> ruleRequest) {
+
+        if (ruleRequest.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.create(access, ruleRequest.getEntity()),
@@ -143,8 +148,35 @@ public abstract class BaseRuleService<
                                         ruleRequest.getProfileIds(),
                                         ruleRequest.getDesignationIds(),
                                         ruleRequest.getDepartmentIds())
-                                .then(Mono.just(entity)))
+                                .collectList(),
+                        (access, entity, userDistributions) ->
+                                Mono.just((D) entity.setUserDistributions(userDistributions)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.createWithDistribution"));
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<D> updateWithDistribution(Identity entityId, RuleRequest<U, D> ruleRequest) {
+
+        if (ruleRequest.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readIdentityWithAccess(access, entityId),
+                        (access, existing) ->
+                                super.update(access, (D) ruleRequest.getEntity().setId(existing.getId())),
+                        (access, existing, entity) -> this.getUserDistributionService()
+                                .updateDistributions(
+                                        access,
+                                        entity.getId(),
+                                        ruleRequest.getUserIds(),
+                                        ruleRequest.getRoleIds(),
+                                        ruleRequest.getProfileIds(),
+                                        ruleRequest.getDesignationIds(),
+                                        ruleRequest.getDepartmentIds())
+                                .collectList(),
+                        (access, existing, entity, userDistributions) ->
+                                Mono.just((D) entity.setUserDistributions(userDistributions)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.updateWithDistribution"));
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.google.gson.JsonElement;
 import java.util.List;
@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class RuleExecutionService {
+public class TicketCRuleExecutionService {
 
     private static final ULong ANO_USER_ID = ULong.MIN;
 
@@ -26,18 +26,22 @@ public class RuleExecutionService {
     private final Random random = new Random();
     private final ConcurrentHashMap<String, ConditionEvaluator> conditionEvaluatorCache = new ConcurrentHashMap<>();
 
-    public RuleExecutionService(TicketCUserDistributionService userDistributionService) {
+    public TicketCRuleExecutionService(TicketCUserDistributionService userDistributionService) {
         this.userDistributionService = userDistributionService;
     }
 
-    public <T extends BaseRuleDto<T>> Mono<T> executeRules(
-            ProcessorAccess access, Map<Integer, T> rules, String prefix, JsonElement data) {
+    public Mono<ProductTicketCRuleDto> executeRules(
+            ProcessorAccess access, Map<Integer, ProductTicketCRuleDto> rules, String prefix, JsonElement data) {
         return executeRules(access, rules, prefix, null, data)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    public <T extends BaseRuleDto<T>> Mono<T> executeRules(
-            ProcessorAccess access, Map<Integer, T> rules, String prefix, ULong userId, JsonElement data) {
+    public Mono<ProductTicketCRuleDto> executeRules(
+            ProcessorAccess access,
+            Map<Integer, ProductTicketCRuleDto> rules,
+            String prefix,
+            ULong userId,
+            JsonElement data) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
@@ -49,11 +53,12 @@ public class RuleExecutionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> distributeUsers(T rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRuleDto> distributeUsers(ProductTicketCRuleDto rule, Set<ULong> userIds) {
 
         if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
-		if (userIds.size() == 1) return Mono.just(this.addAssignedUser(rule, userIds.iterator().next()));
+        if (userIds.size() == 1)
+            return Mono.just(this.addAssignedUser(rule, userIds.iterator().next()));
 
         return switch (rule.getUserDistributionType()) {
             case ROUND_ROBIN -> this.handleRoundRobin(rule, userIds);
@@ -62,7 +67,7 @@ public class RuleExecutionService {
         };
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> handleRoundRobin(T rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRuleDto> handleRoundRobin(ProductTicketCRuleDto rule, Set<ULong> userIds) {
 
         TreeSet<ULong> sortedUserIds = new TreeSet<>(userIds);
 
@@ -75,10 +80,9 @@ public class RuleExecutionService {
         return Mono.just(addAssignedUser(rule, nextUserId));
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> getRandom(T rule, Set<ULong> userIds) {
-	    ULong last = rule.getLastAssignedUserId();
-	    if (last != null)
-		    userIds.remove(last);
+    private Mono<ProductTicketCRuleDto> getRandom(ProductTicketCRuleDto rule, Set<ULong> userIds) {
+        ULong last = rule.getLastAssignedUserId();
+        if (last != null) userIds.remove(last);
 
         return Mono.fromSupplier(() -> userIds.stream()
                         .skip(random.nextInt(userIds.size()))
@@ -89,17 +93,16 @@ public class RuleExecutionService {
 
     // TODO Add other distribution apart from ROUND ROBIN & RANDOM
 
-    @SuppressWarnings("unchecked")
-    private <T extends BaseRuleDto<T>> T addAssignedUser(T rule, ULong assignedUserId) {
-        return (T) rule.setLastAssignedUserId(assignedUserId);
+    private ProductTicketCRuleDto addAssignedUser(ProductTicketCRuleDto rule, ULong assignedUserId) {
+        return (ProductTicketCRuleDto) rule.setLastAssignedUserId(assignedUserId);
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> findMatchedRules(
-            Map<Integer, T> rules, String prefix, JsonElement data) {
+    private Mono<ProductTicketCRuleDto> findMatchedRules(
+            Map<Integer, ProductTicketCRuleDto> rules, String prefix, JsonElement data) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
-        List<T> sortedRules = rules.entrySet().stream()
+        List<ProductTicketCRuleDto> sortedRules = rules.entrySet().stream()
                 .filter(entry -> entry.getKey() != null && entry.getKey() > 0)
                 .sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey()))
                 .map(Map.Entry::getValue)
@@ -118,9 +121,9 @@ public class RuleExecutionService {
                 .next();
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> handleDefaultRule(
-            ProcessorAccess access, Map<Integer, T> rules, ULong finalUserId) {
-        T defaultRule = rules.get(0);
+    private Mono<ProductTicketCRuleDto> handleDefaultRule(
+            ProcessorAccess access, Map<Integer, ProductTicketCRuleDto> rules, ULong finalUserId) {
+        ProductTicketCRuleDto defaultRule = rules.get(0);
         if (defaultRule == null) return Mono.empty();
 
         return this.userDistributionService
@@ -135,8 +138,8 @@ public class RuleExecutionService {
                 });
     }
 
-    private <T extends BaseRuleDto<T>> Mono<T> handleMatchedRule(
-            ProcessorAccess access, T matchedRule, ULong finalUserId) {
+    private Mono<ProductTicketCRuleDto> handleMatchedRule(
+            ProcessorAccess access, ProductTicketCRuleDto matchedRule, ULong finalUserId) {
         return this.userDistributionService
                 .getUsersByRuleId(access, matchedRule.getId())
                 .flatMap(userIds -> {

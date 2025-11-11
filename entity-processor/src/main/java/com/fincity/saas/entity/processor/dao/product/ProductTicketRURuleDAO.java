@@ -4,12 +4,14 @@ import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PRO
 
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRURuleDto;
+import com.fincity.saas.entity.processor.dto.rule.TicketRUUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ProductTicketRURuleDAO
-        extends BaseRuleDAO<EntityProcessorProductTicketRuRulesRecord, ProductTicketRURuleDto> {
+        extends BaseRuleDAO<
+                EntityProcessorProductTicketRuRulesRecord, TicketRUUserDistribution, ProductTicketRURuleDto> {
 
     protected ProductTicketRURuleDAO() {
         super(

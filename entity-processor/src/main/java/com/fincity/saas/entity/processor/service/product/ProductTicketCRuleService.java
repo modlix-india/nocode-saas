@@ -6,6 +6,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
+import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -29,7 +30,10 @@ import reactor.util.context.Context;
 @Service
 public class ProductTicketCRuleService
         extends BaseRuleService<
-                EntityProcessorProductTicketCRulesRecord, ProductTicketCRuleDto, ProductTicketCRuleDAO> {
+                EntityProcessorProductTicketCRulesRecord,
+                TicketCUserDistribution,
+                ProductTicketCRuleDto,
+                ProductTicketCRuleDAO> {
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
@@ -182,8 +186,8 @@ public class ProductTicketCRuleService
             JsonElement data) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getRulesWithOrder(access, productId, stageId),
-                        productRule ->
-                                super.ruleExecutionService.executeRules(access, productRule, tokenPrefix, userId, data),
+                        productRule -> super.ticketCRuleExecutionService.executeRules(
+                                access, productRule, tokenPrefix, userId, data),
                         (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
                         (productRule, eRule, uRule) -> {
                             ULong assignedUserId = uRule.getLastAssignedUserId();

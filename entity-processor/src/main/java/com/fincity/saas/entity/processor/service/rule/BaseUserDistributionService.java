@@ -44,9 +44,7 @@ public abstract class BaseUserDistributionService<
     protected Mono<Boolean> evictCache(D entity) {
         return Mono.zip(
                 super.evictCache(entity),
-                this.cacheService.evict(
-                        this.getCacheName(),
-                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
+                this.evictRuleCache(entity),
                 (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted);
     }
 
@@ -56,6 +54,17 @@ public abstract class BaseUserDistributionService<
 
     private String getUserDistributionMapCacheKey() {
         return USER_DISTRIBUTION_MAPS;
+    }
+
+    private Mono<Boolean> evictRuleCache(D entity) {
+        return Mono.zip(
+                        this.cacheService.evict(
+                                this.getCacheName(),
+                                super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
+                        this.cacheService.evictAll(
+                                this.getUserDistributionCacheName(entity.getAppCode(), entity.getClientCode())),
+                        (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.evictRuleCache"));
     }
 
     @Override
@@ -71,16 +80,32 @@ public abstract class BaseUserDistributionService<
         });
     }
 
-    public Mono<Class<D>> getPojoClass() {
+    private Mono<Class<D>> getPojoClass() {
         return this.dao.getPojoClass();
     }
 
-    protected <T> Flux<T> throwFluxMissingParam(String paramName) {
+    private <T> Flux<T> throwFluxMissingParam(String paramName) {
         return this.msgService.throwFluxMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.MISSING_PARAMETERS,
                 paramName,
                 this.getEntityName());
+    }
+
+    public Flux<D> updateDistributions(
+            ProcessorAccess access,
+            ULong ruleId,
+            List<ULong> userIds,
+            List<ULong> roleIds,
+            List<ULong> profileIds,
+            List<ULong> designationIds,
+            List<ULong> departmentIds) {
+
+        return FlatMapUtil.flatMapFlux(
+                        () -> this.deleteByRuleId(access, ruleId).flux(),
+                        deleted -> this.createDistributions(
+                                access, ruleId, userIds, roleIds, profileIds, designationIds, departmentIds))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.updateDistributions"));
     }
 
     public Flux<D> createDistributions(
@@ -112,15 +137,15 @@ public abstract class BaseUserDistributionService<
     private Flux<D> createDistributionsInternal(
             ProcessorAccess access, ULong ruleId, List<DistributionItem<D>> items, Class<D> pojoClass) {
 
-        List<D> dtos = new ArrayList<>(items.size());
+        List<D> entities = new ArrayList<>(items.size());
         for (DistributionItem<D> item : items) {
-            D dto = ReflectionUtil.getInstance(pojoClass);
-            dto.setRuleId(ruleId);
-            item.setter.accept(dto, item.id);
-            dtos.add(dto);
+            D entity = ReflectionUtil.getInstance(pojoClass);
+            entity.setRuleId(ruleId);
+            item.setter.accept(entity, item.id);
+            entities.add(entity);
         }
 
-        return Flux.fromIterable(dtos).flatMap(dto -> super.create(access, dto));
+        return Flux.fromIterable(entities).flatMap(entity -> super.create(access, entity));
     }
 
     private void addDistributionItems(List<DistributionItem<D>> items, List<ULong> ids, BiConsumer<D, ULong> setter) {
@@ -136,7 +161,7 @@ public abstract class BaseUserDistributionService<
                     if (userDistributions == null || userDistributions.isEmpty()) return Mono.just(0);
 
                     return Flux.fromIterable(userDistributions)
-                            .flatMap(dto -> super.deleteInternal(access, dto))
+                            .flatMap(entity -> super.deleteInternal(access, entity))
                             .count()
                             .map(Long::intValue);
                 })
@@ -167,10 +192,11 @@ public abstract class BaseUserDistributionService<
 
                     userIds.remove(null);
                     return userIds;
-                });
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.getUsersByRuleId"));
     }
 
-    public Mono<List<EntityProcessorUser>> getAllUserForClient(ProcessorAccess access) {
+    private Mono<List<EntityProcessorUser>> getAllUserForClient(ProcessorAccess access) {
         return super.cacheService.cacheValueOrGet(
                 this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
                 () -> super.securityService.getUsersForEntityProcessor(new UsersListRequest()

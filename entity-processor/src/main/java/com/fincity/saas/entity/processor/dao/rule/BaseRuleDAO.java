@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
+import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.List;
 import org.jooq.Field;
@@ -15,7 +16,8 @@ import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseRuleDAO<R extends UpdatableRecord<R>, D extends BaseRuleDto<D>>
+public abstract class BaseRuleDAO<
+                R extends UpdatableRecord<R>, U extends BaseUserDistributionDto<U>, D extends BaseRuleDto<U, D>>
         extends BaseUpdatableDAO<R, D> {
 
     protected BaseRuleDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {

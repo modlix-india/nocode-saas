@@ -5,6 +5,7 @@ import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PRO
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
+import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.List;
@@ -14,7 +15,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ProductTicketCRuleDAO
-        extends BaseRuleDAO<EntityProcessorProductTicketCRulesRecord, ProductTicketCRuleDto> {
+        extends BaseRuleDAO<EntityProcessorProductTicketCRulesRecord, TicketCUserDistribution, ProductTicketCRuleDto> {
 
     protected ProductTicketCRuleDAO() {
         super(
