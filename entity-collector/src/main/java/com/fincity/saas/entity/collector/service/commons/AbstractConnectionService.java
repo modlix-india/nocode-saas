@@ -57,9 +57,9 @@ public abstract class AbstractConnectionService {
                         return Mono.justOrEmpty(tokenObj).map(Object::toString);
                     }
 
-                    return this.getConnectionOAuth2Token(appCode, clientCode, connectionName);
+                    return this.coreService.getConnectionOAuth2Token(clientCode, appCode, connectionName);
                 })
-                .switchIfEmpty(this.getConnectionOAuth2Token(appCode, clientCode, connectionName));
+                .switchIfEmpty(this.coreService.getConnectionOAuth2Token(clientCode, appCode, connectionName));
     }
 
     private String getCacheKey(String... entityNames) {
