@@ -1,28 +1,25 @@
 package com.modlix.saas.files.controller;
 
-import com.modlix.saas.files.util.ImageDetailsUtil;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.CommonsUtil;
-import com.fincity.saas.commons.util.LogUtil;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.util.SecurityContextUtil;
+import com.modlix.saas.commons2.util.BooleanUtil;
+import com.modlix.saas.commons2.util.CommonsUtil;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
 import com.modlix.saas.files.service.SecuredFileResourceService;
 import com.modlix.saas.files.service.StaticFileResourceService;
+import com.modlix.saas.files.util.ImageDetailsUtil;
 
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("api/files/transform/")
@@ -32,44 +29,40 @@ public class TransformStaticImageController {
     private final SecuredFileResourceService securedService;
 
     public TransformStaticImageController(StaticFileResourceService staticService,
-                                          SecuredFileResourceService securedService) {
+            SecuredFileResourceService securedService) {
 
         this.staticService = staticService;
         this.securedService = securedService;
     }
 
-    @PostMapping(value = "{resourceType}/**", consumes = {"multipart/form-data"})
-    public Mono<ResponseEntity<FileDetail>> create(
-        @PathVariable String resourceType,
-        @RequestPart(name = "file", required = false) Mono<FilePart> filePart,
-        @RequestParam(required = false) String clientCode,
-        @RequestPart(required = false, name = "override") String override,
-        @RequestPart(required = false) String width, @RequestPart(required = false) String height,
-        @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
-        @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
-        @RequestPart(required = false) String cropAreaHeight,
-        @RequestPart(required = false) String flipHorizontal,
-        @RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
-        @RequestPart(name = "path", required = false) String filePath,
-        @RequestPart(required = false) String fileName, ServerHttpRequest request) {
+    @PostMapping(value = "{resourceType}/**", consumes = { "multipart/form-data" })
+    public ResponseEntity<FileDetail> create(
+            @PathVariable String resourceType,
+            @RequestPart(name = "file", required = false) MultipartFile filePart,
+            @RequestParam(required = false) String clientCode,
+            @RequestPart(required = false, name = "override") String override,
+            @RequestPart(required = false) String width, @RequestPart(required = false) String height,
+            @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
+            @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
+            @RequestPart(required = false) String cropAreaHeight,
+            @RequestPart(required = false) String flipHorizontal,
+            @RequestPart(required = false) String flipVertical, @RequestPart(required = false) String backgroundColor,
+            @RequestPart(name = "path", required = false) String filePath,
+            @RequestPart(required = false) String fileName, HttpServletRequest request) {
 
         ImageDetails imageDetails = ImageDetailsUtil.makeDetails(
-            width, height, rotation, cropAreaX, cropAreaY, cropAreaWidth, cropAreaHeight, flipHorizontal, flipVertical,
-            backgroundColor
-        );
+                width, height, rotation, cropAreaX, cropAreaY, cropAreaWidth, cropAreaHeight, flipHorizontal,
+                flipVertical,
+                backgroundColor);
 
-        return FlatMapUtil.flatMapMonoWithNull(
+        ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
-                SecurityContextUtil::getUsersContextAuthentication,
+        FileDetail fileDetail = ("secured".equals(resourceType) ? this.securedService : this.staticService).imageUpload(
+                CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
+                request.getRequestURI(), filePart, fileName,
+                BooleanUtil.safeValueOf(override), imageDetails, filePath);
 
-                ca -> filePart,
-
-                (ca, fp) -> ("secured".equals(resourceType) ? this.securedService : this.staticService).imageUpload(
-                    CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-                    request.getPath().toString(), fp, fileName,
-                    BooleanUtil.safeValueOf(override), imageDetails, filePath))
-            .map(ResponseEntity::ok)
-            .contextWrite(Context.of(LogUtil.METHOD_NAME, "TransformStaticImageController.create"));
+        return ResponseEntity.ok(fileDetail);
     }
 
 }

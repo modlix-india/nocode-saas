@@ -4,7 +4,7 @@ import org.jooq.types.ULong;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.modlix.saas.commons2.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.modlix.saas.files.dao.FilesAccessPathDao;
 import com.modlix.saas.files.dto.FilesAccessPath;
 import com.modlix.saas.files.jooq.tables.records.FilesAccessPathRecord;

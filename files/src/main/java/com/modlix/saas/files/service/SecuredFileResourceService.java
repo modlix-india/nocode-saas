@@ -2,11 +2,13 @@ package com.modlix.saas.files.service;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -15,22 +17,19 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.service.CacheService;
-import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.LogUtil;
-
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-
-import com.fincity.saas.commons.util.UniqueUtil;
+import com.modlix.saas.commons2.exception.GenericException;
+import com.modlix.saas.commons2.jooq.util.ULongUtil;
+import com.modlix.saas.commons2.security.feign.IFeignSecurityService;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.util.SecurityContextUtil;
+import com.modlix.saas.commons2.service.CacheService;
+import com.modlix.saas.commons2.util.BooleanUtil;
+import com.modlix.saas.commons2.util.StringUtil;
+import com.modlix.saas.commons2.util.Tuples;
+import com.modlix.saas.commons2.util.UniqueUtil;
 import com.modlix.saas.files.dao.FileSystemDao;
 import com.modlix.saas.files.dto.FilesSecuredAccessKey;
 import com.modlix.saas.files.jooq.enums.FilesAccessPathResourceType;
@@ -41,13 +40,9 @@ import com.modlix.saas.files.model.ImageDetails;
 import com.modlix.saas.files.util.ImageTransformUtil;
 
 import jakarta.annotation.PostConstruct;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import software.amazon.awssdk.services.s3.S3Client;
 
 @Service
 public class SecuredFileResourceService extends AbstractFilesResourceService {
@@ -80,14 +75,14 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
 
     private final FileSystemDao fileSystemDao;
     private final CacheService cacheService;
-    private final S3AsyncClient s3Client;
-
+    private final S3Client s3Client;
     private final IFeignSecurityService securityService;
 
     public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
-                                      FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
-                                      FileSystemDao fileSystemDao, CacheService cacheService, S3AsyncClient s3Client,
-                                      FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService) {
+            FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
+            FileSystemDao fileSystemDao, CacheService cacheService, S3Client s3Client,
+            FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService,
+            FilesMessageResourceService messageService) {
         super(filesAccessPathService, msgService, fileUploadDownloadService);
         this.fileSecuredAccessService = fileSecuredAccessService;
         this.fileSystemDao = fileSystemDao;
@@ -103,11 +98,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         String bucketName = this.bucketPrefix + "-" + this.getResourceType().toLowerCase();
 
         this.fileSystemService = new FileSystemService(this.fileSystemDao, this.cacheService, bucketName,
-                this.s3Client, FilesFileSystemType.SECURED);
+                this.s3Client, FilesFileSystemType.SECURED, this.msgService);
     }
 
     @Override
-    protected Mono<Boolean> checkReadAccessWithClientCode(String resourcePath) {
+    protected boolean checkReadAccessWithClientCode(String resourcePath) {
 
         int index = resourcePath.indexOf('/', 1);
         String clientCode;
@@ -127,26 +122,26 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                 : null;
 
         if (firstFolderName != null && (SPECIAL_FOLDERS.contains(firstFolderName) ||
-                (firstFolderName.equals(USER_IMAGES) && finalClientCode.equals("SYSTEM"))))
-            return FlatMapUtil.flatMapMono(
-                    SecurityContextUtil::getUsersContextAuthentication,
+                (firstFolderName.equals(USER_IMAGES) && finalClientCode.equals("SYSTEM")))) {
 
-                    ca -> switch (firstFolderName) {
-                        case USER_IMAGES -> Mono.just(true);
-                        case WITH_IN_CLIENT -> Mono.just(ca.getClientCode().equals(finalClientCode));
-                        case WITH_IN_SUB_CLIENT -> ca.getClientCode().equals(finalClientCode) ? Mono.just(false)
-                                : this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
-                        case ALL_SUB_CLIENTS ->
-                                this.securityService.isBeingManaged(finalClientCode, ca.getClientCode());
-                        default -> Mono.just(false);
-                    }).contextWrite(Context.of(LogUtil.METHOD_NAME,
-                    "SecuredFileResourceService.checkReadAccessWithClientCode"));
+            ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
+            return switch (firstFolderName) {
+                case USER_IMAGES -> true;
+                case WITH_IN_CLIENT -> ca.getClientCode().equals(finalClientCode);
+                case WITH_IN_SUB_CLIENT -> ca.getClientCode().equals(finalClientCode) ? false
+                        : BooleanUtil
+                                .safeValueOf(this.securityService.isBeingManaged(finalClientCode, ca.getClientCode()));
+                case ALL_SUB_CLIENTS ->
+                    BooleanUtil.safeValueOf(this.securityService.isBeingManaged(finalClientCode, ca.getClientCode()));
+                default -> false;
+            };
+        }
         return this.fileAccessService.hasReadAccess(resourcePath, finalClientCode, FilesAccessPathResourceType.SECURED);
     }
 
     @Override
-    public Mono<Object> create(String clientCode, String uri, Flux<FilePart> fp, String fileName, Boolean override) {
+    public FileDetail create(String clientCode, String uri, List<MultipartFile> fp, String fileName, Boolean override) {
 
         if (override == null)
             override = false;
@@ -154,59 +149,47 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         return super.create(clientCode, uri, fp, fileName, override);
     }
 
-    public Mono<String> createSecuredAccess(Long timeSpan, ChronoUnit timeUnit, Long accessLimit, String uri) {
+    public String createSecuredAccess(Long timeSpan, ChronoUnit timeUnit, Long accessLimit, String uri) {
 
         String path = uri.replace(CREATE_KEY, "");
 
-        Tuple2<String, String> tup = super.resolvePathWithClientCode(path);
+        Tuples.Tuple2<String, String> tup = super.resolvePathWithClientCode(path);
 
-        return FlatMapUtil.flatMapMono(
+        boolean hasReadability = this.checkReadAccessWithClientCode(tup.getT2());
 
-                        () -> this.checkReadAccessWithClientCode(tup.getT2())
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
-
-                        hasReadability -> this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2()),
-
-                        (hasReadability, accessKey) -> Mono.just(this.secureAccessPathUri + accessKey)
-
-                )
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.createSecuredAccess"))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        FilesMessageResourceService.SECURED_KEY_CREATION_ERROR));
-    }
-
-    public Mono<Void> downloadFileByKey(String key, DownloadOptions downloadOptions, ServerHttpRequest request,
-                                        ServerHttpResponse response) {
-
-        if (safeIsBlank(key)) {
-            return null;
+        if (!hasReadability) {
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                    FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), tup.getT2());
         }
 
-        return FlatMapUtil.flatMapMono(
+        String accessKey = this.createAccessKey(timeSpan, timeUnit, accessLimit, tup.getT2());
 
-                () -> this.fileSecuredAccessService.getAccessPathByKey(key),
-
-                accessPath -> {
-                    if (safeIsBlank(accessPath)) {
-                        return Mono.empty();
-                    }
-
-                    return this.getFSService().getFileDetail(accessPath);
-                },
-
-                (accessPath, fileDetail) -> this.getFSService().getAsFile(accessPath, downloadOptions.getDownload()),
-
-                (accessPath, fileDetail, file) -> {
-
-                    String fileETag = generateFileETag(fileDetail, fileDetail.getLastModifiedTime(), downloadOptions);
-                    return super.makeMatchesStartDownload(downloadOptions, request, response,
-                            accessPath, fileDetail.getLastModifiedTime(),
-                            fileETag);
-                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.downloadFileByKey"));
+        return this.secureAccessPathUri + accessKey;
     }
 
-    private Mono<String> createAccessKey(Long time, ChronoUnit unit, Long limit, String path) {
+    public void downloadFileByKey(String key, DownloadOptions downloadOptions, HttpServletRequest request,
+            HttpServletResponse response) {
+
+        if (StringUtil.safeIsBlank(key)) {
+            return;
+        }
+
+        String accessPath = this.fileSecuredAccessService.getAccessPathByKey(key);
+
+        if (StringUtil.safeIsBlank(accessPath))
+            return;
+        FileDetail fileDetail = this.getFSService().getFileDetail(accessPath);
+
+        this.getFSService().getAsFile(accessPath, downloadOptions.getDownload());
+
+        String fileETag = generateFileETag(fileDetail, fileDetail.getLastModifiedTime(), downloadOptions);
+
+        super.makeMatchesStartDownload(downloadOptions, request, response,
+                accessPath, fileDetail.getLastModifiedTime(),
+                fileETag);
+    }
+
+    private String createAccessKey(Long time, ChronoUnit unit, Long limit, String path) {
 
         if (unit == null && time != null)
             return msgService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -217,7 +200,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                     FilesMessageResourceService.TIME_SPAN_ERROR);
 
         time = time == null || time.toString().isBlank() ? defaultAccessTimeLimit : time;
-        unit = safeIsBlank(unit) ? defaultChronoUnit : unit;
+        unit = unit == null ? defaultChronoUnit : unit;
         int pathIndex = path.indexOf('?');
         path = pathIndex != -1 ? path.substring(0, pathIndex) : path;
 
@@ -227,7 +210,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                 .setAccessTill(LocalDateTime.now()
                         .plus(time, unit));
 
-        return fileSecuredAccessService.create(fileSecuredAccessKey).map(FilesSecuredAccessKey::getAccessKey);
+        return fileSecuredAccessService.create(fileSecuredAccessKey).getAccessKey();
     }
 
     private String generateFileETag(FileDetail fileDetail, long fileMillis, DownloadOptions downloadOptions) {
@@ -244,48 +227,39 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         return FilesAccessPathResourceType.SECURED.name();
     }
 
-    public Mono<FileDetail> uploadUserImage(FilePart fp, ImageDetails details, ULong userId) {
+    public FileDetail uploadUserImage(FilePart fp, ImageDetails details, ULong userId) {
 
-        return FlatMapUtil.flatMapMono(
+        ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+        ULong uid;
 
-                        ca -> (userId == null) ? Mono.just(ca.getUser().getId())
-                                : this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode())
-                                .filter(Boolean::booleanValue)
-                                .filter(t -> SecurityContextUtil.hasAuthority("Authorities.User_UPDATE",
-                                        ca.getUser().getAuthorities()))
-                                .map(e -> userId.toBigInteger()),
+        if (userId == null) {
+            uid = ULong.valueOf(ca.getUser().getId());
+        } else {
+            uid = BooleanUtil
+                    .safeValueOf(this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode()))
+                    && SecurityContextUtil.hasAuthority("Authorities.User_UPDATE",
+                            ca.getUser().getAuthorities()) ? ULong.valueOf(userId.toBigInteger()) : null;
+        }
+        try {
+            Path tempDirectory = Files.createTempDirectory("imageUpload");
+            Path file = tempDirectory.resolve(fp.filename());
+            fp.transferTo(file);
 
-                        (ca, uid) -> Mono.fromCallable(() -> Files.createTempDirectory("imageUpload"))
-                                .subscribeOn(Schedulers.boundedElastic()),
+            Tuples.Tuple2<BufferedImage, Integer> sourceTuple = ImageTransformUtil.makeSourceImage(file.toFile(),
+                    fp.filename());
+            BufferedImage transformedImage = ImageTransformUtil.transformImage(sourceTuple.getT1(),
+                    BufferedImage.TYPE_INT_ARGB, details);
+            File finalFile = tempDirectory.resolve(uid + ".png").toFile();
+            ImageIO.write(transformedImage, "png", finalFile);
 
-                        (ca, uid, tempDirectory) -> {
-
-                            Path file = tempDirectory.resolve(fp.filename());
-                            return fp.transferTo(file).thenReturn(file.toFile());
-                        },
-
-                        (ca, uid, tempDirectory, file) -> Mono
-                                .fromCallable(() -> ImageTransformUtil.makeSourceImage(file, fp.filename())),
-
-                        (ca, uid, temp, file, sourceTuple) -> Mono.defer(() -> Mono.just(Tuples.of(
-                                        ImageTransformUtil.transformImage(sourceTuple.getT1(), BufferedImage.TYPE_INT_ARGB, details),
-                                        BufferedImage.TYPE_INT_ARGB)))
-                                .subscribeOn(Schedulers.boundedElastic()),
-
-                        (ca, uid, temp, file,
-                         sTuple, imgTuple) -> Mono.fromCallable(() -> {
-                            File finalFile = temp.resolve(uid + ".png").toFile();
-                            ImageIO.write(imgTuple.getT1(), "png", finalFile);
-                            return finalFile;
-                        }).subscribeOn(Schedulers.boundedElastic()),
-
-                        (ca, uid, temp, file,
-                         sTuple, imgTuple, finalFile) -> this.getFSService().createFileFromFile("SYSTEM",
-                                        USER_IMAGES, finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true)
-                                .<FileDetail>map(
-                                        fd -> this.convertToFileDetailWhileCreation("/_userImages", "SYSTEM", fd)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "SecuredFileResourceService.uploadUserImage"));
+            FileDetail fileDetail = this.getFSService().createFileFromFile("SYSTEM",
+                    USER_IMAGES, finalFile.getName(), Paths.get(finalFile.getAbsolutePath()), true);
+            return this.convertToFileDetailWhileCreation("/_userImages", "SYSTEM", fileDetail);
+        } catch (IOException e) {
+            this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return null;
+        }
     }
 }

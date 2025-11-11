@@ -1,84 +1,65 @@
 package com.modlix.saas.files.service;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
-
 import java.time.LocalDateTime;
 
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
-import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
+import com.modlix.saas.commons2.exception.GenericException;
+import com.modlix.saas.commons2.jooq.service.AbstractJOOQDataService;
 import com.modlix.saas.files.dao.FilesSecuredAccessKeyDao;
 import com.modlix.saas.files.dto.FilesSecuredAccessKey;
 import com.modlix.saas.files.jooq.tables.records.FilesSecuredAccessKeysRecord;
 
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
-
 @Service
 public class FilesSecuredAccessService extends
-		AbstractJOOQDataService<FilesSecuredAccessKeysRecord, ULong, FilesSecuredAccessKey, FilesSecuredAccessKeyDao> {
+        AbstractJOOQDataService<FilesSecuredAccessKeysRecord, ULong, FilesSecuredAccessKey, FilesSecuredAccessKeyDao> {
 
-	private final FilesMessageResourceService messageResourceService;
+    private final FilesMessageResourceService messageResourceService;
 
-	public FilesSecuredAccessService(FilesMessageResourceService messageResourceService) {
-		this.messageResourceService = messageResourceService;
-	}
+    public FilesSecuredAccessService(FilesMessageResourceService messageResourceService) {
+        this.messageResourceService = messageResourceService;
+    }
 
-	public Mono<FilesSecuredAccessKey> getAccessRecordByPath(String key) {
-		return this.dao.getAccessByKey(key);
-	}
+    public FilesSecuredAccessKey getAccessRecordByPath(String key) {
+        return this.dao.getAccessByKey(key);
+    }
 
-	public Mono<String> getAccessPathByKey(String accessKey) {
+    public String getAccessPathByKey(String accessKey) {
 
-		return flatMapMono(
+        FilesSecuredAccessKey accessKeyObject = this.getAccessRecordByPath(accessKey);
 
-				() -> this.getAccessRecordByPath(accessKey),
+        if (!this.checkAccessWithinTime(accessKeyObject)) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    FilesMessageResourceService.INVALID_KEY);
+        }
 
-				accessKeyObject -> this.checkAccessWithinTime(accessKeyObject)
-						.flatMap(BooleanUtil::safeValueOfWithEmpty),
+        if (accessKeyObject.getAccessLimit() == null)
+            return accessKeyObject.getPath();
 
-				(accessKeyObject, inTime) -> StringUtil.safeIsBlank(accessKeyObject.getAccessLimit())
-						? Mono.just(accessKeyObject.getPath())
-						: flatMapMono(
+        if (!this.checkAccountCount(accessKeyObject)) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    FilesMessageResourceService.INVALID_KEY);
+        }
 
-								() -> this.checkAccountCount(accessKeyObject)
-										.flatMap(BooleanUtil::safeValueOfWithEmpty),
+        boolean hasAccess = this.dao.incrementAccessCount(accessKeyObject.getId());
+        if (!hasAccess) {
+            return this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                    FilesMessageResourceService.INVALID_KEY);
+        }
+        return accessKeyObject.getPath();
+    }
 
-								inCount -> this.dao.incrementAccessCount(accessKeyObject.getId())
-										.flatMap(hasAccess -> {
-											if (BooleanUtil.safeValueOf(hasAccess))
-												return Mono.just(accessKeyObject.getPath());
-											return Mono.empty();
-										})
-										.contextWrite(Context.of(LogUtil.METHOD_NAME,
-												"FilesSecuredAccessService.getAccessPathByKey"))
+    private boolean checkAccountCount(FilesSecuredAccessKey accessObject) { // edit here
 
-						))
-				.switchIfEmpty(
-						this.messageResourceService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
-								FilesMessageResourceService.INVALID_KEY))
+        return accessObject.getAccessedCount() != null && accessObject.getAccessLimit() != null
+                && accessObject.getAccessedCount().intValue() < accessObject.getAccessLimit().intValue();
+    }
 
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FilesSecuredAccessService.getAccessPathByKey"));
-	}
+    private boolean checkAccessWithinTime(FilesSecuredAccessKey accessObject) {
 
-	private Mono<Boolean> checkAccountCount(FilesSecuredAccessKey accessObject) { // edit here
-
-		return Mono.just(accessObject.getAccessedCount() != null && accessObject.getAccessLimit() != null
-				&& accessObject.getAccessedCount()
-						.intValue() < accessObject.getAccessLimit()
-								.intValue());
-	}
-
-	private Mono<Boolean> checkAccessWithinTime(FilesSecuredAccessKey accessObject) {
-
-		return Mono.just(LocalDateTime.now()
-				.isBefore(accessObject.getAccessTill()));
-	}
+        return LocalDateTime.now().isBefore(accessObject.getAccessTill());
+    }
 
 }

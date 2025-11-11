@@ -1,19 +1,19 @@
 package com.modlix.saas.files.controller;
 
-import com.modlix.saas.files.model.DownloadOptions;
-import com.modlix.saas.files.service.SecuredFileResourceService;
-
 import java.time.temporal.ChronoUnit;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Mono;
+
+import com.modlix.saas.files.model.DownloadOptions;
+import com.modlix.saas.files.service.SecuredFileResourceService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("api/files/secured")
@@ -24,38 +24,36 @@ public class SecuredResourceFileController extends AbstractResourceFileControlle
     }
 
     @GetMapping("/createKey/**")
-    public Mono<ResponseEntity<String>> generateSecureAccess(@RequestParam(required = false) Long timeSpan,
-                                                             @RequestParam(required = false) ChronoUnit timeUnit, @RequestParam(required = false) Long accessLimit,
-                                                             ServerHttpRequest request) {
+    public ResponseEntity<String> generateSecureAccess(@RequestParam(required = false) Long timeSpan,
+            @RequestParam(required = false) ChronoUnit timeUnit, @RequestParam(required = false) Long accessLimit,
+            HttpServletRequest request) {
 
-        return this.service.createSecuredAccess(timeSpan, timeUnit, accessLimit, request.getPath()
-                .toString())
-            .map(ResponseEntity::ok);
+        return ResponseEntity
+                .ok(this.service.createSecuredAccess(timeSpan, timeUnit, accessLimit, request.getRequestURI()));
     }
 
     @GetMapping("/downloadFileByKey/{key}")
-    public Mono<Void> downloadFileWithKey(@PathVariable String key,
-                                          @RequestParam(required = false) Integer width,
-                                          @RequestParam(required = false) Integer height,
-                                          @RequestParam(required = false, defaultValue = "false") Boolean download,
-                                          @RequestParam(required = false, defaultValue = "contain") DownloadOptions.Fit fit,
-                                          @RequestParam(required = false) String background,
-                                          @RequestParam(required = false, defaultValue = "auto") DownloadOptions.Gravity gravity,
-                                          @RequestParam(required = false, defaultValue = "general") DownloadOptions.Format format,
-                                          @RequestParam(required = false, defaultValue = "false") Boolean noCache, ServerHttpRequest request,
-                                          @RequestParam(required = false) String name, ServerHttpResponse response
-    ) {
+    public void downloadFileWithKey(@PathVariable String key,
+            @RequestParam(required = false) Integer width,
+            @RequestParam(required = false) Integer height,
+            @RequestParam(required = false, defaultValue = "false") Boolean download,
+            @RequestParam(required = false, defaultValue = "contain") DownloadOptions.Fit fit,
+            @RequestParam(required = false) String background,
+            @RequestParam(required = false, defaultValue = "auto") DownloadOptions.Gravity gravity,
+            @RequestParam(required = false, defaultValue = "general") DownloadOptions.Format format,
+            @RequestParam(required = false, defaultValue = "false") Boolean noCache, HttpServletRequest request,
+            @RequestParam(required = false) String name, HttpServletResponse response) {
 
         DownloadOptions downloadOptions = new DownloadOptions().setHeight(height)
-            .setWidth(width)
-            .setFit(fit)
-            .setFormat(format)
-            .setBackground(background)
-            .setGravity(gravity)
-            .setNoCache(noCache)
-            .setDownload(download)
-            .setName(name);
+                .setWidth(width)
+                .setFit(fit)
+                .setFormat(format)
+                .setBackground(background)
+                .setGravity(gravity)
+                .setNoCache(noCache)
+                .setDownload(download)
+                .setName(name);
 
-        return this.service.downloadFileByKey(key, downloadOptions, request, response);
+        this.service.downloadFileByKey(key, downloadOptions, request, response);
     }
 }

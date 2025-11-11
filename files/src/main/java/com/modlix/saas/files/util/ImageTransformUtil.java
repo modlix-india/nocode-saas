@@ -19,10 +19,9 @@ import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.util.BooleanUtil;
 import com.modlix.saas.commons2.util.CommonsUtil;
 import com.modlix.saas.commons2.util.StringUtil;
+import com.modlix.saas.commons2.util.Tuples;
+import com.modlix.saas.commons2.util.Tuples.Tuple2;
 import com.modlix.saas.files.model.ImageDetails;
-
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 public class ImageTransformUtil {
 

@@ -2,40 +2,34 @@ package com.modlix.saas.files.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
-import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousFileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.util.FileSystemUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.modlix.saas.commons2.exception.GenericException;
-import com.modlix.saas.commons2.security.util.LogUtil;
 import com.modlix.saas.commons2.service.CacheService;
-import com.modlix.saas.commons2.util.BooleanUtil;
 import com.modlix.saas.commons2.util.FileType;
 import com.modlix.saas.commons2.util.HashUtil;
 import com.modlix.saas.commons2.util.StringUtil;
@@ -47,11 +41,7 @@ import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.FilesPage;
 
 import lombok.Getter;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import reactor.util.context.Context;
-import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -77,6 +67,7 @@ public class FileSystemService {
     private final String bucketName;
     private final S3Client s3Client;
     private final FilesFileSystemType fileSystemType;
+    private final FilesMessageResourceService messageService;
 
     @Getter
     private final Path tempFolder;
@@ -84,11 +75,12 @@ public class FileSystemService {
     private final Logger logger = LoggerFactory.getLogger(FileSystemService.class);
 
     public FileSystemService(FileSystemDao fileSystemDao, CacheService cacheService, String bucketName,
-            S3Client s3Client, FilesFileSystemType fileSystemType) {
+            S3Client s3Client, FilesFileSystemType fileSystemType, FilesMessageResourceService messageService) {
         this.fileSystemDao = fileSystemDao;
         this.cacheService = cacheService;
         this.bucketName = bucketName;
         this.s3Client = s3Client;
+        this.messageService = messageService;
         this.fileSystemType = fileSystemType;
         try {
             this.tempFolder = Files.createTempDirectory("download-" + this.bucketName);
@@ -166,7 +158,7 @@ public class FileSystemService {
         if (StringUtil.safeIsBlank(finalPath))
             return null;
 
-        Path filePath = this.createPathInTempFolder(finalPath).block();
+        Path filePath = this.createPathInTempFolder(finalPath);
 
         boolean exists = forceDownload ? false : Files.exists(filePath);
 
@@ -217,7 +209,7 @@ public class FileSystemService {
         List<com.modlix.saas.commons2.util.Tuples.Tuple2<Integer, S3Object>> lst = new ArrayList<>();
 
         for (S3Object s3Object : iterable) {
-            var response = s3Client.getObject(
+            s3Client.getObject(
                     GetObjectRequest.builder().bucket(bucketName).key(s3Object.key()).build(),
                     ResponseTransformer.toFile(folder.resolve("" + i)));
             i++;
@@ -274,152 +266,136 @@ public class FileSystemService {
 
         String finPath = folderPath;
 
-        List<Boolean> deleted = s3Client.listObjectsV2Paginator(
+        return StreamSupport.stream(s3Client.listObjectsV2Paginator(
                 ListObjectsV2Request.builder().bucket(bucketName)
                         .prefix(path)
                         .build())
-                .contents()
+                .spliterator(), false)
+                .flatMap(paginator -> paginator.contents().stream())
                 .map(e -> {
-                    s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build()).get();
-                    return true;
-                }).block();
-
-        return Flux.from(s3Client.listObjectsV2Paginator(
-                ListObjectsV2Request.builder().bucket(bucketName)
-                        .prefix(path)
-                        .build()))
-                .flatMap(e -> Flux.fromIterable(e.contents()))
-                .flatMap(e -> Mono.fromFuture(
-                        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build())))
-                .then(Mono.just(true))
-                .flatMap(e -> this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath))
-                .flatMap(this.evictCache(clientCode));
+                    s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build());
+                    return this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath);
+                }).reduce((a, b) -> a && b).orElse(true);
     }
 
-    public Mono<FileDetail> createFilesFromFilePart(String clientCode, String path, String fileName, FilePart fp,
+    public FileDetail createFilesFromMultipartFile(String clientCode, String path, String fileName, MultipartFile fp,
             boolean override) {
 
-        Flux<ByteBuffer> byteBuffer = fp.content().flatMapSequential(
-                dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
-
-        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override, "inline");
+        try (InputStream inputStream = fp.getInputStream()) {
+            return this.createFileFromInputStream(clientCode, path, fileName, inputStream, fp.getSize(),
+                    override, "inline");
+        } catch (IOException e) {
+            this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return null;
+        }
     }
 
-    public Mono<FileDetail> createFileFromFile(String clientCode, String path, String fileName, Path file,
+    public FileDetail createFileFromFile(String clientCode, String path, String fileName, Path file,
+            boolean override) {
+
+        return this.createFileFromFile(clientCode, path, fileName, file, override,
+                "inline");
+    }
+
+    public FileDetail createFileFromFile(String clientCode, String path, String fileName, Path file,
             boolean override, String contentDisposition) {
 
-        Flux<ByteBuffer> byteBuffer = DataBufferUtils.readAsynchronousFileChannel(
-                () -> AsynchronousFileChannel.open(file, StandardOpenOption.READ),
-                DefaultDataBufferFactory.sharedInstance,
-                4096).flatMapSequential(
-                        dataBuffer -> Flux.fromIterable(dataBuffer::readableByteBuffers));
-        return this.createFileFromFluxDataBufferInternal(clientCode, path, fileName, byteBuffer, override,
-                contentDisposition);
+        try (InputStream inputStream = Files.newInputStream(file)) {
+            long length = Files.size(file);
+            return this.createFileFromInputStream(clientCode, path, fileName, inputStream, length,
+                    override, contentDisposition);
+        } catch (IOException e) {
+            this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return null;
+        }
     }
 
-    public Mono<FileDetail> createFileFromFile(String clientCode, String path, String fileName, Path file,
-            boolean override) {
-
-        return this.createFileFromFile(clientCode, path, fileName, file, override, "inline");
-    }
-
-    private Mono<FileDetail> createFileFromFluxDataBufferInternal(String clientCode, String path, String fileName,
-            Flux<ByteBuffer> byteBuffer, boolean override, String contentDisposition) {
+    public FileDetail createFileFromInputStream(String clientCode, String path, String fileName,
+            InputStream inputStream, long length, boolean override, String contentDisposition) {
 
         String filePath = fileName == null ? path : (path + R2_FILE_SEPARATOR_STRING + fileName);
 
-        return FlatMapUtil.flatMapMono(
+        boolean exists = this.exists(clientCode, filePath);
 
-                () -> this.exists(clientCode, filePath),
+        if (exists && !override)
+            return this.getFileDetail(clientCode, filePath);
 
-                exists -> byteBuffer.reduce(0L, (acc, bb) -> acc + bb.remaining()),
+        String key = clientCode;
 
-                (exists, length) -> {
-                    if (BooleanUtil.safeValueOf(exists) && !override)
-                        return this.getFileDetail(clientCode, filePath);
+        if (filePath.startsWith(R2_FILE_SEPARATOR_STRING))
+            key += filePath;
+        else
+            key += R2_FILE_SEPARATOR_STRING + filePath;
 
-                    String key = clientCode;
+        String mimeType = URLConnection.guessContentTypeFromName(filePath);
 
-                    if (filePath.startsWith(R2_FILE_SEPARATOR_STRING))
-                        key += filePath;
-                    else
-                        key += R2_FILE_SEPARATOR_STRING + filePath;
+        try {
 
-                    String mimeType = URLConnection.guessContentTypeFromName(filePath);
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
+                            .contentLength(length)
+                            .contentDisposition(contentDisposition)
+                            .key(key).build(),
+                    RequestBody.fromInputStream(inputStream, length));
 
-                    String finalKey = key;
-                    return Mono.fromFuture(s3Client.putObject(
-                            PutObjectRequest.builder()
-                                    .bucket(bucketName)
-                                    .contentLength(length)
-                                    .contentType(mimeType == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : mimeType)
-                                    .contentDisposition(contentDisposition)
-                                    .key(finalKey)
-                                    .build(),
-                            AsyncRequestBody.fromPublisher(byteBuffer)))
-                            .then(this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
-                                    fileName, ULong.valueOf(length),
-                                    exists && override))
-                            .flatMap(e -> Mono.fromCallable(() -> {
-                                Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
-                                return e;
-                            }).subscribeOn(Schedulers.boundedElastic()));
-                })
-                .flatMap(this.evictCache(clientCode))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        SERVICE_NAME_PREFIX + this.bucketName + ").createFileFromFluxDataBuffer"))
-                .subscribeOn(Schedulers.boundedElastic());
+            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(key)));
+            this.evictCache(clientCode);
+            return this.fileSystemDao.createOrUpdateFile(this.fileSystemType, clientCode, filePath,
+                    fileName, ULong.valueOf(length),
+                    exists && override);
+
+        } catch (IOException e) {
+            this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return null;
+        }
     }
 
     public boolean createFileForZipUpload(String clientCode, ULong folderId, String path, Path file,
             boolean override) {
 
-        return FlatMapUtil.<Boolean, software.amazon.awssdk.services.s3.model.PutObjectResponse, Boolean>flatMapMonoWithNull(
-                () -> this.exists(clientCode, path),
+        boolean exists = this.exists(clientCode, path);
 
-                exists -> {
-                    if (BooleanUtil.safeValueOf(exists) && !override)
-                        return Mono.empty();
+        if (exists && !override)
+            return false;
 
-                    logger.info("Uploading the file : {} : ",
-                            (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"));
+        logger.info("Uploading the file : {} : ",
+                (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"));
+        String finalKey = (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/");
 
-                    String finalKey = (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/");
-                    return Mono.fromFuture(s3Client.putObject(
-                            PutObjectRequest.builder()
-                                    .bucket(bucketName)
-                                    .contentDisposition("inline")
-                                    .key(finalKey)
-                                    .build(),
-                            AsyncRequestBody.fromFile(file)))
-                            .flatMap(e -> Mono.fromCallable(() -> {
-                                Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
-                                return e;
-                            }).subscribeOn(Schedulers.boundedElastic()));
-                },
+        try {
+            long fileLength = Files.size(file);
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .contentDisposition("inline")
+                            .key(finalKey)
+                            .contentLength(fileLength)
+                            .build(),
+                    file
 
-                (exits, response) -> {
-                    if (response == null)
-                        return Mono.just(true);
+            );
+            Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
 
-                    return Mono.fromCallable(() -> Files.size(file))
-                            .onErrorResume(ex -> Mono.just(0L))
-                            .flatMap(fileLength -> this.fileSystemDao
-                                    .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
-                                            file.getFileName().toString(), ULong.valueOf(fileLength)))
-                            .subscribeOn(Schedulers.boundedElastic());
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME,
-                        SERVICE_NAME_PREFIX + this.bucketName + ").createFileForZipUpload"));
+            return this.fileSystemDao
+                    .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
+                            file.getFileName().toString(), ULong.valueOf(fileLength));
+        } catch (IOException e) {
+            this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return false;
+        }
     }
 
-    public <T> Function<T, T> evictCache(String clientCode) {
-        return (T t) -> {
-            this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + clientCode);
-            this.cacheService.evictAll(CACHE_NAME_GET_DETAIL + "-" + clientCode);
-            this.cacheService.evictAll(CACHE_NAME_LIST + "-" + clientCode);
-            return t;
-        };
+    public <T> void evictCache(String clientCode) {
+
+        this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + clientCode);
+        this.cacheService.evictAll(CACHE_NAME_GET_DETAIL + "-" + clientCode);
+        this.cacheService.evictAll(CACHE_NAME_LIST + "-" + clientCode);
     }
 
     public FileDetail createFolder(String clientCode, String path) {

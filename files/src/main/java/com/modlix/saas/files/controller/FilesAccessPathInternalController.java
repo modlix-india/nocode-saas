@@ -7,8 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.modlix.saas.files.dto.FilesAccessPath;
 
-import reactor.core.publisher.Mono;
-
 @RestController
 public class FilesAccessPathInternalController {
 
@@ -19,7 +17,7 @@ public class FilesAccessPathInternalController {
     }
 
     @PostMapping("/api/files/internal/accesspath")
-    public Mono<ResponseEntity<FilesAccessPath>> createInternalAccessPath(@RequestBody FilesAccessPath accessPath) {
-        return service.createInternalAccessPath(accessPath).map(ResponseEntity::ok);
+    public ResponseEntity<FilesAccessPath> createInternalAccessPath(@RequestBody FilesAccessPath accessPath) {
+        return ResponseEntity.ok(service.createInternalAccessPath(accessPath));
     }
 }
