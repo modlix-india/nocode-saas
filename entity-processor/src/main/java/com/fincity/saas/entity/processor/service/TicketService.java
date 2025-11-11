@@ -483,6 +483,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ULong oldStage = CloneUtil.cloneObject(ticket.getStage());
 
+        boolean doReassignment = !oldStage.equals(stageId);
+
         ticket.setStage(stageId);
         ticket.setStatus(statusId);
 
@@ -494,7 +496,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (uTicket, cTask) -> this.activityService
                                 .acStageStatus(access, uTicket, comment, oldStage)
                                 .thenReturn(uTicket),
-                        (uTicket, cTask, fTicket) -> this.reassignForStage(access, fTicket, reassignUserId, true))
+                        (uTicket, cTask, fTicket) -> doReassignment
+                                ? this.reassignForStage(access, fTicket, reassignUserId, true)
+                                : Mono.just(fTicket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketStage"));
     }
 
