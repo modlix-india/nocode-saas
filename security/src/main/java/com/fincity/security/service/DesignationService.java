@@ -139,11 +139,10 @@ public class DesignationService
         return FlatMapUtil.flatMapMono(
                         () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
 
-                        canBeUpdated -> super.update(key, fields)
-                                .flatMap(updatedDesignation ->
-                                        this.cacheService
-                                                .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
-                                        .thenReturn(updatedDesignation))
+                        canBeUpdated -> super.update(key, fields),
+                        (canBeUpdated, updatedDesignation) -> this.cacheService
+                                .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                                .thenReturn(updatedDesignation)
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(

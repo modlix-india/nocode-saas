@@ -122,14 +122,17 @@ public class DepartmentService
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
     @Override
     public Mono<Department> update(ULong key, Map<String, Object> fields) {
-        return this.dao.canBeUpdated(key)
-                .filter(BooleanUtil::safeValueOf)
-                .flatMap(x -> super.update(key, fields)
-                        .flatMap(updatedDepartment ->
-                                this.cacheService
-                                        .evict(CACHE_NAME_DEPARTMENT,updatedDepartment.getId())
-                                .thenReturn(updatedDepartment))
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.canBeUpdated(key)
+                                .filter(BooleanUtil::safeValueOf),
+
+                        canBeUpdated -> super.update(key, fields),
+
+                        (canBeUpdated, updatedDepartment) -> this.cacheService
+                                .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                                .thenReturn(updatedDepartment)
                 )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
     }

@@ -1433,7 +1433,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         if (fetchDesignation)
             userFlux = userFlux.filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
-                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId()).map(user::setDesignationData));
+                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId()).map(user::setDesignation));
 
 
         if (fetchReportingTo)

@@ -60,7 +60,7 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
     private Client client;
     private Client managingClient;
     private User createdByUser;
-    private Designation designationData;
+    private Designation designation;
     private User reportingUser;
 
     public String getUserName() {
