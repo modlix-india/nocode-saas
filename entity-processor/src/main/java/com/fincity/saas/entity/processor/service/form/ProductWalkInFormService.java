@@ -33,6 +33,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -134,7 +136,11 @@ public class ProductWalkInFormService
                 client -> super.securityService
                         .hasReadAccess(appCode, clientCode)
                         .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                (client, hasAccess) -> super.securityService.getClientUserInternal(List.of(client.getId()), null));
+                (client, hasAccess) -> {
+                    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+                    queryParams.add(User.Fields.statusCode, "ACTIVE");
+                    return super.securityService.getClientUserInternal(List.of(client.getId()), queryParams);
+                });
     }
 
     public Mono<Ticket> getWalkInTicket(

@@ -24,4 +24,8 @@ public class Designation extends AbstractUpdatableDTO<ULong, ULong> {
     private ULong departmentId;
     private ULong nextDesignationId;
     private ULong profileId;
+
+    private Designation parentDesignation;
+    private Designation nextDesignation;
+    private Department department;
 }

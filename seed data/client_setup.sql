@@ -5155,3 +5155,8 @@ VALUES (@v_client_fin1, @v_app_appbuilder, 0),
 
 INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`)
 VALUES (@v_client_system, @v_role_schema);
+
+USE security;
+
+ALTER TABLE `security`.`security_user`
+DROP COLUMN `DESIGNATION`;

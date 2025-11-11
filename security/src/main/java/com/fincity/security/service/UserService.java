@@ -33,6 +33,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -86,6 +87,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String FETCH_CLIENT = "fetchClients";
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClients";
     private static final String FETCH_CREATED_BY = "fetchCreatedBy";
+    private static final String FETCH_DESIGNATION = "fetchDesignation";
+    private static final String FETCH_REPORTING_TO = "fetchReportingTo";
 
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
@@ -484,12 +487,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
-    public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+    public Mono<List<User>> readByClientIds(List<ULong> clientIds, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readAllFilter(new FilterCondition()
-                        .setField("clientId")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(clientIds))
+                () -> this.readAllFilter(ComplexCondition.and(new FilterCondition()
+                                .setField("clientId")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds), condition))
                         .collectList(),
                 users -> this.fillDetails(users, queryParams));
     }
@@ -1407,6 +1410,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         boolean fetchClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CLIENT));
         boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
         boolean fetchCreatedBy = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY));
+        boolean fetchDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_DESIGNATION));
+        boolean fetchReportingTo = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_REPORTING_TO));
 
         Flux<User> userFlux = Flux.fromIterable(users);
 
@@ -1425,6 +1430,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         if (fetchCreatedBy)
             userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
                     .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
+
+        if (fetchDesignation)
+            userFlux = userFlux.filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
+                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId()).map(user::setDesignation));
+
+
+        if (fetchReportingTo)
+            userFlux = userFlux.filter(user -> user.getReportingTo() != null && user.getReportingTo().intValue() != 0)
+                    .flatMap(user -> this.readInternal(user.getReportingTo()).map(user::setReportingUser));
 
         return userFlux.collectList();
     }
