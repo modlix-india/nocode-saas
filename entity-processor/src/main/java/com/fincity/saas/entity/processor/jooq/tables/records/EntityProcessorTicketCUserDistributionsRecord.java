@@ -137,40 +137,21 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
 
     /**
      * Setter for
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.CREATE_RULE_ID</code>.
-     * Create Rule id related to this User Distribution.
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.RULE_ID</code>.
+     * Rule id related to this User Distribution.
      */
-    public EntityProcessorTicketCUserDistributionsRecord setCreateRuleId(ULong value) {
+    public EntityProcessorTicketCUserDistributionsRecord setRuleId(ULong value) {
         set(6, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.CREATE_RULE_ID</code>.
-     * Create Rule id related to this User Distribution.
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.RULE_ID</code>.
+     * Rule id related to this User Distribution.
      */
-    public ULong getCreateRuleId() {
+    public ULong getRuleId() {
         return (ULong) get(6);
-    }
-
-    /**
-     * Setter for
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.READ_UPDATE_RULE_ID</code>.
-     * Read Update Rule id related to this User Distribution.
-     */
-    public EntityProcessorTicketCUserDistributionsRecord setReadUpdateRuleId(ULong value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.READ_UPDATE_RULE_ID</code>.
-     * Read Update Rule id related to this User Distribution.
-     */
-    public ULong getReadUpdateRuleId() {
-        return (ULong) get(7);
     }
 
     /**
@@ -179,7 +160,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * User id related to this User Distribution.
      */
     public EntityProcessorTicketCUserDistributionsRecord setUserId(ULong value) {
-        set(8, value);
+        set(7, value);
         return this;
     }
 
@@ -189,7 +170,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * User id related to this User Distribution.
      */
     public ULong getUserId() {
-        return (ULong) get(8);
+        return (ULong) get(7);
     }
 
     /**
@@ -198,7 +179,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Role id related to this User Distribution.
      */
     public EntityProcessorTicketCUserDistributionsRecord setRoleId(ULong value) {
-        set(9, value);
+        set(8, value);
         return this;
     }
 
@@ -208,7 +189,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Role id related to this User Distribution.
      */
     public ULong getRoleId() {
-        return (ULong) get(9);
+        return (ULong) get(8);
     }
 
     /**
@@ -217,7 +198,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Profile id related to this User Distribution.
      */
     public EntityProcessorTicketCUserDistributionsRecord setProfileId(ULong value) {
-        set(10, value);
+        set(9, value);
         return this;
     }
 
@@ -227,7 +208,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Profile id related to this User Distribution.
      */
     public ULong getProfileId() {
-        return (ULong) get(10);
+        return (ULong) get(9);
     }
 
     /**
@@ -236,7 +217,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Designation id related to this User Distribution.
      */
     public EntityProcessorTicketCUserDistributionsRecord setDesignationId(ULong value) {
-        set(11, value);
+        set(10, value);
         return this;
     }
 
@@ -246,6 +227,25 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Designation id related to this User Distribution.
      */
     public ULong getDesignationId() {
+        return (ULong) get(10);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public EntityProcessorTicketCUserDistributionsRecord setDepartmentId(ULong value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public ULong getDepartmentId() {
         return (ULong) get(11);
     }
 
@@ -387,7 +387,7 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
      * Create a detached, initialised
      * EntityProcessorTicketCUserDistributionsRecord
      */
-    public EntityProcessorTicketCUserDistributionsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong createRuleId, ULong readUpdateRuleId, ULong userId, ULong roleId, ULong profileId, ULong designationId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketCUserDistributionsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ruleId, ULong userId, ULong roleId, ULong profileId, ULong designationId, ULong departmentId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS);
 
         setId(id);
@@ -396,12 +396,12 @@ public class EntityProcessorTicketCUserDistributionsRecord extends UpdatableReco
         setCode(code);
         setName(name);
         setDescription(description);
-        setCreateRuleId(createRuleId);
-        setReadUpdateRuleId(readUpdateRuleId);
+        setRuleId(ruleId);
         setUserId(userId);
         setRoleId(roleId);
         setProfileId(profileId);
         setDesignationId(designationId);
+        setDepartmentId(departmentId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

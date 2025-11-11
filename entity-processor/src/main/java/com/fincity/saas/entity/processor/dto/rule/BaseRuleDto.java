@@ -72,4 +72,12 @@ public abstract class BaseRuleDto<U extends BaseUserDistributionDto<U>, T extend
     public boolean isDefault() {
         return this.order == DEFAULT_ORDER;
     }
+
+    public boolean areDistributionEmpty() {
+        return this.userDistributions == null || this.userDistributions.isEmpty();
+    }
+
+    public boolean areDistributionValid() {
+        return this.userDistributions.stream().allMatch(BaseUserDistributionDto::isDistributionValid);
+    }
 }

@@ -121,7 +121,7 @@ public class EntityProcessorTicketRuUserDistributions extends TableImpl<EntityPr
      * <code>entity_processor.entity_processor_ticket_ru_user_distributions.ROLE_ID</code>.
      * Role id related to this User Distribution.
      */
-    public final TableField<EntityProcessorTicketRuUserDistributionsRecord, ULong> ROLE_ID = createField(DSL.name("ROLE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Role id related to this User Distribution.");
+    public final TableField<EntityProcessorTicketRuUserDistributionsRecord, ULong> ROLE_ID = createField(DSL.name("ROLE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Role id related to this User Distribution.");
 
     /**
      * The column
@@ -135,7 +135,14 @@ public class EntityProcessorTicketRuUserDistributions extends TableImpl<EntityPr
      * <code>entity_processor.entity_processor_ticket_ru_user_distributions.DESIGNATION_ID</code>.
      * Designation id related to this User Distribution.
      */
-    public final TableField<EntityProcessorTicketRuUserDistributionsRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Designation id related to this User Distribution.");
+    public final TableField<EntityProcessorTicketRuUserDistributionsRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED, this, "Designation id related to this User Distribution.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public final TableField<EntityProcessorTicketRuUserDistributionsRecord, ULong> DEPARTMENT_ID = createField(DSL.name("DEPARTMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Department id related to this User Distribution.");
 
     /**
      * The column
@@ -264,7 +271,7 @@ public class EntityProcessorTicketRuUserDistributions extends TableImpl<EntityPr
 
     @Override
     public List<UniqueKey<EntityProcessorTicketRuUserDistributionsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK1_TRUUD_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK2_TRUUD_CODE_USER_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK3_TRUUD_CODE_ROLE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK4_TRUUD_CODE_PROFILE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK5_TRUUD_CODE_DESIGNATION_ID);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK1_TRUUD_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK2_TRUUD_CODE_USER_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK3_TRUUD_CODE_ROLE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK4_TRUUD_CODE_PROFILE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK5_TRUUD_CODE_DESIGNATION_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS_UK6_TRUUD_CODE_DEPARTMENT_ID);
     }
 
     @Override

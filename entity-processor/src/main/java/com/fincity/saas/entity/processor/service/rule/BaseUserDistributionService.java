@@ -10,15 +10,12 @@ import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.util.ReflectionUtil;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
@@ -80,10 +77,6 @@ public abstract class BaseUserDistributionService<
         });
     }
 
-    private Mono<Class<D>> getPojoClass() {
-        return this.dao.getPojoClass();
-    }
-
     private <T> Flux<T> throwFluxMissingParam(String paramName) {
         return this.msgService.throwFluxMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -92,65 +85,23 @@ public abstract class BaseUserDistributionService<
                 this.getEntityName());
     }
 
-    public Flux<D> updateDistributions(
-            ProcessorAccess access,
-            ULong ruleId,
-            List<ULong> userIds,
-            List<ULong> roleIds,
-            List<ULong> profileIds,
-            List<ULong> designationIds,
-            List<ULong> departmentIds) {
+    public Flux<D> updateDistributions(ProcessorAccess access, ULong ruleId, List<D> userDistributions) {
 
         return FlatMapUtil.flatMapFlux(
                         () -> this.deleteByRuleId(access, ruleId).flux(),
-                        deleted -> this.createDistributions(
-                                access, ruleId, userIds, roleIds, profileIds, designationIds, departmentIds))
+                        deleted -> this.createDistributions(access, ruleId, userDistributions))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.updateDistributions"));
     }
 
-    public Flux<D> createDistributions(
-            ProcessorAccess access,
-            ULong ruleId,
-            List<ULong> userIds,
-            List<ULong> roleIds,
-            List<ULong> profileIds,
-            List<ULong> designationIds,
-            List<ULong> departmentIds) {
+    public Flux<D> createDistributions(ProcessorAccess access, ULong ruleId, List<D> userDistributions) {
 
         if (ruleId == null) return this.throwFluxMissingParam(BaseUserDistributionDto.Fields.ruleId);
 
-        List<DistributionItem<D>> items = new ArrayList<>();
+        for (D userDistribution : userDistributions) userDistribution.setRuleId(ruleId);
 
-        this.addDistributionItems(items, userIds, BaseUserDistributionDto::setUserId);
-        this.addDistributionItems(items, roleIds, BaseUserDistributionDto::setRoleId);
-        this.addDistributionItems(items, profileIds, BaseUserDistributionDto::setProfileId);
-        this.addDistributionItems(items, designationIds, BaseUserDistributionDto::setDesignationId);
-        this.addDistributionItems(items, departmentIds, BaseUserDistributionDto::setDepartmentId);
-
-        if (items.isEmpty()) return this.throwFluxMissingParam("distributionIds");
-
-        return this.getPojoClass()
-                .flatMapMany(clazz -> this.createDistributionsInternal(access, ruleId, items, clazz))
+        return Flux.fromIterable(userDistributions)
+                .flatMap(userDistribution -> super.create(access, userDistribution))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.createDistributions"));
-    }
-
-    private Flux<D> createDistributionsInternal(
-            ProcessorAccess access, ULong ruleId, List<DistributionItem<D>> items, Class<D> pojoClass) {
-
-        List<D> entities = new ArrayList<>(items.size());
-        for (DistributionItem<D> item : items) {
-            D entity = ReflectionUtil.getInstance(pojoClass);
-            entity.setRuleId(ruleId);
-            item.setter.accept(entity, item.id);
-            entities.add(entity);
-        }
-
-        return Flux.fromIterable(entities).flatMap(entity -> super.create(access, entity));
-    }
-
-    private void addDistributionItems(List<DistributionItem<D>> items, List<ULong> ids, BiConsumer<D, ULong> setter) {
-        if (ids != null && !ids.isEmpty())
-            ids.stream().filter(Objects::nonNull).forEach(id -> items.add(new DistributionItem<>(id, setter)));
     }
 
     public Mono<Integer> deleteByRuleId(ProcessorAccess access, ULong ruleId) {
@@ -242,7 +193,7 @@ public abstract class BaseUserDistributionService<
         keys.stream().filter(Objects::nonNull).forEach(key -> this.addToMap(map, key, userId));
     }
 
-    private Mono<List<D>> getUserDistributions(ProcessorAccess access, ULong ruleId) {
+    public Mono<List<D>> getUserDistributions(ProcessorAccess access, ULong ruleId) {
         return super.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getUserDistributions(access, ruleId),
@@ -254,6 +205,4 @@ public abstract class BaseUserDistributionService<
             Map<ULong, Set<ULong>> profileMap,
             Map<ULong, Set<ULong>> desigMap,
             Map<ULong, Set<ULong>> deptMap) {}
-
-    private record DistributionItem<D>(ULong id, BiConsumer<D, ULong> setter) {}
 }

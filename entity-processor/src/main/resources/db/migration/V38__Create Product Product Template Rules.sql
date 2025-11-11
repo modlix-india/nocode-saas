@@ -57,12 +57,12 @@ CREATE TABLE `entity_processor`.`entity_processor_ticket_c_user_distributions` (
     `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row.',
     `NAME` VARCHAR(64) NOT NULL COMMENT 'Name of the Rule Config.',
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Rule Config.',
-    `CREATE_RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Create Rule id related to this User Distribution.',
-    `READ_UPDATE_RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Read Update Rule id related to this User Distribution.',
+    `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule id related to this User Distribution.',
     `USER_ID` BIGINT UNSIGNED NULL COMMENT 'User id related to this User Distribution.',
-    `ROLE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Role id related to this User Distribution.',
+    `ROLE_ID` BIGINT UNSIGNED NULL COMMENT 'Role id related to this User Distribution.',
     `PROFILE_ID` BIGINT UNSIGNED NULL COMMENT 'Profile id related to this User Distribution.',
-    `DESIGNATION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Designation id related to this User Distribution.',
+    `DESIGNATION_ID` BIGINT UNSIGNED NULL COMMENT 'Designation id related to this User Distribution.',
+    `DEPARTMENT_ID` BIGINT UNSIGNED NULL COMMENT 'Department id related to this User Distribution.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product Rule config.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product Rule config is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -72,11 +72,12 @@ CREATE TABLE `entity_processor`.`entity_processor_ticket_c_user_distributions` (
 
     PRIMARY KEY (`ID`),
     UNIQUE KEY `UK1_TCUD_CODE` (`CODE`),
-    UNIQUE KEY `UK2_TCUD_CODE_USER_ID` (`CREATE_RULE_ID`, `USER_ID`),
-    UNIQUE KEY `UK3_TCUD_CODE_ROLE_ID` (`CREATE_RULE_ID`, `ROLE_ID`),
-    UNIQUE KEY `UK4_TCUD_CODE_PROFILE_ID` (`CREATE_RULE_ID`, `PROFILE_ID`),
-    UNIQUE KEY `UK5_TCUD_CODE_DESIGNATION_ID` (`CREATE_RULE_ID`, `DESIGNATION_ID`),
-    CONSTRAINT `FK1_TCUD_RULE_ID` FOREIGN KEY (`CREATE_RULE_ID`)
+    UNIQUE KEY `UK2_TCUD_CODE_USER_ID` (`RULE_ID`, `USER_ID`),
+    UNIQUE KEY `UK3_TCUD_CODE_ROLE_ID` (`RULE_ID`, `ROLE_ID`),
+    UNIQUE KEY `UK4_TCUD_CODE_PROFILE_ID` (`RULE_ID`, `PROFILE_ID`),
+    UNIQUE KEY `UK5_TCUD_CODE_DESIGNATION_ID` (`RULE_ID`, `DESIGNATION_ID`),
+    UNIQUE KEY `UK6_TCUD_CODE_DEPARTMENT_ID` (`RULE_ID`, `DEPARTMENT_ID`),
+    CONSTRAINT `FK1_TCUD_RULE_ID` FOREIGN KEY (`RULE_ID`)
         REFERENCES `entity_processor_product_ticket_c_rules` (`ID`)
         ON DELETE CASCADE
         ON UPDATE CASCADE
@@ -135,9 +136,10 @@ CREATE TABLE `entity_processor`.`entity_processor_ticket_ru_user_distributions` 
     `DESCRIPTION` TEXT NULL COMMENT 'Description for the Rule Config.',
     `RULE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Rule id related to this User Distribution.',
     `USER_ID` BIGINT UNSIGNED NULL COMMENT 'User id related to this User Distribution.',
-    `ROLE_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Role id related to this User Distribution.',
+    `ROLE_ID` BIGINT UNSIGNED NULL COMMENT 'Role id related to this User Distribution.',
     `PROFILE_ID` BIGINT UNSIGNED NULL COMMENT 'Profile id related to this User Distribution.',
-    `DESIGNATION_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Designation id related to this User Distribution.',
+    `DESIGNATION_ID` BIGINT UNSIGNED NULL COMMENT 'Designation id related to this User Distribution.',
+    `DEPARTMENT_ID` BIGINT UNSIGNED NULL COMMENT 'Department id related to this User Distribution.',
     `TEMP_ACTIVE` TINYINT NOT NULL DEFAULT 0 COMMENT 'Temporary active flag for this product Rule config.',
     `IS_ACTIVE` TINYINT NOT NULL DEFAULT 1 COMMENT 'Flag to check if this product Rule config is active or not.',
     `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row.',
@@ -151,6 +153,7 @@ CREATE TABLE `entity_processor`.`entity_processor_ticket_ru_user_distributions` 
     UNIQUE KEY `UK3_TRUUD_CODE_ROLE_ID` (`RULE_ID`, `ROLE_ID`),
     UNIQUE KEY `UK4_TRUUD_CODE_PROFILE_ID` (`RULE_ID`, `PROFILE_ID`),
     UNIQUE KEY `UK5_TRUUD_CODE_DESIGNATION_ID` (`RULE_ID`, `DESIGNATION_ID`),
+    UNIQUE KEY `UK6_TRUUD_CODE_DEPARTMENT_ID` (`RULE_ID`, `DEPARTMENT_ID`),
     CONSTRAINT `FK1_TRUUD_RULE_ID` FOREIGN KEY (`RULE_ID`)
         REFERENCES `entity_processor_product_ticket_ru_rules` (`ID`)
         ON DELETE CASCADE

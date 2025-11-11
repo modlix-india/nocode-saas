@@ -104,17 +104,10 @@ public class EntityProcessorTicketCUserDistributions extends TableImpl<EntityPro
 
     /**
      * The column
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.CREATE_RULE_ID</code>.
-     * Create Rule id related to this User Distribution.
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.RULE_ID</code>.
+     * Rule id related to this User Distribution.
      */
-    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> CREATE_RULE_ID = createField(DSL.name("CREATE_RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Create Rule id related to this User Distribution.");
-
-    /**
-     * The column
-     * <code>entity_processor.entity_processor_ticket_c_user_distributions.READ_UPDATE_RULE_ID</code>.
-     * Read Update Rule id related to this User Distribution.
-     */
-    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> READ_UPDATE_RULE_ID = createField(DSL.name("READ_UPDATE_RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Read Update Rule id related to this User Distribution.");
+    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> RULE_ID = createField(DSL.name("RULE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Rule id related to this User Distribution.");
 
     /**
      * The column
@@ -128,7 +121,7 @@ public class EntityProcessorTicketCUserDistributions extends TableImpl<EntityPro
      * <code>entity_processor.entity_processor_ticket_c_user_distributions.ROLE_ID</code>.
      * Role id related to this User Distribution.
      */
-    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> ROLE_ID = createField(DSL.name("ROLE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Role id related to this User Distribution.");
+    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> ROLE_ID = createField(DSL.name("ROLE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Role id related to this User Distribution.");
 
     /**
      * The column
@@ -142,7 +135,14 @@ public class EntityProcessorTicketCUserDistributions extends TableImpl<EntityPro
      * <code>entity_processor.entity_processor_ticket_c_user_distributions.DESIGNATION_ID</code>.
      * Designation id related to this User Distribution.
      */
-    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Designation id related to this User Distribution.");
+    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED, this, "Designation id related to this User Distribution.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public final TableField<EntityProcessorTicketCUserDistributionsRecord, ULong> DEPARTMENT_ID = createField(DSL.name("DEPARTMENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Department id related to this User Distribution.");
 
     /**
      * The column
@@ -271,7 +271,7 @@ public class EntityProcessorTicketCUserDistributions extends TableImpl<EntityPro
 
     @Override
     public List<UniqueKey<EntityProcessorTicketCUserDistributionsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK1_TCUD_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK2_TCUD_CODE_USER_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK3_TCUD_CODE_ROLE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK4_TCUD_CODE_PROFILE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK5_TCUD_CODE_DESIGNATION_ID);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK1_TCUD_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK2_TCUD_CODE_USER_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK3_TCUD_CODE_ROLE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK4_TCUD_CODE_PROFILE_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK5_TCUD_CODE_DESIGNATION_ID, Keys.KEY_ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS_UK6_TCUD_CODE_DEPARTMENT_ID);
     }
 
     @Override

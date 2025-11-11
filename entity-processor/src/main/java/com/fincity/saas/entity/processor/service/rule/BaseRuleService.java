@@ -7,9 +7,7 @@ import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
-import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.model.request.rule.RuleRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
@@ -131,52 +129,41 @@ public abstract class BaseRuleService<
         });
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Mono<D> createWithDistribution(RuleRequest<U, D> ruleRequest) {
+    public Mono<D> create(D entity) {
 
-        if (ruleRequest.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+        if (entity.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+
+        if (!entity.areDistributionValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> super.create(access, ruleRequest.getEntity()),
-                        (access, entity) -> this.getUserDistributionService()
-                                .createDistributions(
-                                        access,
-                                        entity.getId(),
-                                        ruleRequest.getUserIds(),
-                                        ruleRequest.getRoleIds(),
-                                        ruleRequest.getProfileIds(),
-                                        ruleRequest.getDesignationIds(),
-                                        ruleRequest.getDepartmentIds())
+                        access -> super.create(access, entity),
+                        (access, created) -> this.getUserDistributionService()
+                                .createDistributions(access, created.getId(), entity.getUserDistributions())
                                 .collectList(),
-                        (access, entity, userDistributions) ->
-                                Mono.just((D) entity.setUserDistributions(userDistributions)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.createWithDistribution"));
+                        (access, created, userDistributions) ->
+                                Mono.just((D) created.setUserDistributions(userDistributions)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.create"));
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Mono<D> updateWithDistribution(Identity entityId, RuleRequest<U, D> ruleRequest) {
-
-        if (ruleRequest.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+    public Mono<D> update(D entity) {
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> super.readIdentityWithAccess(access, entityId),
-                        (access, existing) ->
-                                super.update(access, (D) ruleRequest.getEntity().setId(existing.getId())),
-                        (access, existing, entity) -> this.getUserDistributionService()
-                                .updateDistributions(
-                                        access,
-                                        entity.getId(),
-                                        ruleRequest.getUserIds(),
-                                        ruleRequest.getRoleIds(),
-                                        ruleRequest.getProfileIds(),
-                                        ruleRequest.getDesignationIds(),
-                                        ruleRequest.getDepartmentIds())
-                                .collectList(),
-                        (access, existing, entity, userDistributions) ->
-                                Mono.just((D) entity.setUserDistributions(userDistributions)))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.updateWithDistribution"));
+                        access -> super.readById(access, entity.getId()),
+                        (access, existing) -> super.update(access, (D) entity.setId(existing.getId())),
+                        (access, existing, updated) -> entity.areDistributionEmpty()
+                                ? this.getUserDistributionService().getUserDistributions(access, updated.getId())
+                                : this.getUserDistributionService()
+                                        .updateDistributions(access, entity.getId(), entity.getUserDistributions())
+                                        .collectList(),
+                        (access, existing, updated, userDistributions) ->
+                                Mono.just((D) updated.setUserDistributions(userDistributions)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.update"));
     }
 
     @Override

@@ -464,7 +464,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
-                paramName,
+                Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
     }
 }

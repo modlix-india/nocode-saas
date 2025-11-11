@@ -232,11 +232,30 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public EntityProcessorTicketRuUserDistributionsRecord setDepartmentId(ULong value) {
+        set(11, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions.DEPARTMENT_ID</code>.
+     * Department id related to this User Distribution.
+     */
+    public ULong getDepartmentId() {
+        return (ULong) get(11);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_ticket_ru_user_distributions.TEMP_ACTIVE</code>.
      * Temporary active flag for this product Rule config.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setTempActive(Boolean value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -246,7 +265,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Temporary active flag for this product Rule config.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(11);
+        return (Boolean) get(12);
     }
 
     /**
@@ -255,7 +274,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Flag to check if this product Rule config is active or not.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setIsActive(Boolean value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -265,7 +284,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Flag to check if this product Rule config is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(12);
+        return (Boolean) get(13);
     }
 
     /**
@@ -274,7 +293,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * ID of the user who created this row.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setCreatedBy(ULong value) {
-        set(13, value);
+        set(14, value);
         return this;
     }
 
@@ -284,7 +303,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(13);
+        return (ULong) get(14);
     }
 
     /**
@@ -293,7 +312,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Time when this row is created.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setCreatedAt(LocalDateTime value) {
-        set(14, value);
+        set(15, value);
         return this;
     }
 
@@ -303,7 +322,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(14);
+        return (LocalDateTime) get(15);
     }
 
     /**
@@ -312,7 +331,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * ID of the user who updated this row.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setUpdatedBy(ULong value) {
-        set(15, value);
+        set(16, value);
         return this;
     }
 
@@ -322,7 +341,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(16);
     }
 
     /**
@@ -331,7 +350,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Time when this row is updated.
      */
     public EntityProcessorTicketRuUserDistributionsRecord setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(17, value);
         return this;
     }
 
@@ -341,7 +360,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -368,7 +387,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
      * Create a detached, initialised
      * EntityProcessorTicketRuUserDistributionsRecord
      */
-    public EntityProcessorTicketRuUserDistributionsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ruleId, ULong userId, ULong roleId, ULong profileId, ULong designationId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketRuUserDistributionsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong ruleId, ULong userId, ULong roleId, ULong profileId, ULong designationId, ULong departmentId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS);
 
         setId(id);
@@ -382,6 +401,7 @@ public class EntityProcessorTicketRuUserDistributionsRecord extends UpdatableRec
         setRoleId(roleId);
         setProfileId(profileId);
         setDesignationId(designationId);
+        setDepartmentId(departmentId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);

@@ -41,4 +41,15 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
         this.designationId = userDistribution.designationId;
         this.departmentId = userDistribution.departmentId;
     }
+
+    public boolean isDistributionValid() {
+
+        int count = (this.userId != null ? 1 : 0)
+                + (this.roleId != null ? 1 : 0)
+                + (this.profileId != null ? 1 : 0)
+                + (this.designationId != null ? 1 : 0)
+                + (this.departmentId != null ? 1 : 0);
+
+        return count == 1;
+    }
 }
