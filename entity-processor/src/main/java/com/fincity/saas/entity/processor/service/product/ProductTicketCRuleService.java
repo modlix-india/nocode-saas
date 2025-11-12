@@ -59,8 +59,7 @@ public class ProductTicketCRuleService
     @Override
     protected Mono<ProductTicketCRuleDto> checkEntity(ProductTicketCRuleDto entity, ProcessorAccess access) {
 
-		if (entity.isDefault())
-			return super.checkEntity(entity, access);
+        if (entity.isDefault()) return super.checkEntity(entity, access);
 
         if (entity.getStageId() == null)
             return this.msgService.throwMessage(
