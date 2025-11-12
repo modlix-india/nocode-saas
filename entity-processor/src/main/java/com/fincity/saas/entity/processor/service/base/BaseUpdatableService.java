@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
@@ -455,7 +456,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.MISSING_PARAMETERS,
-                paramName,
+                Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
     }
 
@@ -463,7 +464,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
-                paramName,
+                Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
     }
 }
