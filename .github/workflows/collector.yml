@@ -37,9 +37,10 @@ jobs:
        # - name: Login to OCIR
        # run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
 
-      - name: Build and push image
+      - name: Build docker image
         run: |
-          docker build -t $OCIR_REPO:${{ github.sha }} -f services/entity-collector/Dockerfile .
-          docker tag $OCIR_REPO:${{ github.sha }} $OCIR_REPO:latest
+          docker build -t test/entity-collector:${{ github.sha }} -f entity-collector/Dockerfile .
+          docker tag test/entity-collector:${{ github.sha }} test/entity-collector:latest
+
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
