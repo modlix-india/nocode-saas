@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.modlix.saas.commons2.util.LongUtil;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.jooq.Condition;
@@ -63,7 +64,7 @@ public class FileSystemDao {
     }
 
     private ULong checkIfPathExists(int index, String[] pathParts, ULong parentId,
-            MultiValuedMap<String, FilesFileSystemRecord> nameIndex) {
+                                    MultiValuedMap<String, FilesFileSystemRecord> nameIndex) {
 
         if (index == pathParts.length)
             return parentId;
@@ -87,6 +88,17 @@ public class FileSystemDao {
     public Optional<ULong> getId(FilesFileSystemType type, String clientCode, String path) {
 
         return Optional.ofNullable(this.getFileRecord(type, clientCode, path, FilesFileSystemRecord::getId));
+    }
+
+    public ULong getId(FilesFileSystemType type, String clientCode, ULong folderId, String path) {
+
+        String fileName = path.substring(path.lastIndexOf(R2_FILE_SEPARATOR_STRING) + 1);
+
+        return this.context.select(FILES_FILE_SYSTEM.ID).from(FILES_FILE_SYSTEM)
+                .where(DSL.and(FILES_FILE_SYSTEM.TYPE.eq(type),
+                        folderId == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull() : FILES_FILE_SYSTEM.PARENT_ID.eq(folderId),
+                        FILES_FILE_SYSTEM.NAME.eq(fileName),
+                        FILES_FILE_SYSTEM.CODE.eq(clientCode))).limit(1).fetchOneInto(ULong.class);
     }
 
     public Optional<ULong> getFolderId(FilesFileSystemType type, String clientCode, String path) {
@@ -141,7 +153,7 @@ public class FileSystemDao {
     }
 
     private <T> T getFileRecord(FilesFileSystemType type, String clientCode, String path,
-            Function<FilesFileSystemRecord, T> mapper) {
+                                Function<FilesFileSystemRecord, T> mapper) {
 
         if (StringUtil.safeIsBlank(path))
             return null;
@@ -153,7 +165,7 @@ public class FileSystemDao {
     }
 
     private <T> T getFileRecord(FilesFileSystemType type, String clientCode, String[] pathParts,
-            Function<FilesFileSystemRecord, T> mapper) {
+                                Function<FilesFileSystemRecord, T> mapper) {
 
         List<FilesFileSystemRecord> list = this.context.selectFrom(FILES_FILE_SYSTEM)
                 .where(DSL.and(FILES_FILE_SYSTEM.CODE.eq(clientCode), FILES_FILE_SYSTEM.NAME.in(pathParts),
@@ -180,8 +192,8 @@ public class FileSystemDao {
     }
 
     public FilesPage list(FilesFileSystemType type, String clientCode, String path, FileType[] fileType,
-            String filter,
-            Pageable page) {
+                          String filter,
+                          Pageable page) {
 
         Optional<ULong> folderId = this.getId(type, clientCode, path);
 
@@ -193,8 +205,8 @@ public class FileSystemDao {
     }
 
     private FilesPage listInternal(FilesFileSystemType type, String clientCode, ULong folderId,
-            FileType[] fileType,
-            String filter, Pageable page) {
+                                   FileType[] fileType,
+                                   String filter, Pageable page) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -237,7 +249,7 @@ public class FileSystemDao {
 
         if (page == null || page.getSort()
                 .isEmpty() || page.getSort()
-                        .isUnsorted()) {
+                .isUnsorted()) {
 
             return List.of(FILES_FILE_SYSTEM.FILE_TYPE.desc(), FILES_FILE_SYSTEM.NAME.asc());
         }
@@ -282,7 +294,7 @@ public class FileSystemDao {
     }
 
     public FileDetail createOrUpdateFile(FilesFileSystemType fileSystemType, String clientCode, String path,
-            String fileName, ULong fileLength, boolean exists) {
+                                         String fileName, ULong fileLength, boolean exists) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
         String parentPath = index == -1 ? "" : path.substring(0, index);
@@ -304,40 +316,36 @@ public class FileSystemDao {
                     .where(parentId.map(FILES_FILE_SYSTEM.PARENT_ID::eq)
                             .orElseGet(FILES_FILE_SYSTEM.PARENT_ID::isNull).and(FILES_FILE_SYSTEM.NAME.eq(name)))
                     .execute() > 0;
+        } else {
+
+            updatedCreated = this.context.insertInto(FILES_FILE_SYSTEM)
+                    .set(FILES_FILE_SYSTEM.CODE, clientCode)
+                    .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.get())
+                    .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
+                    .set(FILES_FILE_SYSTEM.NAME, name)
+                    .set(FILES_FILE_SYSTEM.SIZE, fileLength)
+                    .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)
+                    .execute() > 0;
         }
-
-        updatedCreated = this.context.insertInto(FILES_FILE_SYSTEM)
-                .set(FILES_FILE_SYSTEM.CODE, clientCode)
-                .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.get())
-                .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
-                .set(FILES_FILE_SYSTEM.NAME, name)
-                .set(FILES_FILE_SYSTEM.SIZE, fileLength)
-                .set(FILES_FILE_SYSTEM.TYPE, fileSystemType)
-                .execute() > 0;
-
         if (!updatedCreated)
             return null;
 
         return this.getFileDetail(fileSystemType, clientCode, path);
     }
 
-    public boolean createOrUpdateFileForZipUpload(FilesFileSystemType fileSystemType, String clientCode,
-            ULong folderId, String path, String fileName, ULong fileLength) {
+    public boolean createOrUpdateFileForZipUpload(ULong existingId, FilesFileSystemType fileSystemType, String clientCode,
+                                                  ULong folderId, String path, String fileName, ULong fileLength) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
-        String parentPath = index == -1 ? "" : path.substring(0, index);
         String name;
 
         if (!StringUtil.safeIsBlank(fileName) && index != -1) {
-            path = parentPath + R2_FILE_SEPARATOR_STRING + fileName;
             name = fileName;
         } else {
             name = path.substring(index + 1);
         }
 
-        var existingId = this.getId(fileSystemType, clientCode, path);
-
-        if (existingId.isPresent()) {
+        if (existingId != null) {
             return this.context.update(FILES_FILE_SYSTEM)
                     .set(FILES_FILE_SYSTEM.UPDATED_AT, LocalDateTime.now(ZoneOffset.UTC))
                     .set(FILES_FILE_SYSTEM.SIZE, fileLength)
@@ -391,7 +399,7 @@ public class FileSystemDao {
     }
 
     public Map<String, ULong> createFolders(FilesFileSystemType fileSystemType, String clientCode,
-            List<String> paths) {
+                                            List<String> paths) {
 
         Map<String, Node> nodeMap = new HashMap<>();
 
@@ -463,12 +471,12 @@ public class FileSystemDao {
     private ULong selectFolderId(FilesFileSystemType fileSystemType, String clientCode, Node node) {
 
         return this.context.select(FILES_FILE_SYSTEM.ID).from(FILES_FILE_SYSTEM).where(DSL.and(
-                FILES_FILE_SYSTEM.CODE.eq(clientCode),
-                FILES_FILE_SYSTEM.NAME.eq(node.getName()),
-                FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
-                node.getParent() == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
-                        : FILES_FILE_SYSTEM.PARENT_ID.eq(node.getParent().getId()),
-                FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY)))
+                        FILES_FILE_SYSTEM.CODE.eq(clientCode),
+                        FILES_FILE_SYSTEM.NAME.eq(node.getName()),
+                        FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
+                        node.getParent() == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
+                                : FILES_FILE_SYSTEM.PARENT_ID.eq(node.getParent().getId()),
+                        FILES_FILE_SYSTEM.FILE_TYPE.eq(FilesFileSystemFileType.DIRECTORY)))
                 .limit(1)
                 .fetchOneInto(ULong.class);
     }

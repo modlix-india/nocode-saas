@@ -10,14 +10,16 @@ import javax.imageio.ImageIO;
 
 import org.jooq.types.ULong;
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.files.enums.ImagesFormatForResize;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
@@ -38,8 +40,8 @@ public class GenericResourceFileController {
     private final FilesMessageResourceService msgService;
 
     public GenericResourceFileController(SecuredFileResourceService securedService,
-            StaticFileResourceService staticService,
-            FilesMessageResourceService msgService) {
+                                         StaticFileResourceService staticService,
+                                         FilesMessageResourceService msgService) {
         this.securedService = securedService;
         this.staticService = staticService;
         this.msgService = msgService;
@@ -47,7 +49,7 @@ public class GenericResourceFileController {
 
     @PostMapping("/client")
     public ResponseEntity<FileDetail> uploadClientImage(
-            @RequestPart(name = "file") FilePart filePart,
+            @RequestPart(name = "file") MultipartFile filePart,
             @RequestPart(required = false) String width, @RequestPart(required = false) String height,
             @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
             @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
@@ -66,7 +68,7 @@ public class GenericResourceFileController {
 
     @PostMapping("/user")
     public ResponseEntity<FileDetail> uploadUserImage(
-            @RequestPart(name = "file") FilePart filePart,
+            @RequestPart(name = "file") MultipartFile filePart,
             @RequestPart(required = false) String width, @RequestPart(required = false) String height,
             @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
             @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
@@ -86,7 +88,7 @@ public class GenericResourceFileController {
     // Currently only supports jpg and png.
     @PostMapping("/resize")
     public void resizeImage(
-            @RequestPart(name = "file") FilePart fp,
+            @RequestPart(name = "file") MultipartFile fp,
             @RequestPart(required = false) String width, @RequestPart(required = false) String height,
             @RequestPart(required = false) String rotation, @RequestPart(required = false) String cropAreaX,
             @RequestPart(required = false) String cropAreaY, @RequestPart(required = false) String cropAreaWidth,
@@ -103,19 +105,19 @@ public class GenericResourceFileController {
 
         try {
             Path fld = Files.createTempDirectory("imageUpload");
-            Path path = fld.resolve(fp.filename());
-            fp.transferTo(path).thenReturn(path.toFile());
+            Path path = fld.resolve(fp.getOriginalFilename());
+            fp.transferTo(path);
 
-            var srcTuple = ImageTransformUtil.makeSourceImage(path.toFile(), fp.filename());
-
-            int imageTargetType = ImagesFormatForResize.fromFileName(fp.filename()) == ImagesFormatForResize.PNG
+            var srcTuple = ImageTransformUtil.makeSourceImage(path.toFile(), fp.getOriginalFilename());
+            int imageTargetType = ImagesFormatForResize
+                    .fromFileName(fp.getOriginalFilename()) == ImagesFormatForResize.PNG
                     ? BufferedImage.TYPE_INT_ARGB
                     : BufferedImage.TYPE_INT_RGB;
 
             BufferedImage transformedImage = ImageTransformUtil.transformImage(srcTuple.getT1(),
                     imageTargetType, imageDetails);
 
-            String targetFileName = fp.filename();
+            String targetFileName = fp.getOriginalFilename();
             String lowerName = targetFileName.toLowerCase();
 
             if ((imageTargetType == BufferedImage.TYPE_INT_ARGB && !lowerName.endsWith(".png")) ||

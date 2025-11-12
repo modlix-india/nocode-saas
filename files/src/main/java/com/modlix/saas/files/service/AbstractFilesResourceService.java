@@ -1,7 +1,5 @@
 package com.modlix.saas.files.service;
 
-import static com.modlix.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
-
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -43,7 +41,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.codec.ResourceHttpMessageWriter;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.modlix.saas.commons2.exception.GenericException;
@@ -67,6 +64,7 @@ import com.modlix.saas.files.jooq.enums.FilesUploadDownloadType;
 import com.modlix.saas.files.model.DownloadOptions;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
+import static com.modlix.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 import com.modlix.saas.files.util.FileExtensionUtil;
 import com.modlix.saas.files.util.ImageTransformUtil;
 import com.modlix.saas.files.util.RangeDownloadUtil;
@@ -112,7 +110,7 @@ public abstract class AbstractFilesResourceService {
 
         this.virtualThreadExecutor = new ThreadPoolExecutor(
                 30,
-                300,
+                30000,
                 10L,
                 TimeUnit.MINUTES,
                 new LinkedBlockingQueue<>(),
@@ -143,7 +141,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public Page<FileDetail> list(String clientCode, String uri, FileType[] fileType, String filter,
-                                 Pageable page) {
+            Pageable page) {
 
         Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
         String resourcePath = tup.getT1();
@@ -161,7 +159,7 @@ public abstract class AbstractFilesResourceService {
 
         String folderPath = (resourcePath.startsWith(R2_FILE_SEPARATOR_STRING)
                 || StringUtil.safeIsBlank(resourcePath)) ? resourcePath
-                : (R2_FILE_SEPARATOR_STRING + resourcePath);
+                        : (R2_FILE_SEPARATOR_STRING + resourcePath);
 
         for (FileDetail fd : dataPage.getContent()) {
             fd.setFilePath(folderPath + R2_FILE_SEPARATOR_STRING + fd.getName())
@@ -183,7 +181,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     protected FileDetail convertToFileDetailWhileCreation(String resourcePath, String clientCode,
-                                                          FileDetail fileDetail) {
+            FileDetail fileDetail) {
 
         String resourceType = this.getResourceFileType();
 
@@ -204,7 +202,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public void downloadFile(DownloadOptions downloadOptions, HttpServletRequest request,
-                             HttpServletResponse response) {
+            HttpServletResponse response) {
 
         String rp = this.resolvePathWithClientCode(request.getRequestURI()).getT1();
 
@@ -225,7 +223,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     protected void makeMatchesStartDownload(DownloadOptions downloadOptions, HttpServletRequest request,
-                                            HttpServletResponse response, String path, long fileMillis, String fileETag) {
+            HttpServletResponse response, String path, long fileMillis, String fileETag) {
 
         if (BooleanUtil.safeValueOf(downloadOptions.getNoCache())) {
             sendFile(downloadOptions, fileETag, fileMillis, path, request, response);
@@ -241,7 +239,7 @@ public abstract class AbstractFilesResourceService {
         String eTag = request.getHeader("ETag");
         if (eTag == null) {
             Enumeration<String> matches = request.getHeaders("If-None-Match");
-            if (!matches.hasMoreElements())
+            if (matches.hasMoreElements())
                 eTag = matches.nextElement();
         }
 
@@ -267,7 +265,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public void sendFile(DownloadOptions downloadOptions, String eTag, long fileMillis,
-                         String path, HttpServletRequest request, HttpServletResponse response) {
+            String path, HttpServletRequest request, HttpServletResponse response) {
 
         String[] pathParts = path.split(FileSystemService.R2_FILE_SEPARATOR_STRING);
         String fileName = pathParts[pathParts.length - 1];
@@ -368,23 +366,23 @@ public abstract class AbstractFilesResourceService {
             case contain -> // Resize to fit entirely in the target, preserving aspect ratio
                 // If the background is set, pad to fill the rest; otherwise it's just centered
                 // with transparency
-                    processed = containWithOptionalPad(original, targetWidth, targetHeight,
-                            options.getGravity(), options.getBackground(), targetFormat);
+                processed = containWithOptionalPad(original, targetWidth, targetHeight,
+                        options.getGravity(), options.getBackground(), targetFormat);
 
             case cover -> // Scale to cover the entire space, then crop. Gravity determines from which
                 // side we
                 // crop
-                    processed = coverWithGravity(original, targetWidth, targetHeight, options.getGravity());
+                processed = coverWithGravity(original, targetWidth, targetHeight, options.getGravity());
 
             case crop -> // Crop directly, ignoring the aspect ratio
-                    processed = cropWithGravity(original, targetWidth, targetHeight, options.getGravity());
+                processed = cropWithGravity(original, targetWidth, targetHeight, options.getGravity());
 
             case pad -> processed = containWithOptionalPad(original, targetWidth, targetHeight,
                     options.getGravity(), options.getBackground() == null ? "#FFFFFF" : options.getBackground(),
                     targetFormat);
 
             default -> // If no recognized fit, leave the image as-is
-                    processed = original;
+                processed = original;
         }
 
         if (targetFormat == DownloadOptions.Format.jpeg && processed.getType() != BufferedImage.TYPE_INT_RGB) {
@@ -424,7 +422,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private BufferedImage containWithOptionalPad(BufferedImage source, int targetWidth, int targetHeight,
-                                                 DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
+            DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
         // Scale to fit fully (like "scale_down" above but always resizing if bigger or
         // smaller)
         double ratioOriginal = (double) source.getWidth() / (double) source.getHeight();
@@ -445,7 +443,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private BufferedImage coverWithGravity(BufferedImage source, int targetWidth, int targetHeight,
-                                           DownloadOptions.Gravity gravity) {
+            DownloadOptions.Gravity gravity) {
         // Scale so that the image covers the entire target, then crop
         double ratioOriginal = (double) source.getWidth() / (double) source.getHeight();
         double ratioTarget = (double) targetWidth / (double) targetHeight;
@@ -462,7 +460,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private BufferedImage cropWithGravity(BufferedImage source, int targetWidth, int targetHeight,
-                                          DownloadOptions.Gravity gravity) {
+            DownloadOptions.Gravity gravity) {
         int w = Math.min(targetWidth, source.getWidth());
         int h = Math.min(targetHeight, source.getHeight());
 
@@ -494,7 +492,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private BufferedImage padWithGravity(BufferedImage source, int targetWidth, int targetHeight,
-                                         DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
+            DownloadOptions.Gravity gravity, String bgHex, DownloadOptions.Format targetFormat) {
         // Use "Scalr.pad" mostly adds a uniform border, so we do the manual approach in
         // case we want
         // the entire background area exactly targetWidth x targetHeight with image
@@ -563,12 +561,16 @@ public abstract class AbstractFilesResourceService {
                     FilesMessageResourceService.FORBIDDEN_PATH, this.getResourceType(), resourcePath);
         }
 
-        return this.getFSService()
+        boolean deleted = this.getFSService()
                 .deleteFile(clientCode + FileSystemService.R2_FILE_SEPARATOR_STRING + resourcePath);
+
+        this.getFSService().evictCache(clientCode);
+
+        return deleted;
     }
 
     public FileDetail create(String clientCode, String uri, List<MultipartFile> fileParts, String fileName,
-                             Boolean override) {
+            Boolean override) {
 
         boolean ovr = override == null || BooleanUtil.safeValueOf(override);
         Tuple2<String, String> tup = this.resolvePathWithoutClientCode(this.uriPart, uri);
@@ -593,7 +595,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private PathParts extractPathClientCodeFileName(String uri, MultipartFile fp, String filePath,
-                                                    String clientCode) {
+            String clientCode) {
         String resourcePath;
         String fileName = "";
 
@@ -630,8 +632,8 @@ public abstract class AbstractFilesResourceService {
     }
 
     public FileDetail imageUpload(String clientCode, String uri, MultipartFile fp, String fileName,
-                                  Boolean override,
-                                  ImageDetails imageDetails, String filePath) {
+            Boolean override,
+            ImageDetails imageDetails, String filePath) {
         boolean ovr = override == null || BooleanUtil.safeValueOf(override);
 
         int ind = uri.indexOf(TRANSFORM_TYPE);
@@ -689,7 +691,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private FileDetail finalFileWrite(PathParts pathParts,
-                                      Tuple2<BufferedImage, Integer> transformedTuple, String fileName, boolean override) throws IOException {
+            Tuple2<BufferedImage, Integer> transformedTuple, String fileName, boolean override) throws IOException {
 
         Path tempDirectory = Files.createTempDirectory("imageUpload");
         Path path = tempDirectory.resolve(pathParts.fileName);
@@ -746,6 +748,7 @@ public abstract class AbstractFilesResourceService {
                     .submit(() -> {
                         this.deflateAndProcess(tmpFile, tmpFolder, resourcePath, clientCode, ovr);
                         this.getFSService().evictCache(clientCode);
+                        this.filesUploadDownloadService.updateDone(fud.getId());
                     });
             return fud.getId();
         } catch (IOException e) {
@@ -756,8 +759,8 @@ public abstract class AbstractFilesResourceService {
     }
 
     private boolean deflateAndProcess(Path tmpFile,
-                                      Path tmpFolder, String resourcePath, String clientCode,
-                                      boolean override) {
+            Path tmpFolder, String resourcePath, String clientCode,
+            boolean override) {
         boolean isRoot = StringUtil.safeIsBlank(resourcePath);
 
         Tuple2<List<Tuple2<String, Path>>, List<String>> filesFoldersTuple = this.deflateFilesFolders(tmpFile,
@@ -773,7 +776,7 @@ public abstract class AbstractFilesResourceService {
 
         Map<String, ULong> folderMap = this.getFSService().createFolders(clientCode, folderList);
 
-        filesFoldersTuple.getT1().stream().forEach(tup -> {
+        filesFoldersTuple.getT1().stream().parallel().forEach(tup -> this.virtualThreadExecutor.submit(() -> {
             String parentPath = tup.getT1();
             int index = parentPath.lastIndexOf(R2_FILE_SEPARATOR_STRING);
             String folderPath = index == -1 ? "" : parentPath.substring(0, index);
@@ -790,9 +793,9 @@ public abstract class AbstractFilesResourceService {
             this.getFSService().createFileForZipUpload(clientCode, folderId,
                     folderPath.isEmpty() ? tup.getT1()
                             : (resourcePath + R2_FILE_SEPARATOR_STRING
-                            + tup.getT1()),
+                                    + tup.getT1()),
                     tup.getT2(), override);
-        });
+        }));
         return true;
     }
 
@@ -871,7 +874,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public FileDetail createInternal(String clientCode, boolean override, String filePath,
-                                     String fileName, HttpServletRequest request) {
+            String fileName, HttpServletRequest request) {
 
         try (InputStream inputStream = request.getInputStream()) {
             FileDetail fileDetail = this.getFSService().createFileFromInputStream(
@@ -949,7 +952,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public void readInternal(DownloadOptions downloadOptions, String filePath, HttpServletRequest request,
-                             HttpServletResponse response) {
+            HttpServletResponse response) {
 
         if (!filePath.startsWith(R2_FILE_SEPARATOR_STRING)) {
             filePath = R2_FILE_SEPARATOR_STRING + filePath;
@@ -971,7 +974,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     private void downloadFileByFileDetails(FileDetail fileDetail, DownloadOptions downloadOptions,
-                                           String resourcePath, HttpServletRequest request, HttpServletResponse response) {
+            String resourcePath, HttpServletRequest request, HttpServletResponse response) {
 
         long fileMillis = fileDetail.getLastModifiedTime();
         String fileETag = "\"" +
@@ -1030,9 +1033,12 @@ public abstract class AbstractFilesResourceService {
 
             String cdnPath = fud.getCdnUrl().substring(0, lastIndex);
 
-            return this.getFSService().createFileFromFile(fud.getClientCode(),
+            this.getFSService().createFileFromFile(fud.getClientCode(),
                     cdnPath, cdnFileName, path, true,
                     "attachment; filename=\"" + name + ".zip\"");
+
+            this.getFSService().evictCache(fud.getClientCode());
+            this.filesUploadDownloadService.updateDone(fud.getId());
         });
 
         return fud.getId();
@@ -1055,7 +1061,7 @@ public abstract class AbstractFilesResourceService {
     }
 
     public Page<FilesUploadDownloadDTO> listExportsImports(FilesUploadDownloadType type, String clientCode,
-                                                           Pageable page) {
+            Pageable page) {
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
@@ -1076,7 +1082,9 @@ public abstract class AbstractFilesResourceService {
 
     public FileDetail createDirectory(String clientCode, String uri) {
         Tuple2<String, String> uriPath = this.resolvePathWithoutClientCode("directory", uri);
-        return this.getFSService().createFolder(clientCode, uriPath.getT1());
+        FileDetail fd = this.getFSService().createFolder(clientCode, uriPath.getT1());
+        this.getFSService().evictCache(clientCode);
+        return fd;
     }
 
     public abstract FileSystemService getFSService();

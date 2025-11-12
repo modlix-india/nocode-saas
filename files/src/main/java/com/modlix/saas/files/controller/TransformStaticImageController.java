@@ -59,7 +59,7 @@ public class TransformStaticImageController {
 
         FileDetail fileDetail = ("secured".equals(resourceType) ? this.securedService : this.staticService).imageUpload(
                 CommonsUtil.nonNullValue(clientCode, ca.getClientCode(), ca.getLoggedInFromClientCode()),
-                request.getRequestURI(), filePart, fileName,
+                request.getRequestURI(), filePart, fileName == null ? filePart.getOriginalFilename() : fileName,
                 BooleanUtil.safeValueOf(override), imageDetails, filePath);
 
         return ResponseEntity.ok(fileDetail);

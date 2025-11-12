@@ -16,7 +16,6 @@ import javax.imageio.ImageIO;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +41,7 @@ import com.modlix.saas.files.util.ImageTransformUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Service
@@ -76,11 +76,13 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
     private final FileSystemDao fileSystemDao;
     private final CacheService cacheService;
     private final S3Client s3Client;
+    private final S3AsyncClient s3AsyncClient;
     private final IFeignSecurityService securityService;
 
     public SecuredFileResourceService(FilesSecuredAccessService fileSecuredAccessService,
             FilesAccessPathService filesAccessPathService, FilesMessageResourceService msgService,
             FileSystemDao fileSystemDao, CacheService cacheService, S3Client s3Client,
+            S3AsyncClient s3AsyncClient,
             FilesUploadDownloadService fileUploadDownloadService, IFeignSecurityService securityService,
             FilesMessageResourceService messageService) {
         super(filesAccessPathService, msgService, fileUploadDownloadService);
@@ -88,6 +90,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         this.fileSystemDao = fileSystemDao;
         this.cacheService = cacheService;
         this.s3Client = s3Client;
+        this.s3AsyncClient = s3AsyncClient;
         this.securityService = securityService;
     }
 
@@ -98,7 +101,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         String bucketName = this.bucketPrefix + "-" + this.getResourceType().toLowerCase();
 
         this.fileSystemService = new FileSystemService(this.fileSystemDao, this.cacheService, bucketName,
-                this.s3Client, FilesFileSystemType.SECURED, this.msgService);
+                this.s3Client, this.s3AsyncClient, FilesFileSystemType.SECURED, this.msgService);
     }
 
     @Override
@@ -227,7 +230,7 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         return FilesAccessPathResourceType.SECURED.name();
     }
 
-    public FileDetail uploadUserImage(FilePart fp, ImageDetails details, ULong userId) {
+    public FileDetail uploadUserImage(MultipartFile fp, ImageDetails details, ULong userId) {
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
@@ -243,11 +246,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         }
         try {
             Path tempDirectory = Files.createTempDirectory("imageUpload");
-            Path file = tempDirectory.resolve(fp.filename());
+            Path file = tempDirectory.resolve(fp.getOriginalFilename());
             fp.transferTo(file);
 
             Tuples.Tuple2<BufferedImage, Integer> sourceTuple = ImageTransformUtil.makeSourceImage(file.toFile(),
-                    fp.filename());
+                    fp.getOriginalFilename());
             BufferedImage transformedImage = ImageTransformUtil.transformImage(sourceTuple.getT1(),
                     BufferedImage.TYPE_INT_ARGB, details);
             File finalFile = tempDirectory.resolve(uid + ".png").toFile();

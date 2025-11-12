@@ -4,7 +4,7 @@ public class LongUtil {
 
     public static Long safeValueOf(Object object, Long... defaultValue) {
         if (object == null)
-            return null;
+            return getDefaultValue(defaultValue);
         if (object instanceof Long l)
             return l;
         if (object instanceof Number n)
@@ -12,11 +12,16 @@ public class LongUtil {
         try {
             return Long.parseLong(object.toString());
         } catch (NumberFormatException e) {
-            for (Long eachDefaultValue : defaultValue) {
-                if (eachDefaultValue != null)
-                    return eachDefaultValue;
-            }
-            return null;
+
+            return getDefaultValue(defaultValue);
         }
+    }
+
+    private static Long getDefaultValue(Long[] defaultValue) {
+        for (Long eachDefaultValue : defaultValue) {
+            if (eachDefaultValue != null)
+                return eachDefaultValue;
+        }
+        return null;
     }
 }

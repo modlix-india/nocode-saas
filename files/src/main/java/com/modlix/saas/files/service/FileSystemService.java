@@ -11,11 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.StreamSupport;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.jooq.types.ULong;
 import org.slf4j.Logger;
@@ -43,12 +45,15 @@ import com.modlix.saas.files.model.FilesPage;
 import lombok.Getter;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.DownloadDirectoryRequest;
 
 // This service is used for both static and secured files.
 
@@ -66,6 +71,7 @@ public class FileSystemService {
     private final CacheService cacheService;
     private final String bucketName;
     private final S3Client s3Client;
+    private final S3AsyncClient s3AsyncClient;
     private final FilesFileSystemType fileSystemType;
     private final FilesMessageResourceService messageService;
 
@@ -75,11 +81,13 @@ public class FileSystemService {
     private final Logger logger = LoggerFactory.getLogger(FileSystemService.class);
 
     public FileSystemService(FileSystemDao fileSystemDao, CacheService cacheService, String bucketName,
-            S3Client s3Client, FilesFileSystemType fileSystemType, FilesMessageResourceService messageService) {
+            S3Client s3Client, S3AsyncClient s3AsyncClient, FilesFileSystemType fileSystemType,
+            FilesMessageResourceService messageService) {
         this.fileSystemDao = fileSystemDao;
         this.cacheService = cacheService;
         this.bucketName = bucketName;
         this.s3Client = s3Client;
+        this.s3AsyncClient = s3AsyncClient;
         this.messageService = messageService;
         this.fileSystemType = fileSystemType;
         try {
@@ -104,7 +112,7 @@ public class FileSystemService {
         if (StringUtil.safeIsBlank(path) || path.equals(R2_FILE_SEPARATOR_STRING))
             return true;
 
-        return cacheService.cacheValueOrGet(CACHE_NAME_EXISTS + "-" + clientCode,
+        return cacheService.cacheValueOrGet(CACHE_NAME_EXISTS + "-" + this.fileSystemType.name() + "-" + clientCode,
                 () -> this.fileSystemDao.exists(this.fileSystemType, clientCode, path),
                 path);
     }
@@ -121,7 +129,8 @@ public class FileSystemService {
                 || page.getPageSize() != 200)
             firstPage = this.fileSystemDao.list(this.fileSystemType, clientCode, path, fileType, filter, page);
 
-        firstPage = cacheService.<FilesPage>cacheValueOrGet(CACHE_NAME_LIST + "-" + clientCode,
+        firstPage = cacheService.<FilesPage>cacheValueOrGet(
+                CACHE_NAME_LIST + "-" + this.fileSystemType.name() + "-" + clientCode,
                 () -> this.fileSystemDao.list(this.fileSystemType, clientCode, path, null, null, page),
                 path);
 
@@ -147,7 +156,7 @@ public class FileSystemService {
         if (StringUtil.safeIsBlank(path))
             return new FileDetail().setFileName("").setDirectory(true);
 
-        return cacheService.cacheValueOrGet(CACHE_NAME_GET_DETAIL + "-" + clientCode,
+        return cacheService.cacheValueOrGet(CACHE_NAME_GET_DETAIL + "-" + this.fileSystemType.name() + "-" + clientCode,
                 () -> this.fileSystemDao.getFileDetail(this.fileSystemType, clientCode, path), path);
     }
 
@@ -198,6 +207,85 @@ public class FileSystemService {
     }
 
     private File getDirectoryAsFile(String relPath, Path folder, Path filePath) {
+
+        // Map<String, String> map = new HashMap<>();
+        // if (!Files.exists(filePath))
+        // map.put("create", "true");
+
+        // try (S3TransferManager tm =
+        // S3TransferManager.builder().s3Client(s3AsyncClient).build();
+        // FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" +
+        // filePath.toUri()), map)) {
+
+        // DownloadDirectoryRequest.Builder req = DownloadDirectoryRequest.builder()
+        // .bucket(bucketName)
+        // .destination(fs.getPath("/"));
+
+        // if (relPath != null && !relPath.isEmpty()) {
+        // req.listObjectsV2RequestTransformer(b -> b.prefix(relPath));
+        // }
+
+        // tm.downloadDirectory(req.build()).completionFuture().join();
+
+        // return filePath.toFile();
+
+        // } catch (IOException e) {
+        // throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, "Error in
+        // downloading directory : " + relPath,
+        // e);
+        // }
+
+        Path temp = null;
+        try (S3TransferManager tm = S3TransferManager.builder().s3Client(s3AsyncClient).build()) {
+            temp = Files.createTempDirectory("r2-bulk-");
+            // 1) Parallel download to a real directory
+            DownloadDirectoryRequest.Builder req = DownloadDirectoryRequest.builder()
+                    .bucket(bucketName)
+                    .destination(temp);
+            if (relPath != null && !relPath.isEmpty()) {
+                req.listObjectsV2RequestTransformer(b -> b.prefix(relPath));
+            }
+            tm.downloadDirectory(req.build()).completionFuture().join(); // wait for all
+
+            // 2) Zip the staged directory (single-writer, safe)
+            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(filePath))) {
+                final Path root = temp;
+                Files.walk(root)
+                        .filter(Files::isRegularFile)
+                        .forEach(p -> {
+                            String entryName = root.relativize(p).toString().replace('\\', '/');
+                            try {
+                                zos.putNextEntry(new ZipEntry(entryName));
+                                Files.copy(p, zos);
+                                zos.closeEntry();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+            }
+
+            return filePath.toFile();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error zipping prefix: " + relPath, e);
+
+        } finally {
+            // 3) Best-effort cleanup
+            if (temp != null) {
+                try {
+                    Files.walk(temp).sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException ignored) {
+                        }
+                    });
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    private File getDirectoryAsFilev1(String relPath, Path folder, Path filePath) {
 
         var iterable = s3Client.listObjectsV2Paginator(
                 ListObjectsV2Request.builder().bucket(bucketName)
@@ -266,16 +354,19 @@ public class FileSystemService {
 
         String finPath = folderPath;
 
-        return StreamSupport.stream(s3Client.listObjectsV2Paginator(
-                ListObjectsV2Request.builder().bucket(bucketName)
-                        .prefix(path)
-                        .build())
-                .spliterator(), false)
-                .flatMap(paginator -> paginator.contents().stream())
-                .map(e -> {
-                    s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build());
-                    return this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath);
-                }).reduce((a, b) -> a && b).orElse(true);
+        s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(path).build());
+
+        // StreamSupport.stream(s3Client.listObjectsV2Paginator(
+        // ListObjectsV2Request.builder().bucket(bucketName)
+        // .prefix(path)
+        // .build())
+        // .spliterator(), false)
+        // .flatMap(paginator -> paginator.contents().stream())
+        // .forEach(e -> {
+        // s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(e.key()).build());
+        // });
+
+        return this.fileSystemDao.deleteFile(this.fileSystemType, clientCode, finPath);
     }
 
     public FileDetail createFilesFromMultipartFile(String clientCode, String path, String fileName, MultipartFile fp,
@@ -355,13 +446,13 @@ public class FileSystemService {
         }
     }
 
-    public boolean createFileForZipUpload(String clientCode, ULong folderId, String path, Path file,
+    public void createFileForZipUpload(String clientCode, ULong folderId, String path, Path file,
             boolean override) {
 
-        boolean exists = this.exists(clientCode, path);
+        ULong existingId = this.fileSystemDao.getId(this.fileSystemType, clientCode, folderId, path);
 
-        if (exists && !override)
-            return false;
+        if (existingId != null && !override)
+            return;
 
         logger.info("Uploading the file : {} : ",
                 (clientCode + R2_FILE_SEPARATOR_STRING + path).replace("//", "/"));
@@ -381,21 +472,20 @@ public class FileSystemService {
             );
             Files.deleteIfExists(this.tempFolder.resolve(HashUtil.sha256Hash(finalKey)));
 
-            return this.fileSystemDao
-                    .createOrUpdateFileForZipUpload(this.fileSystemType, clientCode, folderId, path,
+            this.fileSystemDao
+                    .createOrUpdateFileForZipUpload(existingId, this.fileSystemType, clientCode, folderId, path,
                             file.getFileName().toString(), ULong.valueOf(fileLength));
         } catch (IOException e) {
             this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
-            return false;
         }
     }
 
     public <T> void evictCache(String clientCode) {
 
-        this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + clientCode);
-        this.cacheService.evictAll(CACHE_NAME_GET_DETAIL + "-" + clientCode);
-        this.cacheService.evictAll(CACHE_NAME_LIST + "-" + clientCode);
+        this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + this.fileSystemType.name() + "-" + clientCode);
+        this.cacheService.evictAll(CACHE_NAME_GET_DETAIL + "-" + this.fileSystemType.name() + "-" + clientCode);
+        this.cacheService.evictAll(CACHE_NAME_LIST + "-" + this.fileSystemType.name() + "-" + clientCode);
     }
 
     public FileDetail createFolder(String clientCode, String path) {
