@@ -1,0 +1,36 @@
+name: entity-collector-ci
+on:
+  push:
+    paths:
+      - "services/entity-collector/**"
+      - ".github/workflows/collector.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    env:
+      OCIR_HOST: <region>.ocir.io
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS }}/entity-collector
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build jar
+        working-directory: services/entity-collector
+        run: mvn -q -DskipTests clean package
+
+      - name: Login to OCIR
+        run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
+
+      - name: Build and push image
+        run: |
+          docker build -t $OCIR_REPO:${{ github.sha }} -f services/entity-collector/Dockerfile .
+          docker tag $OCIR_REPO:${{ github.sha }} $OCIR_REPO:latest
+          # docker push $OCIR_REPO:${{ github.sha }}
+          # docker push $OCIR_REPO:latest
