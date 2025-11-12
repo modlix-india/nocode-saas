@@ -22,7 +22,7 @@ jobs:
           java-version: '17'
 
       - name: Build jar
-        working-directory: services/entity-processor
+        working-directory: entity-processor
         run: mvn -q -DskipTests clean package
 
       - name: Login to OCIR
