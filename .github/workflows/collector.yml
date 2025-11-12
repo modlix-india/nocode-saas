@@ -21,9 +21,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build jar
+      - name: Build dependencies first
+        run: mvn -q -DskipTests clean install
+
+      - name: Build entity-collector
         working-directory: entity-collector
         run: mvn -q -DskipTests clean package
+
 
       - name: Login to OCIR
         run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
