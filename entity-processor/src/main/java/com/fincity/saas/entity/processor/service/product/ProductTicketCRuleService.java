@@ -4,10 +4,12 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
+import com.fincity.saas.entity.processor.dao.rule.TicketCUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketCUserDistributionsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
@@ -19,7 +21,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -31,25 +32,23 @@ import reactor.util.context.Context;
 public class ProductTicketCRuleService
         extends BaseRuleService<
                 EntityProcessorProductTicketCRulesRecord,
-                TicketCUserDistribution,
                 ProductTicketCRuleDto,
-                ProductTicketCRuleDAO> {
+                ProductTicketCRuleDAO,
+                EntityProcessorTicketCUserDistributionsRecord,
+                TicketCUserDistribution,
+                TicketCUserDistributionDAO> {
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
     private StageService stageService;
 
-    @Getter
-    private TicketCUserDistributionService userDistributionService;
+    protected ProductTicketCRuleService(TicketCUserDistributionService ticketCUserDistributionService) {
+        super(ticketCUserDistributionService);
+    }
 
     @Autowired
     private void setStageService(StageService stageService) {
         this.stageService = stageService;
-    }
-
-    @Autowired
-    private void setUserDistributionService(TicketCUserDistributionService userDistributionService) {
-        this.userDistributionService = userDistributionService;
     }
 
     @Override
@@ -59,6 +58,9 @@ public class ProductTicketCRuleService
 
     @Override
     protected Mono<ProductTicketCRuleDto> checkEntity(ProductTicketCRuleDto entity, ProcessorAccess access) {
+
+		if (entity.isDefault())
+			return super.checkEntity(entity, access);
 
         if (entity.getStageId() == null)
             return this.msgService.throwMessage(

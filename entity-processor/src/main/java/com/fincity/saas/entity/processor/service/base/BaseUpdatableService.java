@@ -62,8 +62,12 @@ public abstract class BaseUpdatableService<
                 this.getEntityName());
     }
 
+    protected String getCacheName(String... entityNames) {
+        return String.join("_", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
+    }
+
     protected String getCacheKey(String... entityNames) {
-        return String.join(":", entityNames);
+        return String.join(":", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
     }
 
     protected String getCacheKey(Object... entityNames) {

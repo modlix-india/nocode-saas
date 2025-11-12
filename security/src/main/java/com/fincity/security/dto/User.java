@@ -128,7 +128,8 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
                 .setStatusCode(this.statusCode.toString())
                 .setLockedUntil(lockedUntil)
                 .setLockedDueTo(lockedDueTo)
-                .setUserName(this.getUserName());
+                .setUserName(this.getUserName())
+		        .setDesignationId(safeFrom(this.designationId));
     }
 
     public static BigInteger safeFrom(ULong v) {

@@ -219,4 +219,7 @@ public interface IFeignSecurityService {
 
 	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
 	Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
+
+	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
+	Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId, @RequestBody UsersListRequest request);
 }

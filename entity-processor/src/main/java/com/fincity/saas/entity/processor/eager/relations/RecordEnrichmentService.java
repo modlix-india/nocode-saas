@@ -1,8 +1,8 @@
 package com.fincity.saas.entity.processor.eager.relations;
 
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolverRegistry;
-import com.fincity.saas.entity.processor.eager.EagerUtil;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;

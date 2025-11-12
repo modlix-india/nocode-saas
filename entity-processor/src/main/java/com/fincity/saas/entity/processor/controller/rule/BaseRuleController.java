@@ -4,6 +4,7 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
+import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
@@ -21,10 +22,12 @@ import reactor.core.publisher.Mono;
 
 public abstract class BaseRuleController<
                 R extends UpdatableRecord<R>,
-                U extends BaseUserDistributionDto<U>,
                 D extends BaseRuleDto<U, D>,
                 O extends BaseRuleDAO<R, U, D>,
-                S extends BaseRuleService<R, U, D, O>>
+                T extends UpdatableRecord<T>,
+                U extends BaseUserDistributionDto<U>,
+                P extends BaseUserDistributionDAO<T, U>,
+                S extends BaseRuleService<R, D, O, T, U, P>>
         extends BaseUpdatableController<R, D, O, S> {
 
     @Override

@@ -2,10 +2,10 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
-import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;
