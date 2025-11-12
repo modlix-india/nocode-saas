@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -27,7 +28,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.modlix.saas.commons2.exception.GenericException;
@@ -38,11 +38,15 @@ import com.modlix.saas.commons2.util.StringUtil;
 import com.modlix.saas.commons2.util.Tuples;
 import com.modlix.saas.commons2.util.Tuples.Tuple2;
 import com.modlix.saas.files.dao.FileSystemDao;
+import com.modlix.saas.files.jooq.enums.FilesFileSystemFileType;
 import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
+import com.modlix.saas.files.jooq.tables.records.FilesFileSystemRecord;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.FilesPage;
 
 import lombok.Getter;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -537,9 +541,77 @@ public class FileSystemService {
         }
     }
 
-    private void deleteTempFolderPath(Path filePath) {
-        Path targetPath = this.tempFolder.resolve(
-                Path.of(HashUtil.sha256Hash(filePath.getParent()), filePath.getFileName().toString()));
-        FileSystemUtils.deleteRecursively(targetPath.toFile());
+    public void populateFileSystem(String clientCode, String folderPath) {
+
+        ULong folderId = null;
+        if (clientCode != null) {
+            folderId = this.fileSystemDao.getId(this.fileSystemType, clientCode, folderPath).orElse(null);
+        }
+
+        this.fileSystemDao.clearFileSystem(this.fileSystemType, clientCode, folderId);
+
+        String path = clientCode == null ? ""
+                : (clientCode + R2_FILE_SEPARATOR_STRING
+                        + (folderId == null ? "" : folderPath + R2_FILE_SEPARATOR_STRING));
+
+        ConcurrentHashMap<String, Optional<ULong>> folderIds = new ConcurrentHashMap<>();
+        ConcurrentHashMap<String, Boolean> clientCodes = new ConcurrentHashMap<>();
+
+        if (folderId != null) {
+            folderIds.put(folderPath, Optional.of(folderId));
+        }
+
+        Flux.from(s3AsyncClient.listObjectsV2Paginator(
+                ListObjectsV2Request.builder().bucket(bucketName)
+                        .prefix(path)
+                        .build())
+                .contents())
+                .buffer(100)
+                .parallel(5)
+                .flatMap(lst -> Flux.fromIterable(lst).mapNotNull(s3Object -> {
+                    String key = s3Object.key();
+                    if (key.startsWith("js") || key.startsWith("/"))
+                        return null;
+                    int index = key.lastIndexOf(R2_FILE_SEPARATOR_STRING);
+                    if (index == -1)
+                        return null;
+                    String folder = key.substring(0, index);
+                    String fileName = key.substring(index + 1);
+
+                    index = folder.indexOf(R2_FILE_SEPARATOR_STRING);
+                    String cc = index == -1 ? folder : key.substring(0, index);
+
+                    if (!folderIds.containsKey(folder)) {
+                        if (index == -1) {
+                            folderIds.put(folder, Optional.empty());
+                        } else {
+                            synchronized (folderIds) {
+                                folderIds.put(folder, this.fileSystemDao.getFolderId(this.fileSystemType,
+                                        cc, folder.substring(index + 1)));
+                            }
+                        }
+                    }
+
+                    clientCodes.put(cc, true);
+
+                    return new FilesFileSystemRecord(
+                            null,
+                            this.fileSystemType,
+                            cc,
+                            fileName,
+                            FilesFileSystemFileType.FILE,
+                            ULong.valueOf(s3Object.size()),
+                            folderIds.get(folder).orElse(null),
+                            null,
+                            null,
+                            null,
+                            null);
+
+                }).collectList().map(this.fileSystemDao::batchInsert)
+
+                ).runOn(Schedulers.boundedElastic()).subscribe();
+
+        clientCodes.keySet().forEach(this::evictCache);
     }
+
 }

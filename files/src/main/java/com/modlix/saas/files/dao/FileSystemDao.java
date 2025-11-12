@@ -1,8 +1,5 @@
 package com.modlix.saas.files.dao;
 
-import static com.modlix.saas.files.jooq.tables.FilesFileSystem.FILES_FILE_SYSTEM;
-import static com.modlix.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
-
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -15,7 +12,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.modlix.saas.commons2.util.LongUtil;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.jooq.Condition;
@@ -32,9 +28,14 @@ import com.modlix.saas.commons2.util.FileType;
 import com.modlix.saas.commons2.util.StringUtil;
 import com.modlix.saas.files.jooq.enums.FilesFileSystemFileType;
 import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
+
+import static com.modlix.saas.files.jooq.tables.FilesFileSystem.FILES_FILE_SYSTEM;
+
 import com.modlix.saas.files.jooq.tables.records.FilesFileSystemRecord;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.FilesPage;
+
+import static com.modlix.saas.files.service.FileSystemService.R2_FILE_SEPARATOR_STRING;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -96,9 +97,11 @@ public class FileSystemDao {
 
         return this.context.select(FILES_FILE_SYSTEM.ID).from(FILES_FILE_SYSTEM)
                 .where(DSL.and(FILES_FILE_SYSTEM.TYPE.eq(type),
-                        folderId == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull() : FILES_FILE_SYSTEM.PARENT_ID.eq(folderId),
+                        folderId == null ? FILES_FILE_SYSTEM.PARENT_ID.isNull()
+                                : FILES_FILE_SYSTEM.PARENT_ID.eq(folderId),
                         FILES_FILE_SYSTEM.NAME.eq(fileName),
-                        FILES_FILE_SYSTEM.CODE.eq(clientCode))).limit(1).fetchOneInto(ULong.class);
+                        FILES_FILE_SYSTEM.CODE.eq(clientCode)))
+                .limit(1).fetchOneInto(ULong.class);
     }
 
     public Optional<ULong> getFolderId(FilesFileSystemType type, String clientCode, String path) {
@@ -333,7 +336,8 @@ public class FileSystemDao {
         return this.getFileDetail(fileSystemType, clientCode, path);
     }
 
-    public boolean createOrUpdateFileForZipUpload(ULong existingId, FilesFileSystemType fileSystemType, String clientCode,
+    public boolean createOrUpdateFileForZipUpload(ULong existingId, FilesFileSystemType fileSystemType,
+                                                  String clientCode,
                                                   ULong folderId, String path, String fileName, ULong fileLength) {
 
         int index = path.lastIndexOf(R2_FILE_SEPARATOR_STRING);
@@ -384,6 +388,13 @@ public class FileSystemDao {
                 .set(FILES_FILE_SYSTEM.NAME, name)
                 .set(FILES_FILE_SYSTEM.TYPE, fileSystemType).returningResult(FILES_FILE_SYSTEM.ID)
                 .fetchOneInto(ULong.class);
+    }
+
+    public void clearFileSystem(FilesFileSystemType fileSystemType, String clientCode, ULong folderId) {
+        this.context.deleteFrom(FILES_FILE_SYSTEM).where(DSL.and(
+                FILES_FILE_SYSTEM.TYPE.eq(fileSystemType),
+                clientCode == null ? DSL.noCondition() : FILES_FILE_SYSTEM.CODE.eq(clientCode),
+                folderId == null ? DSL.noCondition() : FILES_FILE_SYSTEM.PARENT_ID.eq(folderId))).execute();
     }
 
     @Data
@@ -490,5 +501,9 @@ public class FileSystemDao {
                 .set(FILES_FILE_SYSTEM.NAME, node.getName())
                 .set(FILES_FILE_SYSTEM.TYPE, fileSystemType).returningResult(FILES_FILE_SYSTEM.ID)
                 .fetchOneInto(ULong.class);
+    }
+
+    public int[] batchInsert(List<FilesFileSystemRecord> records) {
+        return this.context.batchInsert(records).execute();
     }
 }

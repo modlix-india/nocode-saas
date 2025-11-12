@@ -1087,6 +1087,12 @@ public abstract class AbstractFilesResourceService {
         return fd;
     }
 
+    public void populateFileSystem(String clientCode, String folderPath) {
+        this.virtualThreadExecutor.submit(() -> {
+            this.getFSService().populateFileSystem(clientCode, folderPath);
+        });
+    }
+
     public abstract FileSystemService getFSService();
 
     public abstract String getResourceType();

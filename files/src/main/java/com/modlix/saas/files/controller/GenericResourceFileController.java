@@ -12,6 +12,7 @@ import org.jooq.types.ULong;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.files.enums.ImagesFormatForResize;
+import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
 import com.modlix.saas.files.service.FilesMessageResourceService;
@@ -40,8 +42,8 @@ public class GenericResourceFileController {
     private final FilesMessageResourceService msgService;
 
     public GenericResourceFileController(SecuredFileResourceService securedService,
-                                         StaticFileResourceService staticService,
-                                         FilesMessageResourceService msgService) {
+            StaticFileResourceService staticService,
+            FilesMessageResourceService msgService) {
         this.securedService = securedService;
         this.staticService = staticService;
         this.msgService = msgService;
@@ -111,8 +113,8 @@ public class GenericResourceFileController {
             var srcTuple = ImageTransformUtil.makeSourceImage(path.toFile(), fp.getOriginalFilename());
             int imageTargetType = ImagesFormatForResize
                     .fromFileName(fp.getOriginalFilename()) == ImagesFormatForResize.PNG
-                    ? BufferedImage.TYPE_INT_ARGB
-                    : BufferedImage.TYPE_INT_RGB;
+                            ? BufferedImage.TYPE_INT_ARGB
+                            : BufferedImage.TYPE_INT_RGB;
 
             BufferedImage transformedImage = ImageTransformUtil.transformImage(srcTuple.getT1(),
                     imageTargetType, imageDetails);
@@ -143,5 +145,18 @@ public class GenericResourceFileController {
             this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
                     FilesMessageResourceService.IMAGE_TRANSFORM_ERROR, e.getMessage(), e);
         }
+    }
+
+    @GetMapping("/internal/fs/populate")
+    public ResponseEntity<String> populateFileSystem(@RequestParam(required = false) String clientCode,
+            @RequestParam(required = false) String resourceType, @RequestParam(required = false) String folderPath) {
+
+        if (resourceType == null || resourceType.equalsIgnoreCase(FilesFileSystemType.STATIC.name())) {
+            this.staticService.populateFileSystem(clientCode, folderPath);
+        }
+        if (resourceType == null || resourceType.equalsIgnoreCase(FilesFileSystemType.SECURED.name())) {
+            this.securedService.populateFileSystem(clientCode, folderPath);
+        }
+        return ResponseEntity.ok("FileSystem populated");
     }
 }
