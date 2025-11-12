@@ -22,7 +22,11 @@ jobs:
           java-version: '17'
 
       - name: Build dependencies first
-        run: mvn -q -DskipTests clean install
+        run: |
+          mvn -q -DskipTests clean install -f commons/pom.xml
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons-security/pom.xml
+
 
       - name: Build entity-collector
         working-directory: entity-collector
