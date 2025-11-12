@@ -1,10 +1,10 @@
-package com.fincity.saas.entity.processor.relations.resolvers.field;
+package com.fincity.saas.entity.processor.eager.relations.resolvers.field;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.IClassConvertor;
-import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
-import com.fincity.saas.entity.processor.util.EagerUtil;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

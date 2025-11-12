@@ -8,7 +8,7 @@ import com.fincity.saas.entity.processor.dto.Activity;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.ActivityService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;

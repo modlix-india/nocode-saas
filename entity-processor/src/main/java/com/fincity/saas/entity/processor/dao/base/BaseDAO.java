@@ -2,9 +2,10 @@ package com.fincity.saas.entity.processor.dao.base;
 
 import com.fincity.saas.commons.jooq.flow.dao.AbstractFlowDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
-import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
-import com.fincity.saas.entity.processor.util.EagerUtil;
+import com.fincity.saas.entity.processor.eager.IEagerDAO;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import java.util.Map;
 import lombok.Getter;
 import org.apache.commons.collections4.SetValuedMap;

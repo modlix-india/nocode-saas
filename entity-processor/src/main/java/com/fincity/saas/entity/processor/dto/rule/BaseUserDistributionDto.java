@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
-import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
