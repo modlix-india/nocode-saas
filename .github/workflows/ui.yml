@@ -16,23 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
-          node-version: 20
+          distribution: temurin
+          java-version: '21'
 
-      - name: Install dependencies
+      - name: Build ui-server jar
         working-directory: ui
-        run: npm install
+        run: mvn -q -DskipTests clean package
 
-      - name: Build UI
-        working-directory: ui
-        run: npm run build
-
-      - name: Copy build output for Dockerfile
+      - name: Copy built jar for Dockerfile
         run: |
-          mkdir -p build
-          cp -r ui/build/* build/
+          mkdir -p target
+          cp ui/target/ui-1.1.0.jar target/
 
       - name: Build docker image
         run: |
