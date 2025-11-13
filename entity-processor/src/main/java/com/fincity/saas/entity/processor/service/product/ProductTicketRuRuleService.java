@@ -1,28 +1,28 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import com.fincity.saas.entity.processor.dao.product.ProductTicketRURuleDAO;
-import com.fincity.saas.entity.processor.dao.rule.TicketRUUserDistributionDAO;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketRURuleDto;
-import com.fincity.saas.entity.processor.dto.rule.TicketRUUserDistribution;
+import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
+import com.fincity.saas.entity.processor.dao.rule.TicketRuUserDistributionDAO;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRuleDto;
+import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketRuUserDistributionsRecord;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
-import com.fincity.saas.entity.processor.service.rule.TicketRUUserDistributionService;
+import com.fincity.saas.entity.processor.service.rule.TicketRuUserDistributionService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ProductTicketRuRuleService
         extends BaseRuleService<
                 EntityProcessorProductTicketRuRulesRecord,
-                ProductTicketRURuleDto,
-                ProductTicketRURuleDAO,
+                ProductTicketRuRuleDto,
+                ProductTicketRuRuleDAO,
                 EntityProcessorTicketRuUserDistributionsRecord,
-                TicketRUUserDistribution,
-                TicketRUUserDistributionDAO> {
+                TicketRuUserDistribution,
+                TicketRuUserDistributionDAO> {
 
     private static final String PRODUCT_TICKET_RU_RULE = "productTicketRURule";
 
-    protected ProductTicketRuRuleService(TicketRUUserDistributionService ticketRUUserDistributionService) {
+    protected ProductTicketRuRuleService(TicketRuUserDistributionService ticketRUUserDistributionService) {
         super(ticketRUUserDistributionService);
     }
 

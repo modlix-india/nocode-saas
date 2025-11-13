@@ -307,11 +307,49 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public EntityProcessorProductsRecord setOverrideCTemplate(Boolean value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public Boolean getOverrideCTemplate() {
+        return (Boolean) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public EntityProcessorProductsRecord setOverrideRuTemplate(Boolean value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public Boolean getOverrideRuTemplate() {
+        return (Boolean) get(16);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
      * the user who created this row.
      */
     public EntityProcessorProductsRecord setCreatedBy(ULong value) {
-        set(15, value);
+        set(17, value);
         return this;
     }
 
@@ -321,7 +359,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(15);
+        return (ULong) get(17);
     }
 
     /**
@@ -330,7 +368,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
-        set(16, value);
+        set(18, value);
         return this;
     }
 
@@ -340,7 +378,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -349,7 +387,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
-        set(17, value);
+        set(19, value);
         return this;
     }
 
@@ -359,7 +397,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(17);
+        return (ULong) get(19);
     }
 
     /**
@@ -368,7 +406,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
-        set(18, value);
+        set(20, value);
         return this;
     }
 
@@ -378,7 +416,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(18);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -404,7 +442,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, ULong productWalkInFormId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Boolean tempActive, Boolean isActive, ULong clientId, Boolean forPartner, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, ULong productWalkInFormId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Boolean tempActive, Boolean isActive, ULong clientId, Boolean forPartner, Boolean overrideCTemplate, Boolean overrideRuTemplate, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -422,6 +460,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setIsActive(isActive);
         setClientId(clientId);
         setForPartner(forPartner);
+        setOverrideCTemplate(overrideCTemplate);
+        setOverrideRuTemplate(overrideRuTemplate);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
