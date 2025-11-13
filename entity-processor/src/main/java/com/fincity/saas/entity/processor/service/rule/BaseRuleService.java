@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.IClassConvertor;
@@ -39,8 +38,6 @@ public abstract class BaseRuleService<
 
     private static final String FETCH_USER_DISTRIBUTIONS = "fetchUserDistributions";
 
-    private static final String CONDITION_CACHE = "ruleConditionCache";
-
     protected final BaseUserDistributionService<T, U, P> userDistributionService;
     protected TicketCRuleExecutionService ticketCRuleExecutionService;
     protected ProductService productService;
@@ -75,16 +72,17 @@ public abstract class BaseRuleService<
     @Override
     protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
 
-        if (entity.getCondition() == null || entity.getCondition().isEmpty())
+	    if (entity.getOrder() == null)
+		    return this.msgService.throwMessage(
+				    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+				    ProcessorMessageResourceService.RULE_ORDER_MISSING);
+
+        if (!entity.isDefault()
+                && (entity.getCondition() == null || entity.getCondition().isEmpty()))
             return this.msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.RULE_CONDITION_MISSING,
                     entity.getOrder());
-
-        if (entity.getOrder() == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.RULE_ORDER_MISSING);
 
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.updateProductProductTemplate(access, entity),
@@ -100,22 +98,6 @@ public abstract class BaseRuleService<
 
                     return Mono.just(uEntity);
                 });
-    }
-
-    protected String getConditionCacheName(String appCode, String clientCode) {
-        return super.getCacheName(CONDITION_CACHE, appCode, clientCode);
-    }
-
-    private Mono<Boolean> evictConditionCache(String appCode, String clientCode) {
-        return super.cacheService.evictAll(this.getConditionCacheName(appCode, clientCode));
-    }
-
-    @Override
-    protected Mono<Boolean> evictCache(D entity) {
-        return Mono.zip(
-                super.evictCache(entity),
-                this.evictConditionCache(entity.getAppCode(), entity.getClientCode()),
-                (baseEvicted, conditionEvicted) -> baseEvicted && conditionEvicted);
     }
 
     @SuppressWarnings("unchecked")
@@ -145,7 +127,7 @@ public abstract class BaseRuleService<
             if (rule.getOrder() > BaseRuleDto.DEFAULT_ORDER) existing.setOrder(rule.getOrder());
 
             existing.setUserDistributionType(rule.getUserDistributionType());
-			existing.setLastAssignedUserId(rule.getLastAssignedUserId());
+            existing.setLastAssignedUserId(rule.getLastAssignedUserId());
             existing.setCondition(rule.getCondition());
 
             return Mono.just(existing);
@@ -167,10 +149,7 @@ public abstract class BaseRuleService<
                                 .createDistributions(access, created.getId(), entity.getUserDistributions())
                                 .collectList(),
                         (access, created, userDistributions) ->
-                                Mono.just((D) created.setUserDistributions(userDistributions)),
-                        (access, created, userDistributions, uCreated) -> this.evictConditionCache(
-                                        entity.getAppCode(), entity.getClientCode())
-                                .map(evicted -> uCreated))
+                                Mono.just((D) created.setUserDistributions(userDistributions)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.create"));
     }
 
@@ -256,19 +235,5 @@ public abstract class BaseRuleService<
                                         }))
                                 : userFlux)
                 .collectList();
-    }
-
-    public Mono<List<AbstractCondition>> getConditionsForUser(ProcessorAccess access) {
-        return super.cacheService.cacheValueOrGet(
-                this.getConditionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> this.getConditionsForUserInternal(access),
-                this.userDistributionService.getUserCacheKey(access));
-    }
-
-    public Mono<List<AbstractCondition>> getConditionsForUserInternal(ProcessorAccess access) {
-        return FlatMapUtil.flatMapMono(() -> this.userDistributionService.getUserForClient(access), userInfo -> this.dao
-                .getUserRules(null, userInfo)
-                .map(D::getCondition)
-                .collectList());
     }
 }

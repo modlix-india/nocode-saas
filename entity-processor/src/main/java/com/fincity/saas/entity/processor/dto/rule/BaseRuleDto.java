@@ -80,4 +80,8 @@ public abstract class BaseRuleDto<U extends BaseUserDistributionDto<U>, T extend
     public boolean areDistributionValid() {
         return this.userDistributions.stream().allMatch(BaseUserDistributionDto::isDistributionValid);
     }
+
+    public AbstractCondition getConditionWithProduct() {
+        return ComplexCondition.and(FilterCondition.make(Fields.productId, this.getProductId()), getCondition());
+    }
 }

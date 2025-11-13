@@ -4,11 +4,10 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionType;
 import com.fincity.saas.message.service.MessageResourceService;
-import org.springframework.http.HttpStatus;
-import reactor.core.publisher.Mono;
-
 import java.time.LocalDateTime;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import reactor.core.publisher.Mono;
 
 public abstract class BaseConnectionService extends AbstractCoreService<Connection> {
 
@@ -53,7 +52,6 @@ public abstract class BaseConnectionService extends AbstractCoreService<Connecti
         return this.cacheService
                 .<Map<String, Object>>get(CACHE_NAME_REST_OAUTH2, this.getCacheKey(connectionName, clientCode, appCode))
                 .flatMap(coreToken -> {
-
                     Object expObj = coreToken.get("expiresAt");
                     LocalDateTime expiresAt = (expObj instanceof LocalDateTime) ? (LocalDateTime) expObj : null;
                     boolean valid = (expiresAt == null) || expiresAt.isAfter(LocalDateTime.now());
