@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
+import com.fincity.saas.commons.util.HashUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
@@ -46,11 +47,24 @@ public abstract class BaseUserDistributionService<
     }
 
     private String getUserDistributionCacheName(String appCode, String clientCode) {
-        return super.getCacheKey(appCode, clientCode, USER_DISTRIBUTION);
+        return super.getCacheName(USER_DISTRIBUTION, appCode, clientCode);
     }
 
-    private String getUserDistributionMapCacheKey() {
-        return USER_DISTRIBUTION_MAPS;
+    private String getUserDistributionCacheKey(ProcessorAccess access) {
+        return super.getCacheKey(access.getAppCode(), access.getClientCode());
+    }
+
+    private String getUserDistributionMapCacheKey(ProcessorAccess access) {
+        return super.getCacheKey(access.getAppCode(), access.getClientCode(), USER_DISTRIBUTION_MAPS);
+    }
+
+    public String getUserCacheKey(ProcessorAccess access) {
+        return super.getCacheKey(
+                access.getAppCode(),
+                access.getClientCode(),
+                access.getUserId(),
+                access.getUser().getDesignationId(),
+                HashUtil.sha256Hash(access.getUser().getAuthorities()));
     }
 
     private Mono<Boolean> evictRuleCache(D entity) {
@@ -153,14 +167,25 @@ public abstract class BaseUserDistributionService<
                 () -> super.securityService.getUsersForEntityProcessor(new UsersListRequest()
                         .setClientCode(access.getClientCode())
                         .setAppCode(access.getAppCode())),
-                super.getCacheKey(access.getAppCode(), access.getClientCode()));
+                this.getUserDistributionCacheKey(access));
+    }
+
+    public Mono<EntityProcessorUser> getUserForClient(ProcessorAccess access) {
+        return super.cacheService.cacheValueOrGet(
+                this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
+                () -> super.securityService.getUserForEntityProcessor(
+                        access.getUserId().toBigInteger(),
+                        new UsersListRequest()
+                                .setClientCode(access.getClientCode())
+                                .setAppCode(access.getAppCode())),
+                this.getUserCacheKey(access));
     }
 
     private Mono<UserMaps> getAllUserMappings(ProcessorAccess access) {
         return super.cacheService.cacheValueOrGet(
                 this.getUserDistributionCacheName(access.getAppCode(), access.getClientCode()),
                 () -> this.getAllUserForClient(access).map(this::buildMaps),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), this.getUserDistributionMapCacheKey()));
+                this.getUserDistributionMapCacheKey(access));
     }
 
     private UserMaps buildMaps(List<EntityProcessorUser> users) {
