@@ -3,7 +3,9 @@ package com.fincity.saas.entity.processor.service.rule;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
@@ -15,6 +17,7 @@ import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import java.util.List;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -231,6 +234,30 @@ public abstract class BaseRuleService<
                                 ? userFlux.flatMap(rule -> this.userDistributionService
                                         .getUserDistributions(access, rule.getId())
                                         .map(userDistributions -> (D) rule.setUserDistributions(userDistributions)))
+                                : userFlux)
+                .collectList();
+    }
+
+    public Mono<List<Map<String, Object>>> fillDetailsEager(
+            List<Map<String, Object>> rules, MultiValueMap<String, String> queryParams) {
+
+        boolean fetchUserDistributions = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_DISTRIBUTIONS));
+
+        Flux<Map<String, Object>> userFlux = Flux.fromIterable(rules);
+
+        return FlatMapUtil.flatMapFlux(
+                        () -> super.hasAccess().flux(),
+                        access -> fetchUserDistributions
+                                ? userFlux.flatMap(rule -> this.userDistributionService
+                                        .getUserDistributions(access, (ULong) rule.get(AbstractDTO.Fields.id))
+                                        .map(userDistributions -> {
+                                            rule.put(
+                                                    BaseRuleDto.Fields.userDistributions,
+                                                    userDistributions.stream()
+                                                            .map(IClassConvertor::toMap)
+                                                            .toList());
+                                            return rule;
+                                        }))
                                 : userFlux)
                 .collectList();
     }
