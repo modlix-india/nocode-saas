@@ -315,4 +315,10 @@ public class UserController
             @RequestBody UsersListRequest request) {
         return this.service.getUsersForEntityProcessor(request).map(ResponseEntity::ok);
     }
+
+    @PostMapping("/internal/{userId}/processor")
+    public Mono<ResponseEntity<EntityProcessorUser>> getUsersForEntityProcessor(
+            @PathVariable ULong userId, @RequestBody UsersListRequest request) {
+        return this.service.getUserForEntityProcessor(userId, request).map(ResponseEntity::ok);
+    }
 }

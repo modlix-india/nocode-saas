@@ -24,9 +24,11 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.Record5;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectLimitPercentStep;
+import org.jooq.SelectOnConditionStep;
 import org.jooq.TableField;
 import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
@@ -745,6 +747,15 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                                 SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
                 .map(Record1::value1)
                 .collectList();
+    }
+
+    public Mono<EntityProcessorUser> getUserForEntityProcessor(
+            ULong userId, String appCode, Long clientId, String clientCode) {
+
+        if (appCode == null || userId == null) return Mono.empty();
+
+        return this.getUsersForEntityProcessor(List.of(userId.longValue()), appCode, clientId, clientCode)
+                .mapNotNull(users -> users.isEmpty() ? null : users.getFirst());
     }
 
     public Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(

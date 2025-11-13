@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.relations.resolvers;
+package com.fincity.saas.entity.processor.eager.relations.resolvers;
 
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
