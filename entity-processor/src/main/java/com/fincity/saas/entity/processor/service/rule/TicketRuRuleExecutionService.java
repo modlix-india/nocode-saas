@@ -6,11 +6,11 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class TicketRURuleExecutionService {
+public class TicketRuRuleExecutionService {
 
-    private final TicketRUUserDistributionService userDistributionService;
+    private final TicketRuUserDistributionService userDistributionService;
 
-    public TicketRURuleExecutionService(TicketRUUserDistributionService userDistributionService) {
+    public TicketRuRuleExecutionService(TicketRuUserDistributionService userDistributionService) {
         this.userDistributionService = userDistributionService;
     }
 

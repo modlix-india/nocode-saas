@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.dto.product;
 
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
-import com.fincity.saas.entity.processor.dto.rule.TicketRUUserDistribution;
+import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import lombok.Data;
@@ -15,18 +15,18 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ProductTicketRURuleDto extends BaseRuleDto<TicketRUUserDistribution, ProductTicketRURuleDto> {
+public class ProductTicketRuRuleDto extends BaseRuleDto<TicketRuUserDistribution, ProductTicketRuRuleDto> {
 
     @Serial
     private static final long serialVersionUID = 3839778153632333678L;
 
     private boolean canEdit;
 
-    public ProductTicketRURuleDto() {
+    public ProductTicketRuRuleDto() {
         super();
     }
 
-    public ProductTicketRURuleDto(ProductTicketRURuleDto productTicketRURuleDto) {
+    public ProductTicketRuRuleDto(ProductTicketRuRuleDto productTicketRURuleDto) {
         super(productTicketRURuleDto);
         this.canEdit = productTicketRURuleDto.canEdit;
     }

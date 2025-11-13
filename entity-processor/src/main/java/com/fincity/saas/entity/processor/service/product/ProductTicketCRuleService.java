@@ -109,7 +109,7 @@ public class ProductTicketCRuleService
 
         return super.productService
                 .readById(access, productId)
-                .flatMap(product -> product.isOverrideTemplate()
+                .flatMap(product -> product.isOverrideCTemplate()
                         ? this.getRulesWithOrderWithTemplateOverride(access, product, stageId)
                         : this.getRulesWithOrderWithTemplateCombine(access, product, stageId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.getRulesWithOrder"));
@@ -118,7 +118,7 @@ public class ProductTicketCRuleService
     private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateOverride(
             ProcessorAccess access, Product product, ULong stageId) {
 
-        if (!product.isOverrideTemplate()) return Mono.empty();
+        if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
                 .switchIfEmpty(this.getProductTemplateRules(access, product.getProductTemplateId(), stageId));
@@ -127,7 +127,7 @@ public class ProductTicketCRuleService
     private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateCombine(
             ProcessorAccess access, Product product, ULong stageId) {
 
-        if (!product.isOverrideTemplate()) return Mono.empty();
+        if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return Mono.zip(
                 this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)

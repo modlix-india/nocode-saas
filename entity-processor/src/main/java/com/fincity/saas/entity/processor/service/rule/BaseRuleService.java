@@ -86,17 +86,12 @@ public abstract class BaseRuleService<
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.RULE_ORDER_MISSING);
 
-        if (entity.getProductTemplateId() == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.RULE_PRODUCT_MISSING);
-
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> this.updateProductProductTemplate(access, entity),
                 uEntity -> this.dao.getRule(
                         null, access, entity.getProductId(), entity.getProductTemplateId(), entity.getOrder()),
                 (uEntity, existing) -> {
-                    if (existing != null)
+                    if (existing != null && !existing.getId().equals(uEntity.getId()))
                         return this.msgService.throwMessage(
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.DUPLICATE_RULE_ORDER,
@@ -150,6 +145,7 @@ public abstract class BaseRuleService<
             if (rule.getOrder() > BaseRuleDto.DEFAULT_ORDER) existing.setOrder(rule.getOrder());
 
             existing.setUserDistributionType(rule.getUserDistributionType());
+			existing.setLastAssignedUserId(rule.getLastAssignedUserId());
             existing.setCondition(rule.getCondition());
 
             return Mono.just(existing);
