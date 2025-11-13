@@ -15,20 +15,22 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ProductTicketRuRuleDto extends BaseRuleDto<TicketRuUserDistribution, ProductTicketRuRuleDto> {
+public class ProductTicketRuRule extends BaseRuleDto<TicketRuUserDistribution, ProductTicketRuRule> {
 
     @Serial
     private static final long serialVersionUID = 3839778153632333678L;
 
     private boolean canEdit;
+    private boolean overrideRuTemplate;
 
-    public ProductTicketRuRuleDto() {
+    public ProductTicketRuRule() {
         super();
     }
 
-    public ProductTicketRuRuleDto(ProductTicketRuRuleDto productTicketRURuleDto) {
-        super(productTicketRURuleDto);
-        this.canEdit = productTicketRURuleDto.canEdit;
+    public ProductTicketRuRule(ProductTicketRuRule productTicketRURule) {
+        super(productTicketRURule);
+        this.canEdit = productTicketRURule.canEdit;
+        this.overrideRuTemplate = productTicketRURule.overrideRuTemplate;
     }
 
     @Override
