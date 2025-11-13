@@ -6,6 +6,7 @@ import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
 import java.util.List;
@@ -34,18 +35,16 @@ public class ProductTicketRuRuleDAO
         Condition matchCond = DSL.falseCondition();
 
         if (user != null) {
-            if (user.getId() != null) {
-                matchCond = matchCond.or(dist.USER_ID.eq(ULong.valueOf(user.getId())));
-            }
-            if (user.getRoleId() != null) {
-                matchCond = matchCond.or(dist.ROLE_ID.eq(ULong.valueOf(user.getRoleId())));
-            }
-            if (user.getDesignationId() != null) {
+            if (user.getId() != null) matchCond = matchCond.or(dist.USER_ID.eq(ULong.valueOf(user.getId())));
+
+            if (user.getRoleId() != null) matchCond = matchCond.or(dist.ROLE_ID.eq(ULong.valueOf(user.getRoleId())));
+
+            if (user.getDesignationId() != null)
                 matchCond = matchCond.or(dist.DESIGNATION_ID.eq(ULong.valueOf(user.getDesignationId())));
-            }
-            if (user.getDepartmentId() != null) {
+
+            if (user.getDepartmentId() != null)
                 matchCond = matchCond.or(dist.DEPARTMENT_ID.eq(ULong.valueOf(user.getDepartmentId())));
-            }
+
             Set<Long> profileIds = user.getProfileIds();
             if (profileIds != null && !profileIds.isEmpty()) {
                 List<ULong> pid = profileIds.stream().map(ULong::valueOf).toList();
@@ -55,9 +54,13 @@ public class ProductTicketRuRuleDAO
 
         var allRulesQuery = super.dslContext
                 .select(this.table.fields())
+                .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.OVERRIDE_RU_TEMPLATE)
                 .from(this.table)
                 .join(dist)
                 .on(this.idField.eq(dist.RULE_ID))
+                .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                .on(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID.eq(
+                        ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.PRODUCT_ID))
                 .where(matchCond.and(super.isActiveTrue()));
 
         if (Boolean.TRUE.equals(isEdit))

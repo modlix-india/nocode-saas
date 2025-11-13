@@ -21,6 +21,7 @@ public class ProductTicketRuRule extends BaseRuleDto<TicketRuUserDistribution, P
     private static final long serialVersionUID = 3839778153632333678L;
 
     private boolean canEdit;
+    private boolean overrideRuTemplate;
 
     public ProductTicketRuRule() {
         super();
@@ -29,6 +30,7 @@ public class ProductTicketRuRule extends BaseRuleDto<TicketRuUserDistribution, P
     public ProductTicketRuRule(ProductTicketRuRule productTicketRURule) {
         super(productTicketRURule);
         this.canEdit = productTicketRURule.canEdit;
+        this.overrideRuTemplate = productTicketRURule.overrideRuTemplate;
     }
 
     @Override
