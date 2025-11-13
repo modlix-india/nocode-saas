@@ -1,0 +1,49 @@
+name: core-ci
+
+on:
+  push:
+    paths:
+      - "core/**"
+      - ".github/workflows/core.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    env:
+      OCIR_HOST: <region>.ocir.io
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS }}/core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build dependencies first
+        run: |
+          mvn -q -DskipTests clean install -f commons/pom.xml
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons-security/pom.xml
+
+      - name: Build core jar
+        working-directory: core
+        run: mvn -q -DskipTests clean package
+
+      - name: Copy built jar for Dockerfile
+        run: |
+          mkdir -p target
+          cp core/target/core-1.1.0.jar target/
+
+      # - name: Login to OCIR
+      #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
+
+      - name: Build docker image
+        run: |
+          docker build -t test/core:${{ github.sha }} -f core/Dockerfile .
+          docker tag test/core:${{ github.sha }} test/core:latest
+          # docker push $OCIR_REPO:${{ github.sha }}
+          # docker push $OCIR_REPO:latest
