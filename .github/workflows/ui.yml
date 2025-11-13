@@ -1,0 +1,42 @@
+name: ui-server-ci
+
+on:
+  push:
+    paths:
+      - "ui/**"
+      - ".github/workflows/ui-server.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: test/ui-server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: ui
+        run: npm install
+
+      - name: Build UI
+        working-directory: ui
+        run: npm run build
+
+      - name: Copy build output for Dockerfile
+        run: |
+          mkdir -p build
+          cp -r ui/build/* build/
+
+      - name: Build docker image
+        run: |
+          docker build -t $IMAGE_NAME:${{ github.sha }} -f ui/Dockerfile .
+          docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+          # docker push $OCIR_REPO:${{ github.sha }}
+          # docker push $OCIR_REPO:latest
