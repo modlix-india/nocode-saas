@@ -1456,4 +1456,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return this.dao.getUsersForEntityProcessor(
                 request.getUserIds(), request.getAppCode(), request.getClientId(), request.getClientCode());
     }
+
+	public Mono<EntityProcessorUser> getUserForEntityProcessor(ULong userId, UsersListRequest request) {
+		return this.dao.getUserForEntityProcessor(
+				userId, request.getAppCode(), request.getClientId(), request.getClientCode());
+	}
 }
