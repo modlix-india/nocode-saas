@@ -76,8 +76,10 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     protected Mono<Product> updatableEntity(Product entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
+	                existing.setProductTemplateId(entity.getProductTemplateId());
                     existing.setForPartner(entity.isForPartner());
-                    existing.setProductTemplateId(entity.getProductTemplateId());
+					existing.setOverrideCTemplate(entity.isOverrideCTemplate());
+					existing.setOverrideRuTemplate(entity.isOverrideRuTemplate());
                     existing.setProductWalkInFormId(entity.getProductWalkInFormId());
                     existing.setLogoFileDetail(entity.getLogoFileDetail());
                     existing.setBannerFileDetail(entity.getBannerFileDetail());

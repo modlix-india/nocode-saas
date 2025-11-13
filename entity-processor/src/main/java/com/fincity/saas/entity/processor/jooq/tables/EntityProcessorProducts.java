@@ -177,6 +177,20 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public final TableField<EntityProcessorProductsRecord, Boolean> OVERRIDE_C_TEMPLATE = createField(DSL.name("OVERRIDE_C_TEMPLATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather to override the Create (C) template rules");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public final TableField<EntityProcessorProductsRecord, Boolean> OVERRIDE_RU_TEMPLATE = createField(DSL.name("OVERRIDE_RU_TEMPLATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather to override the Read Update (RU) template rules");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.CREATED_BY</code>. ID of
      * the user who created this row.
      */
