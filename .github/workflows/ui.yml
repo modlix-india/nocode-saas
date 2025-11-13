@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "ui/**"
-      - ".github/workflows/ui-server.yml"
+      - ".github/workflows/ui.yml"
   workflow_dispatch:
 
 jobs:
