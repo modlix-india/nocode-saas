@@ -16,21 +16,21 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class ProductTicketCRuleDto extends BaseRuleDto<TicketCUserDistribution, ProductTicketCRuleDto> {
+public class ProductTicketCRule extends BaseRuleDto<TicketCUserDistribution, ProductTicketCRule> {
 
     @Serial
     private static final long serialVersionUID = 7767234780578180385L;
 
     private ULong stageId;
 
-    public ProductTicketCRuleDto() {
+    public ProductTicketCRule() {
         super();
         this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
     }
 
-    public ProductTicketCRuleDto(ProductTicketCRuleDto productTicketCRuleDto) {
-        super(productTicketCRuleDto);
-        this.stageId = productTicketCRuleDto.stageId;
+    public ProductTicketCRule(ProductTicketCRule productTicketCRule) {
+        super(productTicketCRule);
+        this.stageId = productTicketCRule.stageId;
     }
 
     @Override

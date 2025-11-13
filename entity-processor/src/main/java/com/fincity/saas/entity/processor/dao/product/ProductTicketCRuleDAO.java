@@ -4,7 +4,7 @@ import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PRO
 
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -15,24 +15,21 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ProductTicketCRuleDAO
-        extends BaseRuleDAO<EntityProcessorProductTicketCRulesRecord, TicketCUserDistribution, ProductTicketCRuleDto> {
+        extends BaseRuleDAO<EntityProcessorProductTicketCRulesRecord, TicketCUserDistribution, ProductTicketCRule> {
 
     protected ProductTicketCRuleDAO() {
         super(
-                ProductTicketCRuleDto.class,
+                ProductTicketCRule.class,
                 ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES,
                 ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES.ID);
     }
 
-    public Mono<List<ProductTicketCRuleDto>> getRules(
+    public Mono<List<ProductTicketCRule>> getRules(
             ProcessorAccess access, ULong productId, ULong productTemplateId, ULong stageId) {
 
         if (stageId == null) return super.getRules(null, access, productId, productTemplateId);
 
         return super.getRules(
-                FilterCondition.make(ProductTicketCRuleDto.Fields.stageId, stageId),
-                access,
-                productId,
-                productTemplateId);
+                FilterCondition.make(ProductTicketCRule.Fields.stageId, stageId), access, productId, productTemplateId);
     }
 }

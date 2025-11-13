@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.google.gson.JsonElement;
 import java.util.List;
@@ -30,15 +30,15 @@ public class TicketCRuleExecutionService {
         this.userDistributionService = userDistributionService;
     }
 
-    public Mono<ProductTicketCRuleDto> executeRules(
-            ProcessorAccess access, Map<Integer, ProductTicketCRuleDto> rules, String prefix, JsonElement data) {
+    public Mono<ProductTicketCRule> executeRules(
+            ProcessorAccess access, Map<Integer, ProductTicketCRule> rules, String prefix, JsonElement data) {
         return executeRules(access, rules, prefix, null, data)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    public Mono<ProductTicketCRuleDto> executeRules(
+    public Mono<ProductTicketCRule> executeRules(
             ProcessorAccess access,
-            Map<Integer, ProductTicketCRuleDto> rules,
+            Map<Integer, ProductTicketCRule> rules,
             String prefix,
             ULong userId,
             JsonElement data) {
@@ -53,7 +53,7 @@ public class TicketCRuleExecutionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RuleExecutionService.executeRules"));
     }
 
-    private Mono<ProductTicketCRuleDto> distributeUsers(ProductTicketCRuleDto rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRule> distributeUsers(ProductTicketCRule rule, Set<ULong> userIds) {
 
         if (userIds == null || userIds.isEmpty()) return Mono.empty();
 
@@ -67,7 +67,7 @@ public class TicketCRuleExecutionService {
         };
     }
 
-    private Mono<ProductTicketCRuleDto> handleRoundRobin(ProductTicketCRuleDto rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRule> handleRoundRobin(ProductTicketCRule rule, Set<ULong> userIds) {
 
         TreeSet<ULong> sortedUserIds = new TreeSet<>(userIds);
 
@@ -80,7 +80,7 @@ public class TicketCRuleExecutionService {
         return Mono.just(addAssignedUser(rule, nextUserId));
     }
 
-    private Mono<ProductTicketCRuleDto> getRandom(ProductTicketCRuleDto rule, Set<ULong> userIds) {
+    private Mono<ProductTicketCRule> getRandom(ProductTicketCRule rule, Set<ULong> userIds) {
         ULong last = rule.getLastAssignedUserId();
         if (last != null) userIds.remove(last);
 
@@ -93,16 +93,16 @@ public class TicketCRuleExecutionService {
 
     // TODO Add other distribution apart from ROUND ROBIN & RANDOM
 
-    private ProductTicketCRuleDto addAssignedUser(ProductTicketCRuleDto rule, ULong assignedUserId) {
-        return (ProductTicketCRuleDto) rule.setLastAssignedUserId(assignedUserId);
+    private ProductTicketCRule addAssignedUser(ProductTicketCRule rule, ULong assignedUserId) {
+        return (ProductTicketCRule) rule.setLastAssignedUserId(assignedUserId);
     }
 
-    private Mono<ProductTicketCRuleDto> findMatchedRules(
-            Map<Integer, ProductTicketCRuleDto> rules, String prefix, JsonElement data) {
+    private Mono<ProductTicketCRule> findMatchedRules(
+            Map<Integer, ProductTicketCRule> rules, String prefix, JsonElement data) {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
-        List<ProductTicketCRuleDto> sortedRules = rules.entrySet().stream()
+        List<ProductTicketCRule> sortedRules = rules.entrySet().stream()
                 .filter(entry -> entry.getKey() != null && entry.getKey() > 0)
                 .sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey()))
                 .map(Map.Entry::getValue)
@@ -121,9 +121,9 @@ public class TicketCRuleExecutionService {
                 .next();
     }
 
-    private Mono<ProductTicketCRuleDto> handleDefaultRule(
-            ProcessorAccess access, Map<Integer, ProductTicketCRuleDto> rules, ULong finalUserId) {
-        ProductTicketCRuleDto defaultRule = rules.get(0);
+    private Mono<ProductTicketCRule> handleDefaultRule(
+            ProcessorAccess access, Map<Integer, ProductTicketCRule> rules, ULong finalUserId) {
+        ProductTicketCRule defaultRule = rules.get(0);
         if (defaultRule == null) return Mono.empty();
 
         return this.userDistributionService
@@ -138,8 +138,8 @@ public class TicketCRuleExecutionService {
                 });
     }
 
-    private Mono<ProductTicketCRuleDto> handleMatchedRule(
-            ProcessorAccess access, ProductTicketCRuleDto matchedRule, ULong finalUserId) {
+    private Mono<ProductTicketCRule> handleMatchedRule(
+            ProcessorAccess access, ProductTicketCRule matchedRule, ULong finalUserId) {
         return this.userDistributionService
                 .getUsersByRuleId(access, matchedRule.getId())
                 .flatMap(userIds -> {
