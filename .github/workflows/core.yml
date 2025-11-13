@@ -25,12 +25,18 @@ jobs:
 
       - name: Build dependencies first
         run: |
-          # build common modules required by core (install to local repo)
-          mvn -q -DskipTests clean install -f commons-core/pom.xml
-          mvn -q -DskipTests clean install -f commons-mq/pom.xml
-          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
-          # also install the shared commons meta-module if present
           mvn -q -DskipTests clean install -f commons/pom.xml || true
+          mvn -q -DskipTests clean install -f commons-core/pom.xml || true
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml || true
+          mvn -q -DskipTests clean install -f commons-mongo/pom.xml || true
+          mvn -q -DskipTests clean install -f commons-mq/pom.xml || true
+          mvn -q -DskipTests clean install -f commons-security/pom.xml || true
+
+          mvn -q -DskipTests clean install -f commons2/pom.xml || true
+          mvn -q -DskipTests clean install -f commons2-jooq/pom.xml || true
+          mvn -q -DskipTests clean install -f commons2-mq/pom.xml || true
+          mvn -q -DskipTests clean install -f commons2-security/pom.xml || true
+
 
       - name: Build core jar
         working-directory: core
