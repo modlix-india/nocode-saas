@@ -1,0 +1,39 @@
+name: security-server-ci
+
+on:
+  push:
+    paths:
+      - "security/**"
+      - ".github/workflows/security.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: test/security-server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build security-server jar
+        working-directory: security
+        run: mvn -q -DskipTests clean package
+
+      - name: Copy built jar for Dockerfile
+        run: |
+          mkdir -p target
+          cp security/target/security-1.1.0.jar target/
+
+      - name: Build docker image
+        run: |
+          docker build -t $IMAGE_NAME:${{ github.sha }} -f security/Dockerfile .
+          docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+          # docker push $OCIR_REPO:${{ github.sha }}
+          # docker push $OCIR_REPO:latest
