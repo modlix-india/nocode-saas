@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.controller.product;
 import com.fincity.saas.entity.processor.controller.rule.BaseRuleController;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.TicketRuUserDistributionDAO;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRuleDto;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketRuUserDistributionsRecord;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductTicketRuRuleController
         extends BaseRuleController<
                 EntityProcessorProductTicketRuRulesRecord,
-                ProductTicketRuRuleDto,
+                ProductTicketRuRule,
                 ProductTicketRuRuleDAO,
                 EntityProcessorTicketRuUserDistributionsRecord,
                 TicketRuUserDistribution,

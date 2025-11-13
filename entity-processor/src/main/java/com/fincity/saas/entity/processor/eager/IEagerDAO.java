@@ -5,6 +5,7 @@ import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -89,46 +90,69 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
         });
     }
 
+    default List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.getTableFields(tableFields, this.getTable());
+    }
+
+    default SelectJoinStep<Record> applyBaseTableJoins(
+            SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
+        return query;
+    }
+
+    default SelectJoinStep<Record1<Integer>> applyCountBaseTableJoins(
+            SelectJoinStep<Record1<Integer>> query, MultiValueMap<String, String> queryParams) {
+        return query;
+    }
+
     default Mono<
                     Tuple2<
-                            Tuple2<SelectJoinStep<org.jooq.Record>, SelectJoinStep<Record1<Integer>>>,
+                            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
                             Map<String, Tuple2<Table<?>, String>>>>
             getSelectJointStepEager(List<String> tableFields, MultiValueMap<String, String> queryParams) {
 
         DSLContext dslContext = this.getDslContext();
+        Table<?> mainTable = this.getTable();
 
-        Map<String, Tuple2<Table<?>, String>> relations = this.getRelationMap();
+        Map<String, Tuple2<Table<?>, String>> relations = new HashMap<>(this.getRelationMap());
+
+        if (tableFields != null && !tableFields.isEmpty())
+            relations.keySet().removeIf(key -> !tableFields.contains(key));
 
         Boolean eager = EagerUtil.getIsEagerParams(queryParams);
         List<String> eagerFields = EagerUtil.getEagerParams(queryParams);
 
-        List<Field<?>> fields = this.getEagerFields(tableFields, eager, eagerFields, this.getTable(), relations);
+        List<Field<?>> baseFields = this.getMainTableBaseFields(tableFields, queryParams);
 
-        SelectJoinStep<Record> recordQuery = dslContext.select(fields).from(this.getTable());
+        Map<String, Field<?>> baseFieldMap =
+                baseFields.stream().collect(Collectors.toMap(Field::getName, f -> f, (a, b) -> b, LinkedHashMap::new));
+
+        List<Field<?>> fields = this.getEagerFields(baseFields, eager, eagerFields, relations);
+
+        SelectJoinStep<Record> recordQuery =
+                this.applyBaseTableJoins(dslContext.select(fields).from(mainTable), queryParams);
+
         SelectJoinStep<Record1<Integer>> countQuery =
-                dslContext.select(DSL.count()).from(this.getTable());
+                this.applyCountBaseTableJoins(dslContext.select(DSL.count()).from(mainTable), queryParams);
 
-        if (Boolean.FALSE.equals(eager)) return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
-
-        if ((relations == null || relations.isEmpty()))
+        if (Boolean.FALSE.equals(eager) || relations.isEmpty())
             return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
 
         for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
+
             String relationKey = entry.getKey();
             Table<?> relatedTable = entry.getValue().getT1();
             String tableAlias = entry.getValue().getT2();
 
             Table<?> aliasedTable = relatedTable.as(tableAlias);
 
-            Field<ULong> fieldInMainTable = this.getTable().field(EagerUtil.toJooqField(relationKey), ULong.class);
+            Field<ULong> fieldInMainTable = (Field<ULong>) baseFieldMap.get(EagerUtil.toJooqField(relationKey));
             Field<ULong> idFieldInRelatedTable = aliasedTable.field("ID", ULong.class);
 
-            if (fieldInMainTable != null && idFieldInRelatedTable != null) {
-                Condition joinCondition = fieldInMainTable.eq(idFieldInRelatedTable);
+            if (fieldInMainTable == null || idFieldInRelatedTable == null) continue;
 
-                recordQuery = recordQuery.leftJoin(aliasedTable).on(joinCondition);
-                countQuery = countQuery.leftJoin(aliasedTable).on(joinCondition);
-            }
+            Condition joinCondition = fieldInMainTable.eq(idFieldInRelatedTable);
+            recordQuery = recordQuery.leftJoin(aliasedTable).on(joinCondition);
+            countQuery = countQuery.leftJoin(aliasedTable).on(joinCondition);
         }
 
         return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), relations));
@@ -170,13 +194,12 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
     }
 
     private List<Field<?>> getEagerFields(
-            List<String> mainTableFields,
+            List<Field<?>> baseFields,
             Boolean eager,
             List<String> eagerFields,
-            Table<?> mainTable,
             Map<String, Tuple2<Table<?>, String>> relations) {
 
-        List<Field<?>> fields = this.getTableFields(mainTableFields, mainTable);
+        List<Field<?>> fields = new ArrayList<>(baseFields);
 
         if (Boolean.FALSE.equals(eager)) return fields;
 

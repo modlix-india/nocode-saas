@@ -6,7 +6,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.TicketCUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketCRuleDto;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketCUserDistributionsRecord;
@@ -32,7 +32,7 @@ import reactor.util.context.Context;
 public class ProductTicketCRuleService
         extends BaseRuleService<
                 EntityProcessorProductTicketCRulesRecord,
-                ProductTicketCRuleDto,
+                ProductTicketCRule,
                 ProductTicketCRuleDAO,
                 EntityProcessorTicketCUserDistributionsRecord,
                 TicketCUserDistribution,
@@ -57,7 +57,7 @@ public class ProductTicketCRuleService
     }
 
     @Override
-    protected Mono<ProductTicketCRuleDto> checkEntity(ProductTicketCRuleDto entity, ProcessorAccess access) {
+    protected Mono<ProductTicketCRule> checkEntity(ProductTicketCRule entity, ProcessorAccess access) {
 
         if (entity.isDefault()) return super.checkEntity(entity, access);
 
@@ -77,7 +77,7 @@ public class ProductTicketCRuleService
     }
 
     @Override
-    protected Mono<Boolean> evictCache(ProductTicketCRuleDto entity) {
+    protected Mono<Boolean> evictCache(ProductTicketCRule entity) {
 
         if (entity.getProductId() != null)
             return Mono.zip(
@@ -104,7 +104,7 @@ public class ProductTicketCRuleService
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
     }
 
-    public Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrder(
+    public Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrder(
             ProcessorAccess access, ULong productId, ULong stageId) {
 
         return super.productService
@@ -115,7 +115,7 @@ public class ProductTicketCRuleService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.getRulesWithOrder"));
     }
 
-    private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateOverride(
+    private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateOverride(
             ProcessorAccess access, Product product, ULong stageId) {
 
         if (!product.isOverrideCTemplate()) return Mono.empty();
@@ -124,7 +124,7 @@ public class ProductTicketCRuleService
                 .switchIfEmpty(this.getProductTemplateRules(access, product.getProductTemplateId(), stageId));
     }
 
-    private Mono<Map<Integer, ProductTicketCRuleDto>> getRulesWithOrderWithTemplateCombine(
+    private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateCombine(
             ProcessorAccess access, Product product, ULong stageId) {
 
         if (!product.isOverrideCTemplate()) return Mono.empty();
@@ -136,17 +136,17 @@ public class ProductTicketCRuleService
                         .switchIfEmpty(Mono.just(Map.of())),
                 (rules, templateRules) -> {
                     int totalSize = rules.size() + templateRules.size();
-                    Map<Integer, ProductTicketCRuleDto> combined = LinkedHashMap.newLinkedHashMap(totalSize);
+                    Map<Integer, ProductTicketCRule> combined = LinkedHashMap.newLinkedHashMap(totalSize);
 
                     AtomicInteger orderCounter = new AtomicInteger(totalSize - 1);
 
                     rules.entrySet().stream()
-                            .sorted(Map.Entry.<Integer, ProductTicketCRuleDto>comparingByKey()
+                            .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
 
                     templateRules.entrySet().stream()
-                            .sorted(Map.Entry.<Integer, ProductTicketCRuleDto>comparingByKey()
+                            .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
 
@@ -154,7 +154,7 @@ public class ProductTicketCRuleService
                 });
     }
 
-    private Mono<Map<Integer, ProductTicketCRuleDto>> getProductRules(
+    private Mono<Map<Integer, ProductTicketCRule>> getProductRules(
             ProcessorAccess access, ULong productId, ULong productTemplateId, ULong stageId) {
 
         return this.cacheService.cacheValueOrGet(
@@ -162,11 +162,11 @@ public class ProductTicketCRuleService
                 () -> this.dao
                         .getRules(access, productId, productTemplateId, stageId)
                         .map(rules -> rules.stream()
-                                .collect(Collectors.toMap(ProductTicketCRuleDto::getOrder, Function.identity()))),
+                                .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity()))),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, productTemplateId, stageId));
     }
 
-    private Mono<Map<Integer, ProductTicketCRuleDto>> getProductTemplateRules(
+    private Mono<Map<Integer, ProductTicketCRule>> getProductTemplateRules(
             ProcessorAccess access, ULong productTemplateId, ULong stageId) {
 
         return this.cacheService.cacheValueOrGet(
@@ -174,7 +174,7 @@ public class ProductTicketCRuleService
                 () -> this.dao
                         .getRules(access, null, productTemplateId, stageId)
                         .map(rules -> rules.stream()
-                                .collect(Collectors.toMap(ProductTicketCRuleDto::getOrder, Function.identity()))),
+                                .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity()))),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, stageId));
     }
 
