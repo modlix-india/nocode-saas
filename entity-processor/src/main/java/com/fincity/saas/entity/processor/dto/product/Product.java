@@ -24,7 +24,8 @@ public class Product extends BaseProcessorDto<Product> {
 
     private ULong productTemplateId;
     private boolean forPartner;
-    private boolean overrideTemplate = Boolean.TRUE;
+    private boolean overrideCTemplate = Boolean.TRUE;
+    private boolean overrideRuTemplate = Boolean.TRUE;
     private ULong productWalkInFormId;
     private FileDetail logoFileDetail;
     private FileDetail bannerFileDetail;
@@ -39,7 +40,8 @@ public class Product extends BaseProcessorDto<Product> {
         super(product);
         this.productTemplateId = product.productTemplateId;
         this.forPartner = product.forPartner;
-        this.overrideTemplate = product.overrideTemplate;
+        this.overrideCTemplate = product.overrideCTemplate;
+        this.overrideRuTemplate = product.overrideRuTemplate;
         this.productWalkInFormId = product.productWalkInFormId;
         this.logoFileDetail = product.logoFileDetail;
         this.bannerFileDetail = product.bannerFileDetail;
