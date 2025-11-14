@@ -72,10 +72,10 @@ public abstract class BaseRuleService<
     @Override
     protected Mono<D> checkEntity(D entity, ProcessorAccess access) {
 
-	    if (entity.getOrder() == null)
-		    return this.msgService.throwMessage(
-				    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-				    ProcessorMessageResourceService.RULE_ORDER_MISSING);
+        if (entity.getOrder() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.RULE_ORDER_MISSING);
 
         if (!entity.isDefault()
                 && (entity.getCondition() == null || entity.getCondition().isEmpty()))

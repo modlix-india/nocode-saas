@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Field;
 import org.jooq.Table;
@@ -55,19 +56,43 @@ public abstract class BaseRuleDAO<
             ULong productId,
             ULong productTemplateId,
             Integer order) {
-        AbstractCondition productCondition = FilterCondition.make(BaseRuleDto.Fields.productId, productId);
-        AbstractCondition productTemplateCondition =
-                FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId);
 
-        AbstractCondition orderCondition = FilterCondition.make(BaseRuleDto.Fields.order, order);
+        List<AbstractCondition> conditions = new ArrayList<>(5);
 
-        if (condition == null) {
-            return super.processorAccessCondition(
-                    ComplexCondition.and(productCondition, productTemplateCondition, orderCondition), access);
-        } else {
-            return super.processorAccessCondition(
-                    ComplexCondition.and(condition, productCondition, productTemplateCondition, orderCondition),
-                    access);
+        if (condition != null) conditions.add(condition);
+
+        if (productId != null) conditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
+
+        if (productTemplateId != null)
+            conditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+
+        if (order != null) {
+            conditions.add(FilterCondition.make(BaseRuleDto.Fields.order, order));
+            return super.processorAccessCondition(ComplexCondition.and(conditions), access);
         }
+
+        AbstractCondition baseConditions = conditions.isEmpty() ? null : ComplexCondition.and(conditions);
+
+        AbstractCondition defaultRuleCondition = createDefaultRuleCondition(productId, productTemplateId);
+
+        AbstractCondition finalCondition = baseConditions != null
+                ? ComplexCondition.or(defaultRuleCondition, baseConditions)
+                : defaultRuleCondition;
+
+        return super.processorAccessCondition(finalCondition, access);
+    }
+
+    private AbstractCondition createDefaultRuleCondition(ULong productId, ULong productTemplateId) {
+
+        List<AbstractCondition> defaultConditions = new ArrayList<>(3);
+
+        defaultConditions.add(FilterCondition.make(BaseRuleDto.Fields.order, BaseRuleDto.DEFAULT_ORDER));
+
+        if (productId != null) defaultConditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
+
+        if (productTemplateId != null)
+            defaultConditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+
+        return ComplexCondition.and(defaultConditions);
     }
 }
