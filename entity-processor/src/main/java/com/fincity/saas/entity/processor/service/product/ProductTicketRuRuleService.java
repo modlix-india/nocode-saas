@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.product;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
 import com.fincity.saas.entity.processor.dao.rule.TicketRuUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
@@ -13,9 +12,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketRuUserDistributionService;
 import java.util.List;
-import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -63,23 +60,7 @@ public class ProductTicketRuRuleService
                         .map(evicted -> created));
     }
 
-    public Mono<AbstractCondition> getUserProductsCondition(ProcessorAccess access, List<ULong> productIds) {
-        return Flux.fromIterable(productIds)
-                .flatMap(productId -> this.getUserProductCondition(access, productId))
-                .reduce(ComplexCondition::and);
-    }
-
-    public Mono<AbstractCondition> getUserProductsCondition(ProcessorAccess access, ULong... productIds) {
-        return Flux.fromArray(productIds)
-                .flatMap(productId -> this.getUserProductCondition(access, productId))
-                .reduce(ComplexCondition::and);
-    }
-
-    public Mono<AbstractCondition> getUserProductCondition(ProcessorAccess access, ULong productId) {
-        return Mono.empty();
-    }
-
-    public Mono<AbstractCondition> getUserConditions(ProcessorAccess access) {
+    public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return Mono.empty();
     }
 

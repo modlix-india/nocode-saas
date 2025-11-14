@@ -61,12 +61,23 @@ public abstract class BaseRuleDAO<
 
         AbstractCondition orderCondition = FilterCondition.make(BaseRuleDto.Fields.order, order);
 
+        AbstractCondition defaultRuleCondition = ComplexCondition.and(
+                FilterCondition.make(BaseRuleDto.Fields.order, BaseRuleDto.DEFAULT_ORDER),
+                productCondition,
+                productTemplateCondition);
+
         if (condition == null) {
             return super.processorAccessCondition(
-                    ComplexCondition.and(productCondition, productTemplateCondition, orderCondition), access);
+                    ComplexCondition.or(
+                            defaultRuleCondition,
+                            ComplexCondition.and(productCondition, productTemplateCondition, orderCondition)),
+                    access);
         } else {
             return super.processorAccessCondition(
-                    ComplexCondition.and(condition, productCondition, productTemplateCondition, orderCondition),
+                    ComplexCondition.or(
+                            defaultRuleCondition,
+                            ComplexCondition.and(
+                                    condition, productCondition, productTemplateCondition, orderCondition)),
                     access);
         }
     }
