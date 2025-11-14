@@ -41,7 +41,7 @@ jobs:
       - name: Copy JAR for Dockerfile
         run: |
           mkdir -p target
-          cp multi/target/multi-1.1.0.jar target/
+          cp multi/target/multi-2.0.0.jar target/
 
       # - name: Login to OCIR
       #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
