@@ -1,0 +1,50 @@
+name: notification-ci
+on:
+  push:
+    paths:
+      - "notification/**"
+      - ".github/workflows/notification-dev.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    env:
+      OCIR_HOST: <region>.ocir.io
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/notification
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build dependencies first
+        run: |
+          mvn -q -DskipTests clean install -f commons2/pom.xml
+          mvn -q -DskipTests clean install -f commons2-security/pom.xml
+          mvn -q -DskipTests clean install -f commons2-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons2-mq/pom.xml
+
+
+      - name: Build notification jar
+        working-directory: notification
+        run: mvn -q -DskipTests clean package
+
+      - name: Copy built jar for Dockerfile
+        run: |
+          mkdir -p target
+          cp notification/target/notification-1.0.0.jar target/
+
+      # - name: Login to OCIR
+      #   run: echo "${{ secrets.OCIR_AUTH_TOKEN_DEV }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME_DEV }}" --password-stdin
+
+      - name: Build docker image
+        run: |
+          docker build -t test/notification-dev:${{ github.sha }} -f notification/Dockerfile .
+          docker tag test/notification-dev:${{ github.sha }} test/notification:latest
+          # docker push $OCIR_REPO:${{ github.sha }}
+          # docker push $OCIR_REPO:latest
