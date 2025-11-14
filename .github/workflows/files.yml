@@ -36,13 +36,13 @@ jobs:
 
 
       - name: Build files-server JAR
-        working-directory: services/files
+        working-directory: files
         run: mvn -q -DskipTests clean package
 
       - name: Copy JAR for Dockerfile
         run: |
           mkdir -p target
-          cp services/files/target/files-1.1.0.jar target/
+          cp /files/target/files-1.1.0.jar target/
 
       
       # - name: Login to OCIR
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t test/files-server:${{ github.sha }} -f services/files/Dockerfile .
+          docker build -t test/files-server:${{ github.sha }} -f /files/Dockerfile .
           docker tag test/files-server:${{ github.sha }} test/files-server:latest
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
