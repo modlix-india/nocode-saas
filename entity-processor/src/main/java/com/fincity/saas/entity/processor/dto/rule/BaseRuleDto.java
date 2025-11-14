@@ -73,15 +73,34 @@ public abstract class BaseRuleDto<U extends BaseUserDistributionDto<U>, T extend
         return this.order == DEFAULT_ORDER;
     }
 
-    public boolean areDistributionEmpty() {
+    @JsonIgnore
+    public boolean isDistributionsEmpty() {
         return this.userDistributions == null || this.userDistributions.isEmpty();
     }
 
-    public boolean areDistributionValid() {
+    @JsonIgnore
+    public boolean isDistributionsValid() {
         return this.userDistributions.stream().allMatch(BaseUserDistributionDto::isDistributionValid);
     }
 
+    @JsonIgnore
     public AbstractCondition getConditionWithProduct() {
-        return ComplexCondition.and(FilterCondition.make(Fields.productId, this.getProductId()), getCondition());
+
+        if (this.productId == null) return getCondition();
+
+        return getCondition() == null || this.getCondition().isEmpty()
+                ? FilterCondition.make(Fields.productId, this.getProductId())
+                : ComplexCondition.and(FilterCondition.make(Fields.productId, this.getProductId()), getCondition());
+    }
+
+    @JsonIgnore
+    public AbstractCondition getConditionWithProductTemplate() {
+
+        if (this.productTemplateId == null) return getCondition();
+
+        return getCondition() == null || this.getCondition().isEmpty()
+                ? FilterCondition.make(Fields.productTemplateId, this.getProductTemplateId())
+                : ComplexCondition.and(
+                        FilterCondition.make(Fields.productTemplateId, this.getProductTemplateId()), getCondition());
     }
 }

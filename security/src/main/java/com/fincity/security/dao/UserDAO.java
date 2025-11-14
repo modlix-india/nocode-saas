@@ -450,26 +450,6 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
                 .map(e -> e > 0);
     }
 
-    public Mono<Boolean> makeUserActiveIfInActive(ULong uid) {
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.ACTIVE)
-                        .where(SECURITY_USER.ID.eq(uid)
-                                .and(SECURITY_USER.STATUS_CODE.eq(SecurityUserStatusCode.INACTIVE))))
-                .map(e -> e > 0);
-
-    }
-
-    public Mono<Boolean> makeUserInActive(ULong id) {
-
-        return Mono.from(this.dslContext.update(SECURITY_USER)
-                        .set(SECURITY_USER.STATUS_CODE, SecurityUserStatusCode.INACTIVE)
-                        .where(SECURITY_USER.ID.eq(id)
-                                .and(SECURITY_USER.STATUS_CODE.ne(SecurityUserStatusCode.DELETED))))
-                .map(e -> e > 0);
-
-    }
-
     public Mono<Boolean> updateUserStatusToActive(ULong reqUserId) {
 
         return Mono.from(this.dslContext.update(SECURITY_USER)

@@ -1195,18 +1195,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(
-                        userId, ULong.valueOf(ca.getUser().getId()))),
-                (ca, id) -> ca.isSystemClient()
-                        ? Mono.just(Boolean.TRUE)
-                        : this.dao
-                                .readById(id)
-                                .flatMap(e -> this.clientService.isBeingManagedBy(
-                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged)
-                        ? Mono.empty()
-                        : this.dao.makeUserActiveIfInActive(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> userId == null
+                                ? this.readInternal(userId)
+                                : this.readInternal(
+                                        ULongUtil.valueOf(ca.getUser().getId())),
+                        (ca, user) -> ca.isSystemClient()
+                                ? Mono.just(Boolean.TRUE)
+                                : this.clientService.isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        (ca, user, managed) -> {
+                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+
+                            return user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
+                                            .map(x -> Boolean.TRUE);
+                        },
+                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                                .map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1215,17 +1222,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserInActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(
-                        userId, ULong.valueOf(ca.getUser().getId()))),
-                (ca, id) -> ca.isSystemClient()
-                        ? Mono.just(Boolean.TRUE)
-                        : this.dao
-                                .readById(id)
-                                .flatMap(e -> this.clientService.isBeingManagedBy(
-                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
-                        : this.dao.makeUserInActive(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> userId == null
+                                ? this.readInternal(userId)
+                                : this.readInternal(
+                                        ULongUtil.valueOf(ca.getUser().getId())),
+                        (ca, user) -> ca.isSystemClient()
+                                ? Mono.just(Boolean.TRUE)
+                                : this.clientService.isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        (ca, user, managed) -> {
+                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+
+                            return user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
+                                            .map(x -> Boolean.TRUE);
+                        },
+                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                                .map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }

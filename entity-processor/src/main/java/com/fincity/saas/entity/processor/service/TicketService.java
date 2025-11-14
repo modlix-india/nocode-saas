@@ -230,17 +230,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> Mono.zip(
-                                this.productService.updateIdentity(ticketRequest.getProductId()),
+                                this.productService.readIdentityWithAccess(access, ticketRequest.getProductId()),
                                 this.getDnc(access, ticketRequest)),
                         (access, productIdentity) -> this.checkDuplicate(
                                 access,
-                                productIdentity.getT1().getULongId(),
+                                productIdentity.getT1().getId(),
                                 ticketRequest.getPhoneNumber(),
                                 ticketRequest.getEmail(),
                                 ticketRequest.getSource(),
                                 ticketRequest.getSubSource()),
                         (access, productIdentity, isDuplicate) -> Mono.just(
-                                ticket.setProductId(productIdentity.getT1().getULongId())
+                                ticket.setProductId(productIdentity.getT1().getId())
                                         .setDnc(productIdentity.getT2())),
                         (access, productIdentity, isDuplicate, pTicket) -> super.create(access, pTicket),
                         (access, productIdentity, isDuplicate, pTicket, created) ->
