@@ -24,12 +24,11 @@ jobs:
 
       - name: Build dependencies first
         run: |
-          mvn -q -DskipTests clean install -f commons/pom.xml
-          mvn -q -DskipTests clean install -f commons-security/pom.xml
-          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
-          mvn -q -DskipTests clean install -f commons-mq/pom.xml
-          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
-          mvn -q -DskipTests clean install -f commons-core/pom.xml
+          mvn -q -DskipTests clean install -f commons2/pom.xml
+          mvn -q -DskipTests clean install -f commons2-security/pom.xml
+          mvn -q -DskipTests clean install -f commons2-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons2-mq/pom.xml
+
 
       - name: Build notification jar
         working-directory: notification
