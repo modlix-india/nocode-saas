@@ -31,6 +31,7 @@ jobs:
           mvn -q -DskipTests clean install -f commons-security/pom.xml
           mvn -q -DskipTests clean install -f commons-mongo/pom.xml
           mvn -q -DskipTests clean install -f commons-mq/pom.xml
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
           mvn -q -DskipTests clean install -f commons-core/pom.xml
 
       - name: Build multi jar
