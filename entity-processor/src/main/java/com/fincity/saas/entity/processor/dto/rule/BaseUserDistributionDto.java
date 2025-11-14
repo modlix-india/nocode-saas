@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
@@ -42,14 +43,15 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
         this.departmentId = userDistribution.departmentId;
     }
 
+    @JsonIgnore
     public boolean isDistributionValid() {
 
-        int count = (this.userId != null ? 1 : 0)
-                + (this.roleId != null ? 1 : 0)
-                + (this.profileId != null ? 1 : 0)
-                + (this.designationId != null ? 1 : 0)
-                + (this.departmentId != null ? 1 : 0);
+        int flags = ((userId != null) ? 1 : 0)
+                | ((roleId != null) ? 1 << 1 : 0)
+                | ((profileId != null) ? 1 << 2 : 0)
+                | ((designationId != null) ? 1 << 3 : 0)
+                | ((departmentId != null) ? 1 << 4 : 0);
 
-        return count == 1;
+        return (flags != 0) && ((flags & (flags - 1)) == 0);
     }
 }
