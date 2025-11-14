@@ -138,9 +138,9 @@ public abstract class BaseRuleService<
     @SuppressWarnings("unchecked")
     public Mono<D> create(D entity) {
 
-        if (entity.areDistributionEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+        if (entity.isDistributionsEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
 
-        if (!entity.areDistributionValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+        if (!entity.isDistributionsValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
@@ -161,7 +161,7 @@ public abstract class BaseRuleService<
                         super::hasAccess,
                         access -> super.readById(access, entity.getId()),
                         (access, existing) -> super.update(access, (D) entity.setId(existing.getId())),
-                        (access, existing, updated) -> entity.areDistributionEmpty()
+                        (access, existing, updated) -> entity.isDistributionsEmpty()
                                 ? this.userDistributionService.getUserDistributions(access, updated.getId())
                                 : this.userDistributionService
                                         .updateDistributions(access, entity.getId(), entity.getUserDistributions())
