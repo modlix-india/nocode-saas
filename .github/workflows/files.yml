@@ -49,7 +49,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t test/files-server:${{ github.sha }} -f /files/Dockerfile .
+          docker build -t test/files-server:${{ github.sha }} -f files/Dockerfile .
           docker tag test/files-server:${{ github.sha }} test/files-server:latest
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
