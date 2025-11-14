@@ -39,7 +39,7 @@ jobs:
       - name: Copy built jar for Dockerfile
         run: |
           mkdir -p target
-          cp message/target/message-1.1.0.jar target/
+          cp target/message-1.1.0.jar target/
 
       # - name: Login to OCIR
       #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
