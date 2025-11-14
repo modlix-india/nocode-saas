@@ -3,7 +3,7 @@ name: files-server-ci
 on:
   push:
     paths:
-      - "files/**"
+      - "services/files/**"
       - ".github/workflows/files.yml"
   workflow_dispatch:
 
@@ -16,6 +16,7 @@ jobs:
       OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS }}/files-server
 
     steps:
+
       - uses: actions/checkout@v4
 
       - name: Set up JDK
@@ -24,31 +25,30 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # Build commons (required by files-server)
-      - name: Build commons dependencies first
+      - name: Build commons modules
         run: |
           mvn -q -DskipTests clean install -f commons/pom.xml
-          mvn -q -DskipTests clean install -f commons-core/pom.xml
-          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
           mvn -q -DskipTests clean install -f commons-security/pom.xml
+          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
           mvn -q -DskipTests clean install -f commons-mq/pom.xml
+          mvn -q -DskipTests clean install -f commons-core/pom.xml
 
-      - name: Build files-server jar
-        working-directory: files
+      - name: Build files-server JAR
+        working-directory: services/files
         run: mvn -q -DskipTests clean package
 
-      - name: Copy built jar for Dockerfile
+      - name: Copy JAR for Dockerfile
         run: |
           mkdir -p target
-          cp files/target/files-1.1.0.jar target/
+          cp services/files/target/files-1.1.0.jar target/
 
+      
       # - name: Login to OCIR
       #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
 
-      - name: Build docker image
+      - name: Build Docker image
         run: |
-          docker build -t $OCIR_REPO:${{ github.sha }} -f files/Dockerfile .
-          docker tag $OCIR_REPO:${{ github.sha }} $OCIR_REPO:latest
-
+          docker build -t test/files-server:${{ github.sha }} -f services/files/Dockerfile .
+          docker tag test/files-server:${{ github.sha }} test/files-server:latest
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
