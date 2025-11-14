@@ -39,12 +39,11 @@ jobs:
         working-directory: files
         run: mvn -q -DskipTests clean package
 
-      - name: Copy JAR for Dockerfile
+      - name: Copy built jar for Dockerfile
         run: |
-          mkdir -p target
-          cp /files/target/files-1.1.0.jar target/
+         mkdir -p target
+         cp files/target/*.jar target/
 
-      
       # - name: Login to OCIR
       #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
 
