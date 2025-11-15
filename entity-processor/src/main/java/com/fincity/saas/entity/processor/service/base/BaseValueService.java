@@ -10,7 +10,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.util.ArrayList;
 import java.util.Arrays;

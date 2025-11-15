@@ -67,7 +67,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
     public Flux<DateStatusCount> getTicketPerAssignedUserStageSourceDateCount(TicketBucketFilter filter) {
         return FlatMapUtil.flatMapFlux(
                         () -> super.hasAccess().flux(),
-                        (access) -> resolveStages(access, filter).flux(),
+                        access -> resolveStages(access, filter).flux(),
                         (access, sFilter) -> this.dao
                                 .getTicketPerAssignedUserStageSourceDateCount(access, sFilter)
                                 .collectList()
@@ -230,7 +230,11 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
     private Mono<TicketBucketFilter> resolveProducts(ProcessorAccess access, TicketBucketFilter filter) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.productService.getAllProducts(access, filter.getProductIds()),
+                () -> this.productService.getAllProducts(
+                        access,
+                        filter.getProductIds() == null || filter.getProductIds().isEmpty()
+                                ? null
+                                : filter.getProductIds()),
                 products -> Mono.just(filter.filterProductIds(
                                 products.stream().map(BaseUpdatableDto::getId).toList())
                         .setProducts(products.stream()

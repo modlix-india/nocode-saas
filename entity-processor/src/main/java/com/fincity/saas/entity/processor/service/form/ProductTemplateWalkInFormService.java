@@ -7,7 +7,7 @@ import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;

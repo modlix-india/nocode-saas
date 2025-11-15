@@ -33,7 +33,10 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null)
-                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                log.debug(
+                        "{} - {}",
+                        name,
+                        !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
             else log.debug(v);
         }));
     }

@@ -3,6 +3,7 @@ package com.fincity.security.service;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.service.CacheService;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,8 @@ import com.fincity.security.dto.Department;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
 
+import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -32,6 +35,7 @@ public class DepartmentService
         extends AbstractJOOQUpdatableDataService<SecurityDepartmentRecord, ULong, Department, DepartmentDAO> {
 
     private static final String DEPARTMENT = "Department";
+    private static final String FETCH_PARENT_DEPARTMENT = "fetchParentDepartment";
 
     private static final String NAME = "name";
     private static final String DESCRIPTION = "description";
@@ -39,11 +43,16 @@ public class DepartmentService
 
     private final SecurityMessageResourceService securityMessageResourceService;
     private final ClientService clientService;
+    private final CacheService cacheService;
+
+    private static final String CACHE_NAME_DEPARTMENT = "department";
 
     public DepartmentService(SecurityMessageResourceService securityMessageResourceService,
-                             ClientService clientService) {
+                             ClientService clientService,
+                             CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
+        this.cacheService = cacheService;
     }
 
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
@@ -99,8 +108,11 @@ public class DepartmentService
 
                         managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                        (managed, canBeUpdated) -> super.update(entity)
-
+                        (managed, canBeUpdated) -> super.update(entity),
+                        (managed, canBeUpdated, updatedDepartment) ->
+                                this.cacheService
+                                        .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                                .thenReturn(updatedDepartment)
                 )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
@@ -110,9 +122,17 @@ public class DepartmentService
     @PreAuthorize("hasAnyAuthority('Authorities.Client_CREATE', 'Authorities.Client_UPDATE')")
     @Override
     public Mono<Department> update(ULong key, Map<String, Object> fields) {
-        return this.dao.canBeUpdated(key)
-                .filter(BooleanUtil::safeValueOf)
-                .flatMap(x -> super.update(key, fields))
+        return FlatMapUtil.flatMapMono(
+                        () -> this.dao.canBeUpdated(key)
+                                .filter(BooleanUtil::safeValueOf),
+
+                        canBeUpdated -> super.update(key, fields),
+
+                        (canBeUpdated, updatedDepartment) -> this.cacheService
+                                .evict(CACHE_NAME_DEPARTMENT, updatedDepartment.getId())
+                                .thenReturn(updatedDepartment)
+                )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "DepartmentService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DEPARTMENT, fields)));
     }
@@ -123,6 +143,7 @@ public class DepartmentService
                 .map(e -> {
                     e.setName(entity.getName());
                     e.setDescription(entity.getDescription());
+                    e.setParentDepartmentId(entity.getParentDepartmentId());
                     return e;
                 });
     }
@@ -141,5 +162,21 @@ public class DepartmentService
             return Mono.just(Map.of());
 
         return this.dao.createForRegistration(client, departments);
+    }
+
+    public Mono<Department> readInternal(ULong departmentId) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_DEPARTMENT, () -> this.dao.readInternal(departmentId), departmentId);
+    }
+
+    public Mono<List<Department>> fillDetails(List<Department> departments, MultiValueMap<String, String> queryParams) {
+
+        boolean fetchParentDepartment = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARENT_DEPARTMENT));
+
+        Flux<Department> departmentFlux = Flux.fromIterable(departments);
+
+        if (fetchParentDepartment)
+            departmentFlux = departmentFlux.filter(department -> department.getParentDepartmentId() != null && department.getParentDepartmentId().intValue() != 0).flatMap(department -> this.readInternal(department.getParentDepartmentId()).map(department::setParentDepartment));
+
+        return departmentFlux.collectList();
     }
 }
