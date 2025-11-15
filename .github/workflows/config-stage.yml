@@ -1,4 +1,4 @@
-name: config-ci
+name: config-stage-ci
 
 on:
   push:
