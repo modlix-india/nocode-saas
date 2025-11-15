@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OCIR_HOST: <region>.ocir.io
-      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_STAGE}}/message
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_STAGE }}/message
 
     steps:
       - uses: actions/checkout@v4
