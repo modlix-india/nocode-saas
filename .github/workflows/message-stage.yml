@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - "message/**"
-      - ".github/workflows/message.yml"
+      - ".github/workflows/message-stage.yml"
   workflow_dispatch:
 
 jobs:
