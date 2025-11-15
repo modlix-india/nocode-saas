@@ -155,6 +155,9 @@ public class DesignationService
                 .map(e -> {
                     e.setName(entity.getName());
                     e.setDescription(entity.getDescription());
+                    e.setDepartmentId(entity.getDepartmentId());
+                    e.setParentDesignationId(entity.getParentDesignationId());
+                    e.setNextDesignationId(entity.getNextDesignationId());
                     return e;
                 });
     }

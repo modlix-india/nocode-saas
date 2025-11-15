@@ -143,6 +143,7 @@ public class DepartmentService
                 .map(e -> {
                     e.setName(entity.getName());
                     e.setDescription(entity.getDescription());
+                    e.setParentDepartmentId(entity.getParentDepartmentId());
                     return e;
                 });
     }
