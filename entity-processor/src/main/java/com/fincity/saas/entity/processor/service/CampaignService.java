@@ -40,7 +40,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> this.productService.readIdentityWithAccess(access, campaignRequest.getProductId()),
+                        access -> this.productService.readByIdentity(access, campaignRequest.getProductId()),
                         (access, product) -> super.createInternal(
                                 access, Campaign.of(campaignRequest).setProductId(product.getId())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.create[CampaignRequest]"));

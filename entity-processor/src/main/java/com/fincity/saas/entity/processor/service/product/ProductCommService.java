@@ -247,7 +247,7 @@ public class ProductCommService
                     if (productCommRequest.getProductId() != null
                             && !productCommRequest.getProductId().isNull()) {
                         return this.productService
-                                .readIdentityWithAccess(access, productCommRequest.getProductId())
+                                .readByIdentity(access, productCommRequest.getProductId())
                                 .flatMap(product -> connMono.flatMap(connection -> {
                                     ULong prodId = product.getId();
                                     if (Boolean.TRUE.equals(productCommRequest.isDefault())) {

@@ -78,7 +78,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getOwnerId() != null)
-            return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
+            return this.readById(access, ULongUtil.valueOf(ticket.getOwnerId()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
 
         return this.getOrCreateTicketPhoneOwner(access, ticket)
@@ -94,7 +94,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     public Mono<Ticket> updateTicketOwner(ProcessorAccess access, Ticket ticket) {
-        return this.readById(ticket.getOwnerId()).flatMap(owner -> {
+        return this.readById(access, ticket.getOwnerId()).flatMap(owner -> {
             owner.setName(ticket.getName());
             owner.setEmail(ticket.getEmail());
             return this.update(access, owner).thenReturn(ticket);

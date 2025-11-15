@@ -66,7 +66,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         return super.checkExistsByName(access, product)
                 .flatMap(exists -> product.getProductTemplateId() != null
                         ? productTemplateService
-                                .readByIdInternal(product.getProductTemplateId())
+                                .readById(access, product.getProductTemplateId())
                                 .thenReturn(product)
                         : Mono.just(product))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.checkEntity"));
@@ -100,7 +100,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                         super::hasAccess,
                         access -> super.create(access, Product.of(productRequest)),
                         (access, created) ->
-                                productTemplateService.readIdentityWithAccess(productRequest.getProductTemplateId()),
+                                productTemplateService.readByIdentity(productRequest.getProductTemplateId()),
                         (access, created, productTemplate) -> {
                             created.setProductTemplateId(productTemplate.getId());
                             return super.updateInternal(access, created);
@@ -110,7 +110,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
     public Mono<ProductTemplate> setProductTemplate(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
-        return FlatMapUtil.flatMapMono(() -> super.readIdentityWithAccess(access, productId), product -> {
+        return FlatMapUtil.flatMapMono(() -> super.readByIdentity(access, productId), product -> {
                     product.setProductTemplateId(productTemplate.getId());
                     return super.updateInternal(access, product).map(updated -> productTemplate);
                 })
@@ -136,7 +136,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     List<IdAndValue<Identity, Boolean>> entries = request.getProductPartnerActive();
 
                     return Flux.fromIterable(entries)
-                            .flatMap(entry -> this.readIdentityWithAccess(access, entry.getId())
+                            .flatMap(entry -> this.readByIdentity(access, entry.getId())
                                     .map(product -> product.setForPartner(entry.getValue())))
                             .collectList()
                             .flatMapMany(validatedProducts -> Flux.fromIterable(validatedProducts)

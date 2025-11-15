@@ -147,7 +147,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
                             if (stageRequest.getId() != null
                                     && stageRequest.getId().getId() != null)
-                                return super.readIdentityWithAccess(access, stageRequest.getId())
+                                return super.readByIdentity(access, stageRequest.getId())
                                         .flatMap(existingStage -> {
                                             existingStage
                                                     .setName(stageRequest.getName())
