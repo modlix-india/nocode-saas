@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - "services/entity-collector/**"
-      - ".github/workflows/collector.yml"
+      - ".github/workflows/collector-stage.yml"
   workflow_dispatch:
 
 jobs:
