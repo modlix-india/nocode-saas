@@ -278,7 +278,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     @Override
     protected Mono<App> updatableEntity(App entity) {
 
-        return ((AppService) AopContext.currentProxy()).read(entity.getId())
+        return this.read(entity.getId())
                 .flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
                         .flatMap(ca -> {
 
@@ -329,7 +329,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                         SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> ((AppService) AopContext.currentProxy()).read(appId),
+                        ca -> this.read(appId),
 
                         (ca, app) -> {
 
@@ -370,7 +370,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
         return FlatMapUtil.flatMapMono(
 
-                        () -> ((AppService) AopContext.currentProxy()).read(appId),
+                        () -> this.read(appId),
 
                         app -> this.clientService.getClientTypeNCodeNClientLevel(clientId),
 
