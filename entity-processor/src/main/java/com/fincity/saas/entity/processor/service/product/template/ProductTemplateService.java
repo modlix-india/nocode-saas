@@ -92,7 +92,7 @@ public class ProductTemplateService
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> super.readIdentityWithAccess(access, identity),
+                        access -> super.readByIdentity(access, identity),
                         (access, productTemplate) -> this.updateDependentServices(
                                 access, productTemplateRequest.getProductId(), productTemplate))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.attachEntity"));
