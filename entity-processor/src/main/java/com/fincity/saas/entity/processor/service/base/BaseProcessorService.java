@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -32,7 +33,8 @@ public abstract class BaseProcessorService<
     public Mono<D> create(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> access.isOutsideUser()
-                        ? Mono.just(entity.setClientId(access.getUser().getClientId()))
+                        ? Mono.just(entity.setClientId(
+                                ULongUtil.valueOf(access.getUser().getClientId())))
                         : Mono.just(entity),
                 uEntity -> super.create(access, uEntity));
     }
