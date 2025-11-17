@@ -92,7 +92,7 @@ public class ProductWalkInFormService
     @Override
     protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
         return productService
-                .readIdentityWithAccess(access, productId)
+                .readByIdentity(access, productId)
                 .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.resolveProduct"));
     }
@@ -162,7 +162,7 @@ public class ProductWalkInFormService
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
         return this.productService
-                .readIdentityWithAccess(access, productId)
+                .readByIdentity(access, productId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInProduct"));
     }
 
