@@ -1,23 +1,5 @@
 package com.fincity.saas.commons.mongo.service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.mongo.document.Transport;
-import com.fincity.saas.commons.mongo.enums.TransportFileType;
-import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
-import com.fincity.saas.commons.mongo.model.TransportObject;
-import com.fincity.saas.commons.mongo.model.TransportRequest;
-import com.fincity.saas.commons.mongo.repository.TransportRepository;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.jwt.ContextUser;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.commons.util.UniqueUtil;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -30,11 +12,32 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.SneakyThrows;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
+import com.fincity.saas.commons.mongo.document.Transport;
+import com.fincity.saas.commons.mongo.enums.TransportFileType;
+import com.fincity.saas.commons.mongo.model.TransportObject;
+import com.fincity.saas.commons.mongo.model.TransportRequest;
+import com.fincity.saas.commons.mongo.repository.TransportRepository;
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
+
+import lombok.SneakyThrows;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -276,11 +279,11 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .map(Object::toString);
     }
 
-    public Mono<Void> makeTransport(TransportRequest request, ServerHttpResponse response) {
+    public Mono<Void> makeTransport(boolean isInternal, TransportRequest request, ServerHttpResponse response) {
 
         if (request.getFileType() == null || request.getFileType() == TransportFileType.ZIP) {
 
-            return this.makeZipTransport(request).flatMap(path -> {
+            return this.makeZipTransport(isInternal, request).flatMap(path -> {
 
                 ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
                 HttpHeaders headers = response.getHeaders();
@@ -300,7 +303,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
             }).subscribeOn(Schedulers.boundedElastic());
         }
 
-        return this.makeJSONTransport(request).flatMap(transport -> {
+        return this.makeJSONTransport(isInternal, request).flatMap(transport -> {
 
             ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
             HttpHeaders headers = response.getHeaders();
@@ -319,7 +322,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
     }
 
     @SneakyThrows
-    private Mono<Path> makeZipTransport(TransportRequest request) {
+    private Mono<Path> makeZipTransport(boolean isInternal, TransportRequest request) {
 
         Transport to = new Transport();
 
@@ -340,7 +343,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
+                ca -> isInternal ? Mono.just(ca.isSystemClient())
+                        : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
 
                 (ca, hasPermission) -> {
 
@@ -403,7 +407,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 });
     }
 
-    private Mono<Transport> makeJSONTransport(TransportRequest request) {
+    private Mono<Transport> makeJSONTransport(boolean isInternal, TransportRequest request) {
         Transport to = new Transport();
 
         to.setAppCode(request.getAppCode());
@@ -416,7 +420,8 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
                 SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
+                ca -> isInternal ? Mono.just(ca.isSystemClient())
+                        : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
 
                 (ca, hasPermission) -> {
 
