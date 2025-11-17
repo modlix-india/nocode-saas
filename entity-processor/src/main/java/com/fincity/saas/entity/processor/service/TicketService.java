@@ -1,7 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.Optional;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
@@ -329,7 +332,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                 ProcessorMessageResourceService.STAGE_MISSING)),
                 (product, stageStatusEntity) ->
-                        this.securityService.getClientById(request.getClientId().toBigInteger()),
+                        request.getClientId() != null ? this.securityService.getClientById(request.getClientId().toBigInteger()).map(Optional::of) : Mono.just(Optional.of(new Client())),
                 (product, stageStatusEntity, partnerClient) -> this.getTicket(
                                 access, product.getId(), request.getPhoneNumber(), request.getEmail())
                         .flatMap(existing -> existing.getId() != null
@@ -349,7 +352,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         .setProductId(product.getId())
                         .setStage(stageStatusEntity.getKey().getId())
                         .setStatus(stageStatusEntity.getValue().getFirst().getId())
-                        .setClientId(partnerClient.getId())
+                        .setClientId(partnerClient.map(Client::getId).orElse(null))
                         .setCreatedBy(request.getAssignedUserId())
                         .setCreatedAt(request.getCreatedDate())),
                 (product, stageStatusEntity, partnerClient, existing, ticket) -> this.ownerService
