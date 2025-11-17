@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -333,16 +334,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ProcessorMessageResourceService.STAGE_MISSING)),
                 (product, stageStatusEntity) ->
                         request.getClientId() != null ? this.securityService.getClientById(request.getClientId().toBigInteger()).map(Optional::of) : Mono.just(Optional.of(new Client())),
-                (product, stageStatusEntity, partnerClient) -> this.getTicket(
+		        (product, stageStatusEntity, partnerClient) -> this.securityService.getUserInternal(request.getAssignedUserId().toBigInteger(), null),
+                (product, stageStatusEntity, partnerClient, assignedUser) -> this.getTicket(
                                 access, product.getId(), request.getPhoneNumber(), request.getEmail())
                         .flatMap(existing -> existing.getId() != null
                                 ? super.throwDuplicateError(access, existing)
                                 : Mono.just(Boolean.FALSE))
                         .switchIfEmpty(Mono.just(Boolean.TRUE)),
-                (product, stageStatusEntity, partnerClient, existing) -> Mono.just((Ticket) new Ticket()
+                (product, stageStatusEntity, partnerClient, assignedUser, existing) -> Mono.just((Ticket) new Ticket()
                         .setName(request.getName())
                         .setDescription(request.getDescription())
-                        .setAssignedUserId(request.getAssignedUserId())
+                        .setAssignedUserId(ULongUtil.valueOf(assignedUser.getId()))
                         .setDialCode(request.getPhoneNumber().getCountryCode())
                         .setPhoneNumber(request.getPhoneNumber().getNumber())
                         .setEmail(
@@ -353,14 +355,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         .setStage(stageStatusEntity.getKey().getId())
                         .setStatus(stageStatusEntity.getValue().getFirst().getId())
                         .setClientId(partnerClient.map(Client::getId).orElse(null))
-                        .setCreatedBy(request.getAssignedUserId())
+                        .setCreatedBy(ULongUtil.valueOf(assignedUser.getId()))
                         .setCreatedAt(request.getCreatedDate())),
-                (product, stageStatusEntity, partnerClient, existing, ticket) -> this.ownerService
+                (product, stageStatusEntity, partnerClient, assignedUser, existing, ticket) -> this.ownerService
                         .getOrCreateTicketOwner(access, ticket)
                         .flatMap(owner -> this.updateTicketFromOwner(ticket, owner)),
-                (product, stageStatusEntity, partnerClient, existing, ticket, oTicket) ->
+                (product, stageStatusEntity, partnerClient, assignedUser, existing, ticket, oTicket) ->
                         super.createInternal(access, ticket),
-                (product, stageStatusEntity, partnerClient, existing, ticket, oTicket, created) -> this.activityService
+                (product, stageStatusEntity, partnerClient, assignedUser, existing, ticket, oTicket, created) -> this.activityService
                         .acDcrmImport(access, created, null, request.getActivityJson())
                         .thenReturn(created));
     }
