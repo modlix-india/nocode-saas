@@ -36,6 +36,16 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         return false;
     }
 
+    @Override
+    protected Mono<Boolean> evictCache(Campaign entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getCampaignId())),
+                (baseEvicted, campaignEvicted) -> baseEvicted && campaignEvicted);
+    }
+
     public Mono<Campaign> create(CampaignRequest campaignRequest) {
 
         return FlatMapUtil.flatMapMono(
@@ -61,6 +71,11 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     }
 
     public Mono<Campaign> readByCampaignId(ProcessorAccess access, String campaignId) {
-        return this.dao.readByCampaignId(access, campaignId);
+        return super.cacheService
+                .cacheValueOrGet(
+                        this.getCacheName(),
+                        () -> this.dao.readByCampaignId(access, campaignId),
+                        super.getCacheKey(access.getAppCode(), access.getClientCode(), campaignId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.readByCampaignId"));
     }
 }
