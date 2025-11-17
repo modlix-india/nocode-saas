@@ -223,6 +223,7 @@ public class UserInviteService
 
         user.setClientId(userInvite.getClientId());
         user.setDesignationId(userInvite.getDesignationId());
+        user.setReportingTo(userInvite.getReportingTo());
 
         return FlatMapUtil.flatMapMono(
                 () ->
