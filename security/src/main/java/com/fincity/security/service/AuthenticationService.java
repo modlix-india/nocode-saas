@@ -622,7 +622,7 @@ public class AuthenticationService implements IAuthenticationService {
                         cachedCA -> basic ? Mono.empty() : checkTokenOrigin(request, this.extractClaims(bearerToken)),
                         (cachedCA, claims) -> {
                             if (cachedCA != null && (cachedCA.getUser().getStringAuthorities() != null
-                                    || cachedCA.getUser().getAuthorities() != null))
+                                    || cachedCA.getUser().getGrantedAuthorities() != null))
                                 return Mono.just(cachedCA);
 
                             return getAuthenticationIfNotInCache(appCode, basic, bearerToken, request);
