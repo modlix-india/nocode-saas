@@ -247,12 +247,12 @@ public abstract class BaseValueService<
 
         if (parent == null || parent.isNull()) return Mono.empty();
 
-        return this.readIdentityWithAccess(access, parent).flatMap(pEntity -> {
+        return this.readByIdentity(access, parent).flatMap(pEntity -> {
             if (pEntity == null || !productTemplateId.equals(pEntity.getProductTemplateId())) return Mono.empty();
 
             if (child == null || child.isNull()) return Mono.just(Map.entry(pEntity, List.of()));
 
-            return this.readIdentityWithAccess(access, child).flatMap(cEntity -> {
+            return this.readByIdentity(access, child).flatMap(cEntity -> {
                 if (cEntity == null || !productTemplateId.equals(cEntity.getProductTemplateId()))
                     return Mono.just(Map.entry(pEntity, List.of()));
 

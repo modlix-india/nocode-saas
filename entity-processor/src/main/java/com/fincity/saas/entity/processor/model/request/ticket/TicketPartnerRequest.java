@@ -23,7 +23,7 @@ public class TicketPartnerRequest extends BaseRequest<TicketRequest> {
     private Identity productId;
     private PhoneNumber phoneNumber;
     private Email email;
-    private String source = "Business Partner";
+    private String source;
     private String subSource = "Developer CRM";
     private String comment;
     private Identity stageId;

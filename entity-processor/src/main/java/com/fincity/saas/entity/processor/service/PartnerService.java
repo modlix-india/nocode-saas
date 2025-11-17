@@ -181,7 +181,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.readIdentityWithAccess(access, partnerId),
+                        access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)),
                         (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updatePartnerVerificationStatus"));
@@ -190,7 +190,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> togglePartnerDnc(Identity partnerId) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.readIdentityWithAccess(access, partnerId),
+                        access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
                         (access, partner, updated) -> this.evictCache(partner),
                         (access, partner, updated, evicted) -> this.ticketService
@@ -264,7 +264,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
             Identity partnerId, Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> this.readIdentityWithAccess(access, partnerId),
+                        access -> this.readByIdentity(access, partnerId),
                         (access, partner) -> this.addClientIds(partner, query.getCondition()),
                         (access, partner, pCondition) -> super.securityService
                                 .readUserPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)

@@ -42,7 +42,7 @@ public class ProductController
             @RequestParam("clientCode") String clientCode,
             @PathVariable(PATH_VARIABLE_ID) Identity identity) {
         return this.service
-                .readIdentityWithAccess(ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)
+                .readByIdentity(ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)
                 .map(ResponseEntity::ok);
     }
 
