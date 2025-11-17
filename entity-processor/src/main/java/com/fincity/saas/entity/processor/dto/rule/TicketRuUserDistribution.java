@@ -20,11 +20,11 @@ public class TicketRuUserDistribution extends BaseUserDistributionDto<TicketRuUs
 
     public TicketRuUserDistribution() {
         super();
-        this.relationsMap.put(Fields.ruleId, EntitySeries.TICKET_C_USER_DISTRIBUTION.getTable());
+        this.relationsMap.put(Fields.ruleId, EntitySeries.TICKET_RU_USER_DISTRIBUTION.getTable());
     }
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.TICKET_C_USER_DISTRIBUTION;
+        return EntitySeries.TICKET_RU_USER_DISTRIBUTION;
     }
 }

@@ -157,6 +157,8 @@ public abstract class BaseRuleService<
     @SuppressWarnings("unchecked")
     public Mono<D> update(D entity) {
 
+        if (!entity.isDistributionsValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.readById(access, entity.getId()),

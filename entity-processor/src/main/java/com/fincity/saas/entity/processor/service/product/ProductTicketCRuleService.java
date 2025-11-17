@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dao.rule.TicketCUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketCUserDistributionsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -55,6 +56,11 @@ public class ProductTicketCRuleService
     @Override
     protected String getCacheName() {
         return PRODUCT_TICKET_C_RULE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
     }
 
     @Override
