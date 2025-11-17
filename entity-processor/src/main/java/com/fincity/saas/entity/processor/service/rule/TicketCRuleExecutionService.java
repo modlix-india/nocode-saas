@@ -5,7 +5,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.google.gson.JsonElement;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -102,21 +101,18 @@ public class TicketCRuleExecutionService {
 
         if (rules == null || rules.isEmpty()) return Mono.empty();
 
-        List<ProductTicketCRule> sortedRules = rules.entrySet().stream()
-                .filter(entry -> entry.getKey() != null && entry.getKey() > 0)
-                .sorted((e1, e2) -> Integer.compare(e2.getKey(), e1.getKey()))
-                .map(Map.Entry::getValue)
-                .toList();
+        ConditionEvaluator evaluator = conditionEvaluatorCache.computeIfAbsent(prefix, ConditionEvaluator::new);
 
-        return Flux.fromIterable(sortedRules)
+        return Flux.fromStream(rules.entrySet().stream()
+                        .filter(e -> e.getKey() != null && e.getKey() > 0)
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(Map.Entry::getValue))
                 .concatMap(rule -> {
                     if (rule.getCondition() == null) return Mono.empty();
-
-                    ConditionEvaluator con = conditionEvaluatorCache.computeIfAbsent(prefix, ConditionEvaluator::new);
-
-                    return con.evaluate(rule.getCondition(), data)
+                    return evaluator
+                            .evaluate(rule.getCondition(), data)
                             .filter(Boolean::booleanValue)
-                            .mapNotNull(match -> rule);
+                            .map(b -> rule);
                 })
                 .next();
     }
