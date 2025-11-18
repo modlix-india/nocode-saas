@@ -25,12 +25,12 @@ public class ApplicationController {
     public Mono<Void> transport(
             @RequestHeader("X-Forwarded-Host") String forwardedHost,
             @RequestHeader("X-Forwarded-Port") String forwardedPort,
-            @RequestHeader("clientCode") String clientCode,
             @RequestHeader("appCode") String headerAppCode,
-            @RequestParam String appCode, ServerHttpResponse response) {
+            @RequestHeader("clientCode") String headerClientCode,
+            @RequestParam String appCode, @RequestParam(required = false) String clientCode, ServerHttpResponse response) {
 
         return this.applicationService
-                .transport(forwardedHost, forwardedPort, clientCode, headerAppCode, appCode, response);
+                .transport(forwardedHost, forwardedPort, headerClientCode, headerAppCode, appCode, clientCode, response);
 
     }
 
