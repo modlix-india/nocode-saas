@@ -70,11 +70,11 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
     }
 
     public Mono<Boolean> applyTransportWithTransportCode(String forwardedHost, String forwardedPort,
-            String transportCode) {
+                                                         String transportCode) {
 
         return this.readAllFilter(new ComplexCondition()
-                .setConditions(List.of(new FilterCondition().setField("uniqueTransportCode")
-                        .setValue(transportCode))))
+                        .setConditions(List.of(new FilterCondition().setField("uniqueTransportCode")
+                                .setValue(transportCode))))
                 .collectList()
                 .flatMap(e -> e.isEmpty() ? this.messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -84,47 +84,47 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
     }
 
     public Mono<Boolean> applyTransport(String forwardedHost, String forwardedPort, String id,
-            String transportForAppCode, boolean isBaseApp) {
+                                        String transportForAppCode, boolean isBaseApp) {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.read(id),
+                        ca -> this.read(id),
 
-                (ca, transport) -> {
+                        (ca, transport) -> {
 
-                    if (StringUtil.safeIsBlank(transportForAppCode))
-                        return Mono.just(Optional.<Tuple2<String, Boolean>>empty());
+                            if (StringUtil.safeIsBlank(transportForAppCode))
+                                return Mono.just(Optional.<Tuple2<String, Boolean>>empty());
 
-                    return this.feignSecurityService
-                            .findBaseClientCodeForOverride(ca.getAccessToken(), forwardedHost, forwardedPort,
-                                    ca.getUrlClientCode(), ca.getUrlAppCode(), transportForAppCode)
-                            .map(Optional::of).defaultIfEmpty(Optional.empty());
-                },
+                            return this.feignSecurityService
+                                    .findBaseClientCodeForOverride(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                            ca.getUrlClientCode(), ca.getUrlAppCode(), transportForAppCode)
+                                    .map(Optional::of).defaultIfEmpty(Optional.empty());
+                        },
 
-                (ca, transport, baseCodeTup) -> {
+                        (ca, transport, baseCodeTup) -> {
 
-                    boolean isModlStringEmpty = StringUtil.safeIsBlank(transport.getEncodedModl());
+                            boolean isModlStringEmpty = StringUtil.safeIsBlank(transport.getEncodedModl());
 
-                    if ((transport.getObjects() == null || transport.getObjects().isEmpty())
-                            && isModlStringEmpty)
-                        return Mono.just(true);
+                            if ((transport.getObjects() == null || transport.getObjects().isEmpty())
+                                    && isModlStringEmpty)
+                                return Mono.just(true);
 
-                    if (isModlStringEmpty)
-                        return applyTransportForJSON(transportForAppCode, isBaseApp, ca, transport, baseCodeTup);
+                            if (isModlStringEmpty)
+                                return applyTransportForJSON(transportForAppCode, isBaseApp, ca, transport, baseCodeTup);
 
-                    return applyTransportForZip(transportForAppCode, isBaseApp, ca, transport, baseCodeTup);
-                }
+                            return applyTransportForZip(transportForAppCode, isBaseApp, ca, transport, baseCodeTup);
+                        }
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.applyTransport"))
                 .defaultIfEmpty(false);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private Mono<Boolean> applyTransportForZip(String transportForAppCode, boolean isBaseApp, ContextAuthentication ca,
-            Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
+                                               Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
 
         try {
             Path tempDir = Files.createTempDirectory("transport");
@@ -188,9 +188,9 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
         }
     }
 
-    @SuppressWarnings({ "rawtypes" })
+    @SuppressWarnings({"rawtypes"})
     private Mono<Boolean> applyTransportForJSON(String transportForAppCode, boolean isBaseApp, ContextAuthentication ca,
-            Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
+                                                Transport transport, Optional<Tuple2<String, Boolean>> baseCodeTup) {
 
         var serviceMap = this.getServieMap()
                 .stream()
@@ -210,7 +210,7 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
                 .map(e -> true);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private Mono<Boolean> addObjectToService(
             AbstractOverridableDataService service,
             TransportObject transportObject,
@@ -242,18 +242,18 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> service.readToTransport(tentity.getName(), tentity.getAppCode(), tentity.getClientCode()),
+                        () -> service.readToTransport(tentity.getName(), tentity.getAppCode(), tentity.getClientCode()),
 
-                tup -> {
-                    if (tup == null)
-                        return service.create(tentity);
+                        tup -> {
+                            if (tup == null)
+                                return service.create(tentity);
 
-                    tentity.setVersion(((Tuple2<Integer, String>) tup).getT1());
-                    tentity.setId(((Tuple2<Integer, String>) tup).getT2());
-                    return service.update(tentity);
-                },
+                            tentity.setVersion(((Tuple2<Integer, String>) tup).getT1());
+                            tentity.setId(((Tuple2<Integer, String>) tup).getT2());
+                            return service.update(tentity);
+                        },
 
-                (tup, entity) -> Mono.just(true))
+                        (tup, entity) -> Mono.just(true))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.addObjectToService"));
     }
 
@@ -341,40 +341,40 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> isInternal ? Mono.just(ca.isSystemClient())
-                        : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
+                        ca -> isInternal ? Mono.just(true)
+                                : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
 
-                (ca, hasPermission) -> {
+                        (ca, hasPermission) -> {
 
-                    if (!hasPermission.booleanValue()) {
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                AbstractMongoMessageResourceService.FORBIDDEN_CREATE, TRANSPORT);
-                    }
+                            if (!hasPermission.booleanValue()) {
+                                return this.messageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        AbstractMongoMessageResourceService.FORBIDDEN_CREATE, TRANSPORT);
+                            }
 
-                    return Flux.fromIterable(this.getServieMap())
-                            .flatMap(service -> {
-                                List<String> list = request.getObjectList() == null ? null
-                                        : request.getObjectList()
+                            return Flux.fromIterable(this.getServieMap())
+                                    .flatMap(service -> {
+                                        List<String> list = request.getObjectList() == null ? null
+                                                : request.getObjectList()
                                                 .get(service.getObjectName());
-                                if (request.getObjectList() != null && !request.getObjectList()
-                                        .isEmpty() && list == null)
-                                    return Flux.empty();
+                                        if (request.getObjectList() != null && !request.getObjectList()
+                                                .isEmpty() && list == null)
+                                            return Flux.empty();
 
-                                Path dirPath = zipfs.getPath("/", service.getObjectName());
-                                try {
-                                    Files.createDirectories(dirPath);
-                                } catch (Exception ex) {
-                                    throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
-                                }
+                                        Path dirPath = zipfs.getPath("/", service.getObjectName());
+                                        try {
+                                            Files.createDirectories(dirPath);
+                                        } catch (Exception ex) {
+                                            throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
+                                        }
 
-                                return writeObjectsToDirectory(request, service, list, dirPath);
-                            })
-                            .collectList();
+                                        return writeObjectsToDirectory(request, service, list, dirPath);
+                                    })
+                                    .collectList();
 
-                })
+                        })
                 .map(e -> {
 
                     try {
@@ -388,10 +388,10 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
     }
 
-    @SuppressWarnings({ "rawtypes" })
+    @SuppressWarnings({"rawtypes"})
     private Flux<Boolean> writeObjectsToDirectory(TransportRequest request,
-            AbstractOverridableDataService service,
-            List<String> list, Path dirPath) {
+                                                  AbstractOverridableDataService service,
+                                                  List<String> list, Path dirPath) {
         return ((AbstractOverridableDataService<?, ?>) service)
                 .readForTransport(request.getAppCode(), request.getClientCode(), list)
                 .map(e -> {
@@ -418,35 +418,35 @@ public abstract class AbstractTransportService extends AbstractOverridableDataSe
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> isInternal ? Mono.just(ca.isSystemClient())
-                        : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
+                        ca -> isInternal ? Mono.just(ca.isSystemClient())
+                                : this.accessCheck(ca, CREATE, request.getAppCode(), request.getClientCode(), false),
 
-                (ca, hasPermission) -> {
+                        (ca, hasPermission) -> {
 
-                    if (!hasPermission.booleanValue()) {
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                AbstractMongoMessageResourceService.FORBIDDEN_CREATE, TRANSPORT);
-                    }
+                            if (!hasPermission.booleanValue()) {
+                                return this.messageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        AbstractMongoMessageResourceService.FORBIDDEN_CREATE, TRANSPORT);
+                            }
 
-                    return Flux.fromIterable(this.getServieMap())
-                            .flatMap(e -> {
-                                List<String> list = request.getObjectList() == null ? null
-                                        : request.getObjectList()
+                            return Flux.fromIterable(this.getServieMap())
+                                    .flatMap(e -> {
+                                        List<String> list = request.getObjectList() == null ? null
+                                                : request.getObjectList()
                                                 .get(e.getObjectName());
-                                if (request.getObjectList() != null && !request.getObjectList()
-                                        .isEmpty() && list == null)
-                                    return Flux.empty();
+                                        if (request.getObjectList() != null && !request.getObjectList()
+                                                .isEmpty() && list == null)
+                                            return Flux.empty();
 
-                                return ((AbstractOverridableDataService<?, ?>) e)
-                                        .readForTransport(request.getAppCode(), request.getClientCode(), list)
-                                        .map(e::makeTransportObject);
-                            })
-                            .collectList()
-                            .map(to::setObjects);
-                })
+                                        return ((AbstractOverridableDataService<?, ?>) e)
+                                                .readForTransport(request.getAppCode(), request.getClientCode(), list)
+                                                .map(e::makeTransportObject);
+                                    })
+                                    .collectList()
+                                    .map(to::setObjects);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractTransportService.makeJSONTransport"));
     }
 
