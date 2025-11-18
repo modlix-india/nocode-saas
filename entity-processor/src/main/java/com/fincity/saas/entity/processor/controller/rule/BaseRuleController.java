@@ -5,7 +5,6 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.controller.base.BaseUpdatableController;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
-import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.eager.EagerUtil;
@@ -31,10 +30,8 @@ public abstract class BaseRuleController<
                 R extends UpdatableRecord<R>,
                 D extends BaseRuleDto<U, D>,
                 O extends BaseRuleDAO<R, U, D>,
-                T extends UpdatableRecord<T>,
                 U extends BaseUserDistributionDto<U>,
-                P extends BaseUserDistributionDAO<T, U>,
-                S extends BaseRuleService<R, D, O, T, U, P>>
+                S extends BaseRuleService<R, D, O, U>>
         extends BaseUpdatableController<R, D, O, S> {
 
     @Override

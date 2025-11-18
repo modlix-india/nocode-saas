@@ -345,7 +345,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 : Mono.just(Boolean.FALSE))
                         .switchIfEmpty(Mono.just(Boolean.TRUE)),
                 (product, stageStatusEntity, partnerClient, assignedUser, existing) -> {
-                    Client partner = partnerClient.orElse(null);
+                    Client partner = partnerClient.orElse(new Client());
 
                     return Mono.just((Ticket) new Ticket()
                             .setName(request.getName())
