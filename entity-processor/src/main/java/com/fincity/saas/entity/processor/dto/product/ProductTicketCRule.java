@@ -35,6 +35,6 @@ public class ProductTicketCRule extends BaseRuleDto<TicketCUserDistribution, Pro
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
+        return EntitySeries.PRODUCT_TICKET_C_RULE;
     }
 }

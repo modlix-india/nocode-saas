@@ -20,6 +20,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
@@ -115,6 +116,12 @@ public class Tables {
      * <code>entity_processor.entity_processor_ticket_c_user_distributions</code>.
      */
     public static final EntityProcessorTicketCUserDistributions ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS = EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>.
+     */
+    public static final EntityProcessorTicketDuplicationRules ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES = EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES;
 
     /**
      * The table

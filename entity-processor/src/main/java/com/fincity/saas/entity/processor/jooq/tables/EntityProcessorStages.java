@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTempl
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms.EntityProcessorProductWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules.EntityProcessorTicketDuplicationRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 
@@ -391,6 +392,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK2_PTCR_SID.getInverseKey());
 
         return _entityProcessorProductTicketCRules;
+    }
+
+    private transient EntityProcessorTicketDuplicationRulesPath _entityProcessorTicketDuplicationRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>
+     * table
+     */
+    public EntityProcessorTicketDuplicationRulesPath entityProcessorTicketDuplicationRules() {
+        if (_entityProcessorTicketDuplicationRules == null)
+            _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK2_TDR_MSID.getInverseKey());
+
+        return _entityProcessorTicketDuplicationRules;
     }
 
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk3ProductTemplateWalkInFormsStatusId;

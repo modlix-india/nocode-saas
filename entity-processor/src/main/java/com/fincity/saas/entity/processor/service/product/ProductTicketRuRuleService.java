@@ -4,12 +4,10 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
-import com.fincity.saas.entity.processor.dao.rule.TicketRuUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketRuUserDistributionsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketRuUserDistributionService;
@@ -19,7 +17,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -29,15 +29,17 @@ public class ProductTicketRuRuleService
                 EntityProcessorProductTicketRuRulesRecord,
                 ProductTicketRuRule,
                 ProductTicketRuRuleDAO,
-                EntityProcessorTicketRuUserDistributionsRecord,
-                TicketRuUserDistribution,
-                TicketRuUserDistributionDAO> {
+                TicketRuUserDistribution> {
 
-    private static final String PRODUCT_TICKET_RU_RULE = "productTicketRURule";
+    private static final String PRODUCT_TICKET_RU_RULE = "productTicketRuRule";
     private static final String CONDITION_CACHE = "ruleConditionCache";
 
-    protected ProductTicketRuRuleService(TicketRuUserDistributionService ticketRUUserDistributionService) {
-        super(ticketRUUserDistributionService);
+    @Getter
+    private TicketRuUserDistributionService userDistributionService;
+
+    @Autowired
+    private void setUserDistributionService(TicketRuUserDistributionService userDistributionService) {
+        this.userDistributionService = userDistributionService;
     }
 
     @Override
@@ -47,7 +49,7 @@ public class ProductTicketRuRuleService
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES;
+        return EntitySeries.PRODUCT_TICKET_RU_RULE;
     }
 
     private String getConditionCacheName(String appCode, String clientCode) {
