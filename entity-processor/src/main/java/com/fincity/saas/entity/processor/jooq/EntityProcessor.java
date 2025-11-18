@@ -20,6 +20,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
@@ -132,6 +133,12 @@ public class EntityProcessor extends SchemaImpl {
 
     /**
      * The table
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>.
+     */
+    public final EntityProcessorTicketDuplicationRules ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES = EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES;
+
+    /**
+     * The table
      * <code>entity_processor.entity_processor_ticket_ru_user_distributions</code>.
      */
     public final EntityProcessorTicketRuUserDistributions ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS = EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS;
@@ -173,6 +180,7 @@ public class EntityProcessor extends SchemaImpl {
             EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES,
             EntityProcessorTasks.ENTITY_PROCESSOR_TASKS,
             EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS,
+            EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES,
             EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS,
             EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS
         );

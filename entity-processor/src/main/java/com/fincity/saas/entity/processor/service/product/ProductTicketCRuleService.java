@@ -4,17 +4,16 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
-import com.fincity.saas.entity.processor.dao.rule.TicketCUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
-import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketCUserDistributionsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
+import com.fincity.saas.entity.processor.service.rule.TicketCRuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
 import com.google.gson.JsonElement;
 import java.util.LinkedHashMap;
@@ -23,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -36,16 +36,23 @@ public class ProductTicketCRuleService
                 EntityProcessorProductTicketCRulesRecord,
                 ProductTicketCRule,
                 ProductTicketCRuleDAO,
-                EntityProcessorTicketCUserDistributionsRecord,
-                TicketCUserDistribution,
-                TicketCUserDistributionDAO> {
+                TicketCUserDistribution> {
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
+    private final TicketCRuleExecutionService ticketCRuleExecutionService;
+
+    @Getter
+    private TicketCUserDistributionService userDistributionService;
 
     private StageService stageService;
 
-    protected ProductTicketCRuleService(TicketCUserDistributionService ticketCUserDistributionService) {
-        super(ticketCUserDistributionService);
+    protected ProductTicketCRuleService(TicketCRuleExecutionService ticketCRuleExecutionService) {
+        this.ticketCRuleExecutionService = ticketCRuleExecutionService;
+    }
+
+    @Autowired
+    public void setUserDistributionService(TicketCUserDistributionService userDistributionService) {
+        this.userDistributionService = userDistributionService;
     }
 
     @Autowired
@@ -60,7 +67,7 @@ public class ProductTicketCRuleService
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
+        return EntitySeries.PRODUCT_TICKET_C_RULE;
     }
 
     @Override
@@ -197,7 +204,7 @@ public class ProductTicketCRuleService
             JsonElement data) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getRulesWithOrder(access, productId, stageId),
-                        productRule -> super.ticketCRuleExecutionService.executeRules(
+                        productRule -> this.ticketCRuleExecutionService.executeRules(
                                 access, productRule, tokenPrefix, userId, data),
                         (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
                         (productRule, eRule, uRule) -> {

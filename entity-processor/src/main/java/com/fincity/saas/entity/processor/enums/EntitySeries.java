@@ -14,6 +14,10 @@ import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
+import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
+import com.fincity.saas.entity.processor.dto.rule.TicketDuplicationRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import java.util.EnumMap;
@@ -34,11 +38,9 @@ public enum EntitySeries implements EnumType {
     TICKET_C_USER_DISTRIBUTION(
             "TICKET_C_USER_DISTRIBUTION", "Ticket Creation User Distribution", 18, "TicketCUserDistribution"),
     TICKET_RU_USER_DISTRIBUTION(
-            "TICKET_RU_USER_DISTRIBUTION", "Ticket Read Update User Distribution", 19, "TicketRUUserDistribution"),
-    ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES(
-            "ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES", "Product Ticket Creation Rules", 20, "ProductTicketCRule"),
-    ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES(
-            "ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES", "Product Ticket Read Update Rules", 21, "ProductTicketRURule"),
+            "TICKET_RU_USER_DISTRIBUTION", "Ticket Read Update User Distribution", 19, "TicketRuUserDistribution"),
+    PRODUCT_TICKET_C_RULE("PRODUCT_TICKET_C_RULE", "Product Ticket Creation Rule", 20, "ProductTicketCRule"),
+    PRODUCT_TICKET_RU_RULE("PRODUCT_TICKET_RU_RULES", "Product Ticket Read Update Rule", 21, "ProductTicketRuRule"),
     TASK("TASK", "Task", 22, "Task"),
     TASK_TYPE("TASK_TYPE", "Task Type", 23, "TaskType"),
     NOTE("NOTE", "Note", 24, "Note"),
@@ -47,7 +49,8 @@ public enum EntitySeries implements EnumType {
     PARTNER("PARTNER", "Partner", 27, "Partner"),
     PRODUCT_TEMPLATE_WALK_IN_FORMS(
             "PRODUCT_TEMPLATE_WALK_IN_FORMS", "Product Template Walk In Forms", 28, "ProductTemplateWalkInForm"),
-    PRODUCT_WALK_IN_FORMS("PRODUCT_WALK_IN_FORMS", "Product Walk In Forms", 29, "ProductWalkInForms");
+    PRODUCT_WALK_IN_FORMS("PRODUCT_WALK_IN_FORMS", "Product Walk In Forms", 29, "ProductWalkInForms"),
+    TICKET_DUPLICATION_RULES("TICKET_DUPLICATION_RULES", "Ticket Duplication Rules", 30, "TicketDuplicationRule");
 
     private static final Map<EntitySeries, String> LEADZUMP_ENTITY_MAP = Map.ofEntries(
             Map.entry(XXX, XXX.getPrefix()),
@@ -64,7 +67,8 @@ public enum EntitySeries implements EnumType {
             Map.entry(CAMPAIGN, "Campaign"),
             Map.entry(PARTNER, "Partner"),
             Map.entry(PRODUCT_TEMPLATE_WALK_IN_FORMS, "ProductTemplateWalkInForms"),
-            Map.entry(PRODUCT_WALK_IN_FORMS, "ProductWalkInForms"));
+            Map.entry(PRODUCT_WALK_IN_FORMS, "ProductWalkInForms"),
+            Map.entry(TICKET_DUPLICATION_RULES, "TicketDuplicationRules"));
 
     private final String literal;
     private final String displayName;
@@ -127,11 +131,9 @@ public enum EntitySeries implements EnumType {
                     TICKET_RU_USER_DISTRIBUTION,
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS);
             TABLE_MAP.put(
-                    ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES,
-                    EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES);
+                    PRODUCT_TICKET_C_RULE, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES);
             TABLE_MAP.put(
-                    ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES,
-                    EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES);
+                    PRODUCT_TICKET_RU_RULE, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES);
             TABLE_MAP.put(TASK, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TASKS);
             TABLE_MAP.put(TASK_TYPE, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TASK_TYPES);
             TABLE_MAP.put(NOTE, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_NOTES);
@@ -143,6 +145,9 @@ public enum EntitySeries implements EnumType {
                     EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS);
             TABLE_MAP.put(
                     PRODUCT_WALK_IN_FORMS, EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS);
+            TABLE_MAP.put(
+                    TICKET_DUPLICATION_RULES,
+                    EntityProcessor.ENTITY_PROCESSOR.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES);
         }
 
         static Table<?> get(EntitySeries series) {
@@ -160,10 +165,10 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(PRODUCT_TEMPLATE, ProductTemplate.class);
             CLASS_MAP.put(PRODUCT_COMM, ProductComm.class);
             CLASS_MAP.put(STAGE, Stage.class);
-            CLASS_MAP.put(TICKET_C_USER_DISTRIBUTION, TicketRuUserDistribution.class);
+            CLASS_MAP.put(TICKET_C_USER_DISTRIBUTION, TicketCUserDistribution.class);
             CLASS_MAP.put(TICKET_RU_USER_DISTRIBUTION, TicketRuUserDistribution.class);
-            CLASS_MAP.put(ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES, TicketRuUserDistribution.class);
-            CLASS_MAP.put(ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES, TicketRuUserDistribution.class);
+            CLASS_MAP.put(PRODUCT_TICKET_C_RULE, ProductTicketCRule.class);
+            CLASS_MAP.put(PRODUCT_TICKET_RU_RULE, ProductTicketRuRule.class);
             CLASS_MAP.put(TASK, Task.class);
             CLASS_MAP.put(TASK_TYPE, TaskType.class);
             CLASS_MAP.put(NOTE, Note.class);
@@ -172,6 +177,7 @@ public enum EntitySeries implements EnumType {
             CLASS_MAP.put(PARTNER, Partner.class);
             CLASS_MAP.put(PRODUCT_TEMPLATE_WALK_IN_FORMS, ProductTemplateWalkInForm.class);
             CLASS_MAP.put(PRODUCT_WALK_IN_FORMS, ProductWalkInForm.class);
+            CLASS_MAP.put(TICKET_DUPLICATION_RULES, TicketDuplicationRule.class);
         }
 
         static Class<?> get(EntitySeries series) {

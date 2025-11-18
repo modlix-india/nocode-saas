@@ -22,7 +22,6 @@ import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -47,8 +46,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
-        implements IEntitySeries {
+public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO> {
 
     private static final String PARTNER_CACHE = "Partner";
 
