@@ -408,6 +408,9 @@ public class ApplicationService {
                     if (m.containsKey(CLIENT_CODE))
                         m.put(CLIENT_CODE, clientCode);
 
+                    if (m.containsKey("uniqueTransportCode"))
+                        m.put("uniqueTransportCode", UniqueUtil.shortUUID());
+
                     if (p.getParent().getFileName() != null
                             && (p.getParent().getFileName().toString().equals(APPLICATION) ||
                             p.getParent().getFileName().toString().equals("Filler")))
