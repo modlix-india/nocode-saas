@@ -23,50 +23,50 @@ public class ApplicationController {
 
     @GetMapping("/transport")
     public Mono<Void> transport(
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestParam String appCode, ServerHttpResponse response) {
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestHeader("clientCode") String headerClientCode,
+            @RequestParam String appCode, @RequestParam(required = false) String clientCode, ServerHttpResponse response) {
 
         return this.applicationService
-            .transport(forwardedHost, forwardedPort, clientCode, headerAppCode, appCode, response);
+                .transport(forwardedHost, forwardedPort, headerClientCode, headerAppCode, appCode, clientCode, response);
 
     }
 
     @PostMapping
     public Mono<ResponseEntity<App>> createApplication(
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestBody MultiApp application) {
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestBody MultiApp application) {
 
         return this.applicationService.createApplication(forwardedHost, forwardedPort, clientCode,
-            headerAppCode, application).map(ResponseEntity::ok);
+                headerAppCode, application).map(ResponseEntity::ok);
     }
 
     @PostMapping("/update")
     public Mono<ResponseEntity<Boolean>> updateApplication(
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @RequestBody MultiAppUpdate application) {
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @RequestBody MultiAppUpdate application) {
 
         return this.applicationService.updateApplication(forwardedHost, forwardedPort, clientCode,
-            headerAppCode, application).map(ResponseEntity::ok);
+                headerAppCode, application).map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/{appCodeOrId}")
     public Mono<ResponseEntity<Boolean>> deleteApplication(
-        @RequestHeader("X-Forwarded-Host") String forwardedHost,
-        @RequestHeader("X-Forwarded-Port") String forwardedPort,
-        @RequestHeader("clientCode") String clientCode,
-        @RequestHeader("appCode") String headerAppCode,
-        @PathVariable String appCodeOrId) {
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader("appCode") String headerAppCode,
+            @PathVariable String appCodeOrId) {
 
         return this.applicationService.deleteApplication(forwardedHost, forwardedPort, clientCode,
-            headerAppCode, appCodeOrId).map(ResponseEntity::ok);
+                headerAppCode, appCodeOrId).map(ResponseEntity::ok);
     }
 }

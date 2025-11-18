@@ -134,7 +134,7 @@ public abstract class BaseUpdatableController<
 
     @GetMapping(REQ_PATH_ID)
     public Mono<ResponseEntity<D>> readIdentity(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
-        return this.service.readIdentityWithAccess(identity).map(ResponseEntity::ok);
+        return this.service.readByIdentity(identity).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)

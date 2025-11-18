@@ -88,7 +88,7 @@ public abstract class BaseContentService<
     public Mono<Integer> deleteIdentity(Identity identity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.readIdentityWithAccess(identity),
+                () -> this.readByIdentity(identity),
                 entity -> super.delete(entity.getId()),
                 (entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
@@ -167,8 +167,8 @@ public abstract class BaseContentService<
 
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.ownerService.readIdentityWithAccess(access, ownerId),
-                        this.ticketService.readIdentityWithAccess(access, ticketId)),
+                        this.ownerService.readByIdentity(access, ownerId),
+                        this.ticketService.readByIdentity(access, ticketId)),
                 tOEntity -> {
                     if (!tOEntity.getT2().getOwnerId().equals(tOEntity.getT1().getId()))
                         return this.msgService.throwMessage(
@@ -195,7 +195,7 @@ public abstract class BaseContentService<
         if (content.getTicketId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.TICKET))
             return Mono.empty();
 
-        return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
+        return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(access, content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
                     content.setOwnerId(ticket.getOwnerId());
                     return this.create(access, content);
@@ -212,7 +212,7 @@ public abstract class BaseContentService<
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.ownerService.readById(content.getOwnerId()),
+                        () -> this.ownerService.readById(access, content.getOwnerId()),
                         owner -> this.create(access, content.setOwnerId(owner.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),

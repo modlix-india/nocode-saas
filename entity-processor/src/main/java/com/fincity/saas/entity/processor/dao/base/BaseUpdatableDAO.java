@@ -151,11 +151,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
                 .map(e -> e.into(this.pojoClass));
     }
 
-    public Mono<D> readInternal(String code) {
-        return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
-                .map(result -> result.into(this.pojoClass));
-    }
-
     public Mono<D> readInternal(ProcessorAccess access, ULong id) {
         return FlatMapUtil.flatMapMono(
                 () -> this.processorAccessCondition(access, id), this::filter, (pCondition, jCondition) -> Mono.from(

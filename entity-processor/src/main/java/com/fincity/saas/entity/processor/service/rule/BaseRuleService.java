@@ -2,12 +2,9 @@ package com.fincity.saas.entity.processor.service.rule;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.BooleanUtil;
-import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
-import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -31,21 +28,13 @@ public abstract class BaseRuleService<
                 R extends UpdatableRecord<R>,
                 D extends BaseRuleDto<U, D>,
                 O extends BaseRuleDAO<R, U, D>,
-                T extends UpdatableRecord<T>,
-                U extends BaseUserDistributionDto<U>,
-                P extends BaseUserDistributionDAO<T, U>>
-        extends BaseUpdatableService<R, D, O> {
+                U extends BaseUserDistributionDto<U>>
+        extends BaseUpdatableService<R, D, O> implements IRuleUserDistributionService<D, U> {
 
     private static final String FETCH_USER_DISTRIBUTIONS = "fetchUserDistributions";
 
-    protected final BaseUserDistributionService<T, U, P> userDistributionService;
-    protected TicketCRuleExecutionService ticketCRuleExecutionService;
     protected ProductService productService;
     private ProductTemplateService productTemplateService;
-
-    protected BaseRuleService(BaseUserDistributionService<T, U, P> userDistributionService) {
-        this.userDistributionService = userDistributionService;
-    }
 
     @Lazy
     @Autowired
@@ -57,11 +46,6 @@ public abstract class BaseRuleService<
     @Autowired
     private void setProductService(ProductService productService) {
         this.productService = productService;
-    }
-
-    @Autowired
-    private void setRuleExecutionService(TicketCRuleExecutionService ticketCRuleExecutionService) {
-        this.ticketCRuleExecutionService = ticketCRuleExecutionService;
     }
 
     @Override
@@ -138,16 +122,15 @@ public abstract class BaseRuleService<
     @SuppressWarnings("unchecked")
     public Mono<D> create(D entity) {
 
-        if (entity.isDistributionsEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
-
-        if (!entity.isDistributionsValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+        if (this.isUserDistributionEnabled()) {
+            if (entity.isDistributionsEmpty()) return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+            if (!entity.isDistributionsValid()) return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+        }
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.create(access, entity),
-                        (access, created) -> this.userDistributionService
-                                .createDistributions(access, created.getId(), entity.getUserDistributions())
-                                .collectList(),
+                        (access, created) -> this.createUserDistribution(access, created, entity),
                         (access, created, userDistributions) ->
                                 Mono.just((D) created.setUserDistributions(userDistributions)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.create"));
@@ -157,15 +140,14 @@ public abstract class BaseRuleService<
     @SuppressWarnings("unchecked")
     public Mono<D> update(D entity) {
 
+        if (this.isUserDistributionEnabled() && !entity.isDistributionsValid())
+            return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.readById(access, entity.getId()),
                         (access, existing) -> super.update(access, (D) entity.setId(existing.getId())),
-                        (access, existing, updated) -> entity.isDistributionsEmpty()
-                                ? this.userDistributionService.getUserDistributions(access, updated.getId())
-                                : this.userDistributionService
-                                        .updateDistributions(access, entity.getId(), entity.getUserDistributions())
-                                        .collectList(),
+                        (access, existing, updated) -> this.updateUserDistribution(access, updated, entity),
                         (access, existing, updated, userDistributions) ->
                                 Mono.just((D) updated.setUserDistributions(userDistributions)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.update"));
@@ -180,9 +162,8 @@ public abstract class BaseRuleService<
                                 this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
                         (access, entity, rules) -> this.shiftOrdersAndUpdate(access, entity, rules)
                                 .then(super.deleteInternal(access, entity)),
-                        (access, entity, rules, deleted) -> this.userDistributionService
-                                .deleteByRuleId(access, id)
-                                .then(Mono.just(deleted)))
+                        (access, entity, rules, deleted) ->
+                                this.deleteUserDistribution(access, entity).then(Mono.just(deleted)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
     }
 
@@ -196,21 +177,13 @@ public abstract class BaseRuleService<
                 .then();
     }
 
-    @SuppressWarnings("unchecked")
     public Mono<List<D>> fillDetails(List<D> rules, MultiValueMap<String, String> queryParams) {
 
         boolean fetchUserDistributions = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_DISTRIBUTIONS));
 
-        Flux<D> userFlux = Flux.fromIterable(rules);
+        if (!fetchUserDistributions || !this.isUserDistributionEnabled()) return Mono.just(rules);
 
-        return FlatMapUtil.flatMapFlux(
-                        () -> super.hasAccess().flux(),
-                        access -> fetchUserDistributions
-                                ? userFlux.flatMap(rule -> this.userDistributionService
-                                        .getUserDistributions(access, rule.getId())
-                                        .map(userDistributions -> (D) rule.setUserDistributions(userDistributions)))
-                                : userFlux)
-                .collectList();
+        return super.hasAccess().flatMap(access -> this.attachDistributions(access, rules));
     }
 
     public Mono<List<Map<String, Object>>> fillDetailsEager(
@@ -218,22 +191,8 @@ public abstract class BaseRuleService<
 
         boolean fetchUserDistributions = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_DISTRIBUTIONS));
 
-        Flux<Map<String, Object>> userFlux = Flux.fromIterable(rules);
+        if (!fetchUserDistributions || !this.isUserDistributionEnabled()) return Mono.just(rules);
 
-        return FlatMapUtil.flatMapFlux(
-                        () -> super.hasAccess().flux(),
-                        access -> fetchUserDistributions
-                                ? userFlux.flatMap(rule -> this.userDistributionService
-                                        .getUserDistributions(access, (ULong) rule.get(AbstractDTO.Fields.id))
-                                        .map(userDistributions -> {
-                                            rule.put(
-                                                    BaseRuleDto.Fields.userDistributions,
-                                                    userDistributions.stream()
-                                                            .map(IClassConvertor::toMap)
-                                                            .toList());
-                                            return rule;
-                                        }))
-                                : userFlux)
-                .collectList();
+        return super.hasAccess().flatMap(access -> this.attachDistributionsEager(access, rules));
     }
 }

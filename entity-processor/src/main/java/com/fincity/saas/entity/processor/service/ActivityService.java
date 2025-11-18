@@ -283,7 +283,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         if (ticket.getStatus() == null) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.stageService.readByIdInternal(ticket.getStatus()),
+                        () -> this.stageService.readById(access, ticket.getStatus()),
                         status -> this.createActivityInternal(
                                 access,
                                 ActivityAction.STATUS_CREATE,
@@ -300,8 +300,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     private Mono<Void> acStageUpdate(ProcessorAccess access, Ticket ticket, String comment, ULong oldStageId) {
         return FlatMapUtil.flatMapMono(
                         () -> Mono.zip(
-                                this.stageService.readByIdInternal(oldStageId),
-                                this.stageService.readByIdInternal(ticket.getStage())),
+                                this.stageService.readById(access, oldStageId),
+                                this.stageService.readById(access, ticket.getStage())),
                         stages -> this.createActivityInternal(
                                 access,
                                 ActivityAction.STAGE_UPDATE,

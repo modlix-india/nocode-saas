@@ -7,7 +7,6 @@ import com.fincity.saas.entity.processor.dao.product.template.ProductTemplateDAO
 import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -26,8 +25,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ProductTemplateService
-        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
-        implements IEntitySeries {
+        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO> {
 
     private static final String PRODUCT_TEMPLATE = "productTemplate";
     private ProductService productService;
@@ -92,7 +90,7 @@ public class ProductTemplateService
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> super.readIdentityWithAccess(access, identity),
+                        access -> super.readByIdentity(access, identity),
                         (access, productTemplate) -> this.updateDependentServices(
                                 access, productTemplateRequest.getProductId(), productTemplate))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.attachEntity"));

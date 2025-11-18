@@ -13,18 +13,13 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class TicketRuUserDistribution extends BaseUserDistributionDto<TicketRuUserDistribution> {
+public class NoOpUserDistribution extends BaseUserDistributionDto<NoOpUserDistribution> {
 
     @Serial
-    private static final long serialVersionUID = 6659011787175377491L;
-
-    public TicketRuUserDistribution() {
-        super();
-        this.relationsMap.put(Fields.ruleId, EntitySeries.TICKET_RU_USER_DISTRIBUTION.getTable());
-    }
+    private static final long serialVersionUID = 8575725400335506572L;
 
     @Override
     public EntitySeries getEntitySeries() {
-        return EntitySeries.TICKET_RU_USER_DISTRIBUTION;
+        return EntitySeries.XXX;
     }
 }
