@@ -17,16 +17,21 @@ import reactor.core.publisher.Mono;
 public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U extends BaseUserDistributionDto<U>> {
 
     default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
-            Optional<BaseUserDistributionService<R, U, O>> getUserDistributionService() {
-        return Optional.empty();
+            Optional<BaseUserDistributionService<R, U, O>> getOptionalUserDistributionService() {
+        return Optional.ofNullable(this.getUserDistributionService());
+    }
+
+    default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
+            BaseUserDistributionService<R, U, O> getUserDistributionService() {
+        return null;
     }
 
     default boolean isUserDistributionEnabled() {
-        return this.getUserDistributionService().isPresent();
+        return this.getUserDistributionService() != null;
     }
 
     default Mono<List<U>> createUserDistribution(ProcessorAccess access, D created, D requestEntity) {
-        return this.getUserDistributionService()
+        return this.getOptionalUserDistributionService()
                 .map(service -> service.createDistributions(
                                 access, created.getId(), requestEntity.getUserDistributions())
                         .collectList())
@@ -34,7 +39,7 @@ public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U ext
     }
 
     default Mono<List<U>> updateUserDistribution(ProcessorAccess access, D updated, D requestEntity) {
-        return this.getUserDistributionService()
+        return this.getOptionalUserDistributionService()
                 .map(service -> requestEntity.isDistributionsEmpty()
                         ? service.getUserDistributions(access, updated.getId())
                         : service.updateDistributions(access, updated.getId(), requestEntity.getUserDistributions())
@@ -43,14 +48,14 @@ public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U ext
     }
 
     default Mono<Void> deleteUserDistribution(ProcessorAccess access, D entity) {
-        return this.getUserDistributionService()
+        return this.getOptionalUserDistributionService()
                 .map(service -> service.deleteByRuleId(access, entity.getId()))
                 .orElseGet(Mono::empty)
                 .then();
     }
 
     default Mono<List<D>> attachDistributions(ProcessorAccess access, List<D> rules) {
-        return this.getUserDistributionService()
+        return this.getOptionalUserDistributionService()
                 .map(service -> Flux.fromIterable(rules)
                         .flatMap(rule -> service.getUserDistributions(access, rule.getId())
                                 .doOnNext(rule::setUserDistributions)
@@ -61,7 +66,7 @@ public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U ext
 
     default Mono<List<Map<String, Object>>> attachDistributionsEager(
             ProcessorAccess access, List<Map<String, Object>> rules) {
-        return this.getUserDistributionService()
+        return this.getOptionalUserDistributionService()
                 .map(service -> Flux.fromIterable(rules)
                         .flatMap(rule -> service.getUserDistributions(access, (ULong) rule.get(AbstractDTO.Fields.id))
                                 .map(userDistributions -> {
