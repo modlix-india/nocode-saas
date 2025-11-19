@@ -51,9 +51,7 @@ public abstract class BaseController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-        MultiValueMap<String, String> queryParams = request.getQueryParams();
-        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
-        for (String field : query.getEagerFields()) queryParams.add(EagerUtil.EAGER_FIELD, field);
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)

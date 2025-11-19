@@ -14,6 +14,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -104,15 +105,13 @@ public class UserController
         return this.service.findUserClients(authRequest, appLevel, request).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserActive")
+    @PatchMapping("/makeUserActive")
     public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserActive(userId).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserInActive")
+    @PatchMapping("/makeUserInActive")
     public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserInActive(userId).map(ResponseEntity::ok);
     }
 
