@@ -1196,7 +1196,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> userId == null
+                        ca -> userId != null
                                 ? this.readInternal(userId)
                                 : this.readInternal(
                                         ULongUtil.valueOf(ca.getUser().getId())),
@@ -1223,7 +1223,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> userId == null
+                        ca -> userId != null
                                 ? this.readInternal(userId)
                                 : this.readInternal(
                                         ULongUtil.valueOf(ca.getUser().getId())),

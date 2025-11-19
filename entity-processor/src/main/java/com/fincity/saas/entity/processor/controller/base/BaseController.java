@@ -1,14 +1,8 @@
 package com.fincity.saas.entity.processor.controller.base;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dao.base.BaseDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseDto;
-import com.fincity.saas.entity.processor.eager.EagerUtil;
-import com.fincity.saas.entity.processor.service.base.BaseService;
 import java.util.List;
 import java.util.Map;
+
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -21,6 +15,15 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.entity.processor.dao.base.BaseDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
+import com.fincity.saas.entity.processor.service.base.BaseService;
+
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -51,9 +54,7 @@ public abstract class BaseController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-        MultiValueMap<String, String> queryParams = request.getQueryParams();
-        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
-        for (String field : query.getEagerFields()) queryParams.add(EagerUtil.EAGER_FIELD, field);
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)

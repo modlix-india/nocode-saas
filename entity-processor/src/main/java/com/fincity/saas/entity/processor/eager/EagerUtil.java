@@ -1,5 +1,16 @@
 package com.fincity.saas.entity.processor.eager;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.commons.collections4.SetValuedMap;
+import org.jooq.Table;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -7,14 +18,7 @@ import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.eager.relations.IRelationMap;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.util.ReflectionUtil;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.collections4.SetValuedMap;
-import org.jooq.Table;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -109,5 +113,19 @@ public class EagerUtil {
         if (condition == null) condition = new ComplexCondition().setConditions(List.of());
 
         return Tuples.of(condition, tableFields);
+    }
+
+    public static MultiValueMap<String, String> addEagerParamsFromQuery(MultiValueMap<String, String> queryParams, Query query) {
+
+        Boolean isEager = BooleanUtil.parse(query.getEager());
+
+        if (isEager == null) return queryParams;
+
+        queryParams.add(EagerUtil.EAGER, isEager.toString());
+
+        if (query.getEagerFields() != null)
+            query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
+
+		return queryParams;
     }
 }
