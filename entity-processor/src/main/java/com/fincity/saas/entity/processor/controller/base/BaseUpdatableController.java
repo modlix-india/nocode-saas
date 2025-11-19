@@ -1,8 +1,16 @@
 package com.fincity.saas.entity.processor.controller.base;
 
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
+import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
+import com.fincity.saas.entity.processor.model.base.BaseResponse;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import java.util.List;
 import java.util.Map;
-
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -20,17 +28,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
-import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
-import com.fincity.saas.entity.processor.eager.EagerUtil;
-import com.fincity.saas.entity.processor.model.base.BaseResponse;
-import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -162,7 +159,7 @@ public abstract class BaseUpdatableController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-	    MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
