@@ -115,14 +115,16 @@ public class EagerUtil {
     public static MultiValueMap<String, String> addEagerParamsFromQuery(
             MultiValueMap<String, String> queryParams, Query query) {
 
+        MultiValueMap<String, String> copyMap = new LinkedMultiValueMap<>(queryParams);
+
         Boolean isEager = BooleanUtil.parse(query.getEager());
 
-        if (isEager == null) return queryParams;
+        if (isEager == null) return copyMap;
 
-        queryParams.add(EagerUtil.EAGER, isEager.toString());
+        copyMap.add(EagerUtil.EAGER, isEager.toString());
 
         if (query.getEagerFields() != null)
-            query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
+            query.getEagerFields().forEach(field -> copyMap.add(EagerUtil.EAGER_FIELD, field));
 
         return queryParams;
     }
