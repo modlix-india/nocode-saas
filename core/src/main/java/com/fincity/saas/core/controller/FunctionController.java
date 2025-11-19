@@ -12,6 +12,7 @@ import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository;
 import com.fincity.saas.commons.core.kirun.repository.CoreFunctionRepository.CoreFunctionRepositoryBuilder;
 import com.fincity.saas.commons.core.repository.CoreFunctionDocumentRepository;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
+import com.fincity.saas.commons.core.service.EventDefinitionService;
 import com.fincity.saas.commons.core.service.NotificationService;
 import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
@@ -22,6 +23,7 @@ import com.fincity.saas.commons.core.service.security.ClientUrlService;
 import com.fincity.saas.commons.core.service.security.ContextService;
 import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
+import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -64,7 +66,9 @@ public class FunctionController
             TemplateConversionService templateConversionService,
             Gson gson,
             NotificationService notificationService,
-            AIService aiService
+            AIService aiService,
+            EventCreationService ecService,
+            EventDefinitionService edService
     ) {
         this.coreFunRepo = new CoreFunctionRepository(
                 new CoreFunctionRepositoryBuilder()
@@ -80,6 +84,8 @@ public class FunctionController
                         .setNotificationService(notificationService)
                         .setAiService(aiService)
                         .setGson(gson)
+                        .setEcService(ecService)
+                        .setEdService(edService)
         );
         this.gson = gson;
     }

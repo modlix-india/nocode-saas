@@ -20,7 +20,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -160,12 +159,7 @@ public abstract class BaseUpdatableController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
-
-        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
-
-        if (query.getEagerFields() != null)
-            query.getEagerFields().forEach(field -> queryParams.add(EagerUtil.EAGER_FIELD, field));
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)

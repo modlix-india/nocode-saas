@@ -24,6 +24,10 @@ public class TicketDuplicationRule extends BaseRuleDto<NoOpUserDistribution, Tic
     private ULong maxStageId;
     private Long maxEntityCreation;
 
+    public TicketDuplicationRule() {
+        super();
+    }
+
     public TicketDuplicationRule(TicketDuplicationRule ticketDuplicationRule) {
         super(ticketDuplicationRule);
         this.source = ticketDuplicationRule.getSource();

@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.eager;
 
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.util.BooleanUtil;
@@ -109,5 +110,22 @@ public class EagerUtil {
         if (condition == null) condition = new ComplexCondition().setConditions(List.of());
 
         return Tuples.of(condition, tableFields);
+    }
+
+    public static MultiValueMap<String, String> addEagerParamsFromQuery(
+            MultiValueMap<String, String> queryParams, Query query) {
+
+        MultiValueMap<String, String> copyMap = new LinkedMultiValueMap<>(queryParams);
+
+        Boolean isEager = BooleanUtil.parse(query.getEager());
+
+        if (isEager == null) return copyMap;
+
+        copyMap.add(EagerUtil.EAGER, isEager.toString());
+
+        if (query.getEagerFields() != null)
+            query.getEagerFields().forEach(field -> copyMap.add(EagerUtil.EAGER_FIELD, field));
+
+        return copyMap;
     }
 }
