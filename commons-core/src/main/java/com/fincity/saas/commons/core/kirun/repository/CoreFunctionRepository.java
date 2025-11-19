@@ -9,6 +9,7 @@ import com.fincity.saas.commons.core.functions.ai.Chat;
 import com.fincity.saas.commons.core.functions.crypto.SignatureValidator;
 import com.fincity.saas.commons.core.functions.crypto.Signer;
 import com.fincity.saas.commons.core.functions.email.SendEmail;
+import com.fincity.saas.commons.core.functions.events.CreateEventFunction;
 import com.fincity.saas.commons.core.functions.file.FileToBase64;
 import com.fincity.saas.commons.core.functions.file.TemplateToPdf;
 import com.fincity.saas.commons.core.functions.hash.HashData;
@@ -25,6 +26,7 @@ import com.fincity.saas.commons.core.functions.storage.DeleteStorageObjectWithFi
 import com.fincity.saas.commons.core.functions.storage.ReadPageStorageObject;
 import com.fincity.saas.commons.core.functions.storage.ReadStorageObject;
 import com.fincity.saas.commons.core.functions.storage.UpdateStorageObject;
+import com.fincity.saas.commons.core.service.EventDefinitionService;
 import com.fincity.saas.commons.core.service.NotificationService;
 import com.fincity.saas.commons.core.service.connection.ai.AIService;
 import com.fincity.saas.commons.core.service.connection.appdata.AppDataService;
@@ -33,6 +35,7 @@ import com.fincity.saas.commons.core.service.connection.rest.RestService;
 import com.fincity.saas.commons.core.service.file.TemplateConversionService;
 import com.fincity.saas.commons.core.service.security.ClientUrlService;
 import com.fincity.saas.commons.core.service.security.ContextService;
+import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.google.gson.Gson;
 
@@ -58,6 +61,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         this.makeSecurityContextFunctions(builder.userContextService, builder.clientUrlService, builder.gson);
         this.makeSecurityFunctions(builder.securityService, builder.gson);
         this.makeEmailFunctions(builder.emailService);
+        this.makeCreateEventFunction(builder.ecService, builder.edService);
         this.makeFileFunctions(
                 builder.filesService, builder.templateConversionService, builder.filesService, builder.gson);
         this.makeCryptoFunctions();
@@ -136,6 +140,11 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         this.addToRepoMap(sendEmail);
     }
 
+    private void makeCreateEventFunction(EventCreationService ecService, EventDefinitionService edService) {
+        ReactiveFunction createEvent = new CreateEventFunction(ecService, edService);
+        this.addToRepoMap(createEvent);
+    }
+
     private void makeNotificationFunctions(NotificationService notificationService) {
         ReactiveFunction sendNotification = new SendNotification(notificationService);
         this.addToRepoMap(sendNotification);
@@ -202,5 +211,7 @@ public class CoreFunctionRepository implements ReactiveRepository<ReactiveFuncti
         private Gson gson;
         private NotificationService notificationService;
         private AIService aiService;
+        private EventCreationService ecService;
+        private EventDefinitionService edService;
     }
 }
