@@ -26,7 +26,7 @@ public class CreateEventFunction extends AbstractReactiveFunction {
 
     private static final String EVENT_OUTPUT_DATA = "created";
 
-    private static final String FUNCTION_NAME = "CreateEventØ";
+    private static final String FUNCTION_NAME = "CreateEvent";
 
     private static final String NAMESPACE = "CoreServices.Event";
 
