@@ -126,6 +126,6 @@ public class EagerUtil {
         if (query.getEagerFields() != null)
             query.getEagerFields().forEach(field -> copyMap.add(EagerUtil.EAGER_FIELD, field));
 
-        return queryParams;
+        return copyMap;
     }
 }
