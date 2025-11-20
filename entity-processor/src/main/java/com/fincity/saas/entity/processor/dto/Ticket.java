@@ -3,11 +3,11 @@ package com.fincity.saas.entity.processor.dto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
-import com.fincity.saas.entity.processor.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
@@ -41,6 +41,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong campaignId;
     private Boolean dnc = Boolean.FALSE;
 
+    private ULong productTemplateId = null;
+
     public Ticket() {
         super();
         this.relationsMap.put(Fields.ownerId, EntitySeries.OWNER.getTable());
@@ -49,6 +51,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsMap.put(Fields.status, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
         this.relationsMap.put(Fields.campaignId, EntitySeries.CAMPAIGN.getTable());
+        this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
     public Ticket(Ticket ticket) {
@@ -65,6 +68,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.subSource = ticket.subSource;
         this.campaignId = ticket.campaignId;
         this.dnc = ticket.dnc;
+        this.productTemplateId = ticket.productTemplateId;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {

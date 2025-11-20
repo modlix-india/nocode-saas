@@ -6,9 +6,9 @@ import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
-import com.fincity.saas.entity.processor.dto.Product;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductWalkInFormsRecord;
@@ -21,9 +21,9 @@ import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.service.ProductService;
 import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
 import java.util.Comparator;
@@ -33,6 +33,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -90,7 +92,7 @@ public class ProductWalkInFormService
     @Override
     protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
         return productService
-                .readIdentityWithAccess(access, productId)
+                .readByIdentity(access, productId)
                 .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.resolveProduct"));
     }
@@ -134,7 +136,11 @@ public class ProductWalkInFormService
                 client -> super.securityService
                         .hasReadAccess(appCode, clientCode)
                         .flatMap(BooleanUtil::safeValueOfWithEmpty),
-                (client, hasAccess) -> super.securityService.getClientUserInternal(List.of(client.getId()), null));
+                (client, hasAccess) -> {
+                    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+                    queryParams.add(User.Fields.statusCode, "ACTIVE");
+                    return super.securityService.getClientUserInternal(List.of(client.getId()), queryParams);
+                });
     }
 
     public Mono<Ticket> getWalkInTicket(
@@ -156,7 +162,7 @@ public class ProductWalkInFormService
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
 
         return this.productService
-                .readIdentityWithAccess(access, productId)
+                .readByIdentity(access, productId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInProduct"));
     }
 

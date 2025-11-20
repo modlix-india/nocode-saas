@@ -6,22 +6,22 @@ package com.fincity.saas.entity.processor.jooq;
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorComplexRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorPartners;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleComplexRuleRelations;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorSimpleRules;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketCUserDistributions;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 import java.util.Arrays;
@@ -56,11 +56,6 @@ public class EntityProcessor extends SchemaImpl {
     public final EntityProcessorCampaigns ENTITY_PROCESSOR_CAMPAIGNS = EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS;
 
     /**
-     * The table <code>entity_processor.entity_processor_complex_rules</code>.
-     */
-    public final EntityProcessorComplexRules ENTITY_PROCESSOR_COMPLEX_RULES = EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES;
-
-    /**
      * The table <code>entity_processor.entity_processor_notes</code>.
      */
     public final EntityProcessorNotes ENTITY_PROCESSOR_NOTES = EntityProcessorNotes.ENTITY_PROCESSOR_NOTES;
@@ -82,18 +77,6 @@ public class EntityProcessor extends SchemaImpl {
 
     /**
      * The table
-     * <code>entity_processor.entity_processor_product_stage_rules</code>.
-     */
-    public final EntityProcessorProductStageRules ENTITY_PROCESSOR_PRODUCT_STAGE_RULES = EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_product_template_rules</code>.
-     */
-    public final EntityProcessorProductTemplateRules ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES = EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES;
-
-    /**
-     * The table
      * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>.
      */
     public final EntityProcessorProductTemplateWalkInForms ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS = EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS;
@@ -106,6 +89,18 @@ public class EntityProcessor extends SchemaImpl {
 
     /**
      * The table
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>.
+     */
+    public final EntityProcessorProductTicketCRules ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES = EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules</code>.
+     */
+    public final EntityProcessorProductTicketRuRules ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES = EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES;
+
+    /**
+     * The table
      * <code>entity_processor.entity_processor_product_walk_in_forms</code>.
      */
     public final EntityProcessorProductWalkInForms ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS = EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS;
@@ -114,17 +109,6 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_products</code>.
      */
     public final EntityProcessorProducts ENTITY_PROCESSOR_PRODUCTS = EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS;
-
-    /**
-     * The table
-     * <code>entity_processor.entity_processor_simple_complex_rule_relations</code>.
-     */
-    public final EntityProcessorSimpleComplexRuleRelations ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS = EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS;
-
-    /**
-     * The table <code>entity_processor.entity_processor_simple_rules</code>.
-     */
-    public final EntityProcessorSimpleRules ENTITY_PROCESSOR_SIMPLE_RULES = EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES;
 
     /**
      * The table <code>entity_processor.entity_processor_stages</code>.
@@ -140,6 +124,24 @@ public class EntityProcessor extends SchemaImpl {
      * The table <code>entity_processor.entity_processor_tasks</code>.
      */
     public final EntityProcessorTasks ENTITY_PROCESSOR_TASKS = EntityProcessorTasks.ENTITY_PROCESSOR_TASKS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_c_user_distributions</code>.
+     */
+    public final EntityProcessorTicketCUserDistributions ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS = EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>.
+     */
+    public final EntityProcessorTicketDuplicationRules ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES = EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES;
+
+    /**
+     * The table
+     * <code>entity_processor.entity_processor_ticket_ru_user_distributions</code>.
+     */
+    public final EntityProcessorTicketRuUserDistributions ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS = EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS;
 
     /**
      * The table <code>entity_processor.entity_processor_tickets</code>.
@@ -164,22 +166,22 @@ public class EntityProcessor extends SchemaImpl {
         return Arrays.asList(
             EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES,
             EntityProcessorCampaigns.ENTITY_PROCESSOR_CAMPAIGNS,
-            EntityProcessorComplexRules.ENTITY_PROCESSOR_COMPLEX_RULES,
             EntityProcessorNotes.ENTITY_PROCESSOR_NOTES,
             EntityProcessorOwners.ENTITY_PROCESSOR_OWNERS,
             EntityProcessorPartners.ENTITY_PROCESSOR_PARTNERS,
             EntityProcessorProductComms.ENTITY_PROCESSOR_PRODUCT_COMMS,
-            EntityProcessorProductStageRules.ENTITY_PROCESSOR_PRODUCT_STAGE_RULES,
-            EntityProcessorProductTemplateRules.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_RULES,
             EntityProcessorProductTemplateWalkInForms.ENTITY_PROCESSOR_PRODUCT_TEMPLATE_WALK_IN_FORMS,
             EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES,
+            EntityProcessorProductTicketCRules.ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES,
+            EntityProcessorProductTicketRuRules.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES,
             EntityProcessorProductWalkInForms.ENTITY_PROCESSOR_PRODUCT_WALK_IN_FORMS,
             EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS,
-            EntityProcessorSimpleComplexRuleRelations.ENTITY_PROCESSOR_SIMPLE_COMPLEX_RULE_RELATIONS,
-            EntityProcessorSimpleRules.ENTITY_PROCESSOR_SIMPLE_RULES,
             EntityProcessorStages.ENTITY_PROCESSOR_STAGES,
             EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES,
             EntityProcessorTasks.ENTITY_PROCESSOR_TASKS,
+            EntityProcessorTicketCUserDistributions.ENTITY_PROCESSOR_TICKET_C_USER_DISTRIBUTIONS,
+            EntityProcessorTicketDuplicationRules.ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES,
+            EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS,
             EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS
         );
     }

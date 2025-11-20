@@ -33,6 +33,7 @@ import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.mq.events.EventCreationService;
@@ -42,6 +43,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.jwt.JWTUtil;
 import com.fincity.saas.commons.security.jwt.JWTUtil.JWTGenerateTokenParameters;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -85,6 +87,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     private static final String FETCH_CLIENT = "fetchClients";
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClients";
     private static final String FETCH_CREATED_BY = "fetchCreatedBy";
+    private static final String FETCH_DESIGNATION = "fetchDesignation";
+    private static final String FETCH_REPORTING_TO = "fetchReportingTo";
 
     private static final String ASSIGNED_ROLE = " Role is assigned to the user ";
     private static final String UNASSIGNED_ROLE = " Role is removed from the selected user";
@@ -483,12 +487,12 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
-    public Mono<List<User>> readByClientIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+    public Mono<List<User>> readByClientIds(List<ULong> clientIds, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readAllFilter(new FilterCondition()
-                        .setField("clientId")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(clientIds))
+                () -> this.readAllFilter(ComplexCondition.and(new FilterCondition()
+                                .setField("clientId")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds), condition))
                         .collectList(),
                 users -> this.fillDetails(users, queryParams));
     }
@@ -1191,18 +1195,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(
-                        userId, ULong.valueOf(ca.getUser().getId()))),
-                (ca, id) -> ca.isSystemClient()
-                        ? Mono.just(Boolean.TRUE)
-                        : this.dao
-                                .readById(id)
-                                .flatMap(e -> this.clientService.isBeingManagedBy(
-                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged)
-                        ? Mono.empty()
-                        : this.dao.makeUserActiveIfInActive(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> userId != null
+                                ? this.readInternal(userId)
+                                : this.readInternal(
+                                        ULongUtil.valueOf(ca.getUser().getId())),
+                        (ca, user) -> ca.isSystemClient()
+                                ? Mono.just(Boolean.TRUE)
+                                : this.clientService.isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        (ca, user, managed) -> {
+                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+
+                            return user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
+                                            .map(x -> Boolean.TRUE);
+                        },
+                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                                .map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1211,17 +1222,25 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserInActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(
-                        userId, ULong.valueOf(ca.getUser().getId()))),
-                (ca, id) -> ca.isSystemClient()
-                        ? Mono.just(Boolean.TRUE)
-                        : this.dao
-                                .readById(id)
-                                .flatMap(e -> this.clientService.isBeingManagedBy(
-                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
-                (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
-                        : this.dao.makeUserInActive(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> userId != null
+                                ? this.readInternal(userId)
+                                : this.readInternal(
+                                        ULongUtil.valueOf(ca.getUser().getId())),
+                        (ca, user) -> ca.isSystemClient()
+                                ? Mono.just(Boolean.TRUE)
+                                : this.clientService.isBeingManagedBy(
+                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        (ca, user, managed) -> {
+                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+
+                            return user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE)
+                                    ? Mono.just(Boolean.TRUE)
+                                    : super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
+                                            .map(x -> Boolean.TRUE);
+                        },
+                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                                .map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1406,6 +1425,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         boolean fetchClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CLIENT));
         boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
         boolean fetchCreatedBy = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY));
+        boolean fetchDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_DESIGNATION));
+        boolean fetchReportingTo = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_REPORTING_TO));
 
         Flux<User> userFlux = Flux.fromIterable(users);
 
@@ -1425,6 +1446,15 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             userFlux = userFlux.filter(user -> user.getCreatedBy() != null && user.getCreatedBy().intValue() != 0)
                     .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
+        if (fetchDesignation)
+            userFlux = userFlux.filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
+                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId()).map(user::setDesignation));
+
+
+        if (fetchReportingTo)
+            userFlux = userFlux.filter(user -> user.getReportingTo() != null && user.getReportingTo().intValue() != 0)
+                    .flatMap(user -> this.readInternal(user.getReportingTo()).map(user::setReportingUser));
+
         return userFlux.collectList();
     }
 
@@ -1436,4 +1466,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<List<String>> getEmailsOfUsers(List<ULong> userIds) {
         return this.dao.getEmailsOfUsers(userIds);
     }
+
+    public Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(UsersListRequest request) {
+        return this.dao.getUsersForEntityProcessor(
+                request.getUserIds(), request.getAppCode(), request.getClientId(), request.getClientCode());
+    }
+
+	public Mono<EntityProcessorUser> getUserForEntityProcessor(ULong userId, UsersListRequest request) {
+		return this.dao.getUserForEntityProcessor(
+				userId, request.getAppCode(), request.getClientId(), request.getClientCode());
+	}
 }

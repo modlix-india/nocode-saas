@@ -7,7 +7,7 @@ import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.service.ProductTemplateService;
+import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -43,7 +43,7 @@ public class ProductTemplateWalkInFormService
     @Override
     protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
         return productTemplateService
-                .readIdentityWithAccess(access, productId)
+                .readByIdentity(access, productId)
                 .map(productTemplate -> Tuples.of(productTemplate.getId(), productTemplate.getId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateWalkInFormService.resolveProduct"));
     }

@@ -56,6 +56,7 @@ public class ContextUser implements Serializable {
     private LocalDateTime lockedUntil;
     private String lockedDueTo;
     private List<String> stringAuthorities;
+	private BigInteger designationId;
 
     @JsonIgnore
     private Set<SimpleGrantedAuthority> grantedAuthorities;

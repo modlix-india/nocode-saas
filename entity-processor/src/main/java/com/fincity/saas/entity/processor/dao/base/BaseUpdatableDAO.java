@@ -10,11 +10,12 @@ import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
+import com.fincity.saas.entity.processor.eager.IEagerDAO;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.relations.RecordEnrichmentService;
-import com.fincity.saas.entity.processor.relations.resolvers.RelationResolver;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -148,11 +149,6 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
     public Mono<D> readInternal(ULong id) {
         return Mono.from(this.dslContext.selectFrom(this.table).where(this.idField.eq(id)))
                 .map(e -> e.into(this.pojoClass));
-    }
-
-    public Mono<D> readInternal(String code) {
-        return Mono.from(this.dslContext.selectFrom(this.table).where(codeField.eq(code)))
-                .map(result -> result.into(this.pojoClass));
     }
 
     public Mono<D> readInternal(ProcessorAccess access, ULong id) {

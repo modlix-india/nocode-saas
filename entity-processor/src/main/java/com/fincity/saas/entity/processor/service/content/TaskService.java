@@ -111,7 +111,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     public Mono<Task> setReminder(Identity taskIdentity, LocalDateTime reminderDate) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.readIdentityWithAccess(access, taskIdentity),
+                        access -> this.readByIdentity(access, taskIdentity),
                         (access, task) -> this.checkTaskStatus(task, reminderDate, LocalDateTime.now(), "Reminder"),
                         (access, task, vTask) -> {
                             vTask.setHasReminder(Boolean.TRUE);
@@ -143,7 +143,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.readIdentityWithAccess(access, taskIdentity),
+                        access -> this.readByIdentity(access, taskIdentity),
                         (access, task) -> this.checkTaskStatus(task, statusDate, now, "Status"),
                         (access, task, vTask) -> {
                             LocalDateTime date = statusDate != null ? statusDate : now;

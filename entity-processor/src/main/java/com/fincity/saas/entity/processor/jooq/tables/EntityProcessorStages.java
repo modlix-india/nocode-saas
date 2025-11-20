@@ -9,12 +9,12 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms.EntityProcessorProductWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules.EntityProcessorTicketDuplicationRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 
@@ -351,33 +351,6 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         return _fk3StagesParentLevel_1;
     }
 
-    private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_stage_rules</code> table
-     */
-    public EntityProcessorProductStageRulesPath entityProcessorProductStageRules() {
-        if (_entityProcessorProductStageRules == null)
-            _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, null, Keys.FK2_PRODUCT_RULES_STAGE_ID.getInverseKey());
-
-        return _entityProcessorProductStageRules;
-    }
-
-    private transient EntityProcessorProductTemplateRulesPath _entityProcessorProductTemplateRules;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_template_rules</code>
-     * table
-     */
-    public EntityProcessorProductTemplateRulesPath entityProcessorProductTemplateRules() {
-        if (_entityProcessorProductTemplateRules == null)
-            _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK2_PRODUCT_TEMPLATE_RULES_STAGE_ID.getInverseKey());
-
-        return _entityProcessorProductTemplateRules;
-    }
-
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk2ProductTemplateWalkInFormsStageId;
 
     /**
@@ -405,6 +378,34 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _fk2ProductWalkInFormsStageId = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK2_PRODUCT_WALK_IN_FORMS_STAGE_ID.getInverseKey());
 
         return _fk2ProductWalkInFormsStageId;
+    }
+
+    private transient EntityProcessorProductTicketCRulesPath _entityProcessorProductTicketCRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>
+     * table
+     */
+    public EntityProcessorProductTicketCRulesPath entityProcessorProductTicketCRules() {
+        if (_entityProcessorProductTicketCRules == null)
+            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK2_PTCR_SID.getInverseKey());
+
+        return _entityProcessorProductTicketCRules;
+    }
+
+    private transient EntityProcessorTicketDuplicationRulesPath _entityProcessorTicketDuplicationRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>
+     * table
+     */
+    public EntityProcessorTicketDuplicationRulesPath entityProcessorTicketDuplicationRules() {
+        if (_entityProcessorTicketDuplicationRules == null)
+            _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK2_TDR_MSID.getInverseKey());
+
+        return _entityProcessorTicketDuplicationRules;
     }
 
     private transient EntityProcessorProductTemplateWalkInFormsPath _fk3ProductTemplateWalkInFormsStatusId;

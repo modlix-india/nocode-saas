@@ -2,20 +2,38 @@ package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
+import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Component
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
+
+    private ProductTicketRuRuleService productTicketRuRuleService;
 
     protected TicketDAO() {
         super(
@@ -23,6 +41,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS,
                 ENTITY_PROCESSOR_TICKETS.ID,
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
+    }
+
+    @Lazy
+    @Autowired
+    private void setProductTicketRuRuleService(ProductTicketRuRuleService productTicketRuRuleService) {
+        this.productTicketRuRuleService = productTicketRuRuleService;
     }
 
     public Flux<Ticket> getAllClientTicketsByDnc(ULong clientId, Boolean dnc) {
@@ -78,5 +102,58 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         if (productId != null) conditions.add(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(productId));
 
         return conditions;
+    }
+
+    @Override
+    public List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        List<Field<?>> list = super.getMainTableBaseFields(tableFields, queryParams);
+
+        if (tableFields == null || tableFields.isEmpty()) {
+            list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
+            return list;
+        }
+
+        if (tableFields.contains(Ticket.Fields.productTemplateId))
+            list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
+
+        return list;
+    }
+
+    @Override
+    public SelectJoinStep<Record> applyBaseTableJoins(
+            SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
+        return query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+    }
+
+    @Override
+    public SelectJoinStep<Record1<Integer>> applyCountBaseTableJoins(
+            SelectJoinStep<Record1<Integer>> query, MultiValueMap<String, String> queryParams) {
+        return super.applyCountBaseTableJoins(query, queryParams)
+                .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+    }
+
+    @Override
+    protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+        return Mono.just(Tuples.of(
+                dslContext
+                        .select(Arrays.asList(table.fields()))
+                        .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID)
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(
+                                EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
+                dslContext.select(DSL.count()).from(table)));
+    }
+
+    @Override
+    public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
+                        readCondition -> super.processorAccessCondition(condition, access),
+                        (readCondition, baseCondition) ->
+                                Mono.just((AbstractCondition) ComplexCondition.or(baseCondition, readCondition)))
+                .switchIfEmpty(super.processorAccessCondition(condition, access));
     }
 }

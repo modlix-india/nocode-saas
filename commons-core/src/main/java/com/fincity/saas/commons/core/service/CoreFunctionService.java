@@ -30,6 +30,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.mongo.service.AbstractFunctionService;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
+import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.AuthoritiesTokenExtractor;
@@ -118,6 +119,12 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Autowired
     private AIService aiService;
 
+    @Autowired
+    private EventCreationService ecService;
+
+    @Autowired
+    private EventDefinitionService edService;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -139,6 +146,8 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                         .setObjectMapper(objectMapper)
                         .setNotificationService(notificationService)
                         .setAiService(aiService)
+                        .setEcService(ecService)
+                        .setEdService(edService)
                 ));
     }
 

@@ -4,7 +4,10 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
+import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.security.model.UsersListRequest;
 
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
@@ -210,4 +213,13 @@ public interface IFeignSecurityService {
     @PostMapping(value = "${security.feign.readUserPageFilterInternal:/api/security/users/internal/query}")
     Mono<Page<User>> readUserPageFilterInternal(
             @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
+
+	@PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
+	Mono<List<NotificationUser>> getUsersForNotification(@RequestBody UsersListRequest request);
+
+	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
+	Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
+
+	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
+	Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId, @RequestBody UsersListRequest request);
 }

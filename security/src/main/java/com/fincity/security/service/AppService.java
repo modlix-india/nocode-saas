@@ -2,14 +2,13 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.http.protocol.HTTP;
 import org.jooq.types.ULong;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -132,7 +131,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService.getManagedClientOfClientById(ULongUtil.valueOf(ca.getUser()
-                        .getClientId())).map(Client::getId).switchIfEmpty(this.clientService.getSystemClientId()),
+                        .getClientId())).mapNotNull(Client::getId).switchIfEmpty(this.clientService.getSystemClientId()),
 
                 (ca, managedClientId) -> entity.getAppCode() == null
                         ? this.dao.generateAppCode(entity).map(entity::setAppCode)
@@ -307,26 +306,6 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                         }));
     }
 
-    private Mono<Map<String, Object>> validateFields(Map<String, Object> fields) {
-
-        Map<String, Object> updatableFields = new HashMap<>();
-
-        if (fields.containsKey(APP_NAME))
-            updatableFields.put(APP_NAME, fields.get(APP_NAME));
-
-        if (fields.containsKey(THUMB_URL))
-            updatableFields.put(THUMB_URL, fields.get(THUMB_URL));
-
-        if (fields.containsKey(APP_ACCESS_TYPE))
-            updatableFields.put(APP_ACCESS_TYPE, fields.get(APP_ACCESS_TYPE));
-
-        if (fields.containsKey(APP_USAGE_TYPE))
-            updatableFields.put(APP_USAGE_TYPE, fields.get(APP_USAGE_TYPE));
-
-        return Mono.just(updatableFields);
-
-    }
-
     public Mono<Boolean> hasReadAccess(String appCode, String clientCode) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_READ_ACCESS,
                 () -> this.dao.hasReadAccess(appCode, clientCode), appCode, ":", clientCode);
@@ -479,7 +458,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     public Mono<App> getAppById(ULong appId) {
         if (appId == null)
             return Mono.empty();
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> this.read(appId), appId);
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_BY_APPID, () -> super.read(appId), appId);
     }
 
     public Mono<App> getAppByCodeCheckAccess(String appCode) {
@@ -520,7 +499,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppClients"));
     }
 
-    public Mono<List<ULong>> getAppIdsForAdditionalAppRegistration(String urlAppCode, String urlClientCode, Client client) {
+    public Mono<List<ULong>> getAppIdsForAdditionalAppRegistration(String urlAppCode, String urlClientCode,
+                                                                   Client client) {
 
         return FlatMapUtil.flatMapMono(
 
@@ -530,14 +510,14 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                         (app, levelType) -> this.clientService.getClientBy(urlClientCode).map(Client::getId),
 
-                        (app, levelType, urlClientId) -> this.appRegistrationDao.getAppIdsForRegistrationForAdditionalRegistration(
-                                app.getId(),
-                                app.getClientId(),
-                                urlClientId,
-                                client.getTypeCode(),
-                                levelType,
-                                client.getBusinessType())
-                )
+                        (app, levelType, urlClientId) -> this.appRegistrationDao
+                                .getAppIdsForRegistrationForAdditionalRegistration(
+                                        app.getId(),
+                                        app.getClientId(),
+                                        urlClientId,
+                                        client.getTypeCode(),
+                                        levelType,
+                                        client.getBusinessType()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AppService.getAppIdsForAdditionalAppRegistration"));
     }
 
@@ -852,10 +832,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                             Mono<Boolean> hasDepAppReadAccess = this.hasReadAccess(dependentAppCode, ca.getClientCode());
 
-                            return Mono.zip(hasAppWriteAccess, hasDepAppReadAccess).flatMap( t -> {
+                            return Mono.zip(hasAppWriteAccess, hasDepAppReadAccess).flatMap(t -> {
 
-                               if( !BooleanUtil.safeValueOf(t.getT1()) || !BooleanUtil.safeValueOf(t.getT2()))
-                                   return Mono.empty();
+                                if (!BooleanUtil.safeValueOf(t.getT1()) || !BooleanUtil.safeValueOf(t.getT2()))
+                                    return Mono.empty();
 
                                 return this.clientService
                                         .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
@@ -953,12 +933,9 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                 .flatMap(map -> Flux.fromStream(map.values().stream().flatMap(List::stream)).distinct()
                         .flatMap(this::getAppById).collectMap(App::getId)
                         .map(appMap -> clients.values().stream()
-                                .map(c ->
-                                        map.get(c.getId()) != null ?
-                                                c.setApps(map.get(c.getId()).stream().map(appMap::get).collect(Collectors.toList())) : c
-                                )
-                                .toList())
-                );
+                                .map(c -> map.get(c.getId()) != null ? c.setApps(
+                                        map.get(c.getId()).stream().map(appMap::get).collect(Collectors.toList())) : c)
+                                .toList()));
     }
 
 }

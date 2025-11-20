@@ -5,8 +5,8 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.service.base.BaseService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
@@ -51,9 +51,7 @@ public abstract class BaseController<
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
-        MultiValueMap<String, String> queryParams = request.getQueryParams();
-        queryParams.add(EagerUtil.EAGER, query.getEager().toString());
-        for (String field : query.getEagerFields()) queryParams.add(EagerUtil.EAGER_FIELD, field);
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
 
         return this.service
                 .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)

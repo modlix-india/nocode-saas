@@ -26,6 +26,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String IDENTITY_WRONG = "identity_wrong";
     public static final String PRODUCT_FORBIDDEN_ACCESS = "product_forbidden_access";
     public static final String PRODUCT_TEMPLATE_FORBIDDEN_ACCESS = "product_template_forbidden_access";
+    public static final String TICKET_STAGE_MISSING = "ticket_stage_missing";
     public static final String TICKET_ASSIGNMENT_MISSING = "ticket_assignment_missing";
     public static final String OWNER_NOT_CREATED = "owner_not_created";
     public static final String DUPLICATE_ENTITY = "duplicate_entity";
@@ -55,6 +56,12 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String WEBSITE_ENTITY_DATA_INVALID = "website_entity_data_invalid";
     public static final String UNKNOWN_EXOTEL_CALLER_ID = "unknown_exotel_caller_id";
     public static final String ENTITY_INACTIVE = "entity_inactive";
+    public static final String DUPLICATE_RULE_ORDER = "duplicate_rule_order";
+    public static final String INVALID_RULE_ORDER = "invalid_rule_order";
+    public static final String RULE_ORDER_MISSING = "rule_order_missing";
+    public static final String RULE_PRODUCT_MISSING = "rule_product_missing";
+    public static final String RULE_CONDITION_MISSING = "rule_condition_missing";
+    public static final String MAX_ENTITY_CREATION_INVALID = "max_entity_creation_invalid";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));

@@ -21,7 +21,9 @@ public enum Case {
     /** Pascal case (e.g., "HelloWorld"). */
     PASCAL("^[A-Z][a-zA-Z0-9]*$", Case::toPascalCase),
     /** Kebab case (e.g., "hello-world"). */
-    KEBAB("^[a-z0-9-]+$", Case::toKebabCase);
+    KEBAB("^[a-z0-9-]+$", Case::toKebabCase),
+    /** Title case (e.g., "Hello World"). */
+    TITLE("^[A-Z][a-zA-Z0-9]*(\\s[A-Z][a-zA-Z0-9]*)*$", Case::toTitleCase);
 
     private static final Map<Case, Pattern> CASE_PATTERNS = initializeCasePatterns();
     private final Pattern pattern;
@@ -45,10 +47,10 @@ public enum Case {
     }
 
     private static String toCamelCase(String str) {
-        String[] parts = str.split("[_\\-]");
+        String[] parts = str.split("[_\\-\\s]");
         StringBuilder camelCaseString = new StringBuilder(parts[0].toLowerCase());
         for (int i = 1; i < parts.length; i++) {
-            camelCaseString.append(capitalize(parts[i]).toLowerCase());
+            camelCaseString.append(capitalize(parts[i]));
         }
         return camelCaseString.toString();
     }
@@ -61,11 +63,21 @@ public enum Case {
         return toSnakeCase(str).replace('_', '-');
     }
 
-    private static String capitalize(String str) {
-        return str.isEmpty() ? str : Character.toUpperCase(str.charAt(0)) + str.substring(1);
+    private static String toTitleCase(String str) {
+        String[] parts = str.split("[_\\-\\s]");
+        return Arrays.stream(parts)
+                .filter(part -> !part.isEmpty())
+                .map(Case::capitalize)
+                .collect(Collectors.joining(" "));
     }
 
-	private String convert(String str, Case targetCase) {
+    private static String capitalize(String str) {
+        return str.isEmpty()
+                ? str
+                : Character.toUpperCase(str.charAt(0)) + str.substring(1).toLowerCase();
+    }
+
+    private String convert(String str, Case targetCase) {
         if (this == targetCase) {
             return str;
         }

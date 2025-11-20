@@ -22,7 +22,6 @@ import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -47,8 +46,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
-        implements IEntitySeries {
+public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO> {
 
     private static final String PARTNER_CACHE = "Partner";
 
@@ -181,7 +179,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.readIdentityWithAccess(access, partnerId),
+                        access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)),
                         (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updatePartnerVerificationStatus"));
@@ -190,7 +188,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> togglePartnerDnc(Identity partnerId) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> super.readIdentityWithAccess(access, partnerId),
+                        access -> super.readByIdentity(access, partnerId),
                         (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
                         (access, partner, updated) -> this.evictCache(partner),
                         (access, partner, updated, evicted) -> this.ticketService
@@ -264,7 +262,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
             Identity partnerId, Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> this.readIdentityWithAccess(access, partnerId),
+                        access -> this.readByIdentity(access, partnerId),
                         (access, partner) -> this.addClientIds(partner, query.getCondition()),
                         (access, partner, pCondition) -> super.securityService
                                 .readUserPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)

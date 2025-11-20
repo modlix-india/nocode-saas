@@ -3,12 +3,12 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
-import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
@@ -61,8 +61,12 @@ public abstract class BaseUpdatableService<
                 this.getEntityName());
     }
 
+    protected String getCacheName(String... entityNames) {
+        return String.join("_", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
+    }
+
     protected String getCacheKey(String... entityNames) {
-        return String.join(":", entityNames);
+        return String.join(":", Stream.of(entityNames).filter(Objects::nonNull).toArray(String[]::new));
     }
 
     protected String getCacheKey(Object... entityNames) {
@@ -135,7 +139,7 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<D> updatableEntity(D entity) {
 
-        return FlatMapUtil.flatMapMono(() -> this.readById(entity.getId()), existing -> {
+        return FlatMapUtil.flatMapMono(() -> this.readByIdInternal(entity.getId()), existing -> {
             if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
@@ -194,28 +198,6 @@ public abstract class BaseUpdatableService<
         return this.hasAccess()
                 .flatMap(access -> this.dao.readByIdentityAndAppCodeAndClientCodeEager(
                         identity, access, tableFields, queryParams));
-    }
-
-    public Mono<D> readById(ULong id) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
-    }
-
-    public Mono<D> readByCode(String code) {
-        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
-    }
-
-    public Mono<D> readById(ProcessorAccess access, ULong id) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.readInternal(access, id),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
-    }
-
-    public Mono<D> readByCode(ProcessorAccess access, String code) {
-        return this.cacheService.cacheValueOrGet(
-                this.getCacheName(),
-                () -> this.dao.readInternal(access, code),
-                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
     }
 
     protected Mono<D> checkExistsByName(ProcessorAccess access, D entity) {
@@ -282,7 +264,9 @@ public abstract class BaseUpdatableService<
     @SuppressWarnings("unchecked")
     public Mono<D> updateByCode(String code, D entity) {
         return FlatMapUtil.flatMapMono(
-                () -> this.readByCode(code).map(cEntity -> (D) entity.setId(cEntity.getId())), this::update);
+                this::hasAccess,
+                access -> this.readByCode(access, code).map(cEntity -> (D) entity.setId(cEntity.getId())),
+                this::update);
     }
 
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
@@ -318,11 +302,11 @@ public abstract class BaseUpdatableService<
                 entityName);
     }
 
-    public Mono<D> readByIdInternal(ULong id) {
+    public Mono<D> readById(ProcessorAccess access, ULong id) {
 
         if (id == null) return this.identityMissingError();
 
-        return this.readById(id)
+        return this.readByIdInternal(access, id)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -330,88 +314,60 @@ public abstract class BaseUpdatableService<
                         id));
     }
 
-    public Mono<D> readIdentityInternal(Identity identity) {
+    private Mono<D> readByIdInternal(ULong id) {
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
+    }
 
-        if (identity == null || identity.isNull()) return this.identityMissingError();
+    private Mono<D> readByIdInternal(ProcessorAccess access, ULong id) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(access, id),
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
+    }
 
-        return (identity.isCode()
-                        ? this.readByCode(identity.getCode())
-                                .switchIfEmpty(this.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.IDENTITY_WRONG,
-                                        this.getEntityName(),
-                                        identity.getCode()))
-                        : this.readById(identity.getULongId()))
+    public Mono<D> readByCode(ProcessorAccess access, String code) {
+
+        if (code == null || code.isEmpty()) return this.identityMissingError();
+
+        return this.readByCodeInternal(access, code)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.getEntityName(),
-                        identity.getId()));
+                        code));
     }
 
-    public Mono<D> readIdentityWithAccess(Identity identity) {
-        return this.hasAccess().flatMap(access -> this.readIdentityWithAccess(access, identity));
+    private Mono<D> readByCodeInternal(ProcessorAccess access, String code) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.readInternal(access, code),
+                this.getCacheKey(access.getAppCode(), access.getClientCode(), code));
     }
 
-    public Mono<D> readIdentityWithAccess(ProcessorAccess access, Identity identity) {
+    public Mono<D> readByIdentity(Identity identity) {
+        return this.hasAccess().flatMap(access -> this.readByIdentity(access, identity));
+    }
+
+    public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
 
-        return identity.isCode()
-                ? this.readByCode(access, identity.getCode())
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
-                                identity.getCode()))
-                : this.readById(access, identity.getULongId())
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.IDENTITY_WRONG,
-                                this.getEntityName(),
-                                identity.getId()));
-    }
-
-    public Mono<D> readIdentityWithAccessEmpty(ProcessorAccess access, Identity identity) {
-        if (identity == null || identity.isNull()) return Mono.empty();
-
-        return identity.isCode()
-                ? this.readByCode(access, identity.getCode()).switchIfEmpty(Mono.empty())
-                : this.readById(access, ULongUtil.valueOf(identity.getId())).switchIfEmpty(Mono.empty());
-    }
-
-    public Mono<Identity> updateIdentity(Identity identity) {
-
-        if (identity.isId()) return Mono.just(identity);
-
-        return this.readByCode(identity.getCode())
-                .map(entity -> identity.setId(entity.getId().toBigInteger()));
+        return identity.isId()
+                ? this.readById(access, identity.getULongId())
+                : this.readByCode(access, identity.getCode());
     }
 
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
 
-        if (identity.isId())
-            return this.readById(access, ULongUtil.valueOf(identity.getId()))
-                    .map(entity -> identity)
-                    .switchIfEmpty(this.msgService.throwMessage(
-                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                            ProcessorMessageResourceService.IDENTITY_WRONG,
-                            this.getEntityName(),
-                            identity.getId()));
-
-        return this.readByCode(access, identity.getCode())
-                .map(entity -> identity.setId(entity.getId().toBigInteger()))
-                .switchIfEmpty(this.msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.IDENTITY_WRONG,
-                        this.getEntityName(),
-                        identity.getCode()));
+        return identity.isId()
+                ? this.readById(access, identity.getULongId()).map(BaseUpdatableDto::getIdentity)
+                : this.readByCode(access, identity.getCode()).map(BaseUpdatableDto::getIdentity);
     }
 
     public Mono<Integer> deleteIdentity(Identity identity) {
-        return this.readIdentityWithAccess(identity).flatMap(entity -> this.delete(entity.getId()));
+        return this.readByIdentity(identity).flatMap(entity -> this.delete(entity.getId()));
     }
 
     public Mono<Integer> deleteByCode(String code) {
@@ -438,11 +394,6 @@ public abstract class BaseUpdatableService<
                         deleted -> this.evictCaches(Flux.fromIterable(entities)).map(evicted -> deleted));
     }
 
-    public Mono<Integer> deleteMultiple(Flux<D> entities) {
-        return this.dao.deleteMultiple(entities.map(AbstractDTO::getId)).flatMap(deleted -> this.evictCaches(entities)
-                .map(evicted -> deleted));
-    }
-
     public Mono<BaseResponse> getBaseResponse(ULong id) {
         return this.hasAccess().flatMap(access -> this.readById(access, id)).map(BaseUpdatableDto::getBaseResponse);
     }
@@ -455,7 +406,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.MISSING_PARAMETERS,
-                paramName,
+                Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
     }
 
@@ -463,7 +414,7 @@ public abstract class BaseUpdatableService<
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
-                paramName,
+                Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
     }
 }

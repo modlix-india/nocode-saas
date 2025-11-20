@@ -14,6 +14,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.util.ConditionUtil;
@@ -103,15 +105,13 @@ public class UserController
         return this.service.findUserClients(authRequest, appLevel, request).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserActive")
+    @PatchMapping("/makeUserActive")
     public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserActive(userId).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserInActive")
+    @PatchMapping("/makeUserInActive")
     public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserInActive(userId).map(ResponseEntity::ok);
     }
 
@@ -195,7 +195,8 @@ public class UserController
     @GetMapping("/internal/clients")
     public Mono<ResponseEntity<List<User>>> getClientUsersInternal(
             @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
-        return this.service.readByClientIds(clientIds, queryParams).map(ResponseEntity::ok);
+
+        return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams).map(ResponseEntity::ok);
     }
 
     @GetMapping("/exists")
@@ -306,5 +307,17 @@ public class UserController
     @PostMapping("/internal/notification")
     public Mono<ResponseEntity<List<NotificationUser>>> getUsersForNotification(@RequestBody UsersListRequest request) {
         return this.service.getUsersForNotification(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/processor")
+    public Mono<ResponseEntity<List<EntityProcessorUser>>> getUsersForEntityProcessor(
+            @RequestBody UsersListRequest request) {
+        return this.service.getUsersForEntityProcessor(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/{userId}/processor")
+    public Mono<ResponseEntity<EntityProcessorUser>> getUsersForEntityProcessor(
+            @PathVariable ULong userId, @RequestBody UsersListRequest request) {
+        return this.service.getUserForEntityProcessor(userId, request).map(ResponseEntity::ok);
     }
 }
