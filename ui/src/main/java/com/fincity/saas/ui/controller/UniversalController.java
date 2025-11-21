@@ -102,16 +102,21 @@ public class UniversalController {
             @RequestHeader(name = "If-None-Match", required = false) String eTag,
             ServerHttpRequest request) {
 
+        var pageMono = Mono
+                .defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
+                        .flatMap(e -> ResponseEntityUtils
+                                .makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE)));
+
+        if (!request.getPath().toString().contains("/api/"))
+            return pageMono;
+        
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
 
                         ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
                         (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
-                .switchIfEmpty(Mono
-                        .defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
-                                .flatMap(e -> ResponseEntityUtils
-                                        .makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE))));
+                .switchIfEmpty(pageMono);
     }
 
     @RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = {RequestMethod.POST,
