@@ -158,7 +158,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Partner> updateLoggedInPartnerVerificationStatus(PartnerVerificationStatus status) {
         return FlatMapUtil.flatMapMono(
                         this::getLoggedInPartner,
-                        partner -> super.update(partner.setPartnerVerificationStatus(status)),
+                        partner -> super.updateInternalForOutsideUser(partner.setPartnerVerificationStatus(status)),
                         (partner, uPartner) -> this.evictCache(partner).map(evicted -> uPartner))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "PartnerService.updateLoggedInPartnerVerificationStatus"));
@@ -168,7 +168,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::getLoggedInPartner,
                         partner -> super.hasAccess(),
-                        (partner, access) -> super.update(access, partner.setDnc(!partner.getDnc())),
+                        (partner, access) -> super.updateInternalForOutsideUser(partner.setDnc(!partner.getDnc())),
                         (partner, access, uPartner) -> this.evictCache(partner),
                         (partner, access, uPartner, evicted) -> this.ticketService
                                 .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
