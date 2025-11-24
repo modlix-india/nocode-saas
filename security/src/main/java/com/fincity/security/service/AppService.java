@@ -7,11 +7,14 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.fincity.security.jooq.Security;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import org.jooq.types.ULong;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -68,6 +71,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
     private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
     private static final String CACHE_NAME_APP_DEPENDENCIES = "appDependencies";
     private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
+    private static final String CACHE_NAME_APP_STATUS = "appStatus";
 
     public static final String AC = "appCode";
     public static final String APP_PROP_REG_TYPE = "REGISTRATION_TYPE";
@@ -166,7 +170,10 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
 
                 .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
                 .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URI))
+                .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URL))
+                .flatMap(this.cacheService.evictAllFunction(ClientUrlService.CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
                 .flatMap(e -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, e.getAppCode())
+                        .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_STATUS, e.getAppCode()))
                         .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, e.getId()))
                         .map(x -> e));
     }
@@ -219,12 +226,19 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                             .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
                 },
 
-                (ca, app, hasAccess) -> super.delete(id)
+                (ca, app, hasAccess) -> {
 
-                        .flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
-                        .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
-                                .flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
-                                .map(y -> x)));
+                    if (SecurityAppStatus.ACTIVE.equals(app.getStatus()))
+                        return this.update(app.setStatus(SecurityAppStatus.ARCHIVED)).map(a -> 1);
+
+                    return super.delete(app.getId()).flatMap(this.cacheService.evictAllFunction(CACHE_NAME_APP_INHERITANCE))
+                            .flatMap(x -> this.cacheService.evict(CACHE_NAME_APP_BY_APPCODE, app.getAppCode())
+                                    .flatMap(z -> this.cacheService.evict(CACHE_NAME_APP_BY_APPID, app.getId()))
+                                    .flatMap(this.cacheService.evictAllFunction(ClientService.CACHE_NAME_CLIENT_URL))
+                                    .flatMap(this.cacheService.evictAllFunction(ClientUrlService.CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
+                                    .flatMap(this.cacheService.evictFunction(CACHE_NAME_APP_STATUS, app.getAppCode()))
+                                    .map(y -> x));
+                });
 
         return what
                 .switchIfEmpty(
@@ -286,6 +300,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                             existing.setAppAccessType(entity.getAppAccessType());
                             existing.setThumbUrl(entity.getThumbUrl());
                             existing.setAppUsageType(entity.getAppUsageType());
+                            existing.setStatus(entity.getStatus());
 
                             if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
                                 return Mono.just(existing);
@@ -938,4 +953,8 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 .toList()));
     }
 
+    public Mono<String> getAppStatus(String appCode) {
+
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_APP_STATUS, () -> this.getAppByCode(appCode).map(App::getStatus).map(Object::toString), appCode);
+    }
 }

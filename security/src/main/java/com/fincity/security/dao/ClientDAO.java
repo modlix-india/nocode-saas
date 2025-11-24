@@ -21,6 +21,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import org.jooq.*;
 import org.jooq.Record;
@@ -146,10 +147,13 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
         return Flux
                 .from(this.dslContext
-                        .select(SECURITY_CLIENT_URL.CLIENT_ID, SECURITY_CLIENT.CODE,
+                        .select(SECURITY_CLIENT_URL.CLIENT_ID,
+                                SECURITY_CLIENT.CODE,
                                 SECURITY_CLIENT_URL.URL_PATTERN,
                                 SECURITY_CLIENT_URL.APP_CODE)
                         .from(SECURITY_CLIENT_URL)
+                        .leftJoin(SECURITY_APP)
+                        .on(SECURITY_APP.APP_CODE.eq(SECURITY_CLIENT_URL.APP_CODE).and(SECURITY_APP.STATUS.eq(SecurityAppStatus.ACTIVE)))
                         .leftJoin(SECURITY_CLIENT)
                         .on(SECURITY_CLIENT.ID.eq(SECURITY_CLIENT_URL.CLIENT_ID)))
                 .map(e -> new ClientUrlPattern(e.value1()
@@ -302,7 +306,7 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 .leftJoin(SECURITY_V2_ROLE).on(SECURITY_V2_ROLE.ID.eq(SECURITY_PROFILE_ROLE.ROLE_ID))
                 .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_PROFILE.APP_ID))
                 .where(SECURITY_V2_ROLE.NAME.eq("Owner").and(appCondition)
-                .and(SECURITY_USER.CLIENT_ID.in(map.keySet())))
+                        .and(SECURITY_USER.CLIENT_ID.in(map.keySet())))
         ).collectMultimap(Record2::value1, Record2::value2);
     }
 

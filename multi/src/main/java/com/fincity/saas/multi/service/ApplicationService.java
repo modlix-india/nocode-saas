@@ -61,7 +61,7 @@ public class ApplicationService {
     private final ObjectMapper objectMapper;
 
     public ApplicationService(IFeignSecurityService securityService, IFeignCoreService coreService,
-            IFeignUIService uiService, MultiMessageResourceService messageResourceService, ObjectMapper objectMapper) {
+                              IFeignUIService uiService, MultiMessageResourceService messageResourceService, ObjectMapper objectMapper) {
         this.securityService = securityService;
         this.coreService = coreService;
         this.uiService = uiService;
@@ -78,8 +78,8 @@ public class ApplicationService {
 
         return FlatMapUtil.flatMapMonoWithNull(SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> ca.isSystemClient() ? Mono.just(true)
-                        : this.securityService.hasWriteAccess(appCode, ca.getClientCode()).flatMap(access -> {
+                        ca -> ca.isSystemClient() ? Mono.just(true)
+                                : this.securityService.hasWriteAccess(appCode, ca.getClientCode()).flatMap(access -> {
                             if (BooleanUtil.safeValueOf(access))
                                 return Mono.just(true);
 
@@ -87,50 +87,50 @@ public class ApplicationService {
                                     msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                                     MultiMessageResourceService.FORBIDDEN_CREATE, TRANSPORT);
                         }).map(e -> true),
-                (ca, access) -> this.securityService.makeTransport(ca.getAccessToken(), forwardedHost,
-                        forwardedPort, headerClientCode,
-                        headerAppCode, appCode),
+                        (ca, access) -> this.securityService.makeTransport(ca.getAccessToken(), forwardedHost,
+                                forwardedPort, headerClientCode,
+                                headerAppCode, appCode),
 
-                (ca, access, security) -> this.coreService.makeTransport(ca.getAccessToken(), forwardedHost,
-                        forwardedPort,
-                        headerClientCode, headerAppCode,
-                        Map.of(APP_CODE, appCode, CLIENT_CODE,
-                                CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
+                        (ca, access, security) -> this.coreService.makeTransport(ca.getAccessToken(), forwardedHost,
+                                forwardedPort,
+                                headerClientCode, headerAppCode,
+                                Map.of(APP_CODE, appCode, CLIENT_CODE,
+                                        CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
 
-                (ca, access, security, core) -> this.uiService.makeTransport(ca.getAccessToken(), forwardedHost,
-                        forwardedPort,
-                        headerClientCode, headerAppCode,
-                        Map.of(APP_CODE, appCode, CLIENT_CODE,
-                                CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
-                (ca, access, security, core, ui) -> {
-                    ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
-                    HttpHeaders headers = response.getHeaders();
-                    headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
-                    headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + appCode + "_"
-                            + headerClientCode + ".modl");
-                    try {
-                        Path tempDir = Files.createTempDirectory(TRANSPORT);
-                        Path path = tempDir.resolve("transport.zip");
-                        File file = path.toFile();
-                        try (FileSystem zipfs = FileSystems.newFileSystem(
-                                URI.create("jar:" + path.toUri().toString()),
-                                Map.of("create", "true"))) {
-                            Files.write(zipfs.getPath("/security.json"), security == null ? "{}".getBytes()
-                                    : ApplicationService.this.objectMapper.writeValueAsBytes(security));
-                            Files.write(zipfs.getPath("/core.cmodl"), core.array());
-                            Files.write(zipfs.getPath("/ui.umodl"), ui.array());
-                        }
-                        return zeroCopyResponse.writeWith(file, 0, file.length()).doFinally(e -> {
+                        (ca, access, security, core) -> this.uiService.makeTransport(ca.getAccessToken(), forwardedHost,
+                                forwardedPort,
+                                headerClientCode, headerAppCode,
+                                Map.of(APP_CODE, appCode, CLIENT_CODE,
+                                        CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
+                        (ca, access, security, core, ui) -> {
+                            ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
+                            HttpHeaders headers = response.getHeaders();
+                            headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
+                            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + appCode + "_"
+                                    + headerClientCode + ".modl");
                             try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException ex) {
-                                throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
+                                Path tempDir = Files.createTempDirectory(TRANSPORT);
+                                Path path = tempDir.resolve("transport.zip");
+                                File file = path.toFile();
+                                try (FileSystem zipfs = FileSystems.newFileSystem(
+                                        URI.create("jar:" + path.toUri().toString()),
+                                        Map.of("create", "true"))) {
+                                    Files.write(zipfs.getPath("/security.json"), security == null ? "{}".getBytes()
+                                            : ApplicationService.this.objectMapper.writeValueAsBytes(security));
+                                    Files.write(zipfs.getPath("/core.cmodl"), core.array());
+                                    Files.write(zipfs.getPath("/ui.umodl"), ui.array());
+                                }
+                                return zeroCopyResponse.writeWith(file, 0, file.length()).doFinally(e -> {
+                                    try {
+                                        Files.deleteIfExists(path);
+                                    } catch (IOException ex) {
+                                        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), ex);
+                                    }
+                                });
+                            } catch (IOException e) {
+                                throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
                             }
-                        });
-                    } catch (IOException e) {
-                        throw new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
-                    }
-                })
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.transport"));
     }
 
@@ -142,72 +142,72 @@ public class ApplicationService {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> {
+                        ca -> {
 
-                    if (!SecurityContextUtil.hasAuthority("Authorities.Application_CREATE",
-                            ca.getAuthorities())) {
-                        return this.messageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                MultiMessageResourceService.FORBIDDEN_CREATE,
-                                APPLICATION);
-                    }
+                            if (!SecurityContextUtil.hasAuthority("Authorities.Application_CREATE",
+                                    ca.getAuthorities())) {
+                                return this.messageResourceService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                        MultiMessageResourceService.FORBIDDEN_CREATE,
+                                        APPLICATION);
+                            }
 
-                    if (application.getAppId() == null)
-                        return Mono.just(Optional.<App>empty());
+                            if (application.getAppId() == null)
+                                return Mono.just(Optional.<App>empty());
 
-                    return this.securityService
-                            .getAppById(ca.getAccessToken(), forwardedHost, forwardedPort,
-                                    clientCode, headerAppCode,
-                                    application.getAppId().toString())
-                            .map(Optional::of);
-                },
+                            return this.securityService
+                                    .getAppById(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                            clientCode, headerAppCode,
+                                            application.getAppId().toString())
+                                    .map(Optional::of);
+                        },
 
-                (ca, app) -> {
+                        (ca, app) -> {
 
-                    if (!app.isEmpty())
-                        return Mono.just(app.get());
+                            if (!app.isEmpty())
+                                return Mono.just(app.get());
 
-                    if (StringUtil.safeIsBlank(application.getAppAccessType())
-                            || "OWN".equals(application.getAppAccessType())) {
-                        application.setAppAccessType("OWN");
-                    }
+                            if (StringUtil.safeIsBlank(application.getAppAccessType())
+                                    || "OWN".equals(application.getAppAccessType())) {
+                                application.setAppAccessType("OWN");
+                            }
 
-                    application.setClientId(ULongUtil.valueOf(ca.getUser().getClientId()));
+                            application.setClientId(ULongUtil.valueOf(ca.getUser().getClientId()));
 
-                    App secApp = new App();
-                    secApp.setAppCode(application.getAppCode());
-                    secApp.setAppName(application.getAppName());
-                    secApp.setAppType(application.getAppType());
-                    secApp.setAppAccessType(application.getAppAccessType());
-                    secApp.setClientId(
-                            application.getClientId() == null ? ca.getUser().getClientId()
-                                    : application.getClientId().toBigInteger());
+                            App secApp = new App();
+                            secApp.setAppCode(application.getAppCode());
+                            secApp.setAppName(application.getAppName());
+                            secApp.setAppType(application.getAppType());
+                            secApp.setAppAccessType(application.getAppAccessType());
+                            secApp.setClientId(
+                                    application.getClientId() == null ? ca.getUser().getClientId()
+                                            : application.getClientId().toBigInteger());
 
-                    return this.securityService
-                            .createApp(ca.getAccessToken(), forwardedHost, forwardedPort,
-                                    clientCode, headerAppCode, secApp)
-                            .flatMap(newApp -> this.addDefinition(ca.getAccessToken(),
-                                    forwardedHost, forwardedPort,
-                                    clientCode, headerAppCode, application.setAppCode(newApp.getAppCode()))
-                                    .map(e -> newApp));
-                })
+                            return this.securityService
+                                    .createApp(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                            clientCode, headerAppCode, secApp)
+                                    .flatMap(newApp -> this.addDefinition(ca.getAccessToken(),
+                                                    forwardedHost, forwardedPort,
+                                                    clientCode, headerAppCode, application.setAppCode(newApp.getAppCode()))
+                                            .map(e -> newApp));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.createApplication"));
     }
 
     public Mono<Boolean> addDefinition(String accessToken,
-            String forwardedHost,
-            String forwardedPort,
-            String clientCode,
-            String headerAppCode,
-            MultiApp application) {
+                                       String forwardedHost,
+                                       String forwardedPort,
+                                       String clientCode,
+                                       String headerAppCode,
+                                       MultiApp application) {
 
         boolean hasDefinition = !StringUtil.safeIsBlank(application.getTransportDefinitionURL())
                 || (application.getTransportDefinition() != null
-                        && !application.getTransportDefinition().isEmpty())
+                && !application.getTransportDefinition().isEmpty())
                 || !StringUtil
-                        .safeIsBlank(application.getEncodedModl());
+                .safeIsBlank(application.getEncodedModl());
 
         if (!hasDefinition)
             return Mono.just(false);
@@ -227,12 +227,12 @@ public class ApplicationService {
         if (!StringUtil.safeIsBlank(application.getTransportDefinitionURL())) {
 
             fileMono = WebClient.builder().exchangeStrategies(
-                    ExchangeStrategies.builder().codecs(
-                            clientCodecConfigurer -> clientCodecConfigurer
-                                    .defaultCodecs()
-                                    .maxInMemorySize(
-                                            50 * 1024 * 1024))
-                            .build())
+                            ExchangeStrategies.builder().codecs(
+                                            clientCodecConfigurer -> clientCodecConfigurer
+                                                    .defaultCodecs()
+                                                    .maxInMemorySize(
+                                                            50 * 1024 * 1024))
+                                    .build())
                     .baseUrl(
                             application.getTransportDefinitionURL())
                     .build().get().retrieve().bodyToMono(byte[].class)
@@ -255,38 +255,38 @@ public class ApplicationService {
         final Mono<Path> finalFileMono = fileMono;
         return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> finalFileMono,
+                        () -> finalFileMono,
 
-                f -> this.securityService
-                        .findBaseClientCodeForOverride(accessToken, forwardedHost,
-                                forwardedPort, clientCode,
-                                headerAppCode, application.getAppCode())
-                        .map(Tuple2::getT1),
+                        f -> this.securityService
+                                .findBaseClientCodeForOverride(accessToken, forwardedHost,
+                                        forwardedPort, clientCode,
+                                        headerAppCode, application.getAppCode())
+                                .map(Tuple2::getT1),
 
-                (f, cc) -> {
-                    try {
-                        return Mono.just(Files.readString(f).trim().startsWith("{"));
-                    } catch (IOException ex) {
-                        FlatMapUtil.logValue(ex.toString());
-                        return Mono.just(false);
-                    }
-                },
+                        (f, cc) -> {
+                            try {
+                                return Mono.just(Files.readString(f).trim().startsWith("{"));
+                            } catch (IOException ex) {
+                                FlatMapUtil.logValue(ex.toString());
+                                return Mono.just(false);
+                            }
+                        },
 
-                (f, cc, isJson) -> {
-                    ApplicationTransportParameters params = new ApplicationTransportParameters()
-                            .setFile(f)
-                            .setAccessToken(accessToken)
-                            .setForwardedHost(forwardedHost)
-                            .setForwardedPort(forwardedPort)
-                            .setClientCode(clientCode)
-                            .setHeaderAppCode(headerAppCode)
-                            .setIsBaseApp(true)
-                            .setCc(cc).setAppCode(application.getAppCode());
+                        (f, cc, isJson) -> {
+                            ApplicationTransportParameters params = new ApplicationTransportParameters()
+                                    .setFile(f)
+                                    .setAccessToken(accessToken)
+                                    .setForwardedHost(forwardedHost)
+                                    .setForwardedPort(forwardedPort)
+                                    .setClientCode(clientCode)
+                                    .setHeaderAppCode(headerAppCode)
+                                    .setIsBaseApp(true)
+                                    .setCc(cc).setAppCode(application.getAppCode());
 
-                    return BooleanUtil.safeValueOf(isJson)
-                            ? this.startJSONTransport(params)
-                            : this.startZipTransport(params);
-                })
+                            return BooleanUtil.safeValueOf(isJson)
+                                    ? this.startJSONTransport(params)
+                                    : this.startZipTransport(params);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.addDefinition"));
 
     }
@@ -419,7 +419,7 @@ public class ApplicationService {
 
                     if (p.getParent().getFileName() != null
                             && (p.getParent().getFileName().toString().equals(APPLICATION) ||
-                                    p.getParent().getFileName().toString().equals("Filler")))
+                            p.getParent().getFileName().toString().equals("Filler")))
                         m.put("name", appCode);
 
                     Files.write(p, this.objectMapper.writeValueAsBytes(m),
@@ -440,13 +440,13 @@ public class ApplicationService {
     }
 
     public Mono<Boolean> updateApplication(String forwardedHost,
-            String forwardedPort, String clientCode, String headerAppCode, MultiAppUpdate application) {
+                                           String forwardedPort, String clientCode, String headerAppCode, MultiAppUpdate application) {
 
         boolean hasDefinition = !StringUtil.safeIsBlank(application.getTransportDefinitionURL())
                 || (application.getTransportDefinition() != null
-                        && !application.getTransportDefinition().isEmpty())
+                && !application.getTransportDefinition().isEmpty())
                 || !StringUtil
-                        .safeIsBlank(application.getEncodedModl());
+                .safeIsBlank(application.getEncodedModl());
 
         if (!hasDefinition)
             return Mono.just(false);
@@ -467,12 +467,12 @@ public class ApplicationService {
         if (!StringUtil.safeIsBlank(application.getTransportDefinitionURL())) {
 
             fileMono = WebClient.builder().exchangeStrategies(
-                    ExchangeStrategies.builder().codecs(
-                            clientCodecConfigurer -> clientCodecConfigurer
-                                    .defaultCodecs()
-                                    .maxInMemorySize(
-                                            50 * 1024 * 1024))
-                            .build())
+                            ExchangeStrategies.builder().codecs(
+                                            clientCodecConfigurer -> clientCodecConfigurer
+                                                    .defaultCodecs()
+                                                    .maxInMemorySize(
+                                                            50 * 1024 * 1024))
+                                    .build())
                     .baseUrl(
                             application.getTransportDefinitionURL())
                     .build().get().retrieve().bodyToMono(byte[].class)
@@ -496,42 +496,42 @@ public class ApplicationService {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                () -> finalFileMono,
+                        () -> finalFileMono,
 
-                f -> SecurityContextUtil.getUsersContextAuthentication()
-                        .map(ContextAuthentication::getAccessToken),
+                        f -> SecurityContextUtil.getUsersContextAuthentication()
+                                .map(ContextAuthentication::getAccessToken),
 
-                (f, accessToken) -> this.securityService
-                        .findBaseClientCodeForOverride(accessToken, forwardedHost,
-                                forwardedPort, clientCode,
-                                headerAppCode, application.getAppCode())
-                        .map(Tuple2::getT1),
+                        (f, accessToken) -> this.securityService
+                                .findBaseClientCodeForOverride(accessToken, forwardedHost,
+                                        forwardedPort, clientCode,
+                                        headerAppCode, application.getAppCode())
+                                .map(Tuple2::getT1),
 
-                (f, accessToken, cc) -> {
-                    try {
-                        return Mono.just(Files.readString(f).trim().startsWith("{"));
-                    } catch (IOException ex) {
-                        FlatMapUtil.logValue(ex.toString());
-                        return Mono.just(false);
-                    }
-                },
+                        (f, accessToken, cc) -> {
+                            try {
+                                return Mono.just(Files.readString(f).trim().startsWith("{"));
+                            } catch (IOException ex) {
+                                FlatMapUtil.logValue(ex.toString());
+                                return Mono.just(false);
+                            }
+                        },
 
-                (f, accessToken, cc, isJson) -> {
-                    ApplicationTransportParameters params = new ApplicationTransportParameters()
-                            .setFile(f)
-                            .setAccessToken(accessToken)
-                            .setForwardedHost(forwardedHost)
-                            .setForwardedPort(forwardedPort)
-                            .setClientCode(clientCode)
-                            .setHeaderAppCode(headerAppCode)
-                            .setIsBaseApp(application.getIsBaseUpdate())
-                            .setCc(cc)
-                            .setAppCode(application.getAppCode());
+                        (f, accessToken, cc, isJson) -> {
+                            ApplicationTransportParameters params = new ApplicationTransportParameters()
+                                    .setFile(f)
+                                    .setAccessToken(accessToken)
+                                    .setForwardedHost(forwardedHost)
+                                    .setForwardedPort(forwardedPort)
+                                    .setClientCode(clientCode)
+                                    .setHeaderAppCode(headerAppCode)
+                                    .setIsBaseApp(application.getIsBaseUpdate())
+                                    .setCc(cc)
+                                    .setAppCode(application.getAppCode());
 
-                    return BooleanUtil.safeValueOf(isJson)
-                            ? this.startJSONTransport(params)
-                            : this.startZipTransport(params);
-                })
+                            return BooleanUtil.safeValueOf(isJson)
+                                    ? this.startJSONTransport(params)
+                                    : this.startZipTransport(params);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.updateApplication"));
     }
 
@@ -570,41 +570,65 @@ public class ApplicationService {
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> {
-                    try {
-                        ULong id = ULong.valueOf(appCodeOrId);
-                        return this.securityService.getAppById(ca.getAccessToken(), forwardedHost, forwardedPort,
-                                clientCode, headerAppCode, id.toString());
-                    } catch (Exception ex) {
-                        return this.securityService.getAppByCode(appCodeOrId);
-                    }
-                },
+                        ca -> {
+                            try {
+                                ULong id = ULong.valueOf(appCodeOrId);
+                                return this.securityService.getAppById(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                        clientCode, headerAppCode, id.toString());
+                            } catch (Exception ex) {
+                                return this.securityService.getAppByCode(appCodeOrId);
+                            }
+                        },
 
-                (ca, app) -> this.uiService.deleteAll(ca.getAccessToken(),
-                        forwardedHost,
-                        forwardedPort,
-                        clientCode,
-                        headerAppCode,
-                        app.getAppCode()),
+                        (ca, app) -> {
 
-                (ca, app, x) -> this.coreService.deleteAll(ca.getAccessToken(),
-                        forwardedHost,
-                        forwardedPort,
-                        clientCode,
-                        headerAppCode,
-                        app.getAppCode()),
+                            if ("ACTIVE".equals(app.getStatus()))
+                                return this.securityService.deleteByAppId(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                        clientCode, headerAppCode, app.getId());
 
-                (ca, app, x, y) -> this.securityService.deleteEverything(ca.getAccessToken(),
-                        forwardedHost,
-                        forwardedPort,
-                        clientCode,
-                        headerAppCode,
-                        app.getId().longValue()),
-
-                (ca, app, x, y, z) -> Mono.just(x && y && z))
+                            return this.fullDeleteApplication(app, forwardedHost, forwardedPort, clientCode, headerAppCode);
+                        }
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.deleteApplication"))
+                .defaultIfEmpty(Boolean.FALSE);
+    }
+
+    private Mono<Boolean> fullDeleteApplication(
+            App app,
+            String forwardedHost,
+            String forwardedPort,
+            String clientCode,
+            String headerAppCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        (ca) -> this.uiService.deleteAll(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getAppCode()),
+
+                        (ca, x) -> this.coreService.deleteAll(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getAppCode()),
+
+                        (ca, x, y) -> this.securityService.deleteEverything(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getId().longValue()),
+
+                        (ca, x, y, z) -> Mono.just(x && y && z))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.fullDeleteApplication"))
                 .defaultIfEmpty(Boolean.FALSE);
     }
 }

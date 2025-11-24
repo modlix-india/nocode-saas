@@ -219,5 +219,8 @@ public interface IFeignSecurityService {
 
     @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
     Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId,
-            @RequestBody UsersListRequest request);
+                                                        @RequestBody UsersListRequest request);
+
+    @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
+    Mono<String> getAppStatus(@PathVariable String appCode);
 }
