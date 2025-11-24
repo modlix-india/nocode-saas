@@ -1,10 +1,10 @@
-name: config-ci
+name: config-prod-ci
 
 on:
   push:
     paths:
       - "config/**"
-      - ".github/workflows/config.yml"
+      - ".github/workflows/config-prod.yml"
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OCIR_HOST: <region>.ocir.io
-      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS }}/config
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_PROD }}/config
 
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +39,11 @@ jobs:
           cp config/target/config-1.1.0.jar target/
 
       # - name: Login to OCIR
-      #   run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
+      #   run: echo "${{ secrets.OCIR_AUTH_TOKEN_PROD }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME_PROD }}" --password-stdin
 
       - name: Build docker image
         run: |
-          docker build -t test/config:${{ github.sha }} -f config/Dockerfile .
-          docker tag test/config:${{ github.sha }} test/config:latest
+          docker build -t prod/config:${{ github.sha }} -f config/Dockerfile .
+          docker tag prod/config:${{ github.sha }} test/config:latest
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
