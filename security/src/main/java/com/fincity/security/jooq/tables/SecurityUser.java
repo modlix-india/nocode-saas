@@ -128,6 +128,11 @@ public class SecurityUser extends TableImpl<SecurityUserRecord> {
     public final TableField<SecurityUserRecord, String> LAST_NAME = createField(DSL.name("LAST_NAME"), SQLDataType.VARCHAR(128), this, "Last name");
 
     /**
+     * The column <code>security.security_user.DESIGNATION</code>. Designation
+     */
+    public final TableField<SecurityUserRecord, String> DESIGNATION = createField(DSL.name("DESIGNATION"), SQLDataType.VARCHAR(256), this, "Designation");
+
+    /**
      * The column <code>security.security_user.MIDDLE_NAME</code>. Middle name
      */
     public final TableField<SecurityUserRecord, String> MIDDLE_NAME = createField(DSL.name("MIDDLE_NAME"), SQLDataType.VARCHAR(128), this, "Middle name");

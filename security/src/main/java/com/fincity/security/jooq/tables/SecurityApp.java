@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppDependency.SecurityAppDependencyPath;
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
@@ -127,6 +128,11 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Business, X Any, and so on so forth.
      */
     public final TableField<SecurityAppRecord, SecurityAppAppUsageType> APP_USAGE_TYPE = createField(DSL.name("APP_USAGE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("S", SQLDataType.VARCHAR)).asEnumDataType(SecurityAppAppUsageType.class), this, "S - Standalone (Mostly for sites), B - Business only, B to C Consumer, B Business, X Any, and so on so forth.");
+
+    /**
+     * The column <code>security.security_app.STATUS</code>.
+     */
+    public final TableField<SecurityAppRecord, SecurityAppStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityAppStatus.class), this, "");
 
     /**
      * The column <code>security.security_app.CREATED_BY</code>. ID of the user
