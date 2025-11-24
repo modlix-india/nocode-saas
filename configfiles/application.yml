@@ -1,7 +1,7 @@
 logging:
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n"
+    console: '%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss.sss} %-5level %r --- %X{x-debug} [%thread] %logger{40} : %msg%n'
     json:
       add:
         instanceId: ${INSTANCE_ID:default}
@@ -39,9 +39,9 @@ management:
         enabled: true
   endpoints:
     web:
-      expose: "*"
+      expose: '*'
       exposure:
-        include: "*"
+        include: '*'
 
 endpoints:
   enabled: true
@@ -53,6 +53,24 @@ spring:
     multipart:
       max-file-size: -1
       max-request-size: -1
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            readTimeout: 60000
+            connectTimeout: 60000
+
+reactive:
+  feign:
+    client:
+      config:
+        default:
+          options:
+            connectTimeoutMillis: 60000
+            readTimeoutMillis: 60000
+            writeTimeoutMillis: 60000
+            responseTimeoutMillis: 60000
 
 jwt:
   key: ficity_secret_token_for_the_new_saas_application_it_requires_a_very_long_key_to_sign_tokens

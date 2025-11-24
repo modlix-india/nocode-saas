@@ -10,18 +10,19 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class App implements Serializable {
 
-	private BigInteger id;
-	private BigInteger clientId;
-	private String appName;
-	private String appCode;
-	private String appType;
-	private String appAccessType;
-	private boolean isTemplate;
+    private BigInteger id;
+    private BigInteger clientId;
+    private String appName;
+    private String appCode;
+    private String appType;
+    private String appAccessType;
+    private boolean isTemplate;
 
-	private String clientCode; // This the client code of the client who owns the app usually the managing
-								// client.
+    private String clientCode; // This the client code of the client who owns the app usually the managing
+    // client.
 
-	// These fields will be populated only in case of explicit app details request.
-	private BigInteger explicitClientId;
-	private String explicitOwnerClientCode; // This is the client code of the client who will be the owner of the app.
+    // These fields will be populated only in case of explicit app details request.
+    private BigInteger explicitClientId;
+    private String explicitOwnerClientCode; // This is the client code of the client who will be the owner of the app.
+    private String status;
 }
