@@ -141,6 +141,7 @@ public class ProductWalkInFormService
                     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
                     queryParams.add(User.Fields.statusCode, "ACTIVE");
 					queryParams.add("appCode", appCode);
+					queryParams.add("fetchProfiles", Boolean.TRUE.toString());
                     return super.securityService.getClientUserInternal(List.of(client.getId()), queryParams);
                 });
     }
