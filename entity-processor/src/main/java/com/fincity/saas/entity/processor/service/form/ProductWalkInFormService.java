@@ -7,6 +7,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.base.BaseDto;
 import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
@@ -139,6 +140,7 @@ public class ProductWalkInFormService
                 (client, hasAccess) -> {
                     MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
                     queryParams.add(User.Fields.statusCode, "ACTIVE");
+					queryParams.add("appCode", appCode);
                     return super.securityService.getClientUserInternal(List.of(client.getId()), queryParams);
                 });
     }
