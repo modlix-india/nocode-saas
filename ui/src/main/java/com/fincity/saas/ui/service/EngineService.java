@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +41,8 @@ public class EngineService {
     private final StyleService styleService;
     private final StyleThemeService themeService;
 
+    private final FeignAuthenticationService securityService;
+
     private final CacheService cacheService;
 
     private static final ResponseEntity<Application> APPLICATION_NOT_FOUND = ResponseEntity
@@ -58,16 +62,24 @@ public class EngineService {
             .build();
 
     public EngineService(ApplicationService appService, PageService pageService, StyleService styleService,
-                         StyleThemeService themeService,
+                         StyleThemeService themeService, FeignAuthenticationService securityService,
                          CacheService cacheService) {
         this.appService = appService;
         this.pageService = pageService;
         this.cacheService = cacheService;
         this.styleService = styleService;
         this.themeService = themeService;
+        this.securityService = securityService;
     }
 
     public Mono<ResponseEntity<Application>> readApplication(String eTag, String appCode, String clientCode) {
+
+        return this.securityService.getAppStatusByCode(appCode)
+                .filter("ACTIVE"::equals)
+                .flatMap(x -> this.internalReadApplication(eTag, appCode, clientCode));
+    }
+
+    private Mono<ResponseEntity<Application>> internalReadApplication(String eTag, String appCode, String clientCode) {
 
         if (eTag == null || eTag.isEmpty()) {
             return this.appService.read(appCode, appCode, clientCode)

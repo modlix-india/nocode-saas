@@ -29,6 +29,8 @@ public class FeignAuthenticationService implements IAuthenticationService {
     private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
     private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
 
+    private static final String CACHE_NAME_APP_STATUS = "appStatus";
+
     @Autowired(required = false)
     private IFeignSecurityService feignAuthService;
 
@@ -140,5 +142,10 @@ public class FeignAuthenticationService implements IAuthenticationService {
         return cacheService.cacheValueOrGet(CACHE_NAME_APP_DEP_LIST,
                 () -> this.feignAuthService.getDependencies(appCode),
                 appCode);
+    }
+
+    public Mono<String> getAppStatusByCode(String appCode) {
+        return cacheService.cacheValueOrGet(CACHE_NAME_APP_STATUS,
+                () -> this.feignAuthService.getAppStatus(appCode), appCode);
     }
 }

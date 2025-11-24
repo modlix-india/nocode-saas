@@ -1,7 +1,5 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
-
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -62,6 +60,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -487,12 +486,13 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 users -> queryParams != null ? this.fillDetails(users, queryParams) : Mono.just(users));
     }
 
-    public Mono<List<User>> readByClientIds(List<ULong> clientIds, AbstractCondition condition, MultiValueMap<String, String> queryParams) {
+    public Mono<List<User>> readByClientIds(List<ULong> clientIds, AbstractCondition condition,
+            MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readAllFilter(ComplexCondition.and(new FilterCondition()
-                                .setField("clientId")
-                                .setOperator(FilterConditionOperator.IN)
-                                .setMultiValue(clientIds), condition))
+                        .setField("clientId")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(clientIds), condition))
                         .collectList(),
                 users -> this.fillDetails(users, queryParams));
     }
@@ -1195,25 +1195,26 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> userId != null
-                                ? this.readInternal(userId)
-                                : this.readInternal(
-                                        ULongUtil.valueOf(ca.getUser().getId())),
-                        (ca, user) -> ca.isSystemClient()
-                                ? Mono.just(Boolean.TRUE)
-                                : this.clientService.isBeingManagedBy(
-                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
-                        (ca, user, managed) -> {
-                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> userId != null
+                        ? this.readInternal(userId)
+                        : this.readInternal(
+                                ULongUtil.valueOf(ca.getUser().getId())),
+                (ca, user) -> ca.isSystemClient()
+                        ? Mono.just(Boolean.TRUE)
+                        : this.clientService.isBeingManagedBy(
+                                ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                (ca, user, managed) -> {
+                    if (Boolean.FALSE.equals(managed))
+                        return Mono.empty();
 
-                            return user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE)
-                                    ? Mono.just(Boolean.TRUE)
-                                    : super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
-                                            .map(x -> Boolean.TRUE);
-                        },
-                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
-                                .map(x -> updated))
+                    return user.getStatusCode().equals(SecurityUserStatusCode.ACTIVE)
+                            ? Mono.just(Boolean.TRUE)
+                            : super.update(user.setStatusCode(SecurityUserStatusCode.ACTIVE))
+                                    .map(x -> Boolean.TRUE);
+                },
+                (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                        .<Boolean>map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1222,25 +1223,26 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     public Mono<Boolean> makeUserInActive(ULong userId) {
 
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> userId != null
-                                ? this.readInternal(userId)
-                                : this.readInternal(
-                                        ULongUtil.valueOf(ca.getUser().getId())),
-                        (ca, user) -> ca.isSystemClient()
-                                ? Mono.just(Boolean.TRUE)
-                                : this.clientService.isBeingManagedBy(
-                                        ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
-                        (ca, user, managed) -> {
-                            if (Boolean.FALSE.equals(managed)) return Mono.empty();
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> userId != null
+                        ? this.readInternal(userId)
+                        : this.readInternal(
+                                ULongUtil.valueOf(ca.getUser().getId())),
+                (ca, user) -> ca.isSystemClient()
+                        ? Mono.just(Boolean.TRUE)
+                        : this.clientService.isBeingManagedBy(
+                                ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                (ca, user, managed) -> {
+                    if (Boolean.FALSE.equals(managed))
+                        return Mono.empty();
 
-                            return user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE)
-                                    ? Mono.just(Boolean.TRUE)
-                                    : super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
-                                            .map(x -> Boolean.TRUE);
-                        },
-                        (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
-                                .map(x -> updated))
+                    return user.getStatusCode().equals(SecurityUserStatusCode.INACTIVE)
+                            ? Mono.just(Boolean.TRUE)
+                            : super.update(user.setStatusCode(SecurityUserStatusCode.INACTIVE))
+                                    .map(x -> Boolean.TRUE);
+                },
+                (ca, user, managed, updated) -> this.evictCache(user.getId(), user.getClientId())
+                        .<Boolean>map(x -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.makeUserInActive"))
                 .switchIfEmpty(this.forbiddenError(SecurityMessageResourceService.ACTIVE_INACTIVE_ERROR, "user"));
     }
@@ -1447,9 +1449,10 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     .flatMap(user -> this.readInternal(user.getCreatedBy()).map(user::setCreatedByUser));
 
         if (fetchDesignation)
-            userFlux = userFlux.filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
-                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId()).map(user::setDesignation));
-
+            userFlux = userFlux
+                    .filter(user -> user.getDesignationId() != null && user.getDesignationId().intValue() != 0)
+                    .flatMap(user -> this.designationService.readInternal(user.getDesignationId())
+                            .map(user::setDesignation));
 
         if (fetchReportingTo)
             userFlux = userFlux.filter(user -> user.getReportingTo() != null && user.getReportingTo().intValue() != 0)
@@ -1472,8 +1475,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 request.getUserIds(), request.getAppCode(), request.getClientId(), request.getClientCode());
     }
 
-	public Mono<EntityProcessorUser> getUserForEntityProcessor(ULong userId, UsersListRequest request) {
-		return this.dao.getUserForEntityProcessor(
-				userId, request.getAppCode(), request.getClientId(), request.getClientCode());
-	}
+    public Mono<EntityProcessorUser> getUserForEntityProcessor(ULong userId, UsersListRequest request) {
+        return this.dao.getUserForEntityProcessor(
+                userId, request.getAppCode(), request.getClientId(), request.getClientCode());
+    }
 }

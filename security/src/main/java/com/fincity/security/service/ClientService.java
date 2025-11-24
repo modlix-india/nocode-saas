@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -166,12 +167,12 @@ public class ClientService
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()
-                .flatMapIterable(e -> e)
-                .filter(e -> e.isValidClientURLPattern(uriHost, uriPort))
-                .take(1)
-                .collectList()
-                .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
-                .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost))), uriScheme, uriHost, ":",
+                        .flatMapIterable(e -> e)
+                        .filter(e -> e.isValidClientURLPattern(uriHost, uriPort))
+                        .take(1)
+                        .collectList()
+                        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
+                        .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost))), uriScheme, uriHost, ":",
                 uriPort);
     }
 
@@ -193,6 +194,7 @@ public class ClientService
             return Mono.empty();
 
         return this.appService.getAppByCode(code)
+                .filter(e -> e.getStatus().equals(SecurityAppStatus.ACTIVE))
                 .flatMap(app -> this.getClientInfoById(app.getClientId())
                         .map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
     }
@@ -204,7 +206,7 @@ public class ClientService
 
     @SuppressWarnings("unchecked")
     public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, ULong appId,
-            AuthenticationPasswordType passwordType) {
+                                                                 AuthenticationPasswordType passwordType) {
 
         IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passwordType);
 
@@ -212,7 +214,7 @@ public class ClientService
     }
 
     public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, String appCode,
-            AuthenticationPasswordType passwordType) {
+                                                                 AuthenticationPasswordType passwordType) {
         return this.appService.getAppId(appCode).flatMap(appId -> getClientAppPolicy(clientId, appId, passwordType));
     }
 
@@ -304,14 +306,14 @@ public class ClientService
     }
 
     public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong appId, ULong userId,
-            AuthenticationPasswordType passwordType, String password) {
+                                                AuthenticationPasswordType passwordType, String password) {
         return policyServices.get(passwordType).checkAllConditions(clientId, appId, userId, password)
                 .switchIfEmpty(Mono.just(Boolean.TRUE));
     }
 
     @SuppressWarnings("unchecked")
     public <T extends AbstractPolicy> Mono<Boolean> validatePasswordPolicy(T policy, ULong userId,
-            AuthenticationPasswordType passType, String password) {
+                                                                           AuthenticationPasswordType passType, String password) {
 
         IPolicyService<T> service = (IPolicyService<T>) this.policyServices.get(passType);
 
@@ -319,7 +321,7 @@ public class ClientService
     }
 
     public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,
-            AuthenticationPasswordType passwordType, String password) {
+                                                AuthenticationPasswordType passwordType, String password) {
         return this.appService.getAppByCode(appCode)
                 .flatMap(app -> this.validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
                 .switchIfEmpty(Mono.just(Boolean.TRUE));
@@ -353,17 +355,17 @@ public class ClientService
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-                        .getClientId()))),
+                        ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+                                .getClientId()))),
 
-                (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
+                        (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                                : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
 
-                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
-                        ? this.dao.makeClientActiveIfInActive(clientId)
-                        : Mono.empty())
+                        (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
+                                ? this.dao.makeClientActiveIfInActive(clientId)
+                                : Mono.empty())
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
@@ -377,17 +379,17 @@ public class ClientService
 
         return FlatMapUtil.flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-                        .getClientId()))),
+                        ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+                                .getClientId()))),
 
-                (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+                        (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                                : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
                                 .getClientId()), id),
 
-                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
-                        : Mono.empty())
+                        (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
+                                : Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -448,7 +450,7 @@ public class ClientService
     }
 
     public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong appClientId, ULong urlClientId,
-            Client client) {
+                                                      Client client) {
 
         return FlatMapUtil.flatMapMono(
                 () -> this.getClientLevelType(client.getId(), appId),
@@ -475,9 +477,9 @@ public class ClientService
     public Mono<List<Client>> readByIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readAllFilter(new FilterCondition()
-                        .setField("id")
-                        .setOperator(FilterConditionOperator.IN)
-                        .setMultiValue(clientIds))
+                                .setField("id")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))
                         .collectList(),
                 clients -> this.fillDetails(clients, queryParams));
     }
@@ -523,7 +525,7 @@ public class ClientService
                             .map(userMap -> map.values().stream()
                                     .map(client -> idsMap.get(client.getId()) == null ? client
                                             : client.setOwners(
-                                                    idsMap.get(client.getId()).stream().map(userMap::get).toList()))
+                                            idsMap.get(client.getId()).stream().map(userMap::get).toList()))
                                     .toList()));
 
         return clientsMono;
@@ -537,13 +539,13 @@ public class ClientService
 
         return FlatMapUtil.flatMapMono(
 
-                () -> this.getClientInfoById(clientId),
+                        () -> this.getClientInfoById(clientId),
 
-                client -> this.dao.getOwnersPerClient(Map.of(clientId, client), appCode,
-                        appId == null ? null : appId.toString()),
+                        client -> this.dao.getOwnersPerClient(Map.of(clientId, client), appCode,
+                                appId == null ? null : appId.toString()),
 
-                (client, owners) -> this.userService
-                        .getEmailsOfUsers(owners.values().stream().flatMap(Collection::stream).toList()))
+                        (client, owners) -> this.userService
+                                .getEmailsOfUsers(owners.values().stream().flatMap(Collection::stream).toList()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getOwnersEmails"));
     }
 }
