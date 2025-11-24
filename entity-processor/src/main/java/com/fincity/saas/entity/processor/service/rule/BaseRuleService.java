@@ -161,9 +161,8 @@ public abstract class BaseRuleService<
                         (access, entity) ->
                                 this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
                         (access, entity, rules) -> this.shiftOrdersAndUpdate(access, entity, rules)
-                                .then(super.deleteInternal(access, entity)),
-                        (access, entity, rules, deleted) ->
-                                this.deleteUserDistribution(access, entity).then(Mono.just(deleted)))
+                                .then(this.deleteUserDistribution(access, entity)),
+                        (access, entity, rules, udDeleted) -> super.deleteInternal(access, entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
     }
 
