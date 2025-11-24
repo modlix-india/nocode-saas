@@ -1,9 +1,9 @@
-name: entity-processor-ci
+name: entity-processor-prod-ci
 on:
   push:
     paths:
       - "services/entity-processor/**"
-      - ".github/workflows/processor.yml"
+      - ".github/workflows/processor-prod.yml"
   workflow_dispatch:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OCIR_HOST: <region>.ocir.io
-      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS }}/entity-processor
+      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_PROD }}/entity-processor
     steps:
       - uses: actions/checkout@v4
 
@@ -38,12 +38,12 @@ jobs:
       
       
       # - name: Login to OCIR
-      #  run: echo "${{ secrets.OCIR_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME }}" --password-stdin
+      #  run: echo "${{ secrets.OCIR_AUTH_TOKEN_PROD }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME_PROD }}" --password-stdin
 
       - name: Build docker image
         run: |
-          docker build -t test/entity-processor:${{ github.sha }} -f entity-processor/Dockerfile .
-          docker tag test/entity-processor:${{ github.sha }} test/entity-processor:latest
+          docker build -t prod/entity-processor:${{ github.sha }} -f entity-processor/Dockerfile .
+          docker tag prod/entity-processor:${{ github.sha }} test/entity-processor:latest
           # docker push $OCIR_REPO:${{ github.sha }}
           # docker push $OCIR_REPO:latest
 
