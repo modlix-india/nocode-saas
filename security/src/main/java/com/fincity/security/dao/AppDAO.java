@@ -389,12 +389,11 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong appId, BigInteger bigInteger) {
-        return Mono.justOrEmpty(
+        return Mono.from(
                         this.dslContext.selectCount()
                                 .from(SECURITY_APP_ACCESS)
                                 .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
-                                        .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger))))
-                                .fetchOne())
+                                        .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger)))))
                 .map(Record1::value1)
                 .map(e -> e == 0);
     }
@@ -425,10 +424,8 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
             return FlatMapUtil.flatMapMono(
 
-                    () ->
-
-                            Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
-                                    .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
+                    () -> Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
+                            .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
 
                     a -> Mono.zip(urlIds, permissionIds, roleIds),
 
@@ -459,8 +456,10 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
                     ),
 
-                    (a, tuple, requests, x) -> Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
-                            .where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1));
+                    (a, tuple, requests, x) -> Mono.from(dsl.delete(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.APP_ID.eq(appId))).map(e -> e == 1),
+                    (a, tuple, requests, x, y) ->
+                            Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
+                                    .where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1));
         })).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
     }
 

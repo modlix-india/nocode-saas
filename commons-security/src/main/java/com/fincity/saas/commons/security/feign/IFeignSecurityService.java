@@ -1,13 +1,8 @@
 package com.fincity.saas.commons.security.feign;
 
-import com.fincity.saas.commons.model.Query;
-import com.fincity.saas.commons.security.dto.App;
-import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.model.EntityProcessorUser;
-import com.fincity.saas.commons.security.model.NotificationUser;
-import com.fincity.saas.commons.security.model.User;
-import com.fincity.saas.commons.security.model.UsersListRequest;
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
@@ -19,13 +14,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.security.dto.App;
+import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
+import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.security.model.UsersListRequest;
+
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
-
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
 
 @ReactiveFeignClient(name = "security")
 public interface IFeignSecurityService {
@@ -129,8 +129,7 @@ public interface IFeignSecurityService {
             @RequestHeader("appCode") String headerAppCode,
             @RequestBody Object securityDefinition);
 
-    @GetMapping(
-            "${security.feign.findBaseClientCodeForOverride:/api/security/applications/findBaseClientCode/{applicationCode}}")
+    @GetMapping("${security.feign.findBaseClientCodeForOverride:/api/security/applications/findBaseClientCode/{applicationCode}}")
     Mono<Tuple2<String, Boolean>> findBaseClientCodeForOverride(
             @RequestHeader(name = "Authorization", required = false) String authorization,
             @RequestHeader("X-Forwarded-Host") String forwardedHost,
@@ -145,7 +144,7 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getAppUrl:/api/security/clienturls/internal/applications/property/url}")
     Mono<String> getAppUrl(@RequestParam String appCode, @RequestParam(required = false) String clientCode);
 
-    @DeleteMapping("${security.feign.deleteEveryting:/api/security/applications/{id}}")
+    @DeleteMapping("${security.feign.deleteEveryting:/api/security/applications/everything/{id}}")
     Mono<Boolean> deleteEverything(
             @RequestHeader(name = "Authorization", required = false) String authorization,
             @RequestHeader("X-Forwarded-Host") String forwardedHost,
@@ -164,9 +163,7 @@ public interface IFeignSecurityService {
             @RequestParam("deleteAppCode") String deleteAppCode,
             @RequestParam("deleteClientCode") String deleteClientCode);
 
-    @GetMapping(
-            value =
-                    "${security.feign.authenticateWithOneTimeToken:/api/security/authenticateWithOneTimeToken/{pathToken}}")
+    @GetMapping(value = "${security.feign.authenticateWithOneTimeToken:/api/security/authenticateWithOneTimeToken/{pathToken}}")
     Mono<ContextAuthentication> authenticateWithOneTimeToken(
             @PathVariable("pathToken") String pathToken,
             @RequestHeader("X-Forwarded-Host") String forwardedHost,
@@ -214,12 +211,16 @@ public interface IFeignSecurityService {
     Mono<Page<User>> readUserPageFilterInternal(
             @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams);
 
-	@PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
-	Mono<List<NotificationUser>> getUsersForNotification(@RequestBody UsersListRequest request);
+    @PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
+    Mono<List<NotificationUser>> getUsersForNotification(@RequestBody UsersListRequest request);
 
-	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
-	Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
+    @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
+    Mono<List<EntityProcessorUser>> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
 
-	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
-	Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId, @RequestBody UsersListRequest request);
+    @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
+    Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId,
+                                                        @RequestBody UsersListRequest request);
+
+    @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
+    Mono<String> getAppStatus(@PathVariable String appCode);
 }

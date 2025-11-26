@@ -19,9 +19,10 @@ public class App implements Serializable {
     private boolean isTemplate;
 
     private String clientCode; // This the client code of the client who owns the app usually the managing
-                               // client.
+    // client.
 
     // These fields will be populated only in case of explicit app details request.
     private BigInteger explicitClientId;
     private String explicitOwnerClientCode; // This is the client code of the client who will be the owner of the app.
+    private String status;
 }

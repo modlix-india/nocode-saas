@@ -2,11 +2,11 @@ package com.fincity.saas.ui.service;
 
 import javax.annotation.Nonnull;
 
-import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -66,33 +66,33 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
 
         return super.read(name, appCode, clientCode).flatMap(pg -> {
 
-                    if (StringUtil.safeIsBlank(pg.getObject().getPermission()))
-                        return Mono.just(pg);
+            if (StringUtil.safeIsBlank(pg.getObject().getPermission()))
+                return Mono.just(pg);
 
-                    return flatMapMono(
+            return flatMapMono(
 
-                            SecurityContextUtil::getUsersContextAuthentication,
+                    SecurityContextUtil::getUsersContextAuthentication,
 
-                            ca -> Mono.just(ca.isAuthenticated()),
+                    ca -> Mono.just(ca.isAuthenticated()),
 
-                            (ContextAuthentication ca, @Nonnull Boolean isAuthenticated) -> {
+                    (ContextAuthentication ca, @Nonnull Boolean isAuthenticated) -> {
 
-                                if (isAuthenticated)
-                                    return Mono.just(pg);
+                        if (isAuthenticated)
+                            return Mono.just(pg);
 
-                                return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
+                        return flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
-                                        props -> {
+                                props -> {
 
-                                            if (StringUtil.safeIsBlank(props.get("loginPage")))
-                                                return Mono.just(pg);
+                                    if (StringUtil.safeIsBlank(props.get("loginPage")))
+                                        return Mono.just(pg);
 
-                                            return super.read(props.get("loginPage")
-                                                    .toString(), appCode, clientCode);
-                                        }).contextWrite(
+                                    return super.read(props.get("loginPage")
+                                            .toString(), appCode, clientCode);
+                                }).contextWrite(
                                         Context.of(LogUtil.METHOD_NAME, "PageService.read [Looking for Login page]"));
-                            }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
-                })
+                    }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.read"));
+        })
                 .switchIfEmpty(Mono
                         .defer(() -> flatMapMono(() -> appServiceForProps.readProperties(appCode, appCode, clientCode),
 
@@ -104,12 +104,12 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                                     return super.read(props.get("notFoundPage")
                                             .toString(), appCode, clientCode);
                                 }).contextWrite(Context.of(LogUtil.METHOD_NAME,
-                                "PageService.read [Looking for Not found page]"))));
+                                        "PageService.read [Looking for Not found page]"))));
     }
 
     @Override
     protected Mono<ObjectWithUniqueID<Page>> applyChange(String name, String appCode, String clientCode, Page page,
-                                                         String checksumString) {
+            String checksumString) {
 
         return flatMapMono(
 
@@ -139,5 +139,22 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.applyChange"))
                 .defaultIfEmpty(new ObjectWithUniqueID<>(page, checksumString));
 
+    }
+
+    @Override
+    public Mono<Page> update(Page page) {
+        return super.update(page)
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_PAGE + "-" + page.getAppCode()));
+    }
+
+    @Override
+    public Mono<Boolean> delete(String id) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(id),
+
+                page -> super.delete(id),
+
+                (page, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_PAGE + "-" + page.getAppCode()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.delete"));
     }
 }
