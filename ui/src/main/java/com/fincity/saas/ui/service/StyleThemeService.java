@@ -1,9 +1,11 @@
 package com.fincity.saas.ui.service;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
+
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -16,33 +18,50 @@ import reactor.util.context.Context;
 @Service
 public class StyleThemeService extends AbstractUIOverridableDataService<StyleTheme, StyleThemeRepository> {
 
-	public StyleThemeService() {
-		super(StyleTheme.class);
-	}
+    public StyleThemeService() {
+        super(StyleTheme.class);
+    }
 
-	@Override
-	protected Mono<StyleTheme> updatableEntity(StyleTheme entity) {
+    @Override
+    public Mono<StyleTheme> update(StyleTheme styleTheme) {
+        return super.update(styleTheme)
+                .flatMap(this.cacheService.evictAllFunction(EngineService.CACHE_NAME_THEME + "-" + styleTheme.getAppCode()));
+    }
 
-		return flatMapMono(
+    @Override
+    public Mono<Boolean> delete(String id) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.read(id),
 
-				() -> this.read(entity.getId()),
+                thm -> super.delete(id),
 
-				existing -> {
-					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-								AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                (thm, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_THEME + "-" + thm.getAppCode())
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.delete"));
+    }
 
-					existing.setVariables(entity.getVariables());
+    @Override
+    protected Mono<StyleTheme> updatableEntity(StyleTheme entity) {
 
-					existing.setVersion(existing.getVersion() + 1);
+        return flatMapMono(
 
-					return Mono.just(existing);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.updatableEntity"));
-	}
+                () -> this.read(entity.getId()),
 
-	@Override
-	public String getObjectName() {
-		return "Theme";
-	}
+                existing -> {
+                    if (existing.getVersion() != entity.getVersion())
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
+
+                    existing.setVariables(entity.getVariables());
+
+                    existing.setVersion(existing.getVersion() + 1);
+
+                    return Mono.just(existing);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.updatableEntity"));
+    }
+
+    @Override
+    public String getObjectName() {
+        return "Theme";
+    }
 }

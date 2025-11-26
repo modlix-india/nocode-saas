@@ -143,7 +143,7 @@ public interface IFeignSecurityService {
     @GetMapping("${security.feign.getAppUrl:/api/security/clienturls/internal/applications/property/url}")
     String getAppUrl(@RequestParam String appCode, @RequestParam(required = false) String clientCode);
 
-    @DeleteMapping("${security.feign.deleteEveryting:/api/security/applications/{id}}")
+    @DeleteMapping("${security.feign.deleteEveryting:/api/security/applications/everything/{id}}")
     Boolean deleteEverything(
             @RequestHeader(name = "Authorization", required = false) String authorization,
             @RequestHeader("X-Forwarded-Host") String forwardedHost,
@@ -211,6 +211,6 @@ public interface IFeignSecurityService {
     @PostMapping(value = "${security.feign.getUsersForNotification:/api/security/users/internal/notification}")
     List<NotificationUser> getUsersForNotification(@RequestBody UsersListRequest request);
 
-	@PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
-	List<EntityProcessorUser> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
+    @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
+    List<EntityProcessorUser> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
 }

@@ -57,7 +57,7 @@ public class ClientUrlService
     private static final String CACHE_NAME_CLIENT_URI = "uri";
 
     // This is used in gateway
-    private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+    public static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
 
     private static final String HTTPS = "https://";
 

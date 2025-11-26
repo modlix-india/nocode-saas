@@ -383,8 +383,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         task.getCreatedAt(),
                         comment,
                         Map.of(
-                                Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()))
+                                Activity.Fields.ticketId,
+                                task.getTicketId(),
+                                Activity.Fields.taskId,
+                                task.getId(),
+                                ActivityAction.getClassName(Task.class),
+                                task))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCreate"));
     }
 
@@ -424,8 +428,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         task.getCompletedDate(),
                         comment,
                         Map.of(
-                                Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()))
+                                Activity.Fields.ticketId,
+                                task.getTicketId(),
+                                Activity.Fields.taskId,
+                                task.getId(),
+                                ActivityAction.getClassName(Task.class),
+                                task))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskComplete"));
     }
 
@@ -442,8 +450,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         task.getCancelledDate(),
                         comment,
                         Map.of(
-                                Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId()))
+                                Activity.Fields.ticketId,
+                                task.getTicketId(),
+                                Activity.Fields.taskId,
+                                task.getId(),
+                                ActivityAction.getClassName(Task.class),
+                                task))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskCancelled"));
     }
 
@@ -473,7 +485,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 task.getTicketId(),
                                 Activity.Fields.taskId,
                                 task.getId(),
-                                EntitySeries.TASK.getDisplayName(),
+                                ActivityAction.getClassName(Task.class),
                                 task)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskDelete"));
     }
@@ -491,9 +503,14 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         task.getNextReminder(),
                         comment,
                         Map.of(
-                                Activity.Fields.ticketId, task.getTicketId(),
-                                Activity.Fields.taskId, task.getId(),
-                                Task.Fields.nextReminder, task.getNextReminder()))
+                                Activity.Fields.ticketId,
+                                task.getTicketId(),
+                                Activity.Fields.taskId,
+                                task.getId(),
+                                Task.Fields.nextReminder,
+                                task.getNextReminder(),
+                                ActivityAction.getClassName(Task.class),
+                                task))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReminderSet"));
     }
 
@@ -504,8 +521,12 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                         note.getCreatedAt(),
                         comment,
                         Map.of(
-                                Activity.Fields.ticketId, note.getTicketId(),
-                                Activity.Fields.noteId, note.getId()))
+                                Activity.Fields.ticketId,
+                                note.getTicketId(),
+                                Activity.Fields.noteId,
+                                note.getId(),
+                                ActivityAction.getClassName(Note.class),
+                                note))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteAdd"));
     }
 
@@ -544,7 +565,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                                 note.getTicketId(),
                                 Activity.Fields.noteId,
                                 note.getId(),
-                                EntitySeries.NOTE.getDisplayName(),
+                                ActivityAction.getClassName(Note.class),
                                 note)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteDelete"));
     }
