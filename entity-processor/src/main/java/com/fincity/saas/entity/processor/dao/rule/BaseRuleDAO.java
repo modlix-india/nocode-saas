@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
@@ -63,15 +64,25 @@ public abstract class BaseRuleDAO<
 
         if (productId != null) conditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
 
-        if (productTemplateId != null)
-            conditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+        if (productTemplateId != null) {
+	        if (productId != null) conditions.add(
+			        FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+	        else conditions.add(
+			        ComplexCondition.and(
+	                                FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId),
+	                                new FilterCondition()
+	                                        .setField(BaseRuleDto.Fields.productId)
+	                                        .setOperator(FilterConditionOperator.IS_NULL)));
+        }
+
+        conditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
 
         if (order != null) {
             conditions.add(FilterCondition.make(BaseRuleDto.Fields.order, order));
             return super.processorAccessCondition(ComplexCondition.and(conditions), access);
         }
 
-        AbstractCondition baseConditions = conditions.isEmpty() ? null : ComplexCondition.and(conditions);
+        AbstractCondition baseConditions = ComplexCondition.and(conditions);
 
         AbstractCondition defaultRuleCondition = createDefaultRuleCondition(productId, productTemplateId);
 
