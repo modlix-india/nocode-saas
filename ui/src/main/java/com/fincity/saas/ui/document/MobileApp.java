@@ -31,12 +31,21 @@ public class MobileApp extends AbstractUpdatableDTO<String, String> {
     private String androidKeyPass;
     private String androidAlias;
     private String iosCertificate;
+    private String iosCertificatePassword;
+    private String iosProvisioningProfile;
+    private String iosTeamId;
+    private String iosBundleId;
 
     public enum Status {
         PENDING,
         IN_PROGRESS,
         SUCCESS,
         FAILED;
+    }
+
+    public enum IosPublishMode {
+        TENANT_ACCOUNT,
+        PLATFORM_ACCOUNT;
     }
 
     @Data
@@ -47,6 +56,7 @@ public class MobileApp extends AbstractUpdatableDTO<String, String> {
         private String startURL;
         private boolean android;
         private boolean ios;
+        private IosPublishMode iosPublishMode;
         private String icon;
         private SplashScreenDetails splashScreen;
         private int version = 0;
