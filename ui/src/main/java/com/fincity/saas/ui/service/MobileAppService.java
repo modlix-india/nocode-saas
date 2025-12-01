@@ -1,10 +1,13 @@
 package com.fincity.saas.ui.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.MobileApp;
 import com.fincity.saas.ui.model.MobileAppStatusUpdateRequest;
 import com.fincity.saas.ui.repository.MobileAppRepository;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.annotation.PostConstruct;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -12,18 +15,23 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MobileAppService {
@@ -32,9 +40,34 @@ public class MobileAppService {
 
     private final MobileAppRepository repo;
 
+    private final WebClient webClient;
+
+    @Value("${ui.apple.apiKeyId:}")
+    private String appleApiKeyId;
+
+    @Value("${ui.apple.apiIssuerId:}")
+    private String appleApiIssuerId;
+
+    @Value("${ui.apple.apiKeyContent:}")
+    private String appleApiKeyContent;
+
+    @Value("${ui.apple.bundleIdPrefix:com.modlix.apps}")
+    private String bundleIdPrefix;
+
+    @Value("${ui.apple.teamId:}")
+    private String appleTeamId;
+
+    @Value("${ui.apple.certificateId:}")
+    private String appleCertificateId;
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MobileAppService.class);
+
     public MobileAppService(MobileAppRepository repo, UIMessageResourceService uiMessageResourceService) {
         this.repo = repo;
         this.uiMessageResourceService = uiMessageResourceService;
+        this.webClient = WebClient.builder()
+                .baseUrl("https://api.appstoreconnect.apple.com")
+                .build();
     }
 
     @PostConstruct
@@ -92,22 +125,436 @@ public class MobileAppService {
         return new KeystoreBundle(Base64.getEncoder().encodeToString(out.toByteArray()), storePass, storePass, alias);
     }
 
+    /**
+     * Generates a JWT for Apple App Store Connect API authentication.
+     * The JWT is signed with the ES256 algorithm using the private key from the .p8 file.
+     */
+    private String generateAppleJWT() throws Exception {
+        if (StringUtil.safeIsBlank(appleApiKeyContent) || StringUtil.safeIsBlank(appleApiKeyId) 
+                || StringUtil.safeIsBlank(appleApiIssuerId)) {
+            throw new IllegalStateException("Apple API credentials are not configured");
+        }
+
+        long now = System.currentTimeMillis();
+
+        // Decode the base64 encoded .p8 file content
+        String privateKeyPEM = new String(Base64.getDecoder().decode(appleApiKeyContent))
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
+
+        byte[] keyBytes = Base64.getDecoder().decode(privateKeyPEM);
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+        PrivateKey privateKey = KeyFactory.getInstance("EC").generatePrivate(spec);
+
+        return Jwts.builder()
+                .setIssuer(appleApiIssuerId)
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + 20 * 60 * 1000)) // 20 minutes
+                .setAudience("appstoreconnect-v1")
+                .setHeaderParam("kid", appleApiKeyId)
+                .setHeaderParam("typ", "JWT")
+                .signWith(privateKey, SignatureAlgorithm.ES256)
+                .compact();
+    }
+
+    /**
+     * Result object containing Bundle ID identifier and its internal Apple ID.
+     */
+    public record BundleIdResult(String identifier, String appleId) {}
+
+    /**
+     * Creates a Bundle ID in Apple Developer Portal using the App Store Connect API.
+     * Returns both the bundle identifier and Apple's internal ID for the bundle.
+     */
+    public Mono<BundleIdResult> createAppleBundleId(String clientCode, String appName) {
+        String sanitizedAppName = appName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String sanitizedClientCode = clientCode.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String bundleId = bundleIdPrefix + "." + sanitizedClientCode + "." + sanitizedAppName;
+
+        try {
+            String jwt = generateAppleJWT();
+
+            Map<String, Object> request = Map.of(
+                    "data", Map.of(
+                            "type", "bundleIds",
+                            "attributes", Map.of(
+                                    "identifier", bundleId,
+                                    "name", appName + " - " + clientCode,
+                                    "platform", "IOS"
+                            )
+                    )
+            );
+
+            return webClient.post()
+                    .uri("/v1/bundleIds")
+                    .header("Authorization", "Bearer " + jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .map(response -> {
+                        String appleId = response.path("data").path("id").asText();
+                        logger.info("Created Bundle ID: {} with Apple ID: {}", bundleId, appleId);
+                        return new BundleIdResult(bundleId, appleId);
+                    })
+                    .onErrorResume(e -> {
+                        // If bundle ID already exists, try to fetch its Apple ID
+                        if (e.getMessage() != null && e.getMessage().contains("ENTITY_ERROR")) {
+                            logger.info("Bundle ID {} already exists, fetching its Apple ID", bundleId);
+                            return getAppleBundleIdByIdentifier(bundleId);
+                        }
+                        return Mono.error(e);
+                    });
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+    }
+
+    /**
+     * Fetches an existing Bundle ID's Apple internal ID by its identifier.
+     * Returns empty Mono if not found.
+     */
+    private Mono<BundleIdResult> getAppleBundleIdByIdentifier(String bundleIdentifier) {
+        try {
+            String jwt = generateAppleJWT();
+
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/bundleIds")
+                            .queryParam("filter[identifier]", bundleIdentifier)
+                            .build())
+                    .header("Authorization", "Bearer " + jwt)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .flatMap(response -> {
+                        JsonNode data = response.path("data");
+                        if (data.isArray() && data.size() > 0) {
+                            String appleId = data.get(0).path("id").asText();
+                            logger.info("Found existing Bundle ID: {} with Apple ID: {}", bundleIdentifier, appleId);
+                            return Mono.just(new BundleIdResult(bundleIdentifier, appleId));
+                        }
+                        return Mono.empty();
+                    });
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+    }
+
+    /**
+     * Checks if a Bundle ID exists in Apple Developer Portal.
+     * Returns the BundleIdResult if found, empty Mono otherwise.
+     */
+    public Mono<BundleIdResult> checkBundleIdExists(String clientCode, String appName) {
+        String sanitizedAppName = appName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String sanitizedClientCode = clientCode.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String bundleId = bundleIdPrefix + "." + sanitizedClientCode + "." + sanitizedAppName;
+        
+        logger.info("Checking if Bundle ID exists: {}", bundleId);
+        return getAppleBundleIdByIdentifier(bundleId)
+                .doOnNext(result -> logger.info("Bundle ID check result: EXISTS - {} (Apple ID: {})", result.identifier(), result.appleId()))
+                .doOnTerminate(() -> logger.debug("Bundle ID check completed for: {}", bundleId));
+    }
+
+    /**
+     * Gets or creates a Bundle ID. First checks if it exists, creates if not.
+     */
+    public Mono<BundleIdResult> getOrCreateBundleId(String clientCode, String appName) {
+        String sanitizedAppName = appName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String sanitizedClientCode = clientCode.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String bundleId = bundleIdPrefix + "." + sanitizedClientCode + "." + sanitizedAppName;
+        
+        logger.info("Getting or creating Bundle ID: {} (client: {}, app: {})", bundleId, clientCode, appName);
+        
+        return getAppleBundleIdByIdentifier(bundleId)
+                .doOnNext(result -> logger.info("Bundle ID status: ALREADY EXISTS - {} (Apple ID: {})", result.identifier(), result.appleId()))
+                .switchIfEmpty(Mono.defer(() -> {
+                    logger.info("Bundle ID status: NOT FOUND - Creating new Bundle ID: {}", bundleId);
+                    return createAppleBundleId(clientCode, appName)
+                            .doOnNext(result -> logger.info("Bundle ID status: CREATED SUCCESSFULLY - {} (Apple ID: {})", result.identifier(), result.appleId()))
+                            .doOnError(e -> logger.error("Bundle ID status: CREATION FAILED - {} - Error: {}", bundleId, e.getMessage()));
+                }));
+    }
+
+    /**
+     * Creates an App Store distribution provisioning profile for the given Bundle ID.
+     * Returns the base64 encoded provisioning profile content.
+     */
+    public Mono<String> createProvisioningProfile(String bundleIdAppleId, String profileName) {
+        logger.info("=== createProvisioningProfile START ===");
+        logger.info("Parameters: bundleIdAppleId={}, profileName={}", bundleIdAppleId, profileName);
+        logger.info("Using certificateId: {}", appleCertificateId);
+        
+        if (StringUtil.safeIsBlank(appleCertificateId)) {
+            logger.warn("Apple certificate ID not configured, skipping provisioning profile creation");
+            return Mono.just("");
+        }
+
+        try {
+            String jwt = generateAppleJWT();
+            logger.info("JWT generated successfully (length: {} chars)", jwt.length());
+
+            Map<String, Object> request = Map.of(
+                    "data", Map.of(
+                            "type", "profiles",
+                            "attributes", Map.of(
+                                    "name", profileName,
+                                    "profileType", "IOS_APP_STORE"
+                            ),
+                            "relationships", Map.of(
+                                    "bundleId", Map.of(
+                                            "data", Map.of(
+                                                    "type", "bundleIds",
+                                                    "id", bundleIdAppleId
+                                            )
+                                    ),
+                                    "certificates", Map.of(
+                                            "data", List.of(
+                                                    Map.of(
+                                                            "type", "certificates",
+                                                            "id", appleCertificateId
+                                                    )
+                                            )
+                                    )
+                            )
+                    )
+            );
+            
+            logger.info("Sending request to Apple API: POST /v1/profiles");
+            logger.debug("Request body: {}", request);
+
+            return webClient.post()
+                    .uri("/v1/profiles")
+                    .header("Authorization", "Bearer " + jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .onStatus(status -> status.isError(), clientResponse -> {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    logger.error("Apple API error response: status={}, body={}", clientResponse.statusCode(), body);
+                                    return Mono.error(new RuntimeException("Apple API error: " + body));
+                                });
+                    })
+                    .bodyToMono(JsonNode.class)
+                    .doOnNext(response -> logger.info("Apple API response received: {}", response.toString().substring(0, Math.min(500, response.toString().length()))))
+                    .map(response -> {
+                        String profileContent = response.path("data").path("attributes").path("profileContent").asText();
+                        logger.info("Created provisioning profile: {} (content length: {} chars)", profileName, profileContent.length());
+                        return profileContent; // Already base64 encoded
+                    })
+                    .onErrorResume(e -> {
+                        logger.error("Failed to create provisioning profile: {} - Full error: ", e.getMessage(), e);
+                        // If profile already exists or other error, try to find existing profile
+                        if (e.getMessage() != null && e.getMessage().contains("ENTITY_ERROR")) {
+                            logger.info("Profile may already exist, attempting to fetch existing profile...");
+                            return getExistingProvisioningProfile(bundleIdAppleId);
+                        }
+                        return Mono.just(""); // Return empty string on error, don't fail the whole process
+                    });
+        } catch (Exception e) {
+            logger.error("Error creating provisioning profile", e);
+            return Mono.just("");
+        }
+    }
+
+    /**
+     * Fetches an existing provisioning profile for a Bundle ID.
+     */
+    private Mono<String> getExistingProvisioningProfile(String bundleIdAppleId) {
+        logger.info("=== getExistingProvisioningProfile START: bundleIdAppleId={} ===", bundleIdAppleId);
+        try {
+            String jwt = generateAppleJWT();
+
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/profiles")
+                            .queryParam("filter[profileType]", "IOS_APP_STORE")
+                            .queryParam("include", "bundleId")
+                            .build())
+                    .header("Authorization", "Bearer " + jwt)
+                    .retrieve()
+                    .onStatus(status -> status.isError(), clientResponse -> {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    logger.error("Apple API error fetching profiles: status={}, body={}", clientResponse.statusCode(), body);
+                                    return Mono.error(new RuntimeException("Apple API error: " + body));
+                                });
+                    })
+                    .bodyToMono(JsonNode.class)
+                    .doOnNext(response -> logger.info("Fetched {} profiles from Apple", response.path("data").size()))
+                    .map(response -> {
+                        JsonNode data = response.path("data");
+                        if (data.isArray()) {
+                            logger.info("Searching through {} profiles for bundleIdAppleId: {}", data.size(), bundleIdAppleId);
+                            for (JsonNode profile : data) {
+                                String profileBundleId = profile.path("relationships").path("bundleId")
+                                        .path("data").path("id").asText();
+                                String profileName = profile.path("attributes").path("name").asText();
+                                logger.debug("Profile: name={}, bundleIdRef={}", profileName, profileBundleId);
+                                if (bundleIdAppleId.equals(profileBundleId)) {
+                                    String profileContent = profile.path("attributes").path("profileContent").asText();
+                                    logger.info("Found existing provisioning profile: {} for bundle ID: {} (content length: {} chars)", 
+                                            profileName, bundleIdAppleId, profileContent.length());
+                                    return profileContent;
+                                }
+                            }
+                        }
+                        logger.warn("No existing provisioning profile found for bundle ID: {}", bundleIdAppleId);
+                        return "";
+                    })
+                    .onErrorResume(e -> {
+                        logger.error("Error fetching existing provisioning profiles: {}", e.getMessage(), e);
+                        return Mono.just("");
+                    });
+        } catch (Exception e) {
+            logger.error("Error fetching existing provisioning profile", e);
+            return Mono.just("");
+        }
+    }
+
+    /**
+     * Creates Bundle ID and Provisioning Profile for PLATFORM_ACCOUNT mode.
+     * Returns a record containing all the iOS configuration.
+     */
+    public record IosConfigResult(String bundleId, String teamId, String provisioningProfile) {}
+
+    public Mono<IosConfigResult> setupIosForPlatformAccount(String clientCode, String appName) {
+        logger.info("Starting iOS PLATFORM_ACCOUNT setup for client: {}, app: {}", clientCode, appName);
+        
+        return getOrCreateBundleId(clientCode, appName)
+                .flatMap(bundleIdResult -> {
+                    String profileName = appName + " - " + clientCode + " - App Store";
+                    logger.info("Provisioning Profile status: CREATING - {} for Bundle ID: {}", profileName, bundleIdResult.identifier());
+                    
+                    return createProvisioningProfile(bundleIdResult.appleId(), profileName)
+                            .map(profileContent -> {
+                                if (StringUtil.safeIsBlank(profileContent)) {
+                                    logger.warn("Provisioning Profile status: NOT CREATED (certificate ID may not be configured)");
+                                } else {
+                                    logger.info("Provisioning Profile status: SUCCESS - Profile created/retrieved for Bundle ID: {}", bundleIdResult.identifier());
+                                }
+                                return new IosConfigResult(
+                                        bundleIdResult.identifier(),
+                                        appleTeamId,
+                                        profileContent
+                                );
+                            });
+                })
+                .doOnSuccess(result -> logger.info("iOS PLATFORM_ACCOUNT setup completed: bundleId={}, teamId={}, hasProfile={}", 
+                        result.bundleId(), result.teamId(), !StringUtil.safeIsBlank(result.provisioningProfile())))
+                .doOnError(e -> logger.error("iOS PLATFORM_ACCOUNT setup failed: {}", e.getMessage()));
+    }
+
+    /**
+     * Checks if Apple API is configured for Bundle ID creation and basic PLATFORM_ACCOUNT mode.
+     * Only requires API credentials and team ID - certificate ID is optional (for auto provisioning profile creation).
+     */
+    private boolean isAppleApiConfiguredForBundleId() {
+        boolean apiKeyIdConfigured = !StringUtil.safeIsBlank(appleApiKeyId);
+        boolean apiIssuerIdConfigured = !StringUtil.safeIsBlank(appleApiIssuerId);
+        boolean apiKeyContentConfigured = !StringUtil.safeIsBlank(appleApiKeyContent);
+        boolean teamIdConfigured = !StringUtil.safeIsBlank(appleTeamId);
+        
+        boolean configured = apiKeyIdConfigured && apiIssuerIdConfigured && apiKeyContentConfigured && teamIdConfigured;
+        
+        logger.info("Apple API Configuration Check (Bundle ID): apiKeyId={}, apiIssuerId={}, apiKeyContent={}, teamId={} => CONFIGURED={}",
+                apiKeyIdConfigured, apiIssuerIdConfigured, apiKeyContentConfigured, teamIdConfigured, configured);
+        
+        if (!configured) {
+            logger.warn("Apple API not configured for Bundle ID creation. Missing: {}{}{}{}",
+                    !apiKeyIdConfigured ? "apiKeyId " : "",
+                    !apiIssuerIdConfigured ? "apiIssuerId " : "",
+                    !apiKeyContentConfigured ? "apiKeyContent " : "",
+                    !teamIdConfigured ? "teamId " : "");
+        }
+        
+        // Log certificate ID status separately (optional for auto provisioning profile)
+        boolean certificateIdConfigured = !StringUtil.safeIsBlank(appleCertificateId);
+        logger.info("Apple Certificate ID configured (for auto provisioning profile): {}", certificateIdConfigured);
+        
+        return configured;
+    }
+
     public Mono<MobileApp> update(MobileApp mobileApp) {
+        logger.info("=== MobileApp Update/Create Started ===");
+        logger.info("MobileApp ID: {}, ClientCode: {}, AppCode: {}", 
+                mobileApp.getId(), mobileApp.getClientCode(), mobileApp.getAppCode());
+        
+        if (mobileApp.getDetails() != null) {
+            logger.info("Details: name={}, ios={}, android={}, iosPublishMode={}", 
+                    mobileApp.getDetails().getName(),
+                    mobileApp.getDetails().isIos(),
+                    mobileApp.getDetails().isAndroid(),
+                    mobileApp.getDetails().getIosPublishMode());
+        } else {
+            logger.warn("MobileApp details is NULL!");
+        }
+        
         if (mobileApp.getId() == null) {
+            logger.info("Creating NEW MobileApp");
+            
+            // New app - generate Android keystore
             try {
                 KeystoreBundle bundle = createKeystore();
                 mobileApp.setAndroidKeystore(bundle.jksBase64);
                 mobileApp.setAndroidStorePass(bundle.storePass);
                 mobileApp.setAndroidKeyPass(bundle.keyPass);
                 mobileApp.setAndroidAlias(bundle.alias);
+                logger.info("Android keystore generated successfully");
             } catch (Exception ex) {
+                logger.error("Failed to generate Android keystore", ex);
                 return this.uiMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, ex), UIMessageResourceService.MOBILE_APP_UNABLE_TO_GEN_KEYSTORE);
             }
-            return this.repo.save(mobileApp);
+
+            // iOS handling for PLATFORM_ACCOUNT mode
+            boolean hasDetails = mobileApp.getDetails() != null;
+            boolean isIos = hasDetails && mobileApp.getDetails().isIos();
+            boolean isPlatformAccount = hasDetails && MobileApp.IosPublishMode.PLATFORM_ACCOUNT == mobileApp.getDetails().getIosPublishMode();
+            boolean apiConfigured = isAppleApiConfiguredForBundleId();
+            
+            logger.info("iOS Setup Check: hasDetails={}, isIos={}, isPlatformAccount={}, apiConfigured={}", 
+                    hasDetails, isIos, isPlatformAccount, apiConfigured);
+            
+            if (hasDetails && isIos && isPlatformAccount && apiConfigured) {
+                logger.info("Proceeding with iOS PLATFORM_ACCOUNT setup...");
+                return setupIosForPlatformAccount(mobileApp.getClientCode(), mobileApp.getDetails().getName())
+                        .flatMap(iosConfig -> {
+                            mobileApp.setIosBundleId(iosConfig.bundleId());
+                            mobileApp.setIosTeamId(iosConfig.teamId());
+                            if (!StringUtil.safeIsBlank(iosConfig.provisioningProfile())) {
+                                mobileApp.setIosProvisioningProfile(iosConfig.provisioningProfile());
+                                logger.info("Provisioning profile SET on MobileApp (length: {} chars)", iosConfig.provisioningProfile().length());
+                            } else {
+                                logger.warn("Provisioning profile is EMPTY - not setting on MobileApp");
+                            }
+                            logger.info("iOS PLATFORM_ACCOUNT setup complete: bundleId={}, teamId={}, hasProfile={}", 
+                                    iosConfig.bundleId(), iosConfig.teamId(), !StringUtil.safeIsBlank(iosConfig.provisioningProfile()));
+                            return this.repo.save(mobileApp);
+                        })
+                        .doOnSuccess(saved -> logger.info("MobileApp SAVED with iOS config: iosBundleId={}, iosTeamId={}, hasProvisioningProfile={}", 
+                                saved.getIosBundleId(), saved.getIosTeamId(), !StringUtil.safeIsBlank(saved.getIosProvisioningProfile())))
+                        .onErrorResume(e -> {
+                            // If setup fails, still save the app but log the error
+                            logger.error("Failed to setup iOS for PLATFORM_ACCOUNT mode: {}", e.getMessage(), e);
+                            mobileApp.setIosTeamId(appleTeamId);
+                            return this.repo.save(mobileApp);
+                        });
+            } else {
+                logger.info("Skipping iOS PLATFORM_ACCOUNT setup (conditions not met)");
+            }
+
+            return this.repo.save(mobileApp)
+                    .doOnSuccess(saved -> logger.info("MobileApp SAVED (new): id={}", saved.getId()));
         }
 
+        logger.info("Updating EXISTING MobileApp with ID: {}", mobileApp.getId());
+        
         return this.repo.findById(mobileApp.getId())
+                .doOnNext(existing -> logger.info("Found existing MobileApp: iosBundleId={}, iosTeamId={}, hasProvisioningProfile={}", 
+                        existing.getIosBundleId(), existing.getIosTeamId(), !StringUtil.safeIsBlank(existing.getIosProvisioningProfile())))
                 .flatMap(existing -> {
+                    // Handle Android keystore
                     if (existing.getAndroidKeystore() == null) {
                         try {
                             KeystoreBundle bundle = createKeystore();
@@ -115,7 +562,9 @@ public class MobileAppService {
                             mobileApp.setAndroidStorePass(bundle.storePass);
                             mobileApp.setAndroidKeyPass(bundle.keyPass);
                             mobileApp.setAndroidAlias(bundle.alias);
+                            logger.info("Android keystore generated for existing app");
                         } catch (Exception ex) {
+                            logger.error("Failed to generate Android keystore for existing app", ex);
                             return this.uiMessageResourceService.throwMessage(msg -> new GenericException(HttpStatus.BAD_REQUEST, msg, ex), UIMessageResourceService.MOBILE_APP_UNABLE_TO_GEN_KEYSTORE);
                         }
                     } else {
@@ -124,8 +573,59 @@ public class MobileAppService {
                         mobileApp.setAndroidKeyPass(existing.getAndroidKeyPass());
                         mobileApp.setAndroidAlias(existing.getAndroidAlias());
                     }
-                    mobileApp.getDetails().setVersion(mobileApp.getId() == null ? 0 : existing.getDetails().getVersion() + 1);
-                    return this.repo.save(mobileApp);
+
+                    // Handle iOS Bundle ID and Provisioning Profile for PLATFORM_ACCOUNT mode
+                    boolean hasDetails = mobileApp.getDetails() != null;
+                    boolean isIos = hasDetails && mobileApp.getDetails().isIos();
+                    boolean isPlatformAccount = hasDetails && MobileApp.IosPublishMode.PLATFORM_ACCOUNT == mobileApp.getDetails().getIosPublishMode();
+                    boolean needsBundleId = StringUtil.safeIsBlank(existing.getIosBundleId());
+                    boolean apiConfigured = isAppleApiConfiguredForBundleId();
+                    
+                    logger.info("iOS Setup Check (update): hasDetails={}, isIos={}, isPlatformAccount={}, needsBundleId={}, apiConfigured={}", 
+                            hasDetails, isIos, isPlatformAccount, needsBundleId, apiConfigured);
+                    
+                    if (hasDetails && isIos && isPlatformAccount && needsBundleId && apiConfigured) {
+                        logger.info("Proceeding with iOS PLATFORM_ACCOUNT setup for existing app...");
+                        mobileApp.getDetails().setVersion(existing.getDetails().getVersion() + 1);
+                        return setupIosForPlatformAccount(mobileApp.getClientCode(), mobileApp.getDetails().getName())
+                                .flatMap(iosConfig -> {
+                                    mobileApp.setIosBundleId(iosConfig.bundleId());
+                                    mobileApp.setIosTeamId(iosConfig.teamId());
+                                    if (!StringUtil.safeIsBlank(iosConfig.provisioningProfile())) {
+                                        mobileApp.setIosProvisioningProfile(iosConfig.provisioningProfile());
+                                        logger.info("Provisioning profile SET on existing MobileApp (length: {} chars)", iosConfig.provisioningProfile().length());
+                                    } else {
+                                        logger.warn("Provisioning profile is EMPTY for existing app - not setting");
+                                    }
+                                    logger.info("iOS PLATFORM_ACCOUNT setup complete (update): bundleId={}, teamId={}, hasProfile={}", 
+                                            iosConfig.bundleId(), iosConfig.teamId(), !StringUtil.safeIsBlank(iosConfig.provisioningProfile()));
+                                    return this.repo.save(mobileApp);
+                                })
+                                .onErrorResume(e -> {
+                                    logger.error("Failed to setup iOS for PLATFORM_ACCOUNT mode (update): {}", e.getMessage(), e);
+                                    mobileApp.setIosTeamId(appleTeamId);
+                                    return this.repo.save(mobileApp);
+                                });
+                    } else {
+                        // Preserve existing iOS fields if present
+                        logger.info("Preserving existing iOS fields (not creating new)");
+                        if (!StringUtil.safeIsBlank(existing.getIosBundleId())) {
+                            mobileApp.setIosBundleId(existing.getIosBundleId());
+                        }
+                        if (!StringUtil.safeIsBlank(existing.getIosTeamId())) {
+                            mobileApp.setIosTeamId(existing.getIosTeamId());
+                        }
+                        if (!StringUtil.safeIsBlank(existing.getIosProvisioningProfile())) {
+                            mobileApp.setIosProvisioningProfile(existing.getIosProvisioningProfile());
+                        }
+                        logger.info("After preserving: iosBundleId={}, iosTeamId={}, hasProvisioningProfile={}", 
+                                mobileApp.getIosBundleId(), mobileApp.getIosTeamId(), !StringUtil.safeIsBlank(mobileApp.getIosProvisioningProfile()));
+                    }
+
+                    mobileApp.getDetails().setVersion(existing.getDetails().getVersion() + 1);
+                    return this.repo.save(mobileApp)
+                            .doOnSuccess(saved -> logger.info("MobileApp SAVED (update): iosBundleId={}, iosTeamId={}, hasProvisioningProfile={}", 
+                                    saved.getIosBundleId(), saved.getIosTeamId(), !StringUtil.safeIsBlank(saved.getIosProvisioningProfile())));
                 });
     }
 
