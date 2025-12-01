@@ -11,7 +11,7 @@ security:
 
 files:
   db:
-    url: r2dbc:mysql://localhost:3306/files?serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/files?serverTimezone=UTC
     username: root
     password: Kiran@123
     flyway:
@@ -47,6 +47,17 @@ ui:
   jsURL: https://cdn-local.modlix.com/js/dist/
   # htmlCacheUrl: http://localhost:6101/html/
   htmlCacheEnv: OTHER
+  ssr:
+    baseUrl: ${UI_SSR_BASEURL:}
+    timeoutMillis: ${UI_SSR_TIMEOUT:3000}
+  # Apple App Store Connect API Configuration
+  apple:
+    apiKeyId: ${APPLE_API_KEY_ID:}
+    apiIssuerId: ${APPLE_API_ISSUER_ID:}
+    apiKeyContent: ${APPLE_API_KEY_CONTENT:}
+    bundleIdPrefix: com.modlix.apps
+    teamId: ${APPLE_TEAM_ID:}
+    certificateId: ${APPLE_CERTIFICATE_ID:}
 
 core:
   mongo:
