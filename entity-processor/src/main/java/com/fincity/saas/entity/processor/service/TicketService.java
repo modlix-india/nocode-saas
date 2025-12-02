@@ -405,6 +405,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ? this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
                                 : this.getTicket(access, productId, ticketPhone, ticketMail),
                         (rule, existing) -> {
+                            if (existing == null) return Mono.just(Boolean.FALSE);
+
                             if (existing.getId() != null)
                                 return this.activityService
                                         .acReInquiry(access, existing, null, source, subSource)

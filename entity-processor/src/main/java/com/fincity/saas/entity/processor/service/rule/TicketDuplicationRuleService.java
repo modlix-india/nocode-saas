@@ -94,6 +94,15 @@ public class TicketDuplicationRuleService
                         .thenReturn(validatedEntity));
     }
 
+    @Override
+    protected Mono<TicketDuplicationRule> updatableEntity(TicketDuplicationRule rule) {
+        return super.updatableEntity(rule).flatMap(existing -> {
+            existing.setSource(rule.getSource());
+            existing.setSubSource(rule.getSubSource());
+            return Mono.just(existing);
+        });
+    }
+
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
         return FlatMapUtil.flatMapMono(
