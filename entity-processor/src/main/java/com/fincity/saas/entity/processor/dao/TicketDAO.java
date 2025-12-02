@@ -74,7 +74,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 this.getOwnerIdentifierConditions(condition, productId, dialCode, number, email);
 
         return FlatMapUtil.flatMapMono(
-                () -> this.processorAccessCondition(ownerIdentifierConditions, access),
+                () -> Mono.just(super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
                 super::filter,
                 (pCondition, jCondition) -> Mono.from(this.dslContext
                                 .selectFrom(this.table)
