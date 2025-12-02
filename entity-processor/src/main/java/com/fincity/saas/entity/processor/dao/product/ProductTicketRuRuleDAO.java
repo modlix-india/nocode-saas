@@ -2,21 +2,13 @@ package com.fincity.saas.entity.processor.dao.product;
 
 import static com.fincity.saas.entity.processor.jooq.Tables.ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
-import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
-import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.jooq.Condition;
@@ -24,7 +16,6 @@ import org.jooq.impl.DSL;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Component
 public class ProductTicketRuRuleDAO
