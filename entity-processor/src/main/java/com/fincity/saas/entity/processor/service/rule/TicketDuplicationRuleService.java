@@ -10,7 +10,6 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
-import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,15 +26,7 @@ public class TicketDuplicationRuleService
 
     private static final String TICKET_DUPLICATION_RULE = "ticketDuplicationRule";
 
-    @Getter
-    private TicketCUserDistributionService userDistributionService;
-
     private StageService stageService;
-
-    @Autowired
-    public void setUserDistributionService(TicketCUserDistributionService userDistributionService) {
-        this.userDistributionService = userDistributionService;
-    }
 
     @Autowired
     private void setStageService(StageService stageService) {
@@ -98,6 +89,21 @@ public class TicketDuplicationRuleService
 
     public Mono<TicketDuplicationRule> getDuplicationRule(
             ProcessorAccess access, ULong productId, String source, String subSource) {
-        return this.dao.getRule(access, productId, null, source, subSource);
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.productService.readById(access, productId), product -> this.getProductDuplicationRule(
+                                access, product.getId(), product.getProductTemplateId(), source, subSource)
+                        .switchIfEmpty(this.getProductTemplateDuplicationRule(
+                                access, product.getProductTemplateId(), source, subSource)));
+    }
+
+    public Mono<TicketDuplicationRule> getProductDuplicationRule(
+            ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
+        return this.dao.getRule(access, productId, productTemplateId, source, subSource);
+    }
+
+    public Mono<TicketDuplicationRule> getProductTemplateDuplicationRule(
+            ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
+        return this.dao.getRule(access, null, productTemplateId, source, subSource);
     }
 }

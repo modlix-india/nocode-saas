@@ -87,16 +87,16 @@ public abstract class BaseRuleDAO<
 
         if (productId != null) productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
 
-        if (productTemplateId != null)
-            if (productId != null) {
+        if (productTemplateId != null) {
+            if (productId != null)
                 productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
-            } else {
+            else
                 productConditions.add(ComplexCondition.and(
                         FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId),
                         new FilterCondition()
                                 .setField(BaseRuleDto.Fields.productId)
                                 .setOperator(FilterConditionOperator.IS_NULL)));
-            }
+        }
 
         return productConditions.isEmpty() ? null : ComplexCondition.and(productConditions);
     }
