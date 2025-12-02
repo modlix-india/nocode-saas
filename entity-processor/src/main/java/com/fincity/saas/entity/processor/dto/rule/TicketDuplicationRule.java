@@ -22,7 +22,6 @@ public class TicketDuplicationRule extends BaseRuleDto<NoOpUserDistribution, Tic
     private String source;
     private String subSource;
     private ULong maxStageId;
-    private Long maxEntityCreation;
 
     public TicketDuplicationRule() {
         super();
@@ -33,7 +32,6 @@ public class TicketDuplicationRule extends BaseRuleDto<NoOpUserDistribution, Tic
         this.source = ticketDuplicationRule.getSource();
         this.subSource = ticketDuplicationRule.getSubSource();
         this.maxStageId = ticketDuplicationRule.getMaxStageId();
-        this.maxEntityCreation = ticketDuplicationRule.getMaxEntityCreation();
     }
 
     @Override
