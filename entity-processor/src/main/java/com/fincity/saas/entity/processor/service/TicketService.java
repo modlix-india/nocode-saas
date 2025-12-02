@@ -338,7 +338,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 (product, stageStatusEntity, partnerClient) -> this.securityService.getUserInternal(
                         request.getAssignedUserId().toBigInteger(), null),
                 (product, stageStatusEntity, partnerClient, assignedUser) -> this.getTicket(
-						access, product.getId(), request.getPhoneNumber(), request.getEmail())
+                                access, product.getId(), request.getPhoneNumber(), request.getEmail())
                         .flatMap(existing -> existing.getId() != null
                                 ? super.throwDuplicateError(access, existing)
                                 : Mono.just(Boolean.FALSE))
