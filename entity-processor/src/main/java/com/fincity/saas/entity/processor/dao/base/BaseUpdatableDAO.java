@@ -131,7 +131,7 @@ public abstract class BaseUpdatableDAO<R extends UpdatableRecord<R>, D extends B
         return this.processorAccessCondition(codeCondition(code), access);
     }
 
-    private AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
+    public AbstractCondition addAppCodeAndClientCode(AbstractCondition condition, ProcessorAccess access) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(this.getAppCodeCondition(access), this.getClientCodeCondition(access));
 

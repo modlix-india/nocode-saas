@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
+import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
@@ -407,12 +408,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         (rule, existing) -> {
                             if (existing == null) return Mono.just(Boolean.FALSE);
 
-                            if (existing.getId() != null)
-                                return this.activityService
-                                        .acReInquiry(access, existing, null, source, subSource)
-                                        .then(super.throwDuplicateError(access, existing));
+                            if (rule != null && rule.isNonEmpty()) return Mono.just(Boolean.FALSE);
 
-                            return Mono.just(Boolean.FALSE);
+                            return this.activityService
+                                    .acReInquiry(access, existing, null, source, subSource)
+                                    .then(super.throwDuplicateError(access, existing));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
     }
