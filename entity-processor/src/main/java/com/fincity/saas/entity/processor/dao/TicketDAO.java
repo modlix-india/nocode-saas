@@ -79,7 +79,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 (pCondition, jCondition) -> Mono.from(this.dslContext
                                 .selectFrom(this.table)
                                 .where(jCondition.and(super.isActiveTrue()))
-                                .orderBy(this.idField.desc())
+                                .orderBy(this.updatedByField.desc())
                                 .limit(1))
                         .map(e -> e.into(this.pojoClass)));
     }
