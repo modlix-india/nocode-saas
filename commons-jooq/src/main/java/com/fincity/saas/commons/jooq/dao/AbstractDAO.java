@@ -336,9 +336,9 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 .flatMap(e -> Mono.from(e.where(idField.eq(id))))
                 .switchIfEmpty(Mono.defer(() -> messageResourceService
                         .getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
-                        .map(msg -> {
-                            throw new GenericException(HttpStatus.NOT_FOUND, msg);
-                        })));
+		                .handle((msg, sink) -> {
+			                sink.error(new GenericException(HttpStatus.NOT_FOUND, msg));
+		                })));
     }
 
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
