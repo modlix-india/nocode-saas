@@ -422,7 +422,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                         if (Boolean.TRUE.equals(existing)) return Mono.just(Boolean.FALSE);
 
                         // Not found with rule - check without rule to see if it's a real duplicate
-                        return checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
+                        return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
                     });
         }
 
