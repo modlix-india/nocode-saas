@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -32,6 +33,7 @@ import com.fincity.saas.entity.processor.service.content.TaskService;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
+import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
 import java.util.Optional;
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
@@ -51,6 +53,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final ProductService productService;
     private final StageService stageService;
     private final ProductTicketCRuleService productTicketCRuleService;
+    private final TicketDuplicationRuleService ticketDuplicationRuleService;
     private final ActivityService activityService;
     private final TaskService taskService;
     private final NoteService noteService;
@@ -63,6 +66,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ProductService productService,
             StageService stageService,
             ProductTicketCRuleService productTicketCRuleService,
+            TicketDuplicationRuleService ticketDuplicationRuleService,
             ActivityService activityService,
             @Lazy TaskService taskService,
             @Lazy NoteService noteService,
@@ -73,6 +77,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.productService = productService;
         this.stageService = stageService;
         this.productTicketCRuleService = productTicketCRuleService;
+        this.ticketDuplicationRuleService = ticketDuplicationRuleService;
         this.activityService = activityService;
         this.taskService = taskService;
         this.noteService = noteService;
@@ -214,12 +219,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     }
 
     public Mono<Ticket> create(TicketRequest ticketRequest) {
-
-        if (!ticketRequest.hasIdentifyInfo())
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
-                    this.getEntityName());
 
         if (!ticketRequest.hasSourceInfo())
             return this.msgService.throwMessage(
@@ -393,18 +392,56 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        if (ticketMail == null && ticketPhone == null) return Mono.just(Boolean.FALSE);
+        if (ticketPhone == null && ticketMail == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
+                    this.getEntityName());
+
+        return this.ticketDuplicationRuleService
+                .getDuplicateRuleCondition(access, productId, source, subSource)
+                .flatMap(ruleCondition -> this.handleDuplicateCheckWithRule(
+                        access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource))
+                .switchIfEmpty(this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
+    }
+
+    private Mono<Boolean> handleDuplicateCheckWithRule(
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail,
+            AbstractCondition ruleCondition,
+            String source,
+            String subSource) {
+
+        if (ruleCondition != null && ruleCondition.isNonEmpty())
+            return this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
+                    .hasElement()
+                    .flatMap(existing -> Boolean.TRUE.equals(existing)
+                            ? Mono.just(Boolean.FALSE)
+                            : this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource));
+
+        return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
+    }
+
+    private Mono<Boolean> checkWithoutRule(
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail,
+            String source,
+            String subSource) {
 
         return this.getTicket(access, productId, ticketPhone, ticketMail)
                 .flatMap(existing -> {
-                    if (existing.getId() != null)
-                        return this.activityService
-                                .acReInquiry(access, existing, null, source, subSource)
-                                .then(super.throwDuplicateError(access, existing));
-                    return Mono.just(Boolean.FALSE);
+                    if (existing == null || existing.getId() == null) return Mono.just(Boolean.FALSE);
+
+                    return this.activityService
+                            .acReInquiry(access, existing, null, source, subSource)
+                            .then(super.throwDuplicateError(access, existing));
                 })
-                .switchIfEmpty(Mono.just(Boolean.FALSE))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     private <T extends INoteRequest> Mono<Boolean> createNote(ProcessorAccess access, T noteRequest, Ticket ticket) {
@@ -594,14 +631,25 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketForReassignment"));
     }
 
-    public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
+    private Mono<Ticket> getTicket(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail) {
         return this.dao
                 .readByNumberAndEmail(
+                        condition,
                         access,
                         productId,
                         ticketPhone != null ? ticketPhone.getCountryCode() : null,
                         ticketPhone != null ? ticketPhone.getNumber() : null,
                         ticketMail != null ? ticketMail.getAddress() : null)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+    }
+
+    public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
+        return this.getTicket(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 

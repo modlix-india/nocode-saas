@@ -62,20 +62,8 @@ public abstract class BaseRuleDAO<
 
         if (condition != null) conditions.add(condition);
 
-        if (productId != null) conditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
-
-        if (productTemplateId != null) {
-	        if (productId != null) conditions.add(
-			        FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
-	        else conditions.add(
-			        ComplexCondition.and(
-	                                FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId),
-	                                new FilterCondition()
-	                                        .setField(BaseRuleDto.Fields.productId)
-	                                        .setOperator(FilterConditionOperator.IS_NULL)));
-        }
-
-        conditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+        AbstractCondition productCondition = this.buildProductCondition(productId, productTemplateId);
+        if (productCondition != null) conditions.add(productCondition);
 
         if (order != null) {
             conditions.add(FilterCondition.make(BaseRuleDto.Fields.order, order));
@@ -91,6 +79,26 @@ public abstract class BaseRuleDAO<
                 : defaultRuleCondition;
 
         return super.processorAccessCondition(finalCondition, access);
+    }
+
+    protected AbstractCondition buildProductCondition(ULong productId, ULong productTemplateId) {
+
+        List<AbstractCondition> productConditions = new ArrayList<>(2);
+
+        if (productId != null) productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
+
+        if (productTemplateId != null) {
+            if (productId != null)
+                productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
+            else
+                productConditions.add(ComplexCondition.and(
+                        FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId),
+                        new FilterCondition()
+                                .setField(BaseRuleDto.Fields.productId)
+                                .setOperator(FilterConditionOperator.IS_NULL)));
+        }
+
+        return productConditions.isEmpty() ? null : ComplexCondition.and(productConditions);
     }
 
     private AbstractCondition createDefaultRuleCondition(ULong productId, ULong productTemplateId) {
