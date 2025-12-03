@@ -86,9 +86,14 @@ public class ProductTicketRuRuleService
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return super.cacheService.cacheEmptyValueOrGet(
                 this.getConditionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> this.getConditionsForUserInternal(access, false)
-                        .flatMap(rules -> this.getUserReadConditions(access, rules)),
+                () -> this.getUserReadConditionInternal(access),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId()));
+    }
+
+    private Mono<AbstractCondition> getUserReadConditionInternal(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getConditionsForUserInternal(access, false),
+                rules -> this.getUserReadConditions(access, rules));
     }
 
     private Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access, List<ProductTicketRuRule> rules) {
