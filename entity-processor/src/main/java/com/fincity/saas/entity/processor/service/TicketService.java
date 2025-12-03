@@ -415,18 +415,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        if (ruleCondition != null && ruleCondition.isNonEmpty()) {
+        if (ruleCondition != null && ruleCondition.isNonEmpty())
             return this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
                     .hasElement()
-                    .flatMap(existing -> {
-                        if (Boolean.TRUE.equals(existing)) return Mono.just(Boolean.FALSE);
+                    .flatMap(existing -> Boolean.TRUE.equals(existing)
+                            ? Mono.just(Boolean.FALSE)
+                            : this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource));
 
-                        // Not found with rule - check without rule to see if it's a real duplicate
-                        return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
-                    });
-        }
-
-        // No rule - check directly
         return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
     }
 
