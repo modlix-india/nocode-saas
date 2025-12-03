@@ -85,7 +85,7 @@ public abstract class BaseRuleService<
     }
 
     @SuppressWarnings("unchecked")
-    private Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
+    protected Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
         if (entity.getProductId() == null)
             return this.productTemplateService
                     .readById(access, entity.getProductTemplateId())

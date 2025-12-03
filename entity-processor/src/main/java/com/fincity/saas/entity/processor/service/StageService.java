@@ -254,6 +254,31 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getLatestStageByOrder"));
     }
 
+    public Mono<List<Stage>> getStagesUpto(ProcessorAccess access, ULong productTemplateId, ULong maxStageId) {
+        return super.getAllValuesInOrder(access, null, productTemplateId)
+                .flatMap(allStages -> {
+                    Stage maxStage = allStages.keySet().stream()
+                            .filter(stage -> stage.getId().equals(maxStageId))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (maxStage == null) return Mono.just(List.<Stage>of());
+
+                    Integer maxOrder = maxStage.getOrder();
+                    if (maxOrder == null) return Mono.just(List.<Stage>of());
+
+                    List<Stage> stagesUpto = allStages.keySet().stream()
+                            .filter(stage -> {
+                                Integer order = stage.getOrder();
+                                return order != null && order < maxOrder;
+                            })
+                            .toList();
+
+                    return Mono.just(stagesUpto);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStagesUpto"));
+    }
+
     public Mono<Stage> getFirstStage(ProcessorAccess access, ULong productTemplateId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .map(NavigableMap::firstKey)

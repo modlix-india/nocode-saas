@@ -17,17 +17,17 @@ import reactor.core.publisher.Mono;
 public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U extends BaseUserDistributionDto<U>> {
 
     default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
-            Optional<BaseUserDistributionService<R, U, O>> getOptionalUserDistributionService() {
-        return Optional.ofNullable(this.getUserDistributionService());
-    }
-
-    default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
             BaseUserDistributionService<R, U, O> getUserDistributionService() {
         return null;
     }
 
     default boolean isUserDistributionEnabled() {
         return this.getUserDistributionService() != null;
+    }
+
+    private <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
+            Optional<BaseUserDistributionService<R, U, O>> getOptionalUserDistributionService() {
+        return Optional.ofNullable(this.getUserDistributionService());
     }
 
     default Mono<List<U>> createUserDistribution(ProcessorAccess access, D created, D requestEntity) {
