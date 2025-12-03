@@ -5,7 +5,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
@@ -385,37 +384,75 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 : this.partnerService.getPartnerDnc(access);
     }
 
-    private Mono<Boolean> checkDuplicate(
-            ProcessorAccess access,
-            ULong productId,
-            PhoneNumber ticketPhone,
-            Email ticketMail,
-            String source,
-            String subSource) {
+	private Mono<Boolean> checkDuplicate(
+			ProcessorAccess access,
+			ULong productId,
+			PhoneNumber ticketPhone,
+			Email ticketMail,
+			String source,
+			String subSource) {
 
-        if (ticketPhone == null && ticketMail == null)
-            return this.msgService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
-                    this.getEntityName());
+		if (ticketPhone == null && ticketMail == null)
+			return this.msgService.throwMessage(
+					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+					ProcessorMessageResourceService.IDENTITY_INFO_MISSING,
+					this.getEntityName());
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                        () -> this.ticketDuplicationRuleService.getDuplicateRuleCondition(
-                                access, productId, source, subSource),
-                        ruleCondition -> ruleCondition != null && ruleCondition.isNonEmpty()
-                                ? this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
-                                : this.getTicket(access, productId, ticketPhone, ticketMail),
-                        (rule, existing) -> {
-                            if (existing == null) return Mono.just(Boolean.FALSE);
+		return this.ticketDuplicationRuleService
+				.getDuplicateRuleCondition(access, productId, source, subSource)
+				.flatMap(ruleCondition ->
+						this.handleDuplicateCheckWithRule(
+								access, productId, ticketPhone, ticketMail,
+								ruleCondition, source, subSource))
+				.switchIfEmpty(
+						this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource))
+				.contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
+	}
 
-                            if (rule != null && rule.isNonEmpty()) return Mono.just(Boolean.FALSE);
+	private Mono<Boolean> handleDuplicateCheckWithRule(
+			ProcessorAccess access,
+			ULong productId,
+			PhoneNumber ticketPhone,
+			Email ticketMail,
+			AbstractCondition ruleCondition,
+			String source,
+			String subSource) {
 
-                            return this.activityService
-                                    .acReInquiry(access, existing, null, source, subSource)
-                                    .then(super.throwDuplicateError(access, existing));
-                        })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
-    }
+		if (ruleCondition != null && ruleCondition.isNonEmpty()) {
+			return this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
+					.hasElement()
+					.flatMap(existing -> {
+						if (Boolean.TRUE.equals(existing))
+							return Mono.just(Boolean.FALSE);
+
+						// Not found with rule - check without rule to see if it's a real duplicate
+						return checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
+					});
+		}
+
+		// No rule - check directly
+		return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
+	}
+
+	private Mono<Boolean> checkWithoutRule(
+			ProcessorAccess access,
+			ULong productId,
+			PhoneNumber ticketPhone,
+			Email ticketMail,
+			String source,
+			String subSource) {
+
+		return this.getTicket(access, productId, ticketPhone, ticketMail)
+				.flatMap(existing -> {
+					if (existing == null || existing.getId() == null)
+						return Mono.just(Boolean.FALSE);
+
+					return this.activityService
+							.acReInquiry(access, existing, null, source, subSource)
+							.then(super.throwDuplicateError(access, existing));
+				})
+				.switchIfEmpty(Mono.just(Boolean.FALSE));
+	}
 
     private <T extends INoteRequest> Mono<Boolean> createNote(ProcessorAccess access, T noteRequest, Ticket ticket) {
 
