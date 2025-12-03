@@ -502,9 +502,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                     ? stageStatusEntity.getValue().getFirst().getId()
                                     : null;
 
-                            boolean stageUnchanged = ticket.getStage().equals(resolvedStageId);
+                            boolean statusPresent = ticketStatusRequest.getStatusId() != null
+                                    && !ticketStatusRequest.getStatusId().isNull();
 
-                            if (stageUnchanged) return Mono.just(ticket);
+                            if (!statusPresent) {
+                                boolean stageUnchanged = ticket.getStage().equals(resolvedStageId);
+                                if (stageUnchanged) return Mono.just(ticket);
+                            }
 
                             return this.updateTicketStage(
                                     access,
