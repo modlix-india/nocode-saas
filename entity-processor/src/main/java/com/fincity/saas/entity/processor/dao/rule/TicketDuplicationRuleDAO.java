@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -27,14 +28,15 @@ public class TicketDuplicationRuleDAO
                 ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES.ID);
     }
 
-    public Mono<TicketDuplicationRule> getRule(
+    public Mono<List<TicketDuplicationRule>> getRule(
             ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getBaseConditions(null, access, productId, productTemplateId, source, subSource),
                 super::filter,
-                (pCondition, jCondition) -> Mono.from(
+                (pCondition, jCondition) -> Flux.from(
                                 dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
-                        .map(rec -> rec.into(this.pojoClass)));
+                        .map(rec -> rec.into(this.pojoClass))
+                        .collectList());
     }
 
     private AbstractCondition buildSourceCondition(String source, String subSource) {

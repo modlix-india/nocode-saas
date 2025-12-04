@@ -16,10 +16,12 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
+import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -32,6 +34,7 @@ public class TicketDuplicationRuleService
                 NoOpUserDistribution> {
 
     private static final String TICKET_DUPLICATION_RULE = "ticketDuplicationRule";
+    private static final String CONDITION_CACHE = "ticketDuplicationRuleCondition";
 
     private StageService stageService;
 
@@ -64,34 +67,14 @@ public class TicketDuplicationRuleService
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                     ProcessorMessageResourceService.STAGE_MISSING);
 
-        return FlatMapUtil.flatMapMonoWithNull(
-                () -> super.checkEntity(entity, access),
-                cEntity -> this.dao.getRule(
-                        access,
-                        cEntity.getProductId(),
-                        cEntity.getProductTemplateId(),
-                        cEntity.getSource(),
-                        cEntity.getSubSource()),
-                (cEntity, existingRule) -> {
-                    if (existingRule != null
-                            && (cEntity.getId() == null || !existingRule.getId().equals(cEntity.getId())))
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.DUPLICATE_SOURCE_SUBSOURCE_RULE,
-                                cEntity.getSource(),
-                                cEntity.getSubSource() != null ? cEntity.getSubSource() : "",
-                                existingRule.getId());
-
-                    return Mono.just(cEntity);
-                },
-                (cEntity, existingRule, validatedEntity) -> this.stageService
-                        .getStage(access, validatedEntity.getProductTemplateId(), validatedEntity.getMaxStageId())
-                        .switchIfEmpty(this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.TEMPLATE_STAGE_INVALID,
-                                validatedEntity.getMaxStageId(),
-                                validatedEntity.getProductTemplateId()))
-                        .thenReturn(validatedEntity));
+        return super.checkEntity(entity, access).flatMap(validatedEntity -> this.stageService
+                .getStage(access, validatedEntity.getProductTemplateId(), validatedEntity.getMaxStageId())
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.TEMPLATE_STAGE_INVALID,
+                        validatedEntity.getMaxStageId(),
+                        validatedEntity.getProductTemplateId()))
+                .thenReturn(validatedEntity));
     }
 
     @Override
@@ -103,43 +86,132 @@ public class TicketDuplicationRuleService
         });
     }
 
+    private String getProductConditionCacheName(
+            String appCode, String clientCode, ULong productId, ULong productTemplateId) {
+        return super.getCacheName(CONDITION_CACHE, appCode, clientCode, productId, productTemplateId);
+    }
+
+    private String getProductTemplateConditionCacheName(String appCode, String clientCode, ULong productTemplateId) {
+        return super.getCacheName(CONDITION_CACHE, appCode, clientCode, productTemplateId);
+    }
+
+    private Mono<Boolean> evictProductConditionCache(
+            String appCode, String clientCode, ULong productId, ULong productTemplateId) {
+        return super.cacheService.evictAll(
+                this.getProductConditionCacheName(appCode, clientCode, productId, productTemplateId));
+    }
+
+    private Mono<Boolean> evictProductTemplateConditionCache(
+            String appCode, String clientCode, ULong productTemplateId) {
+        return super.cacheService.evictAll(
+                this.getProductTemplateConditionCacheName(appCode, clientCode, productTemplateId));
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(TicketDuplicationRule entity) {
+        Mono<Boolean> productEviction = entity.getProductId() != null
+                ? this.evictProductConditionCache(
+                        entity.getAppCode(),
+                        entity.getClientCode(),
+                        entity.getProductId(),
+                        entity.getProductTemplateId())
+                : Mono.just(Boolean.TRUE);
+
+        return Mono.zip(
+                        super.evictCache(entity),
+                        productEviction,
+                        this.evictProductTemplateConditionCache(
+                                entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId()))
+                .map((evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3()));
+    }
+
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
+
         return FlatMapUtil.flatMapMono(
-                        () -> this.getDuplicationRule(access, productId, source, subSource),
-                        rule -> this.stageService.getStagesUpto(
-                                access, rule.getProductTemplateId(), rule.getMaxStageId()),
-                        (rule, stages) -> {
-                            if (stages.isEmpty()) return Mono.just(rule.getCondition());
-
-                            AbstractCondition stageCondition = new FilterCondition()
-                                    .setField(Ticket.Fields.stage)
-                                    .setOperator(FilterConditionOperator.IN)
-                                    .setMultiValue(stages);
-
-                            return Mono.just(ComplexCondition.and(rule.getCondition(), stageCondition));
-                        })
+                        () -> super.productService.readById(access, productId),
+                        product -> this.getProductDuplicateCondition(
+                                        access, product.getId(), product.getProductTemplateId(), source, subSource)
+                                .switchIfEmpty(this.getProductTemplateDuplicateCondition(
+                                        access, product.getProductTemplateId(), source, subSource)))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketDuplicationRuleService.getDuplicateRuleCondition"));
     }
 
-    private Mono<TicketDuplicationRule> getDuplicationRule(
-            ProcessorAccess access, ULong productId, String source, String subSource) {
+    private Mono<AbstractCondition> getProductDuplicateCondition(
+            ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
+        return super.cacheService.cacheEmptyValueOrGet(
+                this.getProductConditionCacheName(
+                        access.getAppCode(), access.getClientCode(), productId, productTemplateId),
+                () -> this.getProductDuplicateConditionInternal(
+                        access, productId, productTemplateId, source, subSource),
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), productId, productTemplateId, source, subSource));
+    }
+
+    private Mono<AbstractCondition> getProductDuplicateConditionInternal(
+            ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getProductDuplicationRules(access, productId, productTemplateId, source, subSource),
+                rules -> {
+                    if (rules.isEmpty()) return Mono.empty();
+
+                    return Flux.fromIterable(rules)
+                            .flatMap(rule -> this.getRuleCondition(access, rule))
+                            .collectList()
+                            .map(ComplexCondition::or);
+                });
+    }
+
+    private Mono<AbstractCondition> getProductTemplateDuplicateCondition(
+            ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
+        return super.cacheService.cacheEmptyValueOrGet(
+                this.getProductTemplateConditionCacheName(
+                        access.getAppCode(), access.getClientCode(), productTemplateId),
+                () -> this.getProductTemplateDuplicateConditionInternal(access, productTemplateId, source, subSource),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, source, subSource));
+    }
+
+    private Mono<AbstractCondition> getProductTemplateDuplicateConditionInternal(
+            ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getProductTemplateDuplicationRules(access, productTemplateId, source, subSource), rules -> {
+                    if (rules.isEmpty()) return Mono.empty();
+
+                    return Flux.fromIterable(rules)
+                            .flatMap(rule -> this.getRuleCondition(access, rule))
+                            .collectList()
+                            .map(ComplexCondition::or);
+                });
+    }
+
+    private Mono<AbstractCondition> getRuleCondition(ProcessorAccess access, TicketDuplicationRule rule) {
 
         return FlatMapUtil.flatMapMono(
-                () -> super.productService.readById(access, productId), product -> this.getProductDuplicationRule(
-                                access, product.getId(), product.getProductTemplateId(), source, subSource)
-                        .switchIfEmpty(this.getProductTemplateDuplicationRule(
-                                access, product.getProductTemplateId(), source, subSource)));
+                () -> this.stageService.getStagesUpto(access, rule.getProductTemplateId(), rule.getMaxStageId()),
+                stages -> {
+                    if (stages.isEmpty()) return Mono.just(rule.getCondition());
+
+                    AbstractCondition stageCondition = new FilterCondition()
+                            .setField(Ticket.Fields.stage)
+                            .setOperator(FilterConditionOperator.IN)
+                            .setMultiValue(stages);
+
+                    return Mono.just(ComplexCondition.and(rule.getCondition(), stageCondition));
+                });
     }
 
-    private Mono<TicketDuplicationRule> getProductDuplicationRule(
+    private Mono<List<TicketDuplicationRule>> getProductDuplicationRules(
             ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
-        return this.dao.getRule(access, productId, productTemplateId, source, subSource);
+        return this.dao
+                .getRule(access, productId, productTemplateId, source, subSource)
+                .flatMap(rules -> rules.isEmpty() ? Mono.empty() : Mono.just(rules));
     }
 
-    private Mono<TicketDuplicationRule> getProductTemplateDuplicationRule(
+    private Mono<List<TicketDuplicationRule>> getProductTemplateDuplicationRules(
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
-        return this.dao.getRule(access, null, productTemplateId, source, subSource);
+        return this.dao
+                .getRule(access, null, productTemplateId, source, subSource)
+                .flatMap(rules -> rules.isEmpty() ? Mono.empty() : Mono.just(rules));
     }
 }
