@@ -422,8 +422,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return ticketMono
                 .flatMap(existing -> {
-                    if (existing == null || existing.getId() == null)
-                        return Mono.just(Boolean.FALSE);
+                    if (existing == null || existing.getId() == null) return Mono.just(Boolean.FALSE);
 
                     return this.activityService
                             .acReInquiry(access, existing, null, source, subSource)
