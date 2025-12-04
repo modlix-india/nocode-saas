@@ -180,28 +180,35 @@ public class ProductTicketRuRuleService
                 rules.stream().map(ProductTicketRuRule::getConditionWithProduct).toList();
 
         return override
-                ? ComplexCondition.or(productConditions)
+                ? this.takeOnlyProductCondition(first.getProductTemplateId(), productConditions, productTemplateMaps)
                 : this.mergeProductAndTemplateConditions(
                         first.getProductTemplateId(), productConditions, productTemplateMaps);
     }
 
-    private AbstractCondition mergeProductAndTemplateConditions(
-            ULong templateId, List<AbstractCondition> productConds, ProductTemplateMaps productTemplateMaps) {
+    private AbstractCondition takeOnlyProductCondition(
+            ULong templateId, List<AbstractCondition> productConditions, ProductTemplateMaps productTemplateMaps) {
 
         if (templateId == null || !productTemplateMaps.templateMap.containsKey(templateId))
-            return ComplexCondition.and(productConds);
+            return ComplexCondition.or(productConditions);
 
-        List<AbstractCondition> merged = new ArrayList<>(productConds);
+        productTemplateMaps.usedTemplates.add(templateId);
+
+        return ComplexCondition.or(productConditions);
+    }
+
+    private AbstractCondition mergeProductAndTemplateConditions(
+            ULong templateId, List<AbstractCondition> productConditions, ProductTemplateMaps productTemplateMaps) {
+
+        if (templateId == null || !productTemplateMaps.templateMap.containsKey(templateId))
+            return ComplexCondition.or(productConditions);
 
         List<AbstractCondition> templateConditions = productTemplateMaps.templateMap.get(templateId).stream()
                 .map(ProductTicketRuRule::getConditionWithProductTemplate)
                 .toList();
 
-        merged.addAll(templateConditions);
-
         productTemplateMaps.usedTemplates.add(templateId);
 
-        return ComplexCondition.and(merged);
+        return ComplexCondition.or(ComplexCondition.or(productConditions), ComplexCondition.or(templateConditions));
     }
 
     private List<AbstractCondition> addTemplateOnlyBlocks(ProductTemplateMaps productTemplateMaps) {
