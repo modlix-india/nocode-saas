@@ -400,13 +400,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return this.ticketDuplicationRuleService
                 .getDuplicateRuleCondition(access, productId, source, subSource)
-                .flatMap(ruleCondition -> this.handleDuplicateCheckWithRule(
+                .flatMap(ruleCondition -> this.handleDuplicateCheck(
                         access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource))
-                .switchIfEmpty(this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource))
+                .switchIfEmpty(
+                        this.handleDuplicateCheck(access, productId, ticketPhone, ticketMail, null, source, subSource))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkDuplicate"));
     }
 
-    private Mono<Boolean> handleDuplicateCheckWithRule(
+    private Mono<Boolean> handleDuplicateCheck(
             ProcessorAccess access,
             ULong productId,
             PhoneNumber ticketPhone,
@@ -415,27 +416,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        if (ruleCondition != null && ruleCondition.isNonEmpty())
-            return this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
-                    .hasElement()
-                    .flatMap(existing -> Boolean.TRUE.equals(existing)
-                            ? Mono.just(Boolean.FALSE)
-                            : this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource));
+        Mono<Ticket> ticketMono = (ruleCondition != null && ruleCondition.isNonEmpty())
+                ? this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
+                : this.getTicket(access, productId, ticketPhone, ticketMail);
 
-        return this.checkWithoutRule(access, productId, ticketPhone, ticketMail, source, subSource);
-    }
-
-    private Mono<Boolean> checkWithoutRule(
-            ProcessorAccess access,
-            ULong productId,
-            PhoneNumber ticketPhone,
-            Email ticketMail,
-            String source,
-            String subSource) {
-
-        return this.getTicket(access, productId, ticketPhone, ticketMail)
+        return ticketMono
                 .flatMap(existing -> {
-                    if (existing == null || existing.getId() == null) return Mono.just(Boolean.FALSE);
+                    if (existing == null || existing.getId() == null)
+                        return Mono.just(Boolean.FALSE);
 
                     return this.activityService
                             .acReInquiry(access, existing, null, source, subSource)

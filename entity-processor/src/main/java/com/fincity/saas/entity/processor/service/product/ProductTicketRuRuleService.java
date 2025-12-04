@@ -172,7 +172,7 @@ public class ProductTicketRuRuleService
     private AbstractCondition buildSingleProductBlock(
             List<ProductTicketRuRule> rules, ProductTemplateMaps productTemplateMaps, Product product) {
 
-        var first = rules.getFirst();
+        ProductTicketRuRule first = rules.getFirst();
         // Use overrideRuTemplate from product, default to false if product is not found
         boolean override = product != null && product.isOverrideRuTemplate();
 

@@ -270,7 +270,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     List<Stage> stagesUpto = allStages.keySet().stream()
                             .filter(stage -> {
                                 Integer order = stage.getOrder();
-                                return order != null && order > minOrder;
+                                return order != null && order >= minOrder;
                             })
                             .toList();
 
