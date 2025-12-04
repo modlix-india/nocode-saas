@@ -254,23 +254,23 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getLatestStageByOrder"));
     }
 
-    public Mono<List<Stage>> getStagesUpto(ProcessorAccess access, ULong productTemplateId, ULong maxStageId) {
+    public Mono<List<Stage>> getHigherStages(ProcessorAccess access, ULong productTemplateId, ULong minStageId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .flatMap(allStages -> {
-                    Stage maxStage = allStages.keySet().stream()
-                            .filter(stage -> stage.getId().equals(maxStageId))
+                    Stage minStage = allStages.keySet().stream()
+                            .filter(stage -> stage.getId().equals(minStageId))
                             .findFirst()
                             .orElse(null);
 
-                    if (maxStage == null) return Mono.just(List.<Stage>of());
+                    if (minStage == null) return Mono.just(List.<Stage>of());
 
-                    Integer maxOrder = maxStage.getOrder();
-                    if (maxOrder == null) return Mono.just(List.<Stage>of());
+                    Integer minOrder = minStage.getOrder();
+                    if (minOrder == null) return Mono.just(List.<Stage>of());
 
                     List<Stage> stagesUpto = allStages.keySet().stream()
                             .filter(stage -> {
                                 Integer order = stage.getOrder();
-                                return order != null && order < maxOrder;
+                                return order != null && order > minOrder;
                             })
                             .toList();
 

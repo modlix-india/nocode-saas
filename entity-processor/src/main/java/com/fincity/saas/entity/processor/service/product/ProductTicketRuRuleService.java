@@ -80,7 +80,7 @@ public class ProductTicketRuRuleService
     public Mono<List<ProductTicketRuRule>> getConditionsForUserInternal(ProcessorAccess access, boolean isEdit) {
         return FlatMapUtil.flatMapMono(
                 () -> this.userDistributionService.getUserForClient(access),
-                userInfo -> this.dao.getUserConditions(isEdit, userInfo).collectList());
+                userInfo -> this.dao.getUserConditions(access, isEdit, userInfo).collectList());
     }
 
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
@@ -121,9 +121,9 @@ public class ProductTicketRuRuleService
         Set<ULong> usedTemplates = new HashSet<>();
 
         for (var rule : rules) {
-            productMap
-                    .computeIfAbsent(rule.getProductId(), x -> new ArrayList<>())
-                    .add(rule);
+            ULong productId = rule.getProductId();
+            if (productId != null)
+                productMap.computeIfAbsent(productId, x -> new ArrayList<>()).add(rule);
 
             ULong templateId = rule.getProductTemplateId();
             if (templateId != null)
