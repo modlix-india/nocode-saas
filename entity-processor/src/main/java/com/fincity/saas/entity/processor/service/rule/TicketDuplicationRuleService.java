@@ -6,6 +6,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.TicketDuplicationRuleDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -188,14 +189,16 @@ public class TicketDuplicationRuleService
     private Mono<AbstractCondition> getRuleCondition(ProcessorAccess access, TicketDuplicationRule rule) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.stageService.getStagesUpto(access, rule.getProductTemplateId(), rule.getMaxStageId()),
+                () -> this.stageService.getHigherStages(access, rule.getProductTemplateId(), rule.getMaxStageId()),
                 stages -> {
                     if (stages.isEmpty()) return Mono.just(rule.getCondition());
 
                     AbstractCondition stageCondition = new FilterCondition()
                             .setField(Ticket.Fields.stage)
                             .setOperator(FilterConditionOperator.IN)
-                            .setMultiValue(stages);
+                            .setMultiValue(
+                                    stages.stream().map(AbstractDTO::getId).toList())
+                            .setNegate(Boolean.TRUE);
 
                     return Mono.just(ComplexCondition.and(rule.getCondition(), stageCondition));
                 });
