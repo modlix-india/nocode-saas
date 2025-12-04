@@ -51,9 +51,9 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
     }
 
     @SuppressWarnings("rawtypes")
-    Field getField(String fieldName);
+    Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep);
 
-    Mono<Condition> filter(AbstractCondition condition);
+    Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep);
 
     default Mono<Map<String, Object>> readSingleRecordByIdentityEager(
             AbstractCondition condition, List<String> tableFields, MultiValueMap<String, String> queryParams) {
@@ -61,7 +61,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
-            return this.filter(condition).flatMap(filterCondition -> Mono.from(
+            return this.filter(condition, selectJoinStepTuple.getT1()).flatMap(filterCondition -> Mono.from(
                             selectJoinStepTuple.getT1().where(filterCondition))
                     .map(rec -> this.processRelatedData(rec.intoMap(), relations))
                     .flatMap(rec -> this.getRecordEnrichmentService() != null
@@ -80,7 +80,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
-            return this.filter(condition).flatMap(filterCondition -> {
+            return this.filter(condition, selectJoinStepTuple.getT1()).flatMap(filterCondition -> {
                 Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries = selectJoinStepTuple
                         .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
                         .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
@@ -264,7 +264,7 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
         List<SortField<?>> orderBy = new ArrayList<>();
 
         pageable.getSort().forEach(order -> {
-            Field<?> field = this.getField(order.getProperty());
+            Field<?> field = this.getField(order.getProperty(), selectJoinStepTuple.getT1());
             if (field != null)
                 orderBy.add(field.sort(order.getDirection() == Sort.Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
         });

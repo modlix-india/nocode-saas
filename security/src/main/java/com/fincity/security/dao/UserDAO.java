@@ -682,7 +682,8 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         if (clientCode != null) condition = condition.and(SecurityClient.SECURITY_CLIENT.CODE.eq(clientCode));
         else if (clientId != null)
             condition = condition.and(SecurityUser.SECURITY_USER.CLIENT_ID.eq(ULongUtil.valueOf(clientId)));
-        else if (userIds != null && !userIds.isEmpty())
+
+		if (userIds != null && !userIds.isEmpty())
             condition = condition.and(SecurityUser.SECURITY_USER.ID.in(
                     userIds.stream().map(ULongUtil::valueOf).toList()));
 

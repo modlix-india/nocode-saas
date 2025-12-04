@@ -14,7 +14,7 @@ import com.modlix.saas.commons2.util.Tuples.Tuple2;
 
 @Transactional
 public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I extends Serializable, D extends AbstractUpdatableDTO<I, I>>
-		extends AbstractDAO<R, I, D> {
+        extends AbstractDAO<R, I, D> {
 
 	private static final String UPDATED_BY = "UPDATED_BY";
 
@@ -32,7 +32,6 @@ public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I exten
 		rec.from(entity);
 		rec.reset("CREATED_BY");
 		rec.reset("CREATED_AT");
-
 		this.dslContext.update(this.table)
 				.set(rec)
 				.where(this.idField.eq(entity.getId()))
@@ -41,6 +40,7 @@ public abstract class AbstractUpdatableDAO<R extends UpdatableRecord<R>, I exten
 		return this.readById(entity.getId());
 	}
 
+	@SuppressWarnings("unchecked")
 	public D update(I id, Map<String, Object> updateFields) {
 
 		updateFields.remove("createdAt");

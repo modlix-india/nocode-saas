@@ -154,16 +154,23 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(
                                 EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
-                dslContext.select(DSL.count()).from(table)));
+                dslContext
+                        .select(DSL.count())
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(
+                                EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))));
     }
 
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
                         () -> this.productTicketRuRuleService.getUserReadConditions(access),
-                        readCondition -> super.processorAccessCondition(condition, access),
-                        (readCondition, baseCondition) ->
-                                Mono.just((AbstractCondition) ComplexCondition.or(baseCondition, readCondition)))
+                        rCondition -> Mono.just(super.addAppCodeAndClientCode(rCondition, access)),
+                        (rCondition, readCondition) -> super.processorAccessCondition(condition, access),
+                        (rCondition, readCondition, baseCondition) -> readCondition == null
+                                ? Mono.just(baseCondition)
+                                : Mono.just(ComplexCondition.or(baseCondition, readCondition)))
                 .switchIfEmpty(super.processorAccessCondition(condition, access));
     }
 }
