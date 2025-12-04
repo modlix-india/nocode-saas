@@ -167,13 +167,13 @@ public class ProductTicketRuRuleService
         // Use overrideRuTemplate from product, default to false if product is not found
         boolean override = product != null && product.isOverrideRuTemplate();
 
-        List<AbstractCondition> productConds =
+        List<AbstractCondition> productConditions =
                 rules.stream().map(ProductTicketRuRule::getConditionWithProduct).toList();
 
         return override
-                ? ComplexCondition.and(productConds)
+                ? ComplexCondition.and(productConditions)
                 : this.mergeProductAndTemplateConditions(
-                        first.getProductTemplateId(), productConds, productTemplateMaps);
+                        first.getProductTemplateId(), productConditions, productTemplateMaps);
     }
 
     private AbstractCondition mergeProductAndTemplateConditions(
@@ -184,11 +184,11 @@ public class ProductTicketRuRuleService
 
         List<AbstractCondition> merged = new ArrayList<>(productConds);
 
-        List<AbstractCondition> templateConds = productTemplateMaps.templateMap.get(templateId).stream()
+        List<AbstractCondition> templateConditions = productTemplateMaps.templateMap.get(templateId).stream()
                 .map(ProductTicketRuRule::getConditionWithProductTemplate)
                 .toList();
 
-        merged.addAll(templateConds);
+        merged.addAll(templateConditions);
 
         productTemplateMaps.usedTemplates.add(templateId);
 
@@ -201,11 +201,11 @@ public class ProductTicketRuRuleService
 
             if (productTemplateMaps.usedTemplates.contains(entry.getKey())) continue;
 
-            List<AbstractCondition> templateConds = entry.getValue().stream()
+            List<AbstractCondition> templateConditions = entry.getValue().stream()
                     .map(ProductTicketRuRule::getConditionWithProductTemplate)
                     .toList();
 
-            target.add(ComplexCondition.and(templateConds));
+            target.add(ComplexCondition.and(templateConditions));
         }
     }
 
