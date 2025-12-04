@@ -165,9 +165,11 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
-                        rCondition -> Mono.just(
-                                super.addAppCodeAndClientCode(ComplexCondition.and(condition, rCondition), access)),
+                        () -> this.productTicketRuRuleService
+                                .getUserReadConditions(access)
+                                .map(rCondition ->
+                                        condition != null ? ComplexCondition.and(condition, rCondition) : rCondition),
+                        rCondition -> Mono.just(super.addAppCodeAndClientCode(rCondition, access)),
                         (rCondition, readCondition) -> super.processorAccessCondition(condition, access),
                         (rCondition, readCondition, baseCondition) -> readCondition == null
                                 ? Mono.just(baseCondition)
