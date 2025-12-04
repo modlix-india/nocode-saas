@@ -106,10 +106,19 @@ public class ProductTicketRuRuleService
 
         return this.fetchProducts(access, productIds)
                 .map(productsMap -> {
-                    List<AbstractCondition> orBlocks =
+                    List<AbstractCondition> productConditionBlocks =
                             this.buildProductConditionBlocks(productTemplateMaps, productsMap);
-                    this.addTemplateOnlyBlocks(productTemplateMaps, orBlocks);
-                    return orBlocks.isEmpty() ? null : ComplexCondition.or(orBlocks);
+
+                    List<AbstractCondition> productTemplateBlocks = this.addTemplateOnlyBlocks(productTemplateMaps);
+
+                    if (productConditionBlocks.isEmpty() && !productTemplateBlocks.isEmpty())
+                        return ComplexCondition.or(productTemplateBlocks);
+                    if (productTemplateBlocks.isEmpty() && !productConditionBlocks.isEmpty())
+                        return ComplexCondition.or(productConditionBlocks);
+
+                    productConditionBlocks.addAll(productTemplateBlocks);
+
+                    return ComplexCondition.or(productConditionBlocks);
                 })
                 .flatMap(condition -> condition == null ? Mono.empty() : Mono.just(condition));
     }
@@ -171,7 +180,7 @@ public class ProductTicketRuRuleService
                 rules.stream().map(ProductTicketRuRule::getConditionWithProduct).toList();
 
         return override
-                ? ComplexCondition.and(productConditions)
+                ? ComplexCondition.or(productConditions)
                 : this.mergeProductAndTemplateConditions(
                         first.getProductTemplateId(), productConditions, productTemplateMaps);
     }
@@ -195,7 +204,9 @@ public class ProductTicketRuRuleService
         return ComplexCondition.and(merged);
     }
 
-    private void addTemplateOnlyBlocks(ProductTemplateMaps productTemplateMaps, List<AbstractCondition> target) {
+    private List<AbstractCondition> addTemplateOnlyBlocks(ProductTemplateMaps productTemplateMaps) {
+
+        List<AbstractCondition> result = new ArrayList<>();
 
         for (var entry : productTemplateMaps.templateMap.entrySet()) {
 
@@ -205,8 +216,10 @@ public class ProductTicketRuRuleService
                     .map(ProductTicketRuRule::getConditionWithProductTemplate)
                     .toList();
 
-            target.add(ComplexCondition.and(templateConditions));
+            result.add(ComplexCondition.or(templateConditions));
         }
+
+        return result;
     }
 
     private record ProductTemplateMaps(
