@@ -1,14 +1,11 @@
 package com.fincity.saas.commons.jooq.dao;
 
 import java.io.Serializable;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.DSLContext;
@@ -33,6 +30,7 @@ import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -42,8 +40,6 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 
-import io.r2dbc.spi.Row;
-import io.r2dbc.spi.RowMetadata;
 import lombok.Getter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -59,15 +55,14 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     protected final Class<D> pojoClass;
 
     protected final Logger logger;
+    protected final Table<R> table;
+    protected final Field<I> idField;
 
     @Autowired // NOSONAR
     protected DSLContext dslContext;
 
     @Autowired // NOSONAR
     protected AbstractMessageService messageResourceService;
-
-    protected final Table<R> table;
-    protected final Field<I> idField;
 
     protected AbstractDAO(Class<D> pojoClass, Table<R> table, Field<I> idField) {
 
@@ -78,15 +73,20 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     public Mono<Page<D>> readPage(Pageable pageable) {
-        return getSelectJointStep().flatMap(tup -> this.list(pageable, tup));
+        return this.getSelectJointStep().flatMap(tup -> this.list(pageable, tup));
     }
 
     @SuppressWarnings("unchecked")
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
-        return getSelectJointStep()
-                .flatMap(selectJoinStepTuple -> filter(condition).flatMap(filterCondition -> list(pageable,
-                        selectJoinStepTuple.mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-                                .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition)))));
+
+        return FlatMapUtil.flatMapMono(
+                this::getSelectJointStep,
+                selectJoinStepTuple -> this.filter(condition, selectJoinStepTuple.getT1()),
+                (selectJoinStepTuple, jCondition) -> this.list(
+                        pageable,
+                        selectJoinStepTuple
+                                .mapT1(e -> (SelectJoinStep<Record>) e.where(jCondition))
+                                .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(jCondition))));
     }
 
     protected Mono<Page<D>> list(
@@ -94,7 +94,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         List<SortField<?>> orderBy = new ArrayList<>();
 
         pageable.getSort().forEach(order -> {
-            Field<?> field = this.getField(order.getProperty());
+            Field<?> field = this.getField(order.getProperty(), selectJoinStepTuple.getT1());
             if (field != null)
                 orderBy.add(field.sort(order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
         });
@@ -117,24 +117,16 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     public Flux<D> readAll(AbstractCondition query) {
-        Mono<SelectJoinStep<Record>> selectJoinStep = getSelectJointStep().map(Tuple2::getT1);
-
-        return selectJoinStep.flatMapMany(sjs -> filter(query).flatMapMany(cond -> {
-            sjs.where(cond);
-
-            return Flux.from(sjs)
-                    .map(e -> e.into(this.pojoClass));
-        }));
+        return this.getSelectJointStep().map(Tuple2::getT1).flatMapMany(sjs -> this.filter(query)
+                .flatMapMany(cond -> Flux.from(sjs.where(cond)).map(e -> e.into(this.pojoClass))));
     }
 
     public Mono<D> readById(I id) {
-        return this.getRecordById(id)
-                .map(e -> e.into(this.pojoClass));
+        return this.getRecordById(id).map(e -> e.into(this.pojoClass));
     }
 
     protected String convertToJOOQFieldName(String fieldName) {
-        return fieldName.replaceAll("([A-Z])", "_$1")
-                .toUpperCase();
+        return fieldName.replaceAll("([A-Z])", "_$1").toUpperCase();
     }
 
     public Mono<D> create(D pojo) {
@@ -146,7 +138,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         return Mono.from(dslContext.insertInto(this.table).set(rec).returning(this.idField))
                 .map(r -> r.get(0, this.idField.getType()))
-                .flatMap(id -> Mono.from(dslContext.selectFrom(this.table).where(this.idField.eq(id)).limit(1)))
+                .flatMap(id -> Mono.from(dslContext
+                        .selectFrom(this.table)
+                        .where(this.idField.eq(id))
+                        .limit(1)))
                 .map(r -> r.into(this.pojoClass));
     }
 
@@ -159,53 +154,84 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     @SuppressWarnings("rawtypes")
-    public Field getField(String fieldName) { // NOSONAR
-        // this return type has to be generic.
-        return table.field(convertToJOOQFieldName(fieldName));
+    public Field getField(String fieldName) {
+        return this.getField(fieldName, null);
+    }
+
+    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) { // NOSONAR
+        String jooqFieldName = this.convertToJOOQFieldName(fieldName);
+
+        Field field = table.field(jooqFieldName); // NOSONAR
+        if (field != null) return field;
+
+        if (selectJoinStep != null) {
+            try {
+                return selectJoinStep.getSelect().stream()
+                        .filter(f -> f.getName().equalsIgnoreCase(jooqFieldName))
+                        .findFirst()
+                        .orElse(DSL.field(jooqFieldName));
+            } catch (ClassCastException e) {
+                logger.warn(
+                        "Could not cast SelectJoinStep to SelectQuery for field: {}. Falling back to unattached Field.",
+                        jooqFieldName,
+                        e);
+            }
+        }
+
+        return DSL.field(jooqFieldName);
     }
 
     public Mono<Condition> filter(AbstractCondition condition) {
+        return this.filter(condition, null);
+    }
 
-        if (condition == null)
-            return Mono.just(DSL.noCondition());
+    public Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
 
-        return (condition instanceof ComplexCondition cc ? this.complexConditionFilter(cc)
-                : Mono.just(this.filterConditionFilter((FilterCondition) condition)))
+        if (condition == null) return Mono.just(DSL.noCondition());
+
+        return (condition instanceof ComplexCondition cc
+                        ? this.complexConditionFilter(cc, selectJoinStep)
+                        : Mono.just(this.filterConditionFilter((FilterCondition) condition, selectJoinStep)))
                 .map(c -> condition.isNegate() ? c.not() : c);
     }
 
+    protected Condition filterConditionFilter(FilterCondition fc) {
+        return this.filterConditionFilter(fc, null);
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected Condition filterConditionFilter(FilterCondition fc) { // NOSONAR
+    protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
 
-        Field field = this.getField(fc.getField()); // NOSONAR
-        // Field has to be a raw type because we are generalising
+        Field field = this.getField(fc.getField(), selectJoinStep); // NO SONAR
+        // Field has to be a raw type because we are generalizing
 
-        if (field == null)
-            return DSL.noCondition();
+        if (field == null) return DSL.noCondition();
 
         if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
-            return field
-                    .between(fc.isValueField() ? (Field<?>) this.getField(fc.getField())
-                            : this.fieldValue(field, fc.getValue()))
-                    .and(fc.isToValueField() ? (Field<?>) this.getField(fc.getField())
-                            : this.fieldValue(field, fc.getToValue()));
+            return field.between(
+                            fc.isValueField()
+                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
+                                    : this.fieldValue(field, fc.getValue()))
+                    .and(
+                            fc.isToValueField()
+                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
+                                    : this.fieldValue(field, fc.getToValue()));
         }
 
-        if (fc.getOperator() == FilterConditionOperator.EQUALS ||
-                fc.getOperator() == FilterConditionOperator.GREATER_THAN ||
-                fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL ||
-                fc.getOperator() == FilterConditionOperator.LESS_THAN ||
-                fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL
-        ) {
+        if (fc.getOperator() == FilterConditionOperator.EQUALS
+                || fc.getOperator() == FilterConditionOperator.GREATER_THAN
+                || fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL
+                || fc.getOperator() == FilterConditionOperator.LESS_THAN
+                || fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
             if (fc.isValueField()) {
                 if (fc.getField() == null) return DSL.noCondition();
                 return switch (fc.getOperator()) {
-                    case EQUALS -> field.eq(this.getField(fc.getField()));
-                    case GREATER_THAN -> field.gt(this.getField(fc.getField()));
-                    case GREATER_THAN_EQUAL -> field.ge(this.getField(fc.getField()));
-                    case LESS_THAN -> field.lt(this.getField(fc.getField()));
-                    case LESS_THAN_EQUAL -> field.le(this.getField(fc.getField()));
+                    case EQUALS -> field.eq(this.getField(fc.getField(), selectJoinStep));
+                    case GREATER_THAN -> field.gt(this.getField(fc.getField(), selectJoinStep));
+                    case GREATER_THAN_EQUAL -> field.ge(this.getField(fc.getField(), selectJoinStep));
+                    case LESS_THAN -> field.lt(this.getField(fc.getField(), selectJoinStep));
+                    case LESS_THAN_EQUAL -> field.le(this.getField(fc.getField(), selectJoinStep));
                     default -> DSL.noCondition();
                 };
             }
@@ -223,43 +249,36 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         }
 
         return switch (fc.getOperator()) {
-
             case IS_FALSE -> field.isFalse();
             case IS_TRUE -> field.isTrue();
             case IS_NULL -> field.isNull();
             case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-            case LIKE -> field.like(fc.getValue()
-                    .toString());
+            case LIKE -> field.like(fc.getValue().toString());
             case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
             default -> DSL.noCondition();
         };
     }
 
-    protected List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) {
+    protected List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) { // NOSONAR
 
-        if (values != null && !values.isEmpty())
-            return values;
+        if (values != null && !values.isEmpty()) return values;
 
-        if (obValue == null)
-            return List.of();
+        if (obValue == null) return List.of();
 
         int from = 0;
         String iValue = obValue.toString().trim();
 
         List<Object> obj = new ArrayList<>();
         for (int i = 0; i <= iValue.length(); i++) { // NOSONAR
-            // Having multiple continue statements is not confusing
+            // Having multiple continue statements is confusing
 
-            if (i < iValue.length() && iValue.charAt(i) != ',')
-                continue;
+            if (i < iValue.length() && iValue.charAt(i) != ',') continue;
 
-            if (i > 0 && iValue.charAt(i - 1) == '\\')
-                continue;
+            if (i > 0 && iValue.charAt(i - 1) == '\\') continue;
 
             String str = iValue.substring(from, i).trim();
 
-            if (str.isEmpty())
-                continue;
+            if (str.isEmpty()) continue;
 
             obj.add(this.fieldValue(field, str));
             from = i + 1;
@@ -274,23 +293,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         DataType<?> dt = field.getDataType();
 
-        if (dt.isString() || dt.isJSON() || dt.isEnum())
-            return value.toString();
+        if (dt.isString() || dt.isJSON() || dt.isEnum()) return value.toString();
 
         if (dt.isNumeric()) {
 
-            if (value instanceof Number)
-                return value;
+            if (value instanceof Number) return value;
 
-            if (dt.hasPrecision())
-                return Double.valueOf(value.toString());
+            if (dt.hasPrecision()) return Double.valueOf(value.toString());
 
             return Long.valueOf(value.toString());
         }
 
         if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
-            return value.equals("now") ? LocalDateTime.now()
+            return value.equals("now")
+                    ? LocalDateTime.now()
                     : LocalDateTime.ofEpochSecond(Long.parseLong(value.toString()), 0, ZoneOffset.UTC);
         }
 
@@ -298,48 +315,36 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     protected Mono<Condition> complexConditionFilter(ComplexCondition cc) {
+        return this.complexConditionFilter(cc, null);
+    }
 
-        if (cc.getConditions() == null || cc.getConditions()
-                .isEmpty())
-            return Mono.just(DSL.noCondition());
+    protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
 
-        return Flux.concat(cc.getConditions()
-                        .stream()
-                        .map(this::filter)
+        if (cc.getConditions() == null || cc.getConditions().isEmpty()) return Mono.just(DSL.noCondition());
+
+        return Flux.concat(cc.getConditions().stream()
+                        .map(condition -> this.filter(condition, selectJoinStep))
                         .toList())
                 .collectList()
-                .map(conds -> cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conds) : DSL.or(conds));
+                .map(conditions ->
+                        cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conditions) : DSL.or(conditions));
     }
 
     protected Mono<Record> getRecordById(I id) {
-
         return this.getSelectJointStep()
                 .map(Tuple2::getT1)
                 .flatMap(e -> Mono.from(e.where(idField.eq(id))))
-                .switchIfEmpty(Mono.defer(
-                        () -> messageResourceService.getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
-                                .map(msg -> {
-                                    throw new GenericException(HttpStatus.NOT_FOUND, msg);
-                                })));
+                .switchIfEmpty(Mono.defer(() -> messageResourceService
+                        .getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
+		                .handle((msg, sink) -> {
+			                sink.error(new GenericException(HttpStatus.NOT_FOUND, msg));
+		                })));
     }
 
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
-        return Mono.just(Tuples.of(dslContext.select(Arrays.asList(table.fields()))
-                        .from(table),
-                dslContext.select(DSL.count())
-                        .from(table)));
-    }
-
-    private D rowMapper(Row row, RowMetadata meta) {
-        Record rec = this.table.newRecord();
-
-        rec.fromMap(meta.getColumnMetadatas()
-                .stream()
-                .filter(e -> row.get(e.getName()) != null)
-                .map(e -> Tuples.of(e.getName(), row.get(e.getName())))
-                .collect(Collectors.toMap(Tuple2::getT1, Tuple2::getT2)));
-
-        return rec.into(this.pojoClass);
+        return Mono.just(Tuples.of(
+                dslContext.select(Arrays.asList(table.fields())).from(table),
+                dslContext.select(DSL.count()).from(table)));
     }
 
     public Mono<Class<D>> getPojoClass() {
