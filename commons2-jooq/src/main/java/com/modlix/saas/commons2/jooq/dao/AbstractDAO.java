@@ -161,27 +161,31 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return this.getField(fieldName, null);
     }
 
-    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) { // NOSONAR
+    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
         String jooqFieldName = this.convertToJOOQFieldName(fieldName);
 
-        Field field = table.field(jooqFieldName); // NOSONAR
+        Field field = table.field(jooqFieldName);
+
         if (field != null) return field;
 
-        if (selectJoinStep != null) {
-            try {
-                return selectJoinStep.getSelect().stream()
-                        .filter(f -> f.getName().equalsIgnoreCase(jooqFieldName))
-                        .findFirst()
-                        .orElse(DSL.field(jooqFieldName));
-            } catch (ClassCastException e) {
-                logger.warn(
-                        "Could not cast SelectJoinStep to SelectQuery for field: {}. Falling back to unattached Field.",
-                        jooqFieldName,
-                        e);
-            }
-        }
+        if (selectJoinStep != null) return this.findFieldInSelect(selectJoinStep, jooqFieldName);
 
-        return DSL.field(jooqFieldName);
+        return null;
+    }
+
+    private Field findFieldInSelect(SelectJoinStep<Record> selectJoinStep, String jooqFieldName) {
+        try {
+            return selectJoinStep.getSelect().stream()
+                    .filter(f -> f.getName().equalsIgnoreCase(jooqFieldName))
+                    .findFirst()
+                    .orElse(null);
+        } catch (ClassCastException e) {
+            logger.warn(
+                    "Could not cast SelectJoinStep to SelectQuery for field: {}. Falling back to null.",
+                    jooqFieldName,
+                    e);
+            return null;
+        }
     }
 
     public Condition filter(AbstractCondition condition) {
