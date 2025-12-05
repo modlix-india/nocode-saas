@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service.product;
 
+import java.util.List;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -17,12 +25,7 @@ import com.fincity.saas.entity.processor.model.request.product.ProductRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
-import java.util.List;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -31,6 +34,7 @@ import reactor.util.context.Context;
 public class ProductService extends BaseProcessorService<EntityProcessorProductsRecord, Product, ProductDAO> {
 
     private static final String PRODUCT_CACHE = "product";
+    private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
     private ProductTemplateService productTemplateService;
 
@@ -76,7 +80,10 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     protected Mono<Product> updatableEntity(Product entity) {
         return super.updatableEntity(entity)
                 .flatMap(existing -> {
-                    existing.setProductTemplateId(entity.getProductTemplateId());
+                    ULong oldProductTemplateId = existing.getProductTemplateId();
+                    ULong newProductTemplateId = entity.getProductTemplateId();
+
+                    existing.setProductTemplateId(newProductTemplateId);
                     existing.setForPartner(entity.isForPartner());
                     existing.setOverrideCTemplate(entity.isOverrideCTemplate());
                     existing.setOverrideRuTemplate(entity.isOverrideRuTemplate());
@@ -84,9 +91,34 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     existing.setLogoFileDetail(entity.getLogoFileDetail());
                     existing.setBannerFileDetail(entity.getBannerFileDetail());
 
+                    if (oldProductTemplateId != null && newProductTemplateId != null
+                            && !oldProductTemplateId.equals(newProductTemplateId)) {
+                        return this.evictProductTicketCRuleCache(
+                                existing.getAppCode(),
+                                existing.getClientCode(),
+                                existing.getId(),
+                                oldProductTemplateId)
+                                .then(Mono.just(existing));
+                    }
+
                     return Mono.just(existing);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updatableEntity"));
+    }
+
+    private Mono<Boolean> evictProductTicketCRuleCache(
+            String appCode, String clientCode, ULong productId, ULong productTemplateId) {
+        Mono<Boolean> productEviction = productId != null
+                ? super.cacheService.evict(
+                        PRODUCT_TICKET_C_RULE,
+                        super.getCacheKey(appCode, clientCode, productId, productTemplateId))
+                : Mono.just(Boolean.TRUE);
+
+        return productEviction
+                .flatMap(evicted -> super.cacheService.evict(
+                        PRODUCT_TICKET_C_RULE,
+                        super.getCacheKey(appCode, clientCode, productTemplateId)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.evictProductTicketCRuleCache"));
     }
 
     public Mono<Product> create(ProductRequest productRequest) {
@@ -97,32 +129,31 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
 
         return FlatMapUtil.flatMapMono(
-                        super::hasAccess,
-                        access -> super.create(access, Product.of(productRequest)),
-                        (access, created) ->
-                                productTemplateService.readByIdentity(productRequest.getProductTemplateId()),
-                        (access, created, productTemplate) -> {
-                            created.setProductTemplateId(productTemplate.getId());
-                            return super.updateInternal(access, created);
-                        })
+                super::hasAccess,
+                access -> super.create(access, Product.of(productRequest)),
+                (access, created) -> productTemplateService.readByIdentity(productRequest.getProductTemplateId()),
+                (access, created, productTemplate) -> {
+                    created.setProductTemplateId(productTemplate.getId());
+                    return super.updateInternal(access, created);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
     public Mono<ProductTemplate> setProductTemplate(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readByIdentity(access, productId), product -> {
-                    product.setProductTemplateId(productTemplate.getId());
-                    return super.updateInternal(access, product).map(updated -> productTemplate);
-                })
+            product.setProductTemplateId(productTemplate.getId());
+            return super.updateInternal(access, product).map(updated -> productTemplate);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
     public Mono<ProductWalkInForm> setProductWalkInForm(
             ProcessorAccess access, ULong productId, ProductWalkInForm productWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productId), product -> {
-                    product.setProductWalkInFormId(productWalkInForm.getId());
-                    return super.updateInternal(access, product).map(updated -> productWalkInForm);
-                })
+            product.setProductWalkInFormId(productWalkInForm.getId());
+            return super.updateInternal(access, product).map(updated -> productWalkInForm);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductWalkInForm"));
     }
 
