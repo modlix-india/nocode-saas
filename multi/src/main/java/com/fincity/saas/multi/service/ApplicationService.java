@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.fincity.saas.commons.util.*;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,6 +31,11 @@ import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.CommonsUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.multi.dto.ApplicationTransportParameters;
 import com.fincity.saas.multi.dto.MultiApp;
 import com.fincity.saas.multi.dto.MultiAppUpdate;
@@ -90,12 +94,14 @@ public class ApplicationService {
                         (ca, access, security) -> this.coreService.makeTransport(ca.getAccessToken(), forwardedHost,
                                 forwardedPort,
                                 headerClientCode, headerAppCode,
-                                Map.of(APP_CODE, appCode, CLIENT_CODE, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
+                                Map.of(APP_CODE, appCode, CLIENT_CODE,
+                                        CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
 
                         (ca, access, security, core) -> this.uiService.makeTransport(ca.getAccessToken(), forwardedHost,
                                 forwardedPort,
                                 headerClientCode, headerAppCode,
-                                Map.of(APP_CODE, appCode, CLIENT_CODE, CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
+                                Map.of(APP_CODE, appCode, CLIENT_CODE,
+                                        CommonsUtil.nonNullValue(clientCode, ca.getClientCode()))),
                         (ca, access, security, core, ui) -> {
                             ZeroCopyHttpOutputMessage zeroCopyResponse = (ZeroCopyHttpOutputMessage) response;
                             HttpHeaders headers = response.getHeaders();
@@ -576,29 +582,53 @@ public class ApplicationService {
                             }
                         },
 
-                        (ca, app) -> this.uiService.deleteAll(ca.getAccessToken(),
-                                forwardedHost,
-                                forwardedPort,
-                                clientCode,
-                                headerAppCode,
-                                app.getAppCode()),
+                        (ca, app) -> {
 
-                        (ca, app, x) -> this.coreService.deleteAll(ca.getAccessToken(),
-                                forwardedHost,
-                                forwardedPort,
-                                clientCode,
-                                headerAppCode,
-                                app.getAppCode()),
+                            if ("ACTIVE".equals(app.getStatus()))
+                                return this.securityService.deleteByAppId(ca.getAccessToken(), forwardedHost, forwardedPort,
+                                        clientCode, headerAppCode, app.getId());
 
-                        (ca, app, x, y) -> this.securityService.deleteByAppId(ca.getAccessToken(),
-                                forwardedHost,
-                                forwardedPort,
-                                clientCode,
-                                headerAppCode,
-                                app.getId()),
-
-                        (ca, app, x, y, z) -> Mono.just(x && y && z))
+                            return this.fullDeleteApplication(app, forwardedHost, forwardedPort, clientCode, headerAppCode);
+                        }
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.deleteApplication"))
+                .defaultIfEmpty(Boolean.FALSE);
+    }
+
+    private Mono<Boolean> fullDeleteApplication(
+            App app,
+            String forwardedHost,
+            String forwardedPort,
+            String clientCode,
+            String headerAppCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        (ca) -> this.uiService.deleteAll(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getAppCode()),
+
+                        (ca, x) -> this.coreService.deleteAll(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getAppCode()),
+
+                        (ca, x, y) -> this.securityService.deleteEverything(ca.getAccessToken(),
+                                forwardedHost,
+                                forwardedPort,
+                                clientCode,
+                                headerAppCode,
+                                app.getId().longValue()),
+
+                        (ca, x, y, z) -> Mono.just(x && y && z))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.fullDeleteApplication"))
                 .defaultIfEmpty(Boolean.FALSE);
     }
 }

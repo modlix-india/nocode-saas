@@ -1,13 +1,18 @@
 package com.fincity.security.controller;
 
-import com.fincity.security.dto.UserAccess;
-import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
-import com.fincity.security.model.UserAppAccessRequest;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -15,16 +20,18 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.security.util.ServerHttpRequestUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.dto.Client;
+import com.fincity.security.dto.UserAccess;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.AuthenticationResponse;
+import com.fincity.security.model.MakeOneTimeTimeTokenRequest;
+import com.fincity.security.model.UserAppAccessRequest;
 import com.fincity.security.service.AuthenticationService;
 import com.fincity.security.service.ClientService;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("api/security/")
@@ -66,7 +73,8 @@ public class AuthenticationController {
     }
 
     @GetMapping(value = "refreshToken")
-    public Mono<ResponseEntity<AuthenticationResponse>> refreshToken(ServerHttpRequest request, ServerHttpResponse response) {
+    public Mono<ResponseEntity<AuthenticationResponse>> refreshToken(ServerHttpRequest request,
+            ServerHttpResponse response) {
 
         return this.service.refreshToken(request, response).map(ResponseEntity::ok);
     }
@@ -74,28 +82,34 @@ public class AuthenticationController {
     @GetMapping(value = "verifyToken")
     public Mono<ResponseEntity<AuthenticationResponse>> verifyToken(ServerHttpRequest request) {
 
-        return FlatMapUtil.flatMapMono(
+        return FlatMapUtil
+                .<ContextAuthentication, ContextAuthentication, Client, AuthenticationResponse, ResponseEntity<AuthenticationResponse>>flatMapMono(
 
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> {
+                        ca -> {
 
-                    if (ca.isAuthenticated())
-                        return Mono.just(ca);
+                            if (ca.isAuthenticated())
+                                return Mono.just(ca);
 
-                    Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
+                            Tuple2<Boolean, String> tuple = ServerHttpRequestUtil.extractBasicNBearerToken(request);
 
-                    Mono<ContextAuthentication> errorMono;
-                    if (tuple.getT2().isBlank())
-                        errorMono = Mono.error(new GenericException(HttpStatus.FORBIDDEN, "Forbidden"));
-                    else
-                        errorMono = Mono.error(new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+                            Mono<ContextAuthentication> errorMono;
+                            if (tuple.getT2().isBlank())
+                                errorMono = Mono
+                                        .error(new GenericException(HttpStatus.FORBIDDEN,
+                                                "Forbidden"));
+                            else
+                                errorMono = Mono.error(
+                                        new GenericException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-                    return this.service.revoke(false, request).flatMap(e -> Mono.defer(() -> errorMono));
+                            return this.service.revoke(false, request)
+                                    .flatMap(
+                                            e -> Mono.defer(() -> errorMono));
 
-                },
+                        },
 
-                (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
+                        (ca, ca2) -> this.clientService.getClientInfoById(ca.getUser().getClientId()),
 
                         (ca, ca2, client) -> this.clientService.getManagedClientOfClientById(client.getId())
                                 .map(mc -> new AuthenticationResponse().setUser(ca.getUser()).setClient(client)
@@ -105,10 +119,10 @@ public class AuthenticationController {
                                         .setAccessToken(ca.getAccessToken())
                                         .setAccessTokenExpiryAt(ca.getAccessTokenExpiryAt())
                                         .setManagedClientCode(mc.getCode())
-                                        .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)
-                                ),
+                                        .setManagedClientId(mc.getId() != null ? mc.getId().toBigInteger() : null)),
 
-                (ca, ca2, client, vr) -> Mono.<ResponseEntity<AuthenticationResponse>>just(ResponseEntity.ok(vr)))
+                        (ca, ca2, client, vr) -> Mono
+                                .<ResponseEntity<AuthenticationResponse>>just(ResponseEntity.ok(vr)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AuthenticationController.verifyToken"));
 
     }

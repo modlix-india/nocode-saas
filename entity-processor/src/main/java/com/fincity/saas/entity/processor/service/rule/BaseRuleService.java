@@ -85,7 +85,7 @@ public abstract class BaseRuleService<
     }
 
     @SuppressWarnings("unchecked")
-    private Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
+    protected Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
         if (entity.getProductId() == null)
             return this.productTemplateService
                     .readById(access, entity.getProductTemplateId())
@@ -158,23 +158,14 @@ public abstract class BaseRuleService<
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.readById(access, id),
-                        (access, entity) ->
-                                this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
-                        (access, entity, rules) -> this.shiftOrdersAndUpdate(access, entity, rules)
-                                .then(super.deleteInternal(access, entity)),
-                        (access, entity, rules, deleted) ->
-                                this.deleteUserDistribution(access, entity).then(Mono.just(deleted)))
+                        this::deleteUserDistribution,
+                        (access, entity, udDeleted) -> super.deleteInternal(access, entity),
+                        (access, entity, udDeleted, deleted) -> this.dao.decrementOrdersAfter(
+                                access, entity.getProductId(), entity.getProductTemplateId(), entity.getOrder()),
+                        (access, entity, udDeleted, deleted, affectedRules) -> super.evictCaches(
+                                        Flux.fromIterable(affectedRules))
+                                .thenReturn(deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
-    }
-
-    private Mono<Void> shiftOrdersAndUpdate(ProcessorAccess access, D entity, List<D> rules) {
-        return Flux.fromIterable(rules)
-                .filter(rule -> rule.getOrder() > entity.getOrder())
-                .flatMap(rule -> {
-                    rule.setOrder(rule.getOrder() - 1);
-                    return super.updateInternal(access, rule);
-                })
-                .then();
     }
 
     public Mono<List<D>> fillDetails(List<D> rules, MultiValueMap<String, String> queryParams) {

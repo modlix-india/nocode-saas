@@ -19,7 +19,6 @@ import com.fincity.saas.entity.processor.service.base.BaseValueService;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
@@ -254,6 +253,31 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getLatestStageByOrder"));
     }
 
+    public Mono<List<Stage>> getHigherStages(ProcessorAccess access, ULong productTemplateId, ULong minStageId) {
+        return super.getAllValuesInOrder(access, null, productTemplateId)
+                .flatMap(allStages -> {
+                    Stage minStage = allStages.keySet().stream()
+                            .filter(stage -> stage.getId().equals(minStageId))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (minStage == null) return Mono.just(List.<Stage>of());
+
+                    Integer minOrder = minStage.getOrder();
+                    if (minOrder == null) return Mono.just(List.<Stage>of());
+
+                    List<Stage> stagesUpto = allStages.keySet().stream()
+                            .filter(stage -> {
+                                Integer order = stage.getOrder();
+                                return order != null && order >= minOrder;
+                            })
+                            .toList();
+
+                    return Mono.just(stagesUpto);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStagesUpto"));
+    }
+
     public Mono<Stage> getFirstStage(ProcessorAccess access, ULong productTemplateId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .map(NavigableMap::firstKey)
@@ -286,20 +310,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     return Mono.just(stageId);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStage"));
-    }
-
-    public Mono<Set<ULong>> getAllStages(ProcessorAccess access, ULong productTemplateId, ULong... stageIds) {
-        return super.getAllValueIds(access, null, productTemplateId).flatMap(stageIdsInternal -> {
-            if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
-
-            if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
-
-            if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
-
-            stageIdsInternal.retainAll(List.of(stageIds));
-
-            return Mono.just(stageIdsInternal);
-        });
     }
 
     public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {

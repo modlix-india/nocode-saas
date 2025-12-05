@@ -243,4 +243,10 @@ public class AppController
         return this.service.hasReadAccess(appCodes)
                 .map(ResponseEntity::ok);
     }
+
+    @GetMapping("/internal/appStatus/{appCode}")
+    public Mono<ResponseEntity<String>> getAppStatus(@PathVariable String appCode) {
+        return this.service.getAppStatus(appCode)
+                .map(ResponseEntity::ok);
+    }
 }
