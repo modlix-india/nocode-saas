@@ -287,7 +287,7 @@ public class EntityProcessorProductTicketCRules extends TableImpl<EntityProcesso
 
     @Override
     public List<UniqueKey<EntityProcessorProductTicketCRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES_UK1_PTCR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES_UK2_PTCR_AC_CC_PID_PTID_ORDER);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES_UK1_PTCR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES_UK2_TDR_AC_CC_PID_ORDER, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_C_RULES_UK2_TDR_AC_CC_PTID_ORDER);
     }
 
     @Override
