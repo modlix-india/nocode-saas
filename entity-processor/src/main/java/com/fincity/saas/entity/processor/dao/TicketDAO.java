@@ -62,7 +62,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(rec -> rec.into(this.pojoClass));
     }
 
-    public Mono<Ticket> readByNumberAndEmail(
+    public Mono<Ticket> readTicketByNumberAndEmail(
             AbstractCondition condition,
             ProcessorAccess access,
             ULong productId,
@@ -82,6 +82,26 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 .orderBy(this.updatedByField.desc())
                                 .limit(1))
                         .map(e -> e.into(this.pojoClass)));
+    }
+
+    public Mono<List<Ticket>> readTicketsByNumberAndEmail(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            Integer dialCode,
+            String number,
+            String email) {
+
+        AbstractCondition ownerIdentifierConditions =
+                this.getOwnerIdentifierConditions(condition, productId, dialCode, number, email);
+
+        return FlatMapUtil.flatMapMono(
+                () -> Mono.just(super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
+                        .map(e -> e.into(this.pojoClass))
+                        .collectList());
     }
 
     private AbstractCondition getOwnerIdentifierConditions(
