@@ -132,7 +132,7 @@ public class TicketDuplicationRuleService
 
         return FlatMapUtil.flatMapMono(
                         () -> super.productService.readById(access, productId),
-                        product -> this.getProductDuplicateConditionInternal(
+                        product -> this.getProductDuplicateCondition(
                                         access, product.getId(), product.getProductTemplateId(), source, subSource)
                                 .switchIfEmpty(this.getProductTemplateDuplicateCondition(
                                         access, product.getProductTemplateId(), source, subSource)))
