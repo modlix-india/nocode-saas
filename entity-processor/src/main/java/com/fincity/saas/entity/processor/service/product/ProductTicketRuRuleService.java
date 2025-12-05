@@ -72,9 +72,7 @@ public class ProductTicketRuRuleService
 
     @Override
     public Mono<ProductTicketRuRule> create(ProductTicketRuRule entity) {
-        return super.create(entity)
-                .flatMap(created -> this.evictConditionCache(entity.getAppCode(), entity.getClientCode())
-                        .map(evicted -> created));
+        return super.create(entity);
     }
 
     public Mono<List<ProductTicketRuRule>> getConditionsForUserInternal(ProcessorAccess access, boolean isEdit) {
