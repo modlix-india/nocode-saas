@@ -17,6 +17,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
+import java.util.ArrayList;
 import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,9 +132,9 @@ public class TicketDuplicationRuleService
 
         return FlatMapUtil.flatMapMono(
                         () -> super.productService.readById(access, productId),
-                        product -> this.getProductDuplicateCondition(
+                        product -> this.getProductDuplicateConditionInternal(
                                         access, product.getId(), product.getProductTemplateId(), source, subSource)
-                                .switchIfEmpty(this.getProductTemplateDuplicateCondition(
+                                .switchIfEmpty(this.getProductTemplateDuplicateConditionInternal(
                                         access, product.getProductTemplateId(), source, subSource)))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketDuplicationRuleService.getDuplicateRuleCondition"));
@@ -206,14 +207,35 @@ public class TicketDuplicationRuleService
     private Mono<List<TicketDuplicationRule>> getProductDuplicationRules(
             ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
         return this.dao
-                .getRule(access, productId, productTemplateId, source, subSource)
-                .flatMap(rules -> rules.isEmpty() ? Mono.empty() : Mono.just(rules));
+                .getRules(access, productId, productTemplateId, source, null)
+                .flatMap(rules -> this.filterRulesForSubSource(rules, subSource));
     }
 
     private Mono<List<TicketDuplicationRule>> getProductTemplateDuplicationRules(
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
         return this.dao
-                .getRule(access, null, productTemplateId, source, subSource)
-                .flatMap(rules -> rules.isEmpty() ? Mono.empty() : Mono.just(rules));
+                .getRules(access, null, productTemplateId, source, null)
+                .flatMap(rules -> this.filterRulesForSubSource(rules, subSource));
+    }
+
+    private Mono<List<TicketDuplicationRule>> filterRulesForSubSource(
+            List<TicketDuplicationRule> rules, String subSource) {
+
+        if (rules == null || rules.isEmpty()) return Mono.empty();
+
+        List<TicketDuplicationRule> exactMatches = new ArrayList<>();
+        List<TicketDuplicationRule> nullMatches = new ArrayList<>();
+
+        for (TicketDuplicationRule rule : rules) {
+            String ruleSubSource = rule.getSubSource();
+            if (ruleSubSource == null) {
+                nullMatches.add(rule);
+            } else if (subSource != null && subSource.equals(ruleSubSource)) {
+                exactMatches.add(rule);
+            }
+        }
+
+        if (!exactMatches.isEmpty()) return Mono.just(exactMatches);
+        return nullMatches.isEmpty() ? Mono.empty() : Mono.just(nullMatches);
     }
 }
