@@ -1,5 +1,14 @@
 package com.fincity.saas.entity.processor.dao.rule;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Table;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -9,12 +18,7 @@ import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.util.ArrayList;
-import java.util.List;
-import org.jooq.Field;
-import org.jooq.Table;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -22,8 +26,13 @@ public abstract class BaseRuleDAO<
                 R extends UpdatableRecord<R>, U extends BaseUserDistributionDto<U>, D extends BaseRuleDto<U, D>>
         extends BaseUpdatableDAO<R, D> {
 
+    private static final String ORDER = "ORDER";
+
+    protected final Field<Integer> orderField;
+
     protected BaseRuleDAO(Class<D> flowPojoClass, Table<R> flowTable, Field<ULong> flowTableId) {
         super(flowPojoClass, flowTable, flowTableId);
+        this.orderField = flowTable.field(ORDER, Integer.class);
     }
 
     public Mono<List<D>> getRules(
@@ -113,5 +122,27 @@ public abstract class BaseRuleDAO<
             defaultConditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
 
         return ComplexCondition.and(defaultConditions);
+    }
+
+    public Mono<List<D>> decrementOrdersAfter(
+            ProcessorAccess access, ULong productId, ULong productTemplateId, Integer deletedOrder) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getBaseConditions(null, access, productId, productTemplateId, null),
+                super::filter,
+                (pCondition, jCondition) -> {
+                    Condition updateCondition =
+                            jCondition.and(super.isActiveTrue()).and(this.orderField.gt(deletedOrder));
+                    return Mono.from(dslContext
+                                    .update(this.table)
+                                    .set(this.orderField, this.orderField.minus(1))
+                                    .where(updateCondition))
+                            .then(Flux.from(dslContext
+                                            .selectFrom(this.table)
+                                            .where(jCondition
+                                                    .and(super.isActiveTrue())
+                                                    .and(this.orderField.ge(deletedOrder - 1))))
+                                    .map(rec -> rec.into(this.pojoClass))
+                                    .collectList());
+                });
     }
 }
