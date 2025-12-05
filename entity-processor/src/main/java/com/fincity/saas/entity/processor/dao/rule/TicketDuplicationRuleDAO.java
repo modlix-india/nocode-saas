@@ -28,7 +28,7 @@ public class TicketDuplicationRuleDAO
                 ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES.ID);
     }
 
-    public Mono<List<TicketDuplicationRule>> getRule(
+    public Mono<List<TicketDuplicationRule>> getRules(
             ProcessorAccess access, ULong productId, ULong productTemplateId, String source, String subSource) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getBaseConditions(null, access, productId, productTemplateId, source, subSource),
