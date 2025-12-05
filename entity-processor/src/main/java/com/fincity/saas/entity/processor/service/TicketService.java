@@ -416,19 +416,34 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String source,
             String subSource) {
 
-        Mono<Ticket> ticketMono = (ruleCondition != null && ruleCondition.isNonEmpty())
-                ? this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail)
-                : this.getTicket(access, productId, ticketPhone, ticketMail);
+        if (ruleCondition != null && ruleCondition.isNonEmpty())
+            return this.fetchDuplicateAndLog(
+                            this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail),
+                            access,
+                            source,
+                            subSource)
+                    .switchIfEmpty(this.fetchDuplicateAndLog(
+                                    this.getTicket(access, productId, ticketPhone, ticketMail),
+                                    access,
+                                    source,
+                                    subSource)
+                            .switchIfEmpty(Mono.just(Boolean.FALSE)));
 
-        return ticketMono
-                .flatMap(existing -> {
-                    if (existing == null || existing.getId() == null) return Mono.just(Boolean.FALSE);
-
-                    return this.activityService
-                            .acReInquiry(access, existing, null, source, subSource)
-                            .then(super.throwDuplicateError(access, existing));
-                })
+        return this.fetchDuplicateAndLog(
+                        this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource)
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
+    }
+
+    private Mono<Boolean> fetchDuplicateAndLog(
+            Mono<Ticket> ticketMono, ProcessorAccess access, String source, String subSource) {
+
+        return ticketMono.flatMap(ticket -> {
+            if (ticket == null || ticket.getId() == null) return Mono.empty();
+
+            return activityService
+                    .acReInquiry(access, ticket, null, source, subSource)
+                    .then(super.throwDuplicateError(access, ticket));
+        });
     }
 
     private <T extends INoteRequest> Mono<Boolean> createNote(ProcessorAccess access, T noteRequest, Ticket ticket) {

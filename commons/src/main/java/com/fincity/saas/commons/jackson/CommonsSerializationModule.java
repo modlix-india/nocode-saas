@@ -71,6 +71,6 @@ public class CommonsSerializationModule extends SimpleModule {
             }
         });
 
-        this.addDeserializer(AbstractCondition.class, new AbstractCondtionDeserializer());
+        this.addDeserializer(AbstractCondition.class, new AbstractConditionDeserializer());
     }
 }
