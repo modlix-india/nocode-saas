@@ -25,6 +25,8 @@ import com.modlix.saas.files.enums.ImagesFormatForResize;
 import com.modlix.saas.files.jooq.enums.FilesFileSystemType;
 import com.modlix.saas.files.model.FileDetail;
 import com.modlix.saas.files.model.ImageDetails;
+import com.modlix.saas.files.service.FileConversionService;
+import com.modlix.saas.files.service.FileConversionService.FileBase64Result;
 import com.modlix.saas.files.service.FilesMessageResourceService;
 import com.modlix.saas.files.service.SecuredFileResourceService;
 import com.modlix.saas.files.service.StaticFileResourceService;
@@ -40,13 +42,16 @@ public class GenericResourceFileController {
     private final SecuredFileResourceService securedService;
     private final StaticFileResourceService staticService;
     private final FilesMessageResourceService msgService;
+    private final FileConversionService fileConversionService;
 
     public GenericResourceFileController(SecuredFileResourceService securedService,
             StaticFileResourceService staticService,
-            FilesMessageResourceService msgService) {
+            FilesMessageResourceService msgService,
+            FileConversionService fileConversionService) {
         this.securedService = securedService;
         this.staticService = staticService;
         this.msgService = msgService;
+        this.fileConversionService = fileConversionService;
     }
 
     @PostMapping("/client")
@@ -158,5 +163,32 @@ public class GenericResourceFileController {
             this.securedService.populateFileSystem(clientCode, folderPath);
         }
         return ResponseEntity.ok("FileSystem populated");
+    }
+
+    /**
+     * Converts an uploaded binary file to a base64 encoded string.
+     * Useful for handling iOS signing files (.p12 certificates, .mobileprovision profiles)
+     * that need to be stored as base64 strings for mobile app generation.
+     * 
+     * @param file the binary file to convert (e.g., .p12, .mobileprovision)
+     * @return base64 encoded string of the file content
+     */
+    @PostMapping("/convertToBase64")
+    public ResponseEntity<String> convertFileToBase64(
+            @RequestPart(name = "file") MultipartFile file) {
+        return ResponseEntity.ok(this.fileConversionService.convertToBase64(file));
+    }
+
+    /**
+     * Converts an uploaded binary file to base64 with detailed metadata.
+     * Returns file name, content type, size, and the base64 encoded content.
+     * 
+     * @param file the binary file to convert (e.g., .p12, .mobileprovision)
+     * @return FileBase64Result containing base64 string and file metadata
+     */
+    @PostMapping("/convertToBase64WithDetails")
+    public ResponseEntity<FileBase64Result> convertFileToBase64WithDetails(
+            @RequestPart(name = "file") MultipartFile file) {
+        return ResponseEntity.ok(this.fileConversionService.convertToBase64WithDetails(file));
     }
 }

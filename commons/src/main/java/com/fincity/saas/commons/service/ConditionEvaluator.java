@@ -21,16 +21,11 @@ import com.google.gson.JsonPrimitive;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class ConditionEvaluator {
+public record ConditionEvaluator(String prefix) {
 
     private static final Gson GSON = new Gson();
-    private final String prefix;
 
-    public ConditionEvaluator(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public Mono<Boolean> evaluate(AbstractCondition condition, JsonElement json) {
+	public Mono<Boolean> evaluate(AbstractCondition condition, JsonElement json) {
         if (condition == null || condition.isEmpty()) return Mono.just(Boolean.FALSE);
         if (json == null) return Mono.just(Boolean.FALSE);
 
