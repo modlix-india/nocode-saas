@@ -1,4 +1,4 @@
-package com.fincity.saas.commons.jackson;
+package com.modlix.saas.commons2.jackson;
 
 import java.io.IOException;
 import java.io.Serial;
@@ -10,12 +10,12 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.commons.model.condition.ComplexCondition;
-import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.util.StringUtil;
+import com.modlix.saas.commons2.exception.GenericException;
+import com.modlix.saas.commons2.model.condition.AbstractCondition;
+import com.modlix.saas.commons2.model.condition.ComplexCondition;
+import com.modlix.saas.commons2.model.condition.ComplexConditionOperator;
+import com.modlix.saas.commons2.model.condition.FilterCondition;
+import com.modlix.saas.commons2.util.StringUtil;
 
 public class AbstractConditionDeserializer extends StdDeserializer<AbstractCondition> {
 
