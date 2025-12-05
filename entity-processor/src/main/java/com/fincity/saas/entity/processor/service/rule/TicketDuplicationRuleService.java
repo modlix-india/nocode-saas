@@ -197,8 +197,7 @@ public class TicketDuplicationRuleService
                             .setField(Ticket.Fields.stage)
                             .setOperator(FilterConditionOperator.IN)
                             .setMultiValue(
-                                    stages.stream().map(AbstractDTO::getId).toList())
-                            .setNegate(Boolean.TRUE);
+                                    stages.stream().map(AbstractDTO::getId).toList());
 
                     return Mono.just(ComplexCondition.and(rule.getCondition(), stageCondition));
                 });
