@@ -300,7 +300,7 @@ public class EntityProcessorTicketDuplicationRules extends TableImpl<EntityProce
 
     @Override
     public List<UniqueKey<EntityProcessorTicketDuplicationRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES_UK1_TDR_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES_UK2_TDR_AC_CC_PID_PTID_ORDER);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES_UK1_TDR_CODE, Keys.KEY_ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES_UK2_TDR_AC_CC_PID_ORDER, Keys.KEY_ENTITY_PROCESSOR_TICKET_DUPLICATION_RULES_UK2_TDR_AC_CC_PTID_ORDER);
     }
 
     @Override

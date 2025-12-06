@@ -89,7 +89,8 @@ public abstract class BaseRuleService<
         if (entity.getProductId() == null)
             return this.productTemplateService
                     .readById(access, entity.getProductTemplateId())
-                    .map(template -> (D) entity.setProductTemplateId(template.getId()));
+                    .map(template ->
+                            (D) entity.setProductTemplateId(template.getId()).setProductId(null));
 
         return FlatMapUtil.flatMapMono(() -> this.productService.readById(access, entity.getProductId()), product -> {
             if (product.getProductTemplateId() == null)
@@ -98,8 +99,7 @@ public abstract class BaseRuleService<
                         ProcessorMessageResourceService.PRODUCT_TEMPLATE_MISSING,
                         product.getId());
 
-            return Mono.just(
-                    (D) entity.setProductId(product.getId()).setProductTemplateId(product.getProductTemplateId()));
+            return Mono.just((D) entity.setProductId(product.getId()).setProductTemplateId(null));
         });
     }
 
