@@ -89,6 +89,14 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
     }
 
+    @Override
+    protected Mono<Boolean> evictCache(Stage entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evictAll("productTicketCRule"),
+                (stageEvicted, productTicketCRuleEvicted) -> stageEvicted && productTicketCRuleEvicted);
+    }
+
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
         return FlatMapUtil.flatMapMonoWithNull(
                         () -> this.getLatestStageByOrder(access, entity.getProductTemplateId()), latestStage -> {
