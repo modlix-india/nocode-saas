@@ -122,7 +122,7 @@ public class EntityProcessorTicketDuplicationRules extends TableImpl<EntityProce
      * <code>entity_processor.entity_processor_ticket_duplication_rules.PRODUCT_TEMPLATE_ID</code>.
      * Product Template id related to this Rule Config.
      */
-    public final TableField<EntityProcessorTicketDuplicationRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template id related to this Rule Config.");
+    public final TableField<EntityProcessorTicketDuplicationRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template id related to this Rule Config.");
 
     /**
      * The column
