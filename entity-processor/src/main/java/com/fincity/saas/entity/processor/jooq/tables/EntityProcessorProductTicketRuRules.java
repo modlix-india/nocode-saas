@@ -122,7 +122,7 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_TEMPLATE_ID</code>.
      * Product Template id related to this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template id related to this Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template id related to this Rule Config.");
 
     /**
      * The column
