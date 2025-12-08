@@ -102,7 +102,6 @@ public class ProductTicketCRuleService
                                     entity.getAppCode(),
                                     entity.getClientCode(),
                                     entity.getProductId(),
-                                    entity.getProductTemplateId(),
                                     entity.getStageId())),
                     (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
 
@@ -134,7 +133,7 @@ public class ProductTicketCRuleService
 
         if (!product.isOverrideCTemplate()) return Mono.empty();
 
-        return this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+        return this.getProductRules(access, product.getId(), stageId)
                 .flatMap(rules -> rules.isEmpty()
                         ? this.getProductTemplateRules(access, product.getProductTemplateId(), stageId)
                         : Mono.just(rules))
@@ -149,7 +148,7 @@ public class ProductTicketCRuleService
         if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return Mono.zip(
-                this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+                this.getProductRules(access, product.getId(), stageId)
                         .map(rules -> rules.stream()
                                 .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())))
                         .switchIfEmpty(Mono.just(Map.of())),
@@ -157,18 +156,18 @@ public class ProductTicketCRuleService
                         .map(rules -> rules.stream()
                                 .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())))
                         .switchIfEmpty(Mono.just(Map.of())),
-                (rules, templateRules) -> {
-                    int totalSize = rules.size() + templateRules.size();
+                (productRules, productTemplateRules) -> {
+                    int totalSize = productRules.size() + productTemplateRules.size();
                     Map<Integer, ProductTicketCRule> combined = LinkedHashMap.newLinkedHashMap(totalSize);
 
                     AtomicInteger orderCounter = new AtomicInteger(totalSize - 1);
 
-                    rules.entrySet().stream()
+                    productRules.entrySet().stream()
                             .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
 
-                    templateRules.entrySet().stream()
+                    productTemplateRules.entrySet().stream()
                             .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
@@ -177,13 +176,12 @@ public class ProductTicketCRuleService
                 });
     }
 
-    private Mono<List<ProductTicketCRule>> getProductRules(
-            ProcessorAccess access, ULong productId, ULong productTemplateId, ULong stageId) {
+    private Mono<List<ProductTicketCRule>> getProductRules(ProcessorAccess access, ULong productId, ULong stageId) {
 
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao.getRules(access, productId, productTemplateId, stageId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, productTemplateId, stageId));
+                () -> this.dao.getRules(access, productId, null, stageId),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, stageId));
     }
 
     private Mono<List<ProductTicketCRule>> getProductTemplateRules(
