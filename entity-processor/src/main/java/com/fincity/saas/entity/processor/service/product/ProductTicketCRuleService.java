@@ -6,6 +6,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
+import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
@@ -101,6 +102,7 @@ public class ProductTicketCRuleService
                             super.getCacheKey(
                                     entity.getAppCode(),
                                     entity.getClientCode(),
+									BaseRuleDto.Fields.productId,
                                     entity.getProductId(),
                                     entity.getStageId())),
                     (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
@@ -112,6 +114,7 @@ public class ProductTicketCRuleService
                         super.getCacheKey(
                                 entity.getAppCode(),
                                 entity.getClientCode(),
+		                        BaseRuleDto.Fields.productTemplateId,
                                 entity.getProductTemplateId(),
                                 entity.getStageId())),
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
@@ -181,7 +184,8 @@ public class ProductTicketCRuleService
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getRules(access, productId, null, stageId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, stageId));
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), BaseRuleDto.Fields.productId, productId, stageId));
     }
 
     private Mono<List<ProductTicketCRule>> getProductTemplateRules(
@@ -190,7 +194,12 @@ public class ProductTicketCRuleService
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getRules(access, null, productTemplateId, stageId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, stageId));
+                super.getCacheKey(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        BaseRuleDto.Fields.productTemplateId,
+                        productTemplateId,
+                        stageId));
     }
 
     public Mono<ULong> getUserAssignment(
