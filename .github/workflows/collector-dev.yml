@@ -1,4 +1,4 @@
-name: entity-collector-dev-ci
+name: entity-collector-ci
 
 on:
   push:
@@ -11,8 +11,8 @@ jobs:
   build_and_push:
     runs-on: ubuntu-latest
     env:
-      OCIR_HOST: <us-ashburn-1>.ocir.io
-      OCIR_REPO: <us-ashburn-1>.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
+      OCIR_HOST: us-ashburn-1.ocir.io
+      OCIR_REPO: us-ashburn-1.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
     
     steps:
       - uses: actions/checkout@v4
