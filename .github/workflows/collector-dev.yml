@@ -1,4 +1,5 @@
-name: entity-collector-ci
+name: entity-collector-dev-ci
+
 on:
   push:
     paths:
@@ -10,8 +11,8 @@ jobs:
   build_and_push:
     runs-on: ubuntu-latest
     env:
-      OCIR_HOST: <region>.ocir.io
-      OCIR_REPO: <region>.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
+      OCIR_HOST: <us-ashburn-1>.ocir.io
+      OCIR_REPO: <us-ashburn-1>.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
     
     steps:
       - uses: actions/checkout@v4
@@ -19,16 +20,14 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-         distribution: temurin
-         java-version: '21'
-
+          distribution: temurin
+          java-version: '21'
 
       - name: Build dependencies first
         run: |
           mvn -q -DskipTests clean install -f commons/pom.xml
           mvn -q -DskipTests clean install -f commons-jooq/pom.xml
           mvn -q -DskipTests clean install -f commons-security/pom.xml
-
 
       - name: Build entity-collector jar
         working-directory: entity-collector
@@ -39,13 +38,11 @@ jobs:
           mkdir -p target
           cp entity-collector/target/entity-collector-1.0.0.jar target/
 
+      - name: Login to OCIR
+        run: echo "${{ secrets.OCIR_AUTH_TOKEN_DEV }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME_DEV }}" --password-stdin
 
-     # - name: Login to OCIR
-     #   run: echo "${{ secrets.OCIR_AUTH_TOKEN_DEV }}" | docker login $OCIR_HOST -u "${{ secrets.OCIR_USERNAME_DEV }}" --password-stdin
-
-      - name: Build docker image
+      - name: Build and Push Docker Image
         run: |
-          docker build -t test/entity-collector-dev:${{ github.sha }} -f entity-collector/Dockerfile .
-          docker tag test/entity-collector-dev:${{ github.sha }} test/entity-collector:latest
-         # docker push $OCIR_REPO:${{ github.sha }}
-         # docker push $OCIR_REPO:latest
+          docker build -t $OCIR_REPO:${{ github.sha }} -t $OCIR_REPO:latest -f entity-collector/Dockerfile .
+          docker push $OCIR_REPO:${{ github.sha }}
+          docker push $OCIR_REPO:latest
