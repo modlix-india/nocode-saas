@@ -1,11 +1,9 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
-import java.io.Serial;
-
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
-
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -24,17 +22,17 @@ public class TicketPeDuplicationRule extends BaseUpdatableDto<TicketPeDuplicatio
 
     private PhoneNumberAndEmailType phoneNumberAndEmailType = PhoneNumberAndEmailType.PHONE_NUMBER_OR_EMAIL;
 
-	public TicketPeDuplicationRule() {
-		super();
-	}
+    public TicketPeDuplicationRule() {
+        super();
+    }
 
-	public TicketPeDuplicationRule(TicketPeDuplicationRule ticketPeDuplicationRule) {
-		super(ticketPeDuplicationRule);
-		this.phoneNumberAndEmailType = ticketPeDuplicationRule.phoneNumberAndEmailType;
-	}
+    public TicketPeDuplicationRule(TicketPeDuplicationRule ticketPeDuplicationRule) {
+        super(ticketPeDuplicationRule);
+        this.phoneNumberAndEmailType = ticketPeDuplicationRule.phoneNumberAndEmailType;
+    }
 
-	@Override
-	public EntitySeries getEntitySeries() {
-		return EntitySeries.TICKET_PE_DUPLICATION_RULES;
-	}
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.TICKET_PE_DUPLICATION_RULES;
+    }
 }

@@ -1,7 +1,5 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import org.springframework.stereotype.Service;
-
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.LogUtil;
@@ -15,7 +13,9 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -25,6 +25,11 @@ public class TicketPeDuplicationRuleService
                 EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO> {
 
     private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
+
+    private static final TicketPeDuplicationRule DEFAULT_RULE = (TicketPeDuplicationRule) new TicketPeDuplicationRule()
+            .setPhoneNumberAndEmailType(PhoneNumberAndEmailType.PHONE_NUMBER_OR_EMAIL)
+            .setActive(Boolean.TRUE)
+            .setId(ULong.MIN);
 
     @Override
     protected String getCacheName() {
@@ -84,12 +89,20 @@ public class TicketPeDuplicationRuleService
     public Mono<AbstractCondition> getTicketCondition(ProcessorAccess access, PhoneNumber phoneNumber, Email email) {
         return this.getRule(access)
                 .map(rule -> rule.getPhoneNumberAndEmailType().getTicketCondition(phoneNumber, email))
-                .switchIfEmpty(
-                        Mono.just(PhoneNumberAndEmailType.PHONE_NUMBER_OR_EMAIL.getTicketCondition(phoneNumber, email)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketPeDuplicationRuleService.getCondition"));
     }
 
+    public Mono<TicketPeDuplicationRule> getLoggedInRule() {
+        return super.hasAccess()
+                .flatMap(this::getRule)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketPeDuplicationRuleService.getLoggedInRule"));
+    }
+
     private Mono<TicketPeDuplicationRule> getRule(ProcessorAccess access) {
+        return this.getRuleInternal(access).switchIfEmpty(Mono.just(DEFAULT_RULE));
+    }
+
+    private Mono<TicketPeDuplicationRule> getRuleInternal(ProcessorAccess access) {
         return super.cacheService.cacheEmptyValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.readByAppCodeAndClientCode(access),
