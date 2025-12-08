@@ -102,7 +102,7 @@ public class ProductTicketCRuleService
                             super.getCacheKey(
                                     entity.getAppCode(),
                                     entity.getClientCode(),
-									BaseRuleDto.Fields.productId,
+                                    BaseRuleDto.Fields.productId,
                                     entity.getProductId(),
                                     entity.getStageId())),
                     (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
@@ -114,7 +114,7 @@ public class ProductTicketCRuleService
                         super.getCacheKey(
                                 entity.getAppCode(),
                                 entity.getClientCode(),
-		                        BaseRuleDto.Fields.productTemplateId,
+                                BaseRuleDto.Fields.productTemplateId,
                                 entity.getProductTemplateId(),
                                 entity.getStageId())),
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
