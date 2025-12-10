@@ -251,7 +251,12 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         userConditions.add(SECURITY_USER.CLIENT_ID.in(
                 this.dslContext.select(SECURITY_CLIENT_HIERARCHY.CLIENT_ID)
                         .from(SECURITY_CLIENT_HIERARCHY)
-                        .where(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId))));
+                        .where(
+                                SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_0.eq(managingClientId)
+                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_1.eq(managingClientId))
+                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_2.eq(managingClientId))
+                                        .or(SECURITY_CLIENT_HIERARCHY.MANAGE_CLIENT_LEVEL_3.eq(managingClientId))
+                        )));
 
         userConditions.add(DSL.and(getUserAvailabilityConditions(userName, emailId, phoneNumber)));
 
