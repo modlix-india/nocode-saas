@@ -18,6 +18,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -152,7 +153,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
 
         if (Mono.class.isAssignableFrom(returnType)) {
             if (method.getGenericReturnType() instanceof ParameterizedType paramType) {
-                java.lang.reflect.Type monoType = paramType.getActualTypeArguments()[0];
+                Type monoType = paramType.getActualTypeArguments()[0];
                 if (monoType instanceof Class<?> clazz) {
                     return getSchemaForType(clazz);
                 }
@@ -238,9 +239,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
             return convertPrimitive(jsonValue, targetType);
         }
 
-        // Gson will automatically use registered TypeAdapters for types with @JsonDeserialize
-        // or any other registered adapters
-        java.lang.reflect.Type genericType = metadata.genericType();
+	    Type genericType = metadata.genericType();
         return gson.fromJson(jsonValue, genericType != null ? genericType : targetType);
     }
 
@@ -275,5 +274,5 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     }
 
     private record ParameterMetadata(
-            String name, Class<?> type, java.lang.reflect.Type genericType, boolean isPrimitive) {}
+            String name, Class<?> type, Type genericType, boolean isPrimitive) {}
 }

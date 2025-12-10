@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+
+import lombok.AccessLevel;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -119,17 +121,17 @@ public abstract class BaseUpdatableService<
     }
 
     @Autowired
-    public void setMsgService(ProcessorMessageResourceService msgService) {
+    protected void setMsgService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
     @Autowired
-    public void setCacheService(CacheService cacheService) {
+    protected void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
     }
 
     @Autowired
-    public void setSecurityService(IFeignSecurityService securityService) {
+    protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
@@ -162,11 +164,11 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.create(access, entity));
     }
 
-    public Mono<D> create(ProcessorAccess access, D entity) {
+    protected Mono<D> create(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
-    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
 
@@ -256,7 +258,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.update(access, entity));
     }
 
-    public Mono<D> update(ProcessorAccess access, D entity) {
+    protected Mono<D> update(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
 
@@ -278,7 +280,7 @@ public abstract class BaseUpdatableService<
                 this::update);
     }
 
-    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
+    protected Mono<D> updateInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
@@ -289,7 +291,7 @@ public abstract class BaseUpdatableService<
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
-    public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
+    protected Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 

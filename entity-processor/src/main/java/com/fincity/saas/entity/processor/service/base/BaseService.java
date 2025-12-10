@@ -37,21 +37,21 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     protected CacheService cacheService;
 
     @Autowired
-    public void setMessageResourceService(ProcessorMessageResourceService msgService) {
+    protected void setMessageResourceService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
     @Autowired
-    public void setSecurityService(IFeignSecurityService securityService) {
+    protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
     @Autowired
-    public void setCacheService(CacheService cacheService) {
+    protected void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
     }
 
-    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
 
@@ -76,7 +76,7 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         queryParams));
     }
 
-    public AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
+    protected AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())

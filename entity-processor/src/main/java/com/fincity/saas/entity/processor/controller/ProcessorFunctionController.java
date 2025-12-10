@@ -66,6 +66,7 @@ public class ProcessorFunctionController {
         return processorFunctionService
                 .getFunctionRepository()
                 .filter(filter != null ? filter : "")
+		        .sort()
                 .collectList()
                 .map(ResponseEntity::ok);
     }

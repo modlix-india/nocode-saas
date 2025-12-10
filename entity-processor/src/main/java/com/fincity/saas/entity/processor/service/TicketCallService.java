@@ -81,7 +81,7 @@ public class TicketCallService {
         String subSource =
                 productComm.getSubSource() != null ? productComm.getSubSource() : SourceUtil.DEFAULT_CALL_SUB_SOURCE;
 
-        return ticketService.createInternal(
+        return ticketService.create(
                 access,
                 new Ticket()
                         .setName("New Customer")

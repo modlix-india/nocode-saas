@@ -85,7 +85,7 @@ public class TicketPeDuplicationRuleService
     }
 
     @Override
-    public Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
+    protected Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
         return super.create(access, entity)
                 .flatMap(created -> this.evictCache(created).map(evicted -> created));
     }

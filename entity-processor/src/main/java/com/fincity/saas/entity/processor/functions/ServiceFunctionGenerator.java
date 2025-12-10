@@ -10,7 +10,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,21 +33,20 @@ public class ServiceFunctionGenerator {
     public List<ReactiveFunction> generateFunctions(Object serviceInstance) {
         Class<?> serviceClass = serviceInstance.getClass();
         String namespace = getNamespace(serviceInstance, serviceClass);
-        String serviceName = getServiceName(serviceClass);
 
         // Get all public methods including inherited ones
         Method[] methods = serviceClass.getMethods();
         // Pre-size list with estimated capacity (most services have 10-30 public methods)
         List<ReactiveFunction> functions = new ArrayList<>(Math.max(16, methods.length / 2));
         // Use Set to track method signatures to avoid duplicates (overridden methods)
-        Set<String> processedSignatures = new HashSet<>(Math.max(16, methods.length / 2));
+        Set<String> processedSignatures = HashSet.newHashSet(Math.max(16, methods.length / 2));
 
         for (Method method : methods) {
             if (isValidMethod(method, serviceClass)) {
                 // Create a unique signature: methodName + parameter types
                 String signature = createMethodSignature(method);
                 if (processedSignatures.add(signature)) {
-                    String functionName = serviceName + "_" + capitalizeFirst(method.getName());
+                    String functionName = capitalizeFirst(method.getName());
                     try {
                         ReactiveFunction function =
                                 new DynamicServiceFunction(serviceInstance, method, namespace, functionName, gson);
@@ -151,24 +149,11 @@ public class ServiceFunctionGenerator {
         if (str == null || str.isEmpty()) {
             return str;
         }
-        // Fast path for single character
         if (str.length() == 1) {
             return str.toUpperCase();
         }
-        // Use char array manipulation for better performance
         char[] chars = str.toCharArray();
         chars[0] = Character.toUpperCase(chars[0]);
         return new String(chars);
-    }
-
-    public Map.Entry<String, ReactiveFunction> generateFunctionEntry(Object serviceInstance, Method method) {
-        Class<?> serviceClass = serviceInstance.getClass();
-        String namespace = getNamespace(serviceInstance, serviceClass);
-        String serviceName = getServiceName(serviceClass);
-        String functionName = serviceName + "_" + capitalizeFirst(method.getName());
-
-        ReactiveFunction function =
-                new DynamicServiceFunction(serviceInstance, method, namespace, functionName, gson);
-        return Map.entry(namespace + "." + functionName, function);
     }
 }

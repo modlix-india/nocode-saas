@@ -55,7 +55,7 @@ public abstract class BaseProcessorService<
                 this.getEntityPrefix(access.getAppCode()));
     }
 
-    public Flux<D> updateAll(ProcessorAccess access, Flux<D> entities) {
+    protected Flux<D> updateAll(ProcessorAccess access, Flux<D> entities) {
         return entities.flatMap(entity -> super.update(access, entity));
     }
 }
