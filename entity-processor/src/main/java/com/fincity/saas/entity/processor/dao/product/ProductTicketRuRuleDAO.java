@@ -6,9 +6,9 @@ import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketRuUserDistributions;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.List;
 import java.util.Set;
 import org.jooq.Condition;
@@ -28,7 +28,8 @@ public class ProductTicketRuRuleDAO
                 ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.ID);
     }
 
-    public Flux<ProductTicketRuRule> getUserConditions(Boolean isEdit, EntityProcessorUser user) {
+    public Flux<ProductTicketRuRule> getUserConditions(
+            ProcessorAccess access, Boolean isEdit, EntityProcessorUser user) {
 
         var dist = EntityProcessorTicketRuUserDistributions.ENTITY_PROCESSOR_TICKET_RU_USER_DISTRIBUTIONS;
 
@@ -54,14 +55,13 @@ public class ProductTicketRuRuleDAO
 
         var allRulesQuery = super.dslContext
                 .select(this.table.fields())
-                .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.OVERRIDE_RU_TEMPLATE)
                 .from(this.table)
                 .join(dist)
                 .on(this.idField.eq(dist.RULE_ID))
-                .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
-                .on(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID.eq(
-                        ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.PRODUCT_ID))
-                .where(matchCond.and(super.isActiveTrue()));
+                .where(matchCond
+                        .and(super.isActiveTrue())
+                        .and(super.appCodeField.eq(access.getAppCode()))
+                        .and(super.clientCodeField.eq(access.getEffectiveClientCode())));
 
         if (Boolean.TRUE.equals(isEdit))
             allRulesQuery = allRulesQuery.and(ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES.CAN_EDIT.isTrue());

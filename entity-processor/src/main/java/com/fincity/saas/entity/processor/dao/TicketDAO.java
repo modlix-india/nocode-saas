@@ -5,16 +5,19 @@ import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicke
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.model.common.Email;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
+import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
@@ -34,6 +37,7 @@ import reactor.util.function.Tuples;
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
 
     private ProductTicketRuRuleService productTicketRuRuleService;
+    private TicketPeDuplicationRuleService ticketPeDuplicationRuleService;
 
     protected TicketDAO() {
         super(
@@ -49,6 +53,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         this.productTicketRuRuleService = productTicketRuRuleService;
     }
 
+    @Lazy
+    @Autowired
+    private void setTicketPeDuplicationRuleService(TicketPeDuplicationRuleService ticketPeDuplicationRuleService) {
+        this.ticketPeDuplicationRuleService = ticketPeDuplicationRuleService;
+    }
+
     public Flux<Ticket> getAllClientTicketsByDnc(ULong clientId, Boolean dnc) {
         return Flux.from(dslContext
                         .selectFrom(table)
@@ -62,46 +72,66 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(rec -> rec.into(this.pojoClass));
     }
 
-    public Mono<Ticket> readByNumberAndEmail(
-            ProcessorAccess access, ULong productId, Integer dialCode, String number, String email) {
-        return Mono.from(this.dslContext
-                        .selectFrom(this.table)
-                        .where(this.getOwnerIdentifierConditions(access, productId, dialCode, number, email))
-                        .orderBy(this.idField.desc())
-                        .limit(1))
-                .map(e -> e.into(this.pojoClass));
+    public Mono<Ticket> readTicketByNumberAndEmail(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber phoneNumber,
+            Email email) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.getOwnerIdentifierConditions(condition, access, productId, phoneNumber, email)
+                        .map(ownerIdentifierConditions ->
+                                super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
+                super::filter,
+                (pCondition, jCondition) -> Mono.from(this.dslContext
+                                .selectFrom(this.table)
+                                .where(jCondition.and(super.isActiveTrue()))
+                                .orderBy(this.updatedByField.desc())
+                                .limit(1))
+                        .map(e -> e.into(this.pojoClass)));
     }
 
-    private List<Condition> getOwnerIdentifierConditions(
-            ProcessorAccess access, ULong productId, Integer dialCode, String number, String email) {
+    public Mono<List<Ticket>> readTicketsByNumberAndEmail(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber phoneNumber,
+            Email email) {
 
-        List<Condition> conditions = new ArrayList<>();
+        return FlatMapUtil.flatMapMono(
+                () -> this.getOwnerIdentifierConditions(condition, access, productId, phoneNumber, email)
+                        .map(ownerIdentifierConditions ->
+                                super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
+                        .map(e -> e.into(this.pojoClass))
+                        .collectList());
+    }
 
-        conditions.add(this.appCodeField.eq(access.getAppCode()));
-        conditions.add(this.clientCodeField.eq(access.getEffectiveClientCode()));
+    private Mono<AbstractCondition> getOwnerIdentifierConditions(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber phoneNumber,
+            Email email) {
 
-        List<Condition> phoneEmailConditions = new ArrayList<>();
+        return FlatMapUtil.flatMapMono(
+                () -> this.ticketPeDuplicationRuleService.getTicketCondition(access, phoneNumber, email),
+                pECondition -> {
+                    List<AbstractCondition> conditions = new ArrayList<>();
 
-        if (number != null)
-            phoneEmailConditions.add(ENTITY_PROCESSOR_TICKETS
-                    .DIAL_CODE
-                    .eq(dialCode.shortValue())
-                    .and(ENTITY_PROCESSOR_TICKETS.PHONE_NUMBER.eq(number)));
+                    if (condition != null && condition.isNonEmpty()) conditions.add(condition);
 
-        if (email != null) phoneEmailConditions.add(ENTITY_PROCESSOR_TICKETS.EMAIL.eq(email));
+                    if (pECondition != null && pECondition.isNonEmpty()) conditions.add(pECondition);
 
-        if (!phoneEmailConditions.isEmpty())
-            conditions.add(
-                    phoneEmailConditions.size() > 1
-                            ? phoneEmailConditions.get(0).or(phoneEmailConditions.get(1))
-                            : phoneEmailConditions.getFirst());
+                    if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
 
-        // we always need Active product entities
-        conditions.add(super.isActiveTrue());
+                    if (conditions.isEmpty()) return Mono.empty();
 
-        if (productId != null) conditions.add(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(productId));
-
-        return conditions;
+                    return Mono.just(ComplexCondition.and(conditions));
+                });
     }
 
     @Override
@@ -144,16 +174,26 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(
                                 EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
-                dslContext.select(DSL.count()).from(table)));
+                dslContext
+                        .select(DSL.count())
+                        .from(table)
+                        .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                        .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(
+                                EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))));
     }
 
     @Override
     public Mono<AbstractCondition> processorAccessCondition(AbstractCondition condition, ProcessorAccess access) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.productTicketRuRuleService.getUserReadConditions(access),
-                        readCondition -> super.processorAccessCondition(condition, access),
-                        (readCondition, baseCondition) ->
-                                Mono.just((AbstractCondition) ComplexCondition.or(baseCondition, readCondition)))
+                        () -> this.productTicketRuRuleService
+                                .getUserReadConditions(access)
+                                .map(rCondition ->
+                                        condition != null ? ComplexCondition.and(condition, rCondition) : rCondition),
+                        rCondition -> Mono.just(super.addAppCodeAndClientCode(rCondition, access)),
+                        (rCondition, readCondition) -> super.processorAccessCondition(condition, access),
+                        (rCondition, readCondition, baseCondition) -> readCondition == null
+                                ? Mono.just(baseCondition)
+                                : Mono.just(ComplexCondition.or(baseCondition, readCondition)))
                 .switchIfEmpty(super.processorAccessCondition(condition, access));
     }
 }

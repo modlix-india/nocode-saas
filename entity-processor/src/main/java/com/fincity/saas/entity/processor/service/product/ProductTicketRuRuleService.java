@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketRuRuleDAO;
+import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -21,6 +22,7 @@ import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -78,26 +80,47 @@ public class ProductTicketRuRuleService
     public Mono<List<ProductTicketRuRule>> getConditionsForUserInternal(ProcessorAccess access, boolean isEdit) {
         return FlatMapUtil.flatMapMono(
                 () -> this.userDistributionService.getUserForClient(access),
-                userInfo -> this.dao.getUserConditions(isEdit, userInfo).collectList());
+                userInfo -> this.dao.getUserConditions(access, isEdit, userInfo).collectList());
     }
 
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return super.cacheService.cacheEmptyValueOrGet(
                 this.getConditionCacheName(access.getAppCode(), access.getClientCode()),
-                () -> this.getConditionsForUserInternal(access, false).flatMap(this::getUserReadConditions),
+                () -> this.getUserReadConditionInternal(access),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), access.getUserId()));
     }
 
-    private Mono<AbstractCondition> getUserReadConditions(List<ProductTicketRuRule> rules) {
+    private Mono<AbstractCondition> getUserReadConditionInternal(ProcessorAccess access) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.getConditionsForUserInternal(access, false),
+                rules -> this.getUserReadConditions(access, rules));
+    }
+
+    private Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access, List<ProductTicketRuRule> rules) {
         if (rules.isEmpty()) return Mono.empty();
 
         ProductTemplateMaps productTemplateMaps = this.buildRuleMaps(rules);
 
-        List<AbstractCondition> orBlocks = this.buildProductConditionBlocks(productTemplateMaps);
+        // Fetch all products to get their overrideRuTemplate flags
+        Set<ULong> productIds = productTemplateMaps.productMap.keySet();
 
-        this.addTemplateOnlyBlocks(productTemplateMaps, orBlocks);
+        return this.fetchProducts(access, productIds)
+                .map(productsMap -> {
+                    List<AbstractCondition> productConditionBlocks =
+                            this.buildProductConditionBlocks(productTemplateMaps, productsMap);
 
-        return orBlocks.isEmpty() ? Mono.empty() : Mono.just(ComplexCondition.or(orBlocks));
+                    List<AbstractCondition> productTemplateBlocks = this.addTemplateOnlyBlocks(productTemplateMaps);
+
+                    if (productConditionBlocks.isEmpty() && !productTemplateBlocks.isEmpty())
+                        return ComplexCondition.or(productTemplateBlocks);
+                    if (productTemplateBlocks.isEmpty() && !productConditionBlocks.isEmpty())
+                        return ComplexCondition.or(productConditionBlocks);
+
+                    productConditionBlocks.addAll(productTemplateBlocks);
+
+                    return ComplexCondition.or(productConditionBlocks);
+                })
+                .flatMap(condition -> condition == null ? Mono.empty() : Mono.just(condition));
     }
 
     private ProductTemplateMaps buildRuleMaps(List<ProductTicketRuRule> rules) {
@@ -107,9 +130,9 @@ public class ProductTicketRuRuleService
         Set<ULong> usedTemplates = new HashSet<>();
 
         for (var rule : rules) {
-            productMap
-                    .computeIfAbsent(rule.getProductId(), x -> new ArrayList<>())
-                    .add(rule);
+            ULong productId = rule.getProductId();
+            if (productId != null)
+                productMap.computeIfAbsent(productId, x -> new ArrayList<>()).add(rule);
 
             ULong templateId = rule.getProductTemplateId();
             if (templateId != null)
@@ -119,13 +142,27 @@ public class ProductTicketRuRuleService
         return new ProductTemplateMaps(productMap, templateMap, usedTemplates);
     }
 
-    private List<AbstractCondition> buildProductConditionBlocks(ProductTemplateMaps productTemplateMaps) {
+    private Mono<Map<ULong, Product>> fetchProducts(ProcessorAccess access, Set<ULong> productIds) {
+        if (productIds.isEmpty()) return Mono.just(new HashMap<>());
+
+        return Flux.fromIterable(productIds)
+                .flatMap(productId -> this.productService
+                        .readById(access, productId)
+                        .map(product -> Map.entry(productId, product))
+                        .onErrorResume(e -> Mono.empty()))
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+    }
+
+    private List<AbstractCondition> buildProductConditionBlocks(
+            ProductTemplateMaps productTemplateMaps, Map<ULong, Product> productsMap) {
 
         List<AbstractCondition> blocks = new ArrayList<>();
 
         for (var entry : productTemplateMaps.productMap.entrySet()) {
+            ULong productId = entry.getKey();
             List<ProductTicketRuRule> productRules = entry.getValue();
-            AbstractCondition block = this.buildSingleProductBlock(productRules, productTemplateMaps);
+            Product product = productsMap.get(productId);
+            AbstractCondition block = this.buildSingleProductBlock(productRules, productTemplateMaps, product);
             blocks.add(block);
         }
 
@@ -133,51 +170,63 @@ public class ProductTicketRuRuleService
     }
 
     private AbstractCondition buildSingleProductBlock(
-            List<ProductTicketRuRule> rules, ProductTemplateMaps productTemplateMaps) {
+            List<ProductTicketRuRule> rules, ProductTemplateMaps productTemplateMaps, Product product) {
 
-        var first = rules.getFirst();
-        boolean override = first.isOverrideRuTemplate();
+        ProductTicketRuRule first = rules.getFirst();
+        // Use overrideRuTemplate from product, default to false if product is not found
+        boolean override = product != null && product.isOverrideRuTemplate();
 
-        List<AbstractCondition> productConds =
+        List<AbstractCondition> productConditions =
                 rules.stream().map(ProductTicketRuRule::getConditionWithProduct).toList();
 
         return override
-                ? ComplexCondition.and(productConds)
+                ? this.takeOnlyProductCondition(first.getProductTemplateId(), productConditions, productTemplateMaps)
                 : this.mergeProductAndTemplateConditions(
-                        first.getProductTemplateId(), productConds, productTemplateMaps);
+                        first.getProductTemplateId(), productConditions, productTemplateMaps);
     }
 
-    private AbstractCondition mergeProductAndTemplateConditions(
-            ULong templateId, List<AbstractCondition> productConds, ProductTemplateMaps productTemplateMaps) {
+    private AbstractCondition takeOnlyProductCondition(
+            ULong templateId, List<AbstractCondition> productConditions, ProductTemplateMaps productTemplateMaps) {
 
         if (templateId == null || !productTemplateMaps.templateMap.containsKey(templateId))
-            return ComplexCondition.and(productConds);
-
-        List<AbstractCondition> merged = new ArrayList<>(productConds);
-
-        List<AbstractCondition> templateConds = productTemplateMaps.templateMap.get(templateId).stream()
-                .map(ProductTicketRuRule::getConditionWithProductTemplate)
-                .toList();
-
-        merged.addAll(templateConds);
+            return ComplexCondition.or(productConditions);
 
         productTemplateMaps.usedTemplates.add(templateId);
 
-        return ComplexCondition.and(merged);
+        return ComplexCondition.or(productConditions);
     }
 
-    private void addTemplateOnlyBlocks(ProductTemplateMaps productTemplateMaps, List<AbstractCondition> target) {
+    private AbstractCondition mergeProductAndTemplateConditions(
+            ULong templateId, List<AbstractCondition> productConditions, ProductTemplateMaps productTemplateMaps) {
+
+        if (templateId == null || !productTemplateMaps.templateMap.containsKey(templateId))
+            return ComplexCondition.or(productConditions);
+
+        List<AbstractCondition> templateConditions = productTemplateMaps.templateMap.get(templateId).stream()
+                .map(ProductTicketRuRule::getConditionWithProductTemplate)
+                .toList();
+
+        productTemplateMaps.usedTemplates.add(templateId);
+
+        return ComplexCondition.or(ComplexCondition.or(productConditions), ComplexCondition.or(templateConditions));
+    }
+
+    private List<AbstractCondition> addTemplateOnlyBlocks(ProductTemplateMaps productTemplateMaps) {
+
+        List<AbstractCondition> result = new ArrayList<>();
 
         for (var entry : productTemplateMaps.templateMap.entrySet()) {
 
             if (productTemplateMaps.usedTemplates.contains(entry.getKey())) continue;
 
-            List<AbstractCondition> templateConds = entry.getValue().stream()
+            List<AbstractCondition> templateConditions = entry.getValue().stream()
                     .map(ProductTicketRuRule::getConditionWithProductTemplate)
                     .toList();
 
-            target.add(ComplexCondition.and(templateConds));
+            result.add(ComplexCondition.or(templateConditions));
         }
+
+        return result;
     }
 
     private record ProductTemplateMaps(

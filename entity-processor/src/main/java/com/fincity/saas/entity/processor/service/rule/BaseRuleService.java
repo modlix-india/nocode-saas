@@ -85,11 +85,12 @@ public abstract class BaseRuleService<
     }
 
     @SuppressWarnings("unchecked")
-    private Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
+    protected Mono<D> updateProductProductTemplate(ProcessorAccess access, D entity) {
         if (entity.getProductId() == null)
             return this.productTemplateService
                     .readById(access, entity.getProductTemplateId())
-                    .map(template -> (D) entity.setProductTemplateId(template.getId()));
+                    .map(template ->
+                            (D) entity.setProductTemplateId(template.getId()).setProductId(null));
 
         return FlatMapUtil.flatMapMono(() -> this.productService.readById(access, entity.getProductId()), product -> {
             if (product.getProductTemplateId() == null)
@@ -98,8 +99,7 @@ public abstract class BaseRuleService<
                         ProcessorMessageResourceService.PRODUCT_TEMPLATE_MISSING,
                         product.getId());
 
-            return Mono.just(
-                    (D) entity.setProductId(product.getId()).setProductTemplateId(product.getProductTemplateId()));
+            return Mono.just((D) entity.setProductId(product.getId()).setProductTemplateId(null));
         });
     }
 
@@ -158,22 +158,14 @@ public abstract class BaseRuleService<
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.readById(access, id),
-                        (access, entity) ->
-                                this.dao.getRules(null, access, entity.getProductId(), entity.getProductTemplateId()),
-                        (access, entity, rules) -> this.shiftOrdersAndUpdate(access, entity, rules)
-                                .then(this.deleteUserDistribution(access, entity)),
-                        (access, entity, rules, udDeleted) -> super.deleteInternal(access, entity))
+                        this::deleteUserDistribution,
+                        (access, entity, udDeleted) -> super.deleteInternal(access, entity),
+                        (access, entity, udDeleted, deleted) -> this.dao.decrementOrdersAfter(
+                                access, entity.getProductId(), entity.getProductTemplateId(), entity.getOrder()),
+                        (access, entity, udDeleted, deleted, affectedRules) -> super.evictCaches(
+                                        Flux.fromIterable(affectedRules))
+                                .thenReturn(deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseRuleService.delete"));
-    }
-
-    private Mono<Void> shiftOrdersAndUpdate(ProcessorAccess access, D entity, List<D> rules) {
-        return Flux.fromIterable(rules)
-                .filter(rule -> rule.getOrder() > entity.getOrder())
-                .flatMap(rule -> {
-                    rule.setOrder(rule.getOrder() - 1);
-                    return super.updateInternal(access, rule);
-                })
-                .then();
     }
 
     public Mono<List<D>> fillDetails(List<D> rules, MultiValueMap<String, String> queryParams) {
