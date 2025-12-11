@@ -32,7 +32,7 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                         FilterCondition.make(Partner.Fields.clientId, clientId)
                                 .setOperator(FilterConditionOperator.EQUALS),
                         access),
-                pCondition -> super.filter(pCondition, null),
+                this::filter,
                 (pCondition, jCondition) -> Mono.from(
                         this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass)));
@@ -48,7 +48,7 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                                         .setOperator(FilterConditionOperator.IN)
                                         .setMultiValue(clientIds)),
                         access),
-                pCondition -> super.filter(pCondition, null),
+                super::filter,
                 (pCondition, jCondition) -> Flux.from(
                         this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass))
@@ -63,7 +63,7 @@ public class PartnerDAO extends BaseUpdatableDAO<EntityProcessorPartnersRecord, 
                                 .setOperator(FilterConditionOperator.IN)
                                 .setMultiValue(clientIds),
                         access),
-                pCondition -> super.filter(pCondition, null),
+                super::filter,
                 (pCondition, jCondition) -> Flux.from(
                         this.dslContext.selectFrom(this.table).where(jCondition))
                         .map(rec -> rec.into(this.pojoClass))
