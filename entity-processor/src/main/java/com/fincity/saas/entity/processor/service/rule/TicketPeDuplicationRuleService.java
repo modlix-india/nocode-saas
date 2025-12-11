@@ -27,7 +27,7 @@ public class TicketPeDuplicationRuleService
     private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
 
     private static final TicketPeDuplicationRule DEFAULT_RULE = (TicketPeDuplicationRule) new TicketPeDuplicationRule()
-            .setPhoneNumberAndEmailType(PhoneNumberAndEmailType.PHONE_NUMBER_OR_EMAIL)
+            .setPhoneNumberAndEmailType(PhoneNumberAndEmailType.PHONE_NUMBER_ONLY)
             .setActive(Boolean.TRUE)
             .setId(ULong.MIN);
 
@@ -67,6 +67,10 @@ public class TicketPeDuplicationRuleService
 
     @Override
     protected Mono<TicketPeDuplicationRule> checkEntity(TicketPeDuplicationRule entity, ProcessorAccess access) {
+
+        if (entity.getPhoneNumberAndEmailType() == null)
+            entity.setPhoneNumberAndEmailType(DEFAULT_RULE.getPhoneNumberAndEmailType());
+
         if (entity.getId() != null) return Mono.just(entity);
 
         return this.dao

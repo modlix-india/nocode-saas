@@ -659,13 +659,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             PhoneNumber ticketPhone,
             Email ticketMail) {
         return this.dao
-                .readTicketByNumberAndEmail(
-                        condition,
-                        access,
-                        productId,
-                        ticketPhone != null ? ticketPhone.getCountryCode() : null,
-                        ticketPhone != null ? ticketPhone.getNumber() : null,
-                        ticketMail != null ? ticketMail.getAddress() : null)
+                .readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
@@ -676,13 +670,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             PhoneNumber ticketPhone,
             Email ticketMail) {
         return this.dao
-                .readTicketsByNumberAndEmail(
-                        condition,
-                        access,
-                        productId,
-                        ticketPhone != null ? ticketPhone.getCountryCode() : null,
-                        ticketPhone != null ? ticketPhone.getNumber() : null,
-                        ticketMail != null ? ticketMail.getAddress() : null)
+                .readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
