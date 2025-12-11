@@ -76,7 +76,8 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
                         queryParams));
     }
 
-    protected AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
+    protected AbstractCondition addAppCodeAndClientCodeToCondition(
+            ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())

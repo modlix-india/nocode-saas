@@ -484,7 +484,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         noteRequest.setOwnerId(null);
 
         return this.noteService
-                .createInternal(access, noteRequest)
+                .create(access, noteRequest)
                 .map(cNote -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createNote"));
     }
@@ -580,7 +580,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         taskRequest.setOwnerId(null);
 
         return this.taskService
-                .createInternal(access, taskRequest)
+                .create(access, taskRequest)
                 .map(cTask -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createTask"));
     }

@@ -19,8 +19,7 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
     private final List<String> filterableNames;
 
     public ProcessorFunctionRepository(ProcessorFunctionRepositoryBuilder builder) {
-        ServiceFunctionGenerator generator =
-                new ServiceFunctionGenerator(builder.gson, builder.messageService);
+        ServiceFunctionGenerator generator = new ServiceFunctionGenerator(builder.gson, builder.messageService);
 
         if (builder.services != null) {
             for (Object service : builder.services) {
@@ -60,4 +59,3 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
         private ProcessorMessageResourceService messageService;
     }
 }
-

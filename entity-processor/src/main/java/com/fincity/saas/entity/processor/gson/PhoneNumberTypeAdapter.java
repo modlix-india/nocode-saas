@@ -69,4 +69,3 @@ public class PhoneNumberTypeAdapter extends TypeAdapter<PhoneNumber> {
         return PhoneNumber.of(null);
     }
 }
-

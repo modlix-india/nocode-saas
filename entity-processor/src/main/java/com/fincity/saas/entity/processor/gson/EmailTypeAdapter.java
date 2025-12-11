@@ -54,4 +54,3 @@ public class EmailTypeAdapter extends TypeAdapter<Email> {
         return Email.of(null);
     }
 }
-

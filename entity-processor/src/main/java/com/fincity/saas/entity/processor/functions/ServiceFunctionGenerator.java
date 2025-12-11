@@ -8,8 +8,10 @@ import com.google.gson.Gson;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,35 +36,35 @@ public class ServiceFunctionGenerator {
         Class<?> serviceClass = serviceInstance.getClass();
         String namespace = getNamespace(serviceInstance, serviceClass);
 
-        // Get all public methods including inherited ones
         Method[] methods = serviceClass.getMethods();
-        // Pre-size list with estimated capacity (most services have 10-30 public methods)
         List<ReactiveFunction> functions = new ArrayList<>(Math.max(16, methods.length / 2));
-        // Use Set to track method signatures to avoid duplicates (overridden methods)
         Set<String> processedSignatures = HashSet.newHashSet(Math.max(16, methods.length / 2));
 
+        List<Method> validMethods = new ArrayList<>();
+        Map<String, Integer> methodNameCounts = new HashMap<>();
         for (Method method : methods) {
             if (isValidMethod(method, serviceClass)) {
-                // Create a unique signature: methodName + parameter types
                 String signature = createMethodSignature(method);
                 if (processedSignatures.add(signature)) {
-                    String functionName = capitalizeFirst(method.getName());
-                    try {
-                        ReactiveFunction function =
-                                new DynamicServiceFunction(serviceInstance, method, namespace, functionName, gson);
-                        functions.add(function);
-                    } catch (Exception e) {
-                        // Log error directly (non-reactive) for better performance
-                        String errorDetails = String.format(
-                                "Failed to create function for method %s in class %s: %s",
-                                method.getName(),
-                                serviceClass.getSimpleName(),
-                                e.getMessage());
-                        // Get localized message key for context, but log synchronously
-                        String messageKey = ProcessorMessageResourceService.INVALID_PARAMETERS;
-                        LOGGER.error("[{}] Error creating function: {}", messageKey, errorDetails, e);
-                    }
+                    validMethods.add(method);
+                    methodNameCounts.merge(method.getName(), 1, Integer::sum);
                 }
+            }
+        }
+
+        for (Method method : validMethods) {
+            boolean isOverloaded = methodNameCounts.get(method.getName()) > 1;
+            String functionName = generateFunctionName(method, isOverloaded);
+            try {
+                ReactiveFunction function =
+                        new DynamicServiceFunction(serviceInstance, method, namespace, functionName, gson);
+                functions.add(function);
+            } catch (Exception e) {
+                String errorDetails = String.format(
+                        "Failed to create function for method %s in class %s: %s",
+                        method.getName(), serviceClass.getSimpleName(), e.getMessage());
+                String messageKey = ProcessorMessageResourceService.INVALID_PARAMETERS;
+                LOGGER.error("[{}] Error creating function: {}", messageKey, errorDetails, e);
             }
         }
 
@@ -70,39 +72,32 @@ public class ServiceFunctionGenerator {
     }
 
     private boolean isValidMethod(Method method, Class<?> serviceClass) {
-        // Fast path: check modifiers first (most common rejection)
         int modifiers = method.getModifiers();
         if (!Modifier.isPublic(modifiers)) {
             return false;
         }
 
-        // Fast path: check method name early
         String methodName = method.getName();
         if (EXCLUDED_METHOD_NAMES.contains(methodName) || methodName.charAt(0) == '_') {
             return false;
         }
 
-        // Exclude Object class methods
         Class<?> declaringClass = method.getDeclaringClass();
         if (declaringClass == Object.class) {
             return false;
         }
 
-        // Fast path: if declared in service class itself, accept immediately
         if (declaringClass == serviceClass) {
             return true;
         }
 
-        // Check package for parent class methods
         Package declaringPackage = declaringClass.getPackage();
         if (declaringPackage == null) {
-            return false; // No package means framework class
+            return false;
         }
 
         String packageName = declaringPackage.getName();
-        // Include methods from entity.processor.service or commons packages
-        return packageName.contains(ENTITY_PROCESSOR_SERVICE_PACKAGE)
-                || packageName.startsWith(COMMONS_PACKAGE_PREFIX);
+        return packageName.contains(ENTITY_PROCESSOR_SERVICE_PACKAGE) || packageName.startsWith(COMMONS_PACKAGE_PREFIX);
     }
 
     private String createMethodSignature(Method method) {
@@ -111,7 +106,6 @@ public class ServiceFunctionGenerator {
             return method.getName() + "()";
         }
 
-        // Estimate capacity: method name + "()" + average class name length * param count
         StringBuilder signature = new StringBuilder(method.getName().length() + 2 + paramTypes.length * 20);
         signature.append(method.getName()).append('(');
         signature.append(paramTypes[0].getName());
@@ -130,7 +124,8 @@ public class ServiceFunctionGenerator {
             }
         }
 
-        String packageName = serviceClass.getPackage() != null ? serviceClass.getPackage().getName() : "";
+        String packageName =
+                serviceClass.getPackage() != null ? serviceClass.getPackage().getName() : "";
         if (packageName.contains("entity.processor.service")) {
             return NAMESPACE_PREFIX + getServiceName(serviceClass);
         }
@@ -143,6 +138,39 @@ public class ServiceFunctionGenerator {
             return className.substring(0, className.length() - SERVICE_SUFFIX.length());
         }
         return className;
+    }
+
+    private String generateFunctionName(Method method, boolean isOverloaded) {
+        String baseName = capitalizeFirst(method.getName());
+
+        if (!isOverloaded) {
+            return baseName;
+        }
+
+        Class<?>[] paramTypes = method.getParameterTypes();
+        if (paramTypes.length == 0) {
+            return baseName;
+        }
+
+        StringBuilder suffix = new StringBuilder(paramTypes.length * 15);
+        for (Class<?> type : paramTypes) {
+            suffix.append(getTypeAbbreviation(type));
+        }
+
+        return baseName + suffix;
+    }
+
+    private String getTypeAbbreviation(Class<?> type) {
+        if (type == int.class) return "Integer";
+        if (type == long.class) return "Long";
+        if (type == double.class) return "Double";
+        if (type == float.class) return "Float";
+        if (type == boolean.class) return "Boolean";
+        if (type == byte.class) return "Byte";
+        if (type == short.class) return "Short";
+        if (type == char.class) return "Character";
+
+        return type.getSimpleName();
     }
 
     private String capitalizeFirst(String str) {

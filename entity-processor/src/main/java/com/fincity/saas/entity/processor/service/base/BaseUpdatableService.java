@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
-
-import lombok.AccessLevel;
 import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
@@ -168,7 +166,7 @@ public abstract class BaseUpdatableService<
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
-    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
+    public Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
 
@@ -258,7 +256,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.update(access, entity));
     }
 
-    protected Mono<D> update(ProcessorAccess access, D entity) {
+    public Mono<D> update(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
 
@@ -280,7 +278,7 @@ public abstract class BaseUpdatableService<
                 this::update);
     }
 
-    protected Mono<D> updateInternal(ProcessorAccess access, D entity) {
+    public Mono<D> updateInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
@@ -390,7 +388,7 @@ public abstract class BaseUpdatableService<
         return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.read(id), this::deleteInternal);
     }
 
-    public Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
 

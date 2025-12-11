@@ -118,7 +118,7 @@ public abstract class BaseContentService<
     }
 
     @Override
-    protected Mono<D> update(ProcessorAccess access, D entity) {
+    public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
                 oEntity -> super.update(access, entity),

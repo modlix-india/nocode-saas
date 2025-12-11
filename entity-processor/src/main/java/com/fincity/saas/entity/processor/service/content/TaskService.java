@@ -42,16 +42,16 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     }
 
     public Mono<Task> create(TaskRequest taskRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskRequest))
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.create(access, taskRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.create"));
     }
 
-    public Mono<Task> createInternal(ProcessorAccess access, TaskRequest taskRequest) {
+    public Mono<Task> create(ProcessorAccess access, TaskRequest taskRequest) {
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, taskRequest),
                         task -> this.createContent(taskRequest),
                         (task, content) -> super.createContent(access, content))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.create[ProcessorAccess, TaskRequest]"));
     }
 
     private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {

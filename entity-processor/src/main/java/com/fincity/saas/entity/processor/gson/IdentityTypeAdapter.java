@@ -90,4 +90,3 @@ public class IdentityTypeAdapter extends TypeAdapter<Identity> {
         return Identity.ofNull();
     }
 }
-
