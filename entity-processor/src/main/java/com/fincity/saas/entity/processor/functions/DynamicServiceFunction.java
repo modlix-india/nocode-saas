@@ -1,14 +1,5 @@
 package com.fincity.saas.entity.processor.functions;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -24,11 +15,18 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import org.jooq.types.UByte;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -68,8 +66,8 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         SCHEMA_CACHE.put(boolean.class, Schema.ofBoolean("boolean"));
         SCHEMA_CACHE.put(java.time.LocalDateTime.class, Schema.ofString("LocalDateTime"));
         SCHEMA_CACHE.put(java.time.LocalDate.class, Schema.ofString("LocalDate"));
-        
-        // JOOQ unsigned number types (serialized as strings but treated as numbers in execution)
+
+        // JOOQ unsigned number types
         SCHEMA_CACHE.put(ULong.class, Schema.ofLong("ULong"));
         SCHEMA_CACHE.put(UInteger.class, Schema.ofInteger("UInteger"));
         SCHEMA_CACHE.put(UShort.class, Schema.ofInteger("UShort"));
@@ -105,8 +103,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         for (int i = 0; i < methodParams.length; i++) {
             var param = methodParams[i];
             String paramName = param.getName();
-            if (paramName == null || paramName.isEmpty())
-                paramName = PARAM_PREFIX + i;
+            if (paramName == null || paramName.isEmpty()) paramName = PARAM_PREFIX + i;
 
             Class<?> paramType = param.getType();
             metadata[i] = new ParameterMetadata(
@@ -145,8 +142,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
                 Type genericReturnType = this.method.getGenericReturnType();
                 if (genericReturnType instanceof ParameterizedType paramType) {
                     Type monoType = paramType.getActualTypeArguments()[0];
-                    if (monoType instanceof Class<?> clazz)
-                        return this.getSchemaForType(clazz);
+                    if (monoType instanceof Class<?> clazz) return this.getSchemaForType(clazz);
                 }
             }
 
@@ -160,14 +156,12 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         if (Mono.class.isAssignableFrom(returnType)) {
             if (this.method.getGenericReturnType() instanceof ParameterizedType paramType) {
                 Type monoType = paramType.getActualTypeArguments()[0];
-                if (monoType instanceof Class<?> clazz)
-                    return this.getSchemaForType(clazz);
+                if (monoType instanceof Class<?> clazz) return this.getSchemaForType(clazz);
             }
             return Schema.ofObject(RESULT);
         }
 
-        if (Flux.class.isAssignableFrom(returnType))
-            return Schema.ofArray(RESULT, Schema.ofObject(ITEM));
+        if (Flux.class.isAssignableFrom(returnType)) return Schema.ofArray(RESULT, Schema.ofObject(ITEM));
 
         return this.getSchemaForType(returnType);
     }
@@ -188,7 +182,6 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     private Mono<FunctionOutput> executeMethod(ReactiveFunctionExecutionParameters context) {
         try {
             Object[] args = this.prepareArguments(context);
-            // Invoke method on service instance - 'this' in the service method will refer to serviceInstance
             Object result = this.method.invoke(this.serviceInstance, args);
             return this.processResult(result);
         } catch (Exception e) {
@@ -221,16 +214,16 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         for (int i = 0; i < this.parameterMetadata.length; i++) {
             ParameterMetadata metadata = this.parameterMetadata[i];
             JsonElement jsonValue = arguments.get(metadata.name());
-            args[i] =
-                    (jsonValue == null || jsonValue.isJsonNull()) ? null : this.convertFromJsonElement(jsonValue, metadata);
+            args[i] = (jsonValue == null || jsonValue.isJsonNull())
+                    ? null
+                    : this.convertFromJsonElement(jsonValue, metadata);
         }
 
         return args;
     }
 
     private Object convertFromJsonElement(JsonElement jsonValue, ParameterMetadata metadata) {
-        if (jsonValue == null || jsonValue.isJsonNull())
-            return null;
+        if (jsonValue == null || jsonValue.isJsonNull()) return null;
 
         if (metadata.isPrimitive()) {
             Function<JsonElement, Object> converter = PRIMITIVE_CONVERTERS.get(metadata.type());
@@ -242,11 +235,9 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     }
 
     private JsonElement convertToJsonElement(Object result) {
-        if (result == null)
-            return JsonNull.INSTANCE;
+        if (result == null) return JsonNull.INSTANCE;
 
-        if (result instanceof IClassConvertor convertor)
-            return convertor.toJsonElement();
+        if (result instanceof IClassConvertor convertor) return convertor.toJsonElement();
 
         return this.gson.toJsonTree(result);
     }
