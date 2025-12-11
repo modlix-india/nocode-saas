@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.TicketTagType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -21,10 +22,7 @@ import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.*;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -213,6 +211,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStage(ticket.getStage());
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
+                    existing.setTag(ticket.getTag());
 
                     return Mono.just(existing);
                 })
@@ -703,4 +702,34 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
     }
+
+    public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
+
+        if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
+            return this.identityMissingError("Tag");
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
+                        (access, ticket, resolvedTag) -> {
+
+                            TicketTagType oldTagEnum = CloneUtil.cloneObject(ticket.getTag());
+                            ticket.setTag(resolvedTag);
+
+                            String oldTagLiteral = oldTagEnum == null ? null : oldTagEnum.getLiteral();
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.update(access, ticket),
+                                    uTicket -> ticketTagRequest.getTaskRequest() != null
+                                            ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
+                                            : Mono.just(Boolean.FALSE),
+                                    (uTicket, cTask) -> this.activityService
+                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagLiteral)
+                                            .thenReturn(uTicket)
+                            ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketTagInner"));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
+    }
+
 }

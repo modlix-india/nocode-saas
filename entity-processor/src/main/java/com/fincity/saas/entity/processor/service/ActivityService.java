@@ -762,4 +762,54 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
         return DifferenceExtractor.extract(iObject, eObject);
     }
+
+    public Mono<Void> acTagChange(ProcessorAccess access, Ticket ticket, String comment, String oldTagLiteral) {
+
+        String newTagLiteral = ticket.getTag() != null ? ticket.getTag().getLiteral() : null;
+
+        if (oldTagLiteral == null ||
+                (newTagLiteral != null && newTagLiteral.equals(oldTagLiteral))) {
+
+            return this.acTagCreate(access, ticket, comment)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagChange"));
+        }
+        return this.acTagUpdate(access, ticket, comment, oldTagLiteral)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagChange"));
+    }
+
+
+    private Mono<Void> acTagCreate(ProcessorAccess access, Ticket ticket, String comment) {
+
+        if (ticket.getTag() == null) return Mono.empty();
+
+        return this.createActivityInternal(
+                        access,
+                        ActivityAction.TAG_CREATE,
+                        null,
+                        comment,
+                        Map.of(
+                                Activity.Fields.ticketId,
+                                ticket.getId(),
+                                Ticket.Fields.tag,
+                                ticket.getTag()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagCreate"));
+    }
+
+    private Mono<Void> acTagUpdate(ProcessorAccess access, Ticket ticket, String comment, String oldTag) {
+
+        return this.createActivityInternal(
+                        access,
+                        ActivityAction.TAG_UPDATE,
+                        null,
+                        comment,
+                        Map.of(
+                                Activity.Fields.ticketId,
+                                ticket.getId(),
+                                ActivityAction.getOldName(Ticket.Fields.tag),
+                                oldTag,
+                                Ticket.Fields.tag,
+                                ticket.getTag()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagUpdate"));
+    }
+
 }

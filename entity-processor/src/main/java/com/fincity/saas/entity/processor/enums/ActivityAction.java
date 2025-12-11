@@ -41,6 +41,13 @@ public enum ActivityAction implements EnumType {
             keys(getOldName(Ticket.Fields.stage), Ticket.Fields.stage)),
     WALK_IN("WALK_IN", "$entity walked in by $user.", keys("entity")),
     DCRM_IMPORT("DCRM_IMPORT", "$entity imported via DCRM by $user.", keys("entity")),
+    TAG_CREATE("TAG_CREATE","Tag $%s created by $user.".formatted(Ticket.Fields.tag), keys(Ticket.Fields.tag)),
+    TAG_UPDATE(
+            "TAG_UPDATE",
+            "Tag changed from $%s to $%s by $user."
+                    .formatted(getOldName(Ticket.Fields.tag), Ticket.Fields.tag),
+            keys(getOldName(Ticket.Fields.tag), Ticket.Fields.tag)),
+
 
     // Task-related actions
     TASK_CREATE(
