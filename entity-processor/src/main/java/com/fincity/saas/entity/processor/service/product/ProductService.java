@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -89,7 +90,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updatableEntity"));
     }
 
-    public Mono<Product> create(ProductRequest productRequest) {
+    public Mono<Product> createRequest(ProductRequest productRequest) {
 
         if (productRequest.getProductTemplateId() == null
                 || productRequest.getProductTemplateId().isNull())
@@ -108,6 +109,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
+    @IgnoreServerFunc
     public Mono<ProductTemplate> setProductTemplate(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readByIdentity(access, productId), product -> {
@@ -117,6 +119,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
+    @IgnoreServerFunc
     public Mono<ProductWalkInForm> setProductWalkInForm(
             ProcessorAccess access, ULong productId, ProductWalkInForm productWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productId), product -> {
@@ -146,6 +149,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
     }
 
+    @IgnoreServerFunc
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
         return this.dao.getAllProducts(access, productIds);
     }

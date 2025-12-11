@@ -40,6 +40,11 @@ import reactor.util.function.Tuples;
 @Service
 public class ProcessorFunctionService implements ApplicationListener<ContextRefreshedEvent>, ApplicationContextAware {
 
+    private static final Map<SchemaType, java.util.function.Function<String, Number>> CONVERTOR = Map.of(
+            SchemaType.DOUBLE, Double::valueOf,
+            SchemaType.FLOAT, Float::valueOf,
+            SchemaType.LONG, Long::valueOf,
+            SchemaType.INTEGER, Integer::valueOf);
     private final AtomicReference<ReactiveHybridRepository<ReactiveFunction>> processorFunctionRepository =
             new AtomicReference<>();
     private final AtomicBoolean initialized = new AtomicBoolean(false);
@@ -51,12 +56,6 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
     @Autowired
     private ProcessorMessageResourceService messageService;
 
-    private static final Map<SchemaType, java.util.function.Function<String, Number>> CONVERTOR = Map.of(
-            SchemaType.DOUBLE, Double::valueOf,
-            SchemaType.FLOAT, Float::valueOf,
-            SchemaType.LONG, Long::valueOf,
-            SchemaType.INTEGER, Integer::valueOf);
-
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
@@ -66,9 +65,7 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
     public void onApplicationEvent(ContextRefreshedEvent event) {
         // Only initialize once, and only if this is the root application context
         // (to avoid double initialization in web apps with parent/child contexts)
-        if (event.getApplicationContext().getParent() == null && initialized.compareAndSet(false, true)) {
-            init();
-        }
+        if (event.getApplicationContext().getParent() == null && initialized.compareAndSet(false, true)) init();
     }
 
     private void init() {
@@ -88,9 +85,8 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
                     && beanClass.isAnnotationPresent(Service.class)) {
                 String packageName =
                         beanClass.getPackage() != null ? beanClass.getPackage().getName() : "";
-                if (packageName.contains("entity.processor.service") && !packageName.contains("base")) {
+                if (packageName.contains("entity.processor.service") && !packageName.contains("base"))
                     services.add(bean);
-                }
             }
         }
 
@@ -112,13 +108,15 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
 
     public Mono<FunctionOutput> execute(
             String namespace, String name, Map<String, JsonElement> arguments, ServerHttpRequest request) {
+
         ReactiveHybridRepository<ReactiveFunction> repository = processorFunctionRepository.get();
-        if (repository == null) {
+
+        if (repository == null)
             return Mono.error(new IllegalStateException("ProcessorFunctionRepository has not been initialized yet"));
-        }
+
         return repository.find(namespace, name).flatMap(function -> {
             Mono<Map<String, JsonElement>> argsMono = arguments == null
-                    ? getRequestParamsToArguments(function.getSignature().getParameters(), request)
+                    ? this.getRequestParamsToArguments(function.getSignature().getParameters(), request)
                     : Mono.just(arguments);
             return argsMono.flatMap(args ->
                     function.execute(new ReactiveFunctionExecutionParameters(repository, null).setArguments(args)));
@@ -132,28 +130,28 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
                 request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
 
         return Flux.fromIterable(parameters.entrySet())
-                .flatMap(e -> {
-                    List<String> value = queryParams.get(e.getKey());
+                .flatMap(parameter -> {
+                    List<String> value = queryParams.get(parameter.getKey());
 
                     if (value == null) return Mono.empty();
 
-                    Schema schema = e.getValue().getSchema();
+                    Schema schema = parameter.getValue().getSchema();
                     Type type = schema.getType();
 
-                    Parameter param = e.getValue();
+                    Parameter param = parameter.getValue();
 
                     if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT)) return Mono.empty();
 
-                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(e, value, param));
+                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(parameter, value, param));
 
                     if (type.contains(SchemaType.DOUBLE)) {
-                        return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
+                        return Mono.just(jsonElement(parameter, value, param, SchemaType.DOUBLE));
                     } else if (type.contains(SchemaType.FLOAT)) {
-                        return Mono.just(jsonElement(e, value, param, SchemaType.FLOAT));
+                        return Mono.just(jsonElement(parameter, value, param, SchemaType.FLOAT));
                     } else if (type.contains(SchemaType.LONG)) {
-                        return Mono.just(jsonElement(e, value, param, SchemaType.LONG));
+                        return Mono.just(jsonElement(parameter, value, param, SchemaType.LONG));
                     } else if (type.contains(SchemaType.INTEGER)) {
-                        return Mono.just(jsonElement(e, value, param, SchemaType.INTEGER));
+                        return Mono.just(jsonElement(parameter, value, param, SchemaType.INTEGER));
                     }
 
                     return Mono.empty();
@@ -163,25 +161,26 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
     }
 
     private Tuple2<String, JsonElement> jsonElement(
-            Entry<String, Parameter> e, List<String> value, Parameter param, SchemaType type) {
+            Entry<String, Parameter> parameter, List<String> value, Parameter param, SchemaType type) {
         if (!param.isVariableArgument())
-            return Tuples.of(e.getKey(), new JsonPrimitive(CONVERTOR.get(type).apply(value.getFirst())));
+            return Tuples.of(
+                    parameter.getKey(), new JsonPrimitive(CONVERTOR.get(type).apply(value.getFirst())));
 
         JsonArray jsonArray = new JsonArray();
         value.stream()
                 .map(each -> new JsonPrimitive(CONVERTOR.get(type).apply(each)))
                 .forEach(jsonArray::add);
 
-        return Tuples.of(e.getKey(), jsonArray);
+        return Tuples.of(parameter.getKey(), jsonArray);
     }
 
     private Tuple2<String, JsonElement> jsonElementString(
-            Entry<String, Parameter> e, List<String> value, Parameter param) {
-        if (!param.isVariableArgument()) return Tuples.of(e.getKey(), new JsonPrimitive(value.getFirst()));
+            Entry<String, Parameter> parameter, List<String> value, Parameter param) {
+        if (!param.isVariableArgument()) return Tuples.of(parameter.getKey(), new JsonPrimitive(value.getFirst()));
 
         JsonArray jsonArray = new JsonArray();
         value.stream().map(JsonPrimitive::new).forEach(jsonArray::add);
 
-        return Tuples.of(e.getKey(), jsonArray);
+        return Tuples.of(parameter.getKey(), jsonArray);
     }
 }

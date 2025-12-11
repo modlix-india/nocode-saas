@@ -24,8 +24,8 @@ import reactor.core.publisher.Mono;
 public class TaskController extends BaseContentController<EntityProcessorTasksRecord, Task, TaskDAO, TaskService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Task>> createFromRequest(@RequestBody TaskRequest taskRequest) {
-        return this.service.create(taskRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Task>> createRequest(@RequestBody TaskRequest taskRequest) {
+        return this.service.createRequest(taskRequest).map(ResponseEntity::ok);
     }
 
     @PutMapping(REQ_PATH_ID + "/reminder")

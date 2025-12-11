@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -195,6 +196,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return Mono.just(ticket).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketFromOwner"));
     }
 
+    @IgnoreServerFunc
     public Flux<Ticket> updateOwnerTickets(ProcessorAccess access, Owner owner) {
         return this.dao
                 .getAllOwnerTickets(owner.getId())
@@ -219,7 +221,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
-    public Mono<Ticket> create(TicketRequest ticketRequest) {
+    public Mono<Ticket> createRequest(TicketRequest ticketRequest) {
 
         if (!ticketRequest.hasSourceInfo())
             return this.msgService.throwMessage(
@@ -258,6 +260,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 super::hasAccess, access -> super.update(access, entity), this.ownerService::updateTicketOwner);
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> createForCampaign(CampaignTicketRequest cTicketRequest) {
 
         ProcessorAccess access =
@@ -319,6 +322,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> createForPartnerImportDCRM(String appCode, String clientCode, TicketPartnerRequest request) {
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, true, null, null);
@@ -484,7 +488,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         noteRequest.setOwnerId(null);
 
         return this.noteService
-                .create(access, noteRequest)
+                .createRequest(access, noteRequest)
                 .map(cNote -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createNote"));
     }
@@ -544,6 +548,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateStageStatus"));
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> updateTicketStage(
             ProcessorAccess access,
             Ticket ticket,
@@ -580,7 +585,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         taskRequest.setOwnerId(null);
 
         return this.taskService
-                .create(access, taskRequest)
+                .createRequest(access, taskRequest)
                 .map(cTask -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createTask"));
     }
@@ -610,6 +615,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId, boolean isAutomatic) {
 
         if (userId != null)
@@ -674,11 +680,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
         return this.getTicket(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
+    @IgnoreServerFunc
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
         return this.dao
                 .getAllClientTicketsByDnc(clientId, !dnc)

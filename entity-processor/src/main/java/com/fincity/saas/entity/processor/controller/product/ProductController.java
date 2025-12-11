@@ -27,8 +27,8 @@ public class ProductController
         extends BaseProcessorController<EntityProcessorProductsRecord, Product, ProductDAO, ProductService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Product>> createFromRequest(@RequestBody ProductRequest productRequest) {
-        return this.service.create(productRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Product>> createRequest(@RequestBody ProductRequest productRequest) {
+        return this.service.createRequest(productRequest).map(ResponseEntity::ok);
     }
 
     @PostMapping("/for-partner")

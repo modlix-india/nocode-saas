@@ -33,8 +33,8 @@ public class TicketController
     public static final String DCRM_REQ_PATH = REQ_PATH + "/DCRM";
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Ticket>> createFromRequest(@RequestBody TicketRequest ticketRequest) {
-        return this.service.create(ticketRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Ticket>> createRequest(@RequestBody TicketRequest ticketRequest) {
+        return this.service.createRequest(ticketRequest).map(ResponseEntity::ok);
     }
 
     @PatchMapping(REQ_PATH_ID + "/stage")

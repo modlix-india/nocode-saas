@@ -19,7 +19,7 @@ public class OwnerController
         extends BaseProcessorController<EntityProcessorOwnersRecord, Owner, OwnerDAO, OwnerService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Owner>> createFromRequest(@RequestBody OwnerRequest ownerRequest) {
-        return this.service.create(ownerRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Owner>> createRequest(@RequestBody OwnerRequest ownerRequest) {
+        return this.service.createRequest(ownerRequest).map(ResponseEntity::ok);
     }
 }

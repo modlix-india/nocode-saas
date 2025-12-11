@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.Platform;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
@@ -156,7 +157,7 @@ public abstract class BaseValueService<
                 (vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
 
-    public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
+    protected Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, access), vEntity -> {
             entity.setIsParent(Boolean.FALSE);
@@ -206,6 +207,7 @@ public abstract class BaseValueService<
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
+    @IgnoreServerFunc
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrder(
             ProcessorAccess access, Platform platform, ULong productTemplateId) {
         return this.getAllValuesInOrderInternal(access, platform, productTemplateId)
@@ -216,6 +218,7 @@ public abstract class BaseValueService<
                         this.getEntityName()));
     }
 
+    @IgnoreServerFunc
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrderInternal(
             ProcessorAccess access, Platform platform, ULong productTemplateId, ULong... parentIds) {
         return this.getAllValues(
@@ -237,11 +240,13 @@ public abstract class BaseValueService<
                 });
     }
 
+    @IgnoreServerFunc
     public Mono<Set<ULong>> getAllValueIds(ProcessorAccess access, Platform platform, ULong productTemplateId) {
         return this.getAllValues(access.getAppCode(), access.getEffectiveClientCode(), platform, productTemplateId)
                 .map(map -> map.keySet().stream().map(D::getId).collect(Collectors.toSet()));
     }
 
+    @IgnoreServerFunc
     public Mono<Map.Entry<D, List<D>>> getParentChild(
             ProcessorAccess access, ULong productTemplateId, Identity parent, Identity child) {
 
@@ -339,6 +344,7 @@ public abstract class BaseValueService<
                 super.getCacheKey(appCode, clientCode, platform, productTemplateId));
     }
 
+    @IgnoreServerFunc
     public Mono<List<D>> getValuesFlat(
             String appCode,
             String clientCode,

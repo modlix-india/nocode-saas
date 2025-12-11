@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -120,7 +121,7 @@ public class ProductTicketCRuleService
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
     }
 
-    public Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrder(
+    private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrder(
             ProcessorAccess access, ULong productId, ULong stageId) {
 
         return super.productService
@@ -202,6 +203,7 @@ public class ProductTicketCRuleService
                         stageId));
     }
 
+    @IgnoreServerFunc
     public Mono<ULong> getUserAssignment(
             ProcessorAccess access,
             ULong productId,

@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.functions;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
 import java.lang.reflect.Method;
@@ -54,6 +55,9 @@ public class ServiceFunctionGenerator {
 
     public List<ReactiveFunction> generateFunctions(Object serviceInstance) {
         Class<?> serviceClass = serviceInstance.getClass();
+
+        if (serviceClass.isAnnotationPresent(IgnoreServerFunc.class)) return new ArrayList<>();
+
         String namespace = this.getNamespace(serviceInstance, serviceClass);
         Method[] methods = serviceClass.getMethods();
 
@@ -94,9 +98,11 @@ public class ServiceFunctionGenerator {
     }
 
     private boolean isValidMethod(Method method, Class<?> serviceClass) {
-        if (method.isBridge() || method.isSynthetic()) return false;
+        if (method.isAnnotationPresent(IgnoreServerFunc.class)) return false;
 
         if (!Modifier.isPublic(method.getModifiers())) return false;
+
+        if (method.isBridge() || method.isSynthetic()) return false;
 
         String methodName = method.getName();
         if (EXCLUDED_METHOD_NAMES.contains(methodName) || methodName.charAt(0) == '_') return false;

@@ -13,6 +13,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.rule.NoOpUserDistribution;
 import com.fincity.saas.entity.processor.dto.rule.TicketDuplicationRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketDuplicationRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -121,6 +122,7 @@ public class TicketDuplicationRuleService
                 .map((evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3()));
     }
 
+    @IgnoreServerFunc
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
 

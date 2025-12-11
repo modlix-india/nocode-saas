@@ -25,8 +25,8 @@ public class ProductCommController
                 EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO, ProductCommService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<ProductComm>> createFromRequest(@RequestBody ProductCommRequest request) {
-        return this.service.create(request).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<ProductComm>> createRequest(@RequestBody ProductCommRequest request) {
+        return this.service.createRequest(request).map(ResponseEntity::ok);
     }
 
     @GetMapping("/default")

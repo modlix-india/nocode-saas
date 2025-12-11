@@ -6,6 +6,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.NoteDAO;
 import com.fincity.saas.entity.processor.dto.content.Note;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
@@ -31,17 +32,19 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         return EntitySeries.NOTE;
     }
 
-    public Mono<Note> create(NoteRequest noteRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.create(access, noteRequest))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create"));
+    public Mono<Note> createRequest(NoteRequest noteRequest) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createRequest(access, noteRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createRequest"));
     }
 
-    public Mono<Note> create(ProcessorAccess access, NoteRequest noteRequest) {
+    @IgnoreServerFunc
+    public Mono<Note> createRequest(ProcessorAccess access, NoteRequest noteRequest) {
         return FlatMapUtil.flatMapMono(
                         () -> super.updateBaseIdentities(access, noteRequest),
                         this::createContent,
                         (uRequest, content) -> super.createContent(access, content))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.create[ProcessorAccess, NoteRequest]"));
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "NoteService.createRequest[ProcessorAccess, NoteRequest]"));
     }
 
     private Mono<Note> createContent(NoteRequest noteRequest) {
