@@ -12,7 +12,7 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.TicketTagType;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -22,7 +22,11 @@ import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
-import com.fincity.saas.entity.processor.model.request.ticket.*;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -706,18 +710,15 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
 
         if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
-            return this.identityMissingError("Tag");
+            return this.identityMissingError(Ticket.Fields.tag);
 
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.readByIdentity(access, ticketId),
                         (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
                         (access, ticket, resolvedTag) -> {
-
-                            TicketTagType oldTagEnum = CloneUtil.cloneObject(ticket.getTag());
+                            Tag oldTagEnum = ticket.getTag();
                             ticket.setTag(resolvedTag);
-
-                            String oldTagLiteral = oldTagEnum == null ? null : oldTagEnum.getLiteral();
 
                             return FlatMapUtil.flatMapMono(
                                     () -> this.update(access, ticket),
@@ -725,11 +726,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                             ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
                                             : Mono.just(Boolean.FALSE),
                                     (uTicket, cTask) -> this.activityService
-                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagLiteral)
-                                            .thenReturn(uTicket)
-                            ).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketTagInner"));
+                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagEnum)
+                                            .thenReturn(uTicket));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
     }
-
 }

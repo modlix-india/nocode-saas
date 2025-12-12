@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.jooq.EnumType;
 
 @Getter
-public enum TicketTagType implements EnumType {
+public enum Tag implements EnumType {
     HOT("HOT", "Hot"),
     WARM("WARM", "Warm"),
     COLD("COLD", "Cold");
@@ -12,13 +12,13 @@ public enum TicketTagType implements EnumType {
     private final String literal;
     private final String displayName;
 
-    TicketTagType(String literal, String displayName) {
+    Tag(String literal, String displayName) {
         this.literal = literal;
         this.displayName = displayName;
     }
 
-    public static TicketTagType lookupLiteral(String literal) {
-        return EnumType.lookupLiteral(TicketTagType.class, literal);
+    public static Tag lookupLiteral(String literal) {
+        return EnumType.lookupLiteral(Tag.class, literal);
     }
 
     @Override

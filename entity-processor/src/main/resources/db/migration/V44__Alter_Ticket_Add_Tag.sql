@@ -1,5 +1,5 @@
 ALTER TABLE `entity_processor`.`entity_processor_tickets`
-  ADD COLUMN `TAG` ENUM('HOT','WARM','COLD') NULL DEFAULT NULL COMMENT 'Deal Tag - HOT / WARM / COLD' AFTER `CAMPAIGN_ID`;
+  ADD COLUMN `TAG` ENUM('HOT','WARM','COLD') DEFAULT NULL COMMENT 'Deal Tag - HOT / WARM / COLD' AFTER `CAMPAIGN_ID`;
 
 ALTER TABLE `entity_processor`.`entity_processor_activities`
     MODIFY COLUMN `ACTIVITY_ACTION` ENUM (

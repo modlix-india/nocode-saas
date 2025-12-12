@@ -6,7 +6,11 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
-import com.fincity.saas.entity.processor.model.request.ticket.*;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
@@ -42,8 +46,7 @@ public class TicketController
 
     @PatchMapping(REQ_PATH_ID + "/tag")
     public Mono<ResponseEntity<Ticket>> updateTag(
-            @PathVariable(PATH_VARIABLE_ID) Identity identity,
-            @RequestBody TicketTagRequest ticketTagRequest) {
+            @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody TicketTagRequest ticketTagRequest) {
         return this.service.updateTag(identity, ticketTagRequest).map(ResponseEntity::ok);
     }
 
