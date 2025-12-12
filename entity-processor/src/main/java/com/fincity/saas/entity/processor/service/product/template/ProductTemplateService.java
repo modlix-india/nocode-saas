@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -66,7 +67,7 @@ public class ProductTemplateService
         return EntitySeries.PRODUCT_TEMPLATE;
     }
 
-    public Mono<ProductTemplate> create(ProductTemplateRequest productTemplateRequest) {
+    public Mono<ProductTemplate> createRequest(ProductTemplateRequest productTemplateRequest) {
 
         ProductTemplateType productTemplateType = productTemplateRequest.getProductTemplateType();
 
@@ -101,6 +102,7 @@ public class ProductTemplateService
         return productService.setProductTemplate(access, productId, productTemplate);
     }
 
+    @IgnoreServerFunc
     public Mono<ProductTemplateWalkInForm> setProductTemplateWalkInForm(
             ProcessorAccess access, ULong productTemplateId, ProductTemplateWalkInForm productTemplateWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productTemplateId), productTemplate -> {

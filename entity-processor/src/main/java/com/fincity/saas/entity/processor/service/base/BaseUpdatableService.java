@@ -12,6 +12,7 @@ import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -36,13 +37,13 @@ public abstract class BaseUpdatableService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> implements IEntitySeries, IProcessorAccessService {
 
-    @Getter
+    @Getter(onMethod_ = @IgnoreServerFunc)
     protected ProcessorMessageResourceService msgService;
 
-    @Getter
+    @Getter(onMethod_ = @IgnoreServerFunc)
     protected IFeignSecurityService securityService;
 
-    @Getter
+    @Getter(onMethod_ = @IgnoreServerFunc)
     protected CacheService cacheService;
 
     protected abstract String getCacheName();
@@ -119,17 +120,17 @@ public abstract class BaseUpdatableService<
     }
 
     @Autowired
-    public void setMsgService(ProcessorMessageResourceService msgService) {
+    protected void setMsgService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
     @Autowired
-    public void setCacheService(CacheService cacheService) {
+    protected void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
     }
 
     @Autowired
-    public void setSecurityService(IFeignSecurityService securityService) {
+    protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
@@ -162,10 +163,12 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.create(access, entity));
     }
 
-    public Mono<D> create(ProcessorAccess access, D entity) {
+    @IgnoreServerFunc
+    protected Mono<D> create(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
+    @IgnoreServerFunc
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
@@ -256,6 +259,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.update(access, entity));
     }
 
+    @IgnoreServerFunc
     public Mono<D> update(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
@@ -278,6 +282,7 @@ public abstract class BaseUpdatableService<
                 this::update);
     }
 
+    @IgnoreServerFunc
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
@@ -289,7 +294,7 @@ public abstract class BaseUpdatableService<
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
-    public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
+    protected Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
@@ -311,6 +316,7 @@ public abstract class BaseUpdatableService<
                 entityName);
     }
 
+    @IgnoreServerFunc
     public Mono<D> readById(ProcessorAccess access, ULong id) {
 
         if (id == null) return this.identityMissingError();
@@ -334,6 +340,7 @@ public abstract class BaseUpdatableService<
                 this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
     }
 
+    @IgnoreServerFunc
     public Mono<D> readByCode(ProcessorAccess access, String code) {
 
         if (code == null || code.isEmpty()) return this.identityMissingError();
@@ -357,6 +364,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByIdentity(access, identity));
     }
 
+    @IgnoreServerFunc
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -366,6 +374,7 @@ public abstract class BaseUpdatableService<
                 : this.readByCode(access, identity.getCode());
     }
 
+    @IgnoreServerFunc
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -388,7 +397,7 @@ public abstract class BaseUpdatableService<
         return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.read(id), this::deleteInternal);
     }
 
-    public Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
 

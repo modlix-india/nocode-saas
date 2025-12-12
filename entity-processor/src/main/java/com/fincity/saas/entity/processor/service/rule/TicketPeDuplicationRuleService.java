@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dao.rule.TicketPeDuplicationRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.TicketPeDuplicationRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketPeDuplicationRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -85,11 +86,12 @@ public class TicketPeDuplicationRuleService
     }
 
     @Override
-    public Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
+    protected Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
         return super.create(access, entity)
                 .flatMap(created -> this.evictCache(created).map(evicted -> created));
     }
 
+    @IgnoreServerFunc
     public Mono<AbstractCondition> getTicketCondition(ProcessorAccess access, PhoneNumber phoneNumber, Email email) {
         return this.getRule(access)
                 .map(rule -> rule.getPhoneNumberAndEmailType().getTicketCondition(phoneNumber, email))

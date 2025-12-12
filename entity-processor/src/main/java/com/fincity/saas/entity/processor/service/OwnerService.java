@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dao.OwnerDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwnersRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
@@ -57,7 +58,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updatableEntity"));
     }
 
-    public Mono<Owner> create(OwnerRequest ownerRequest) {
+    public Mono<Owner> createRequest(OwnerRequest ownerRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> this.checkDuplicate(access, ownerRequest),
@@ -75,6 +76,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.update"));
     }
 
+    @IgnoreServerFunc
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getOwnerId() != null)
@@ -93,6 +95,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
     }
 
+    @IgnoreServerFunc
     public Mono<Ticket> updateTicketOwner(ProcessorAccess access, Ticket ticket) {
         return this.readById(access, ticket.getOwnerId()).flatMap(owner -> {
             owner.setName(ticket.getName());

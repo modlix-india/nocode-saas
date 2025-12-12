@@ -6,6 +6,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductCommDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -226,7 +227,7 @@ public class ProductCommService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));
     }
 
-    public Mono<ProductComm> create(ProductCommRequest productCommRequest) {
+    public Mono<ProductComm> createRequest(ProductCommRequest productCommRequest) {
 
         if (productCommRequest.getConnectionName() == null)
             return super.throwMissingParam(ProductComm.Fields.connectionName);
@@ -269,7 +270,7 @@ public class ProductCommService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));
     }
 
-    public Mono<ProductComm> updateDefault(
+    private Mono<ProductComm> updateDefault(
             ProcessorAccess access, Connection connection, ProductCommRequest productCommRequest) {
 
         ULong prodId = productCommRequest.getProductId() == null
@@ -302,6 +303,7 @@ public class ProductCommService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updateDefault"));
     }
 
+    @IgnoreServerFunc
     public Mono<ProductComm> getProductComm(
             ProcessorAccess access,
             ULong productId,
@@ -325,7 +327,7 @@ public class ProductCommService
                         LogUtil.METHOD_NAME, "ProductCommService.getDefault[Identity, String, ConnectionType]"));
     }
 
-    public Mono<ProductComm> getDefault(
+    private Mono<ProductComm> getDefault(
             ProcessorAccess access,
             Identity productId,
             ConnectionType connectionType,
@@ -336,7 +338,7 @@ public class ProductCommService
                         "ProductCommService.getDefault[ProcessorAccess, Identity, String, ConnectionType]"));
     }
 
-    public Mono<ProductComm> getDefault(
+    private Mono<ProductComm> getDefault(
             ProcessorAccess access,
             ULong productId,
             ConnectionType connectionType,
@@ -347,7 +349,7 @@ public class ProductCommService
                         "ProductCommService.getDefault[ProcessorAccess, ULong, String, ConnectionType]"));
     }
 
-    public Mono<ProductComm> getAppDefault(
+    private Mono<ProductComm> getAppDefault(
             ProcessorAccess access, ConnectionType connectionType, ConnectionSubType connectionSubType) {
         return this.getDefaultAppInternal(access, connectionType, connectionSubType)
                 .contextWrite(Context.of(
@@ -355,6 +357,7 @@ public class ProductCommService
                         "ProductCommService.getDefault[ProcessorAccess, ULong, String, ConnectionType]"));
     }
 
+    @IgnoreServerFunc
     public Mono<ProductComm> getByPhoneNumber(
             ProcessorAccess access,
             ConnectionType connectionType,

@@ -8,6 +8,7 @@ import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketRuRule;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketRuRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
@@ -77,12 +78,7 @@ public class ProductTicketRuRuleService
                         .map(evicted -> created));
     }
 
-    public Mono<List<ProductTicketRuRule>> getConditionsForUserInternal(ProcessorAccess access, boolean isEdit) {
-        return FlatMapUtil.flatMapMono(
-                () -> this.userDistributionService.getUserForClient(access),
-                userInfo -> this.dao.getUserConditions(access, isEdit, userInfo).collectList());
-    }
-
+    @IgnoreServerFunc
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return super.cacheService.cacheEmptyValueOrGet(
                 this.getConditionCacheName(access.getAppCode(), access.getClientCode()),
@@ -94,6 +90,12 @@ public class ProductTicketRuRuleService
         return FlatMapUtil.flatMapMono(
                 () -> this.getConditionsForUserInternal(access, false),
                 rules -> this.getUserReadConditions(access, rules));
+    }
+
+    private Mono<List<ProductTicketRuRule>> getConditionsForUserInternal(ProcessorAccess access, boolean isEdit) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.userDistributionService.getUserForClient(access),
+                userInfo -> this.dao.getUserConditions(access, isEdit, userInfo).collectList());
     }
 
     private Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access, List<ProductTicketRuRule> rules) {

@@ -27,8 +27,8 @@ import reactor.core.publisher.Mono;
 public class StageController extends BaseValueController<EntityProcessorStagesRecord, Stage, StageDAO, StageService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<BaseValueResponse<Stage>>> createFromRequest(@RequestBody StageRequest stageRequest) {
-        return this.service.create(stageRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<BaseValueResponse<Stage>>> createRequest(@RequestBody StageRequest stageRequest) {
+        return this.service.createRequest(stageRequest).map(ResponseEntity::ok);
     }
 
     @GetMapping(PATH_VALUES)

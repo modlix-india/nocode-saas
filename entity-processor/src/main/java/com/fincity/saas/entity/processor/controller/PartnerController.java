@@ -30,7 +30,7 @@ public class PartnerController
 
     @PostMapping(REQ_PATH)
     public Mono<ResponseEntity<Partner>> createFromRequest(@RequestBody PartnerRequest partnerRequest) {
-        return this.service.createPartner(partnerRequest).map(ResponseEntity::ok);
+        return this.service.createRequest(partnerRequest).map(ResponseEntity::ok);
     }
 
     @GetMapping("/me")

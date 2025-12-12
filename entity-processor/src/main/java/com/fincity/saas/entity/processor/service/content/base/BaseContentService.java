@@ -8,6 +8,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
@@ -57,6 +58,7 @@ public abstract class BaseContentService<
     }
 
     @Override
+    @IgnoreServerFunc
     public Mono<D> create(ProcessorAccess access, D entity) {
         return super.create(access, entity)
                 .flatMap(cContent ->
@@ -118,6 +120,7 @@ public abstract class BaseContentService<
     }
 
     @Override
+    @IgnoreServerFunc
     public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),

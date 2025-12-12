@@ -8,6 +8,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.math.BigInteger;
@@ -16,12 +17,14 @@ import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+@IgnoreServerFunc
 public interface IProcessorAccessService {
 
     ProcessorMessageResourceService getMsgService();
 
     IFeignSecurityService getSecurityService();
 
+    @IgnoreServerFunc
     default Mono<ProcessorAccess> hasAccess() {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -34,6 +37,7 @@ public interface IProcessorAccessService {
                 (ca, isAuthenticated) -> this.getProcessorAccess(ca));
     }
 
+    @IgnoreServerFunc
     default Mono<ProcessorAccess> hasPublicAccess() {
         return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, this::getProcessorAccess);
     }

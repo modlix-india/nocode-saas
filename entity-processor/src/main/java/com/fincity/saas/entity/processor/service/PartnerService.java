@@ -23,6 +23,7 @@ import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -121,7 +122,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.hasAccess"));
     }
 
-    public Mono<Partner> createPartner(PartnerRequest partnerRequest) {
+    public Mono<Partner> createRequest(PartnerRequest partnerRequest) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.securityService.getClientById(
@@ -197,7 +198,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
 
-    public Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
+    private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
         return this.cacheService
                 .cacheValueOrGet(
                         this.getCacheName(),
@@ -206,6 +207,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerByClientId"));
     }
 
+    @IgnoreServerFunc
     public Mono<Boolean> getPartnerDnc(ProcessorAccess access) {
 
         if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
@@ -455,7 +457,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return query.setCondition(ComplexCondition.and(query.getCondition(), condition));
     }
 
-    public Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
+    private Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
 
         if (condition == null || condition.isEmpty())
             return Mono.<AbstractCondition>just(FilterCondition.make(User.Fields.clientId, partner.getClientId())
@@ -469,7 +471,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
     }
 
-    public Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
+    private Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
 
         return FlatMapUtil.flatMapMono(
                         () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
@@ -482,7 +484,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateClientCondition"));
     }
 
-    public Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
+    private Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
 
         if (clientIds == null || clientIds.isEmpty())
             return Mono.<AbstractCondition>empty()

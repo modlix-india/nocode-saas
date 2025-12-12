@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
 import com.fincity.saas.entity.processor.enums.StageType;
+import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -51,7 +52,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
-    public Mono<Stage> applyOrder(Stage entity, ProcessorAccess access) {
+    protected Mono<Stage> applyOrder(Stage entity, ProcessorAccess access) {
 
         if (entity.isChild()) return Mono.just(entity);
 
@@ -131,7 +132,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getAllValues"));
     }
 
-    public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
+    public Mono<BaseValueResponse<Stage>> createRequest(StageRequest stageRequest) {
 
         if (!stageRequest.isStageTypeValid())
             return this.msgService.throwMessage(
@@ -254,13 +255,14 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.updateOrCreateChildren"));
     }
 
-    public Mono<Stage> getLatestStageByOrder(ProcessorAccess access, ULong productTemplateId) {
+    private Mono<Stage> getLatestStageByOrder(ProcessorAccess access, ULong productTemplateId) {
         return super.getAllValuesInOrderInternal(access, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getLatestStageByOrder"));
     }
 
+    @IgnoreServerFunc
     public Mono<List<Stage>> getHigherStages(ProcessorAccess access, ULong productTemplateId, ULong minStageId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .flatMap(allStages -> {
@@ -286,12 +288,14 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStagesUpto"));
     }
 
+    @IgnoreServerFunc
     public Mono<Stage> getFirstStage(ProcessorAccess access, ULong productTemplateId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .map(NavigableMap::firstKey)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStage"));
     }
 
+    @IgnoreServerFunc
     public Mono<Stage> getFirstStatus(ProcessorAccess access, ULong productTemplateId, ULong stageId) {
         return super.getAllValuesInOrder(access, null, productTemplateId)
                 .flatMap(navigableMap -> {
@@ -310,6 +314,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getFirstStatus"));
     }
 
+    @IgnoreServerFunc
     public Mono<ULong> getStage(ProcessorAccess access, ULong productTemplateId, ULong stageId) {
         return super.getAllValueIds(access, null, productTemplateId)
                 .flatMap(stageIdsInternal -> {
