@@ -49,13 +49,13 @@ jobs:
           echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
 
 
-      - name: Build & push image
-        run: |
-          docker build -t $OCIR_REPO:${{ github.sha }} \
-                       -t $OCIR_REPO:latest \
-                       -f entity-collector/Dockerfile .
-          docker push $OCIR_REPO:${{ github.sha }}
-          docker push $OCIR_REPO:latest
+     # - name: Build & push image
+     #  run: |
+     #    docker build -t $OCIR_REPO:${{ github.sha }} \
+     #                  -t $OCIR_REPO:latest \
+     #                  -f entity-collector/Dockerfile .
+     #     docker push $OCIR_REPO:${{ github.sha }}
+     #    docker push $OCIR_REPO:latest
 
       - name: Install OpenVPN
         run: sudo apt-get update && sudo apt-get install -y openvpn
@@ -72,7 +72,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Deploy collector (blue/green)
-        run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/composer/servers/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }}"
+     # - name: Deploy collector (blue/green)
+     #  run: |
+     #     ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
+     #       "bash /home/opc/composer/servers/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }}"
