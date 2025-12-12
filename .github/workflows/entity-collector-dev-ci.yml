@@ -45,8 +45,9 @@ jobs:
           cp entity-collector/target/entity-collector-1.0.0.jar target/
 
       - name: Login to OCIR
-        run: echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST \
-             -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
+        run: |
+          echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
+
 
       - name: Build & push image
         run: |
