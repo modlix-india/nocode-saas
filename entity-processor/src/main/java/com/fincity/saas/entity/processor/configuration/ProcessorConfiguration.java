@@ -6,12 +6,15 @@ import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration
 import com.fincity.saas.commons.security.ISecurityConfiguration;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.gson.AbstractConditionTypeAdapter;
 import com.fincity.saas.entity.processor.gson.EmailTypeAdapter;
 import com.fincity.saas.entity.processor.gson.IdentityTypeAdapter;
+import com.fincity.saas.entity.processor.gson.PageableTypeAdapter;
 import com.fincity.saas.entity.processor.gson.PhoneNumberTypeAdapter;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import org.springframework.data.domain.Pageable;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
@@ -50,11 +53,14 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
 
     @Override
     public Gson makeGson() {
-        return super.makeGson()
+        Gson baseGson = super.makeGson();
+        return baseGson
                 .newBuilder()
                 .registerTypeAdapter(Identity.class, new IdentityTypeAdapter())
                 .registerTypeAdapter(Email.class, new EmailTypeAdapter())
                 .registerTypeAdapter(PhoneNumber.class, new PhoneNumberTypeAdapter())
+                .registerTypeAdapter(Pageable.class, new PageableTypeAdapter())
+                .registerTypeAdapterFactory(new AbstractConditionTypeAdapter.Factory())
                 .create();
     }
 
