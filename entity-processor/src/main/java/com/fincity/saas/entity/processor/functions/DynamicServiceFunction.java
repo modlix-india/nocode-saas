@@ -130,9 +130,12 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     }
 
     private Function<JsonElement, Object> createArgumentConverter(Class<?> type, Type genericType) {
+
         if (PRIMITIVE_CONVERTERS.containsKey(type)) return this.createPrimitiveConverter(type);
 
         if (MultiValueMap.class.isAssignableFrom(type)) return this.createMultiValueMapConverter();
+
+		// TODO: Add convertors for method arguments if needed
 
         return this.createGenericConverter(genericType, type);
     }
@@ -151,6 +154,34 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
             return mapObj instanceof Map<?, ?> map ? this.convertMapToMultiValueMap(map) : mapObj;
         };
     }
+
+	private MultiValueMap<String, String> convertMapToMultiValueMap(Map<?, ?> map) {
+		if (map == null || map.isEmpty()) return new LinkedMultiValueMap<>(0);
+
+		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>(map.size());
+
+		for (Map.Entry<?, ?> entry : map.entrySet()) {
+			if (entry.getKey() != null)
+				this.processEntry(multiValueMap, entry.getKey().toString(), entry.getValue());
+		}
+
+		return multiValueMap;
+	}
+
+	private void processEntry(MultiValueMap<String, String> map, String key, Object value) {
+		switch (value) {
+			case null -> map.add(key, null);
+			case List<?> list -> map.put(key, this.convertToStringList(list));
+			case Object[] array -> map.put(key, this.convertToStringList(Arrays.asList(array)));
+			default -> map.add(key, value.toString());
+		}
+	}
+
+	private List<String> convertToStringList(List<?> items) {
+		return items.stream()
+				.map(item -> item != null ? item.toString() : null)
+				.collect(Collectors.toCollection(() -> new ArrayList<>(items.size())));
+	}
 
     private Function<JsonElement, Object> createGenericConverter(Type genericType, Class<?> type) {
 
@@ -261,34 +292,6 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
                     "Failed to invoke method " + this.functionName + " via MethodHandle",
                     t);
         }
-    }
-
-    private MultiValueMap<String, String> convertMapToMultiValueMap(Map<?, ?> map) {
-        if (map == null || map.isEmpty()) return new LinkedMultiValueMap<>(0);
-
-        MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>(map.size());
-
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (entry.getKey() != null)
-                this.processEntry(multiValueMap, entry.getKey().toString(), entry.getValue());
-        }
-
-        return multiValueMap;
-    }
-
-    private void processEntry(MultiValueMap<String, String> map, String key, Object value) {
-        switch (value) {
-            case null -> map.add(key, null);
-            case List<?> list -> map.put(key, this.convertToStringList(list));
-            case Object[] array -> map.put(key, this.convertToStringList(Arrays.asList(array)));
-            default -> map.add(key, value.toString());
-        }
-    }
-
-    private List<String> convertToStringList(List<?> items) {
-        return items.stream()
-                .map(item -> item != null ? item.toString() : null)
-                .collect(Collectors.toCollection(() -> new ArrayList<>(items.size())));
     }
 
     private Mono<FunctionOutput> processResult(Object result) {
