@@ -4,7 +4,6 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
-import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -49,7 +48,7 @@ public class ServiceFunctionGenerator {
 
     private final Gson gson;
 
-    public ServiceFunctionGenerator(Gson gson, ProcessorMessageResourceService messageService) {
+    public ServiceFunctionGenerator(Gson gson) {
         this.gson = gson;
     }
 
@@ -84,8 +83,7 @@ public class ServiceFunctionGenerator {
                             new DynamicServiceFunction(serviceInstance, method, namespace, functionName, this.gson));
                 } catch (Exception e) {
                     LOGGER.error(
-                            "[{}] Failed to create function for method {} in class {}: {}",
-                            ProcessorMessageResourceService.INVALID_PARAMETERS,
+                            "Failed to create function for method {} in class {}: {}",
                             method.getName(),
                             serviceClass.getSimpleName(),
                             e.getMessage(),
