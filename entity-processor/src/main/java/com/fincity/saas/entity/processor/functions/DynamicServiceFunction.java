@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import org.jooq.types.UByte;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
@@ -135,7 +134,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
 
         if (MultiValueMap.class.isAssignableFrom(type)) return this.createMultiValueMapConverter();
 
-		// TODO: Add convertors for method arguments if needed
+        // TODO: Add convertors for method arguments if needed
 
         return this.createGenericConverter(genericType, type);
     }
@@ -155,33 +154,33 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         };
     }
 
-	private MultiValueMap<String, String> convertMapToMultiValueMap(Map<?, ?> map) {
-		if (map == null || map.isEmpty()) return new LinkedMultiValueMap<>(0);
+    private MultiValueMap<String, String> convertMapToMultiValueMap(Map<?, ?> map) {
+        if (map == null || map.isEmpty()) return new LinkedMultiValueMap<>(0);
 
-		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>(map.size());
+        MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>(map.size());
 
-		for (Map.Entry<?, ?> entry : map.entrySet()) {
-			if (entry.getKey() != null)
-				this.processEntry(multiValueMap, entry.getKey().toString(), entry.getValue());
-		}
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getKey() != null)
+                this.processEntry(multiValueMap, entry.getKey().toString(), entry.getValue());
+        }
 
-		return multiValueMap;
-	}
+        return multiValueMap;
+    }
 
-	private void processEntry(MultiValueMap<String, String> map, String key, Object value) {
-		switch (value) {
-			case null -> map.add(key, null);
-			case List<?> list -> map.put(key, this.convertToStringList(list));
-			case Object[] array -> map.put(key, this.convertToStringList(Arrays.asList(array)));
-			default -> map.add(key, value.toString());
-		}
-	}
+    private void processEntry(MultiValueMap<String, String> map, String key, Object value) {
+        switch (value) {
+            case null -> map.add(key, null);
+            case List<?> list -> map.put(key, this.convertToStringList(list));
+            case Object[] array -> map.put(key, this.convertToStringList(Arrays.asList(array)));
+            default -> map.add(key, value.toString());
+        }
+    }
 
-	private List<String> convertToStringList(List<?> items) {
-		return items.stream()
-				.map(item -> item != null ? item.toString() : null)
-				.collect(Collectors.toCollection(() -> new ArrayList<>(items.size())));
-	}
+    private List<String> convertToStringList(List<?> items) {
+        return items.stream()
+                .map(item -> item != null ? item.toString() : null)
+                .collect(Collectors.toCollection(() -> new ArrayList<>(items.size())));
+    }
 
     private Function<JsonElement, Object> createGenericConverter(Type genericType, Class<?> type) {
 
