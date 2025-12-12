@@ -3,7 +3,7 @@ name: entity-collector-dev-ci
 on:
   push:
     paths:
-      - "services/entity-collector/**"
+      - "entity-collector/**"
       - "commons/**"
       - "commons-jooq/**"
       - "commons-security/**"
@@ -36,25 +36,23 @@ jobs:
           mvn -q -DskipTests clean install -f commons-security/pom.xml
 
       - name: Build entity-collector JAR
-        working-directory: services/entity-collector
+        working-directory: entity-collector
         run: mvn -q -DskipTests clean package
 
       - name: Copy built jar
         run: |
           mkdir -p target
-          cp services/entity-collector/target/entity-collector-1.0.0.jar target/
+          cp entity-collector/target/entity-collector-1.0.0.jar target/
 
       - name: Login to OCIR
         run: echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST \
              -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
 
-
-
       - name: Build & push image
         run: |
           docker build -t $OCIR_REPO:${{ github.sha }} \
                        -t $OCIR_REPO:latest \
-                       -f services/entity-collector/Dockerfile .
+                       -f entity-collector/Dockerfile .
           docker push $OCIR_REPO:${{ github.sha }}
           docker push $OCIR_REPO:latest
 
@@ -63,10 +61,9 @@ jobs:
 
       - name: Connect to VPN
         run: |
-             echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
-             sudo openvpn --config vpn.ovpn --daemon
-             sleep 10
-
+          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
+          sudo openvpn --config vpn.ovpn --daemon
+          sleep 10
 
       - name: Setup SSH
         run: |
