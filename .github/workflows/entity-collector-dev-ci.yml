@@ -1,0 +1,79 @@
+name: entity-collector-dev-ci
+
+on:
+  push:
+    paths:
+      - "services/entity-collector/**"
+      - "commons/**"
+      - "commons-jooq/**"
+      - "commons-security/**"
+      - ".github/workflows/entity-collector-dev-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      OCIR_HOST: us-ashburn-1.ocir.io
+      OCIR_REPO: us-ashburn-1.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build dependencies
+        run: |
+          mvn -q -DskipTests clean install -f commons/pom.xml
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons-security/pom.xml
+
+      - name: Build entity-collector JAR
+        working-directory: services/entity-collector
+        run: mvn -q -DskipTests clean package
+
+      - name: Copy built jar
+        run: |
+          mkdir -p target
+          cp services/entity-collector/target/entity-collector-1.0.0.jar target/
+
+      - name: Login to OCIR
+        run: echo "${{ secrets.OCI_AUTH_TOKEN_DEV }}" | docker login $OCIR_HOST \
+              -u "${{ secrets.OCI_USERNAME_DEV }}" --password-stdin
+
+      - name: Build & push image
+        run: |
+          docker build -t $OCIR_REPO:${{ github.sha }} \
+                       -t $OCIR_REPO:latest \
+                       -f services/entity-collector/Dockerfile .
+          docker push $OCIR_REPO:${{ github.sha }}
+          docker push $OCIR_REPO:latest
+
+      - name: Install OpenVPN
+        run: sudo apt-get update && sudo apt-get install -y openvpn
+
+      - name: Connect to VPN
+        run: |
+          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
+          sudo openvpn --config vpn.ovpn \
+            --auth-user-pass <(printf "%s\n%s" "${{ secrets.VPN_USER }}" "${{ secrets.VPN_PASS }}") \
+            --daemon
+          sleep 10
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy collector (blue/green)
+        run: |
+          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
+            "bash /home/opc/composer/servers/keepup.sh deploy entity-collector '$OCIR_REPO:${{ github.sha }}'"
