@@ -16,7 +16,7 @@ jobs:
 
     env:
       OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/${{ secrets.OCI_TENANCY_NS_DEV }}/entity-collector
+      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/entity-collector
 
     steps:
 
@@ -45,8 +45,10 @@ jobs:
           cp services/entity-collector/target/entity-collector-1.0.0.jar target/
 
       - name: Login to OCIR
-        run: echo "${{ secrets.OCI_AUTH_TOKEN_DEV }}" | docker login $OCIR_HOST \
-              -u "${{ secrets.OCI_USERNAME_DEV }}" --password-stdin
+        run: echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST \
+             -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
+
+
 
       - name: Build & push image
         run: |
@@ -61,11 +63,10 @@ jobs:
 
       - name: Connect to VPN
         run: |
-          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
-          sudo openvpn --config vpn.ovpn \
-            --auth-user-pass <(printf "%s\n%s" "${{ secrets.VPN_USER }}" "${{ secrets.VPN_PASS }}") \
-            --daemon
-          sleep 10
+             echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
+             sudo openvpn --config vpn.ovpn --daemon
+             sleep 10
+
 
       - name: Setup SSH
         run: |
@@ -76,4 +77,4 @@ jobs:
       - name: Deploy collector (blue/green)
         run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/composer/servers/keepup.sh deploy entity-collector '$OCIR_REPO:${{ github.sha }}'"
+            "bash /home/opc/composer/servers/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }}"
