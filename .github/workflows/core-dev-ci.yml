@@ -2,6 +2,8 @@ name: core-dev-ci
 
 on:
   push:
+    branches:
+      - oci-development
     paths:
       - "core/**"
       - "commons/**"
