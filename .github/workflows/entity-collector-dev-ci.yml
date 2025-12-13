@@ -75,5 +75,5 @@ jobs:
 
       - name: Deploy collector (blue/green)
         run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-          "bash /home/opc/composer/servers/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }}"
+           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
+           "bash /home/opc/scripts/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }}"
