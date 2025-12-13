@@ -2,6 +2,9 @@ name: entity-collector-dev-ci
 
 on:
   push:
+    branches:
+      - oci-development
+
     paths:
       - "entity-collector/**"
       - "commons/**"
