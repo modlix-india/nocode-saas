@@ -24,7 +24,6 @@ import org.springframework.web.server.ServerWebExchange;
 import com.fincity.nocode.kirun.engine.model.Event;
 import com.fincity.nocode.kirun.engine.model.EventResult;
 import com.fincity.nocode.kirun.engine.model.FunctionOutput;
-import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.configuration.service.AbstractMessageService;
 import com.fincity.saas.commons.exeception.GenericException;
@@ -42,7 +41,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @RestController
-@RequestMapping("api/entity/processor/function/")
+@RequestMapping("api/entity/processor/functions/")
 public class ProcessorFunctionController {
 
     private static final String PATH = "execute/{namespace}/{name}";
@@ -157,7 +156,11 @@ public class ProcessorFunctionController {
     }
 
     @GetMapping("/repositoryFilter")
-    public Mono<ResponseEntity<List<String>>> listFunctions(@RequestParam(required = false) String filter) {
+    public Mono<ResponseEntity<List<String>>> listFunctions(
+            @RequestParam(required = false) String appCode,
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
+            @RequestParam(required = false) String filter) {
         return functionService
                 .getFunctionRepository()
                 .filter(filter != null ? filter : "")
@@ -167,12 +170,17 @@ public class ProcessorFunctionController {
     }
 
     @GetMapping("/repositoryFind")
-    public Mono<ResponseEntity<FunctionSignature>> findFunction(@RequestParam String namespace,
+    public Mono<ResponseEntity<String>> findFunction(
+            @RequestParam(required = false) String appCode,
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
+            String namespace,
             @RequestParam String name) {
         return functionService
                 .getFunctionRepository()
                 .find(namespace, name)
                 .map(e -> e.getSignature())
+                .map(this.gson::toJson)
                 .map(ResponseEntity::ok);
     }
 }

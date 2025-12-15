@@ -81,8 +81,8 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/products/internal",
                 "/api/entity/processor/products/internal/**",
                 "/api/entity/processor/tickets/req/DCRM",
-                "/api/entity/processor/function/repositoryFilter",
-                "/api/entity/processor/function/repositoryFind",
+                "/api/entity/processor/functions/repositoryFilter",
+                "/api/entity/processor/functions/repositoryFind",
                 "/api/entity/processor/schemas/repositoryFind",
                 "/api/entity/processor/schemas/repositoryFilter");
     }

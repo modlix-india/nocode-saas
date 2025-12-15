@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 
 import org.jooq.types.UByte;
 import org.jooq.types.UInteger;
@@ -62,6 +65,13 @@ public class ServiceSchemaGenerator {
         PRIMITIVE_SCHEMA_CACHE.put(UShort.class, Schema.ofInteger("UShort").setMinimum(0));
         PRIMITIVE_SCHEMA_CACHE.put(UByte.class, Schema.ofInteger("UByte").setMinimum(0));
         PRIMITIVE_SCHEMA_CACHE.put(JsonObject.class, Schema.ofObject("JsonObject"));
+        PRIMITIVE_SCHEMA_CACHE.put(BigInteger.class, Schema.ofInteger("BigInteger"));
+        Schema abstractConditionSchema = new Schema().setName("AbstractCondition")
+                .setNamespace(NAMESPACE_PREFIX + "Commons");
+        abstractConditionSchema.setAnyOf(List.of(Schema.ofRef(NAMESPACE_PREFIX + "Commons.FilterCondition"),
+                Schema.ofRef(NAMESPACE_PREFIX + "Commons.ComplexCondition")));
+
+        PRIMITIVE_SCHEMA_CACHE.put(AbstractCondition.class, abstractConditionSchema);
     }
 
     private final Gson gson;
@@ -117,9 +127,29 @@ public class ServiceSchemaGenerator {
             }
         }
 
-        // Generate schemas for all collected POJOs
+        // Explicitly add FilterCondition and ComplexCondition to ensure they're always
+        // included
+        try {
+            Class<?> filterConditionClass = Class.forName("com.fincity.saas.commons.model.condition.FilterCondition");
+            collectPojoClasses(filterConditionClass, pojoClasses);
+        } catch (ClassNotFoundException e) {
+            LOGGER.warn("FilterCondition class not found: {}", e.getMessage());
+        }
+
+        try {
+            Class<?> complexConditionClass = Class.forName("com.fincity.saas.commons.model.condition.ComplexCondition");
+            collectPojoClasses(complexConditionClass, pojoClasses);
+        } catch (ClassNotFoundException e) {
+            LOGGER.warn("ComplexCondition class not found: {}", e.getMessage());
+        }
+
+        // Generate schemas for all collected POJOs (excluding abstract classes)
         Map<String, Schema> schemas = new HashMap<>();
         for (Class<?> pojoClass : pojoClasses) {
+            // Skip abstract classes - they should not have standalone schemas
+            if (Modifier.isAbstract(pojoClass.getModifiers())) {
+                continue;
+            }
             try {
                 String namespace = getNamespaceForClass(pojoClass);
                 String name = pojoClass.getSimpleName();
@@ -132,6 +162,18 @@ public class ServiceSchemaGenerator {
                         e.getMessage(),
                         e);
             }
+        }
+
+        // Explicitly add AbstractCondition schema to the repository
+        try {
+            Class<?> abstractConditionClass = Class.forName("com.fincity.saas.commons.model.condition.AbstractCondition");
+            if (PRIMITIVE_SCHEMA_CACHE.containsKey(abstractConditionClass)) {
+                Schema abstractConditionSchema = PRIMITIVE_SCHEMA_CACHE.get(abstractConditionClass);
+                String namespace = getNamespaceForClass(abstractConditionClass);
+                schemas.put(namespace + "." + abstractConditionClass.getSimpleName(), abstractConditionSchema);
+            }
+        } catch (ClassNotFoundException e) {
+            LOGGER.warn("AbstractCondition class not found: {}", e.getMessage());
         }
 
         return schemas;
