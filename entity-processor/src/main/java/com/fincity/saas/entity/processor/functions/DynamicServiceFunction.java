@@ -1,6 +1,27 @@
 package com.fincity.saas.entity.processor.functions;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import static java.lang.reflect.Modifier.STATIC;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.jooq.types.UByte;
+import org.jooq.types.UInteger;
+import org.jooq.types.ULong;
+import org.jooq.types.UShort;
+import org.springframework.http.HttpStatus;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -18,26 +39,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.jooq.types.UByte;
-import org.jooq.types.UInteger;
-import org.jooq.types.ULong;
-import org.jooq.types.UShort;
-import org.springframework.http.HttpStatus;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -88,23 +90,36 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     private final String functionName;
     private final Gson gson;
     private final FunctionSignature signature;
+    private final Map<String, Schema> schemaMap;
 
     private final String[] parameterNames;
     private final Function<JsonElement, Object>[] argumentConverters;
 
     public DynamicServiceFunction(
             Object serviceInstance, Method method, String namespace, String functionName, Gson gson) {
+        this(serviceInstance, method, namespace, functionName, gson, null);
+    }
+
+    public DynamicServiceFunction(
+            Object serviceInstance,
+            Method method,
+            String namespace,
+            String functionName,
+            Gson gson,
+            Map<String, Schema> schemaMap) {
 
         this.method = method;
         this.functionName = functionName;
         this.gson = gson;
+        this.schemaMap = schemaMap;
 
-        if (!this.method.canAccess(serviceInstance)) this.method.setAccessible(true);
+        if (!this.method.canAccess(serviceInstance))
+            this.method.setAccessible(true);
 
         try {
             MethodHandle unboundHandle = MethodHandles.publicLookup().unreflect(method);
-            this.methodHandle =
-                    (method.getModifiers() & STATIC) == 0 ? unboundHandle.bindTo(serviceInstance) : unboundHandle;
+            this.methodHandle = (method.getModifiers() & STATIC) == 0 ? unboundHandle.bindTo(serviceInstance)
+                    : unboundHandle;
         } catch (IllegalAccessException e) {
             throw new GenericException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "Could not create MethodHandle for " + functionName, e);
@@ -130,9 +145,11 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
 
     private Function<JsonElement, Object> createArgumentConverter(Class<?> type, Type genericType) {
 
-        if (PRIMITIVE_CONVERTERS.containsKey(type)) return this.createPrimitiveConverter(type);
+        if (PRIMITIVE_CONVERTERS.containsKey(type))
+            return this.createPrimitiveConverter(type);
 
-        if (MultiValueMap.class.isAssignableFrom(type)) return this.createMultiValueMapConverter();
+        if (MultiValueMap.class.isAssignableFrom(type))
+            return this.createMultiValueMapConverter();
 
         // TODO: Add convertors for method arguments if needed
 
@@ -148,14 +165,16 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     private Function<JsonElement, Object> createMultiValueMapConverter() {
 
         return json -> {
-            if (json == null || json.isJsonNull()) return null;
+            if (json == null || json.isJsonNull())
+                return null;
             Object mapObj = this.gson.fromJson(json, Map.class);
             return mapObj instanceof Map<?, ?> map ? this.convertMapToMultiValueMap(map) : mapObj;
         };
     }
 
     private MultiValueMap<String, String> convertMapToMultiValueMap(Map<?, ?> map) {
-        if (map == null || map.isEmpty()) return new LinkedMultiValueMap<>(0);
+        if (map == null || map.isEmpty())
+            return new LinkedMultiValueMap<>(0);
 
         MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>(map.size());
 
@@ -210,6 +229,17 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     }
 
     private Schema getSchemaForType(Class<?> type) {
+        // First check if we have a schema in the provided schema map
+        if (this.schemaMap != null) {
+            // Try to find schema by class name in different namespaces
+            String className = type.getSimpleName();
+            for (Map.Entry<String, Schema> entry : this.schemaMap.entrySet()) {
+                String fullName = entry.getKey();
+                if (fullName.endsWith("." + className)) {
+                    return entry.getValue();
+                }
+            }
+        }
 
         return SCHEMA_CACHE.computeIfAbsent(type, t -> {
             if (List.class.isAssignableFrom(t) || Flux.class.isAssignableFrom(t))
@@ -219,7 +249,8 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
                 Type genericReturnType = this.method.getGenericReturnType();
                 if (genericReturnType instanceof ParameterizedType paramType) {
                     Type monoType = paramType.getActualTypeArguments()[0];
-                    if (monoType instanceof Class<?> clazz) return this.getSchemaForType(clazz);
+                    if (monoType instanceof Class<?> clazz)
+                        return this.getSchemaForType(clazz);
                 }
             }
 
@@ -234,12 +265,14 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
         if (Mono.class.isAssignableFrom(returnType)) {
             if (this.method.getGenericReturnType() instanceof ParameterizedType paramType) {
                 Type monoType = paramType.getActualTypeArguments()[0];
-                if (monoType instanceof Class<?> clazz) return this.getSchemaForType(clazz);
+                if (monoType instanceof Class<?> clazz)
+                    return this.getSchemaForType(clazz);
             }
             return Schema.ofObject(RESULT);
         }
 
-        if (Flux.class.isAssignableFrom(returnType)) return Schema.ofArray(RESULT, Schema.ofObject(ITEM));
+        if (Flux.class.isAssignableFrom(returnType))
+            return Schema.ofArray(RESULT, Schema.ofObject(ITEM));
 
         return this.getSchemaForType(returnType);
     }
@@ -253,7 +286,7 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
 
         return Mono.deferContextual(cv -> FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication, ca -> this.executeMethod(context))
+                SecurityContextUtil::getUsersContextAuthentication, ca -> this.executeMethod(context))
                 .switchIfEmpty(Mono.defer(() -> this.executeMethod(context)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.functionName + ".internalExecute")));
     }
@@ -312,9 +345,11 @@ public class DynamicServiceFunction extends AbstractReactiveFunction {
     }
 
     private JsonElement convertToJsonElement(Object result) {
-        if (result == null) return JsonNull.INSTANCE;
+        if (result == null)
+            return JsonNull.INSTANCE;
 
-        if (result instanceof IClassConvertor convertor) return convertor.toJsonElement();
+        if (result instanceof IClassConvertor convertor)
+            return convertor.toJsonElement();
 
         return this.gson.toJsonTree(result);
     }

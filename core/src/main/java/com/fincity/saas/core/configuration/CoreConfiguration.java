@@ -1,5 +1,12 @@
 package com.fincity.saas.core.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.configuration.AbstractCoreConfiguration;
@@ -8,13 +15,8 @@ import com.fincity.saas.commons.jooq.jackson.UnsignedNumbersSerializationModule;
 import com.fincity.saas.commons.mongo.jackson.KIRuntimeSerializationModule;
 import com.fincity.saas.commons.security.service.FeignAuthenticationService;
 import com.fincity.saas.commons.util.LogUtil;
+
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class CoreConfiguration extends AbstractCoreConfiguration {
@@ -34,8 +36,10 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null)
-                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
-            else log.debug(v);
+                log.debug("{} - {}", name,
+                        !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
+            else
+                log.debug(v);
         }));
     }
 
@@ -48,6 +52,8 @@ public class CoreConfiguration extends AbstractCoreConfiguration {
                 "/api/core/function/**",
                 "/api/core/functions/repositoryFilter",
                 "/api/core/functions/repositoryFind",
+                "/api/core/schemas/repositoryFilter",
+                "/api/core/schemas/repositoryFind",
                 "/api/core/connections/oauth/evoke",
                 "/api/core/connections/oauth/callback",
                 "/api/core/connections/internal",

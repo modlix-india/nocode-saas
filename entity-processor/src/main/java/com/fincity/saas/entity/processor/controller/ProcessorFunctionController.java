@@ -1,23 +1,11 @@
 package com.fincity.saas.entity.processor.controller;
 
-import com.fincity.nocode.kirun.engine.model.Event;
-import com.fincity.nocode.kirun.engine.model.EventResult;
-import com.fincity.nocode.kirun.engine.model.FunctionOutput;
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.configuration.service.AbstractMessageService;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.entity.processor.service.ProcessorFunctionService;
-import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -32,6 +20,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
+
+import com.fincity.nocode.kirun.engine.model.Event;
+import com.fincity.nocode.kirun.engine.model.EventResult;
+import com.fincity.nocode.kirun.engine.model.FunctionOutput;
+import com.fincity.nocode.kirun.engine.model.FunctionSignature;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.configuration.service.AbstractMessageService;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.entity.processor.service.ProcessorFunctionService;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -88,8 +92,8 @@ public class ProcessorFunctionController {
 
         JsonObject job = StringUtil.safeIsBlank(jsonString) ? null : this.gson.fromJson(jsonString, JsonObject.class);
 
-        Map<String, JsonElement> arguments =
-                job == null ? null : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        Map<String, JsonElement> arguments = job == null ? null
+                : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
         return this.execute(namespace, name, arguments, exchange.getRequest());
     }
@@ -104,8 +108,8 @@ public class ProcessorFunctionController {
 
         Tuple2<String, String> tup = this.splitName(fullName);
 
-        Map<String, JsonElement> arguments =
-                job == null ? null : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        Map<String, JsonElement> arguments = job == null ? null
+                : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
         return this.execute(tup.getT1(), tup.getT2(), arguments, exchange.getRequest());
     }
@@ -127,7 +131,7 @@ public class ProcessorFunctionController {
             String namespace, String name, Map<String, JsonElement> job, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.functionService.execute(namespace, name, job, request), this::extractOutputEvent)
+                () -> this.functionService.execute(namespace, name, job, request), this::extractOutputEvent)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProcessorFunctionController.execute"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -143,7 +147,8 @@ public class ProcessorFunctionController {
 
         while ((er = e.next()) != null) {
             list.add(er);
-            if (Event.OUTPUT.equals(er.getName())) break;
+            if (Event.OUTPUT.equals(er.getName()))
+                break;
         }
 
         return Mono.just((this.gson).toJson(list)).map(objString -> ResponseEntity.ok()
@@ -151,13 +156,23 @@ public class ProcessorFunctionController {
                 .body(objString));
     }
 
-    @GetMapping("/list")
+    @GetMapping("/repositoryFilter")
     public Mono<ResponseEntity<List<String>>> listFunctions(@RequestParam(required = false) String filter) {
         return functionService
                 .getFunctionRepository()
                 .filter(filter != null ? filter : "")
                 .sort()
                 .collectList()
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/repositoryFind")
+    public Mono<ResponseEntity<FunctionSignature>> findFunction(@RequestParam String namespace,
+            @RequestParam String name) {
+        return functionService
+                .getFunctionRepository()
+                .find(namespace, name)
+                .map(e -> e.getSignature())
                 .map(ResponseEntity::ok);
     }
 }

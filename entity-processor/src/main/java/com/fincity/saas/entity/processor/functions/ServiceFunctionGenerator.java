@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.functions;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
 import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
@@ -47,9 +48,16 @@ public class ServiceFunctionGenerator {
     }
 
     private final Gson gson;
+    private final Map<String, Schema> schemaMap;
 
     public ServiceFunctionGenerator(Gson gson) {
         this.gson = gson;
+        this.schemaMap = null;
+    }
+
+    public ServiceFunctionGenerator(Gson gson, Map<String, Schema> schemaMap) {
+        this.gson = gson;
+        this.schemaMap = schemaMap;
     }
 
     public List<ReactiveFunction> generateFunctions(Object serviceInstance) {
@@ -79,8 +87,8 @@ public class ServiceFunctionGenerator {
             for (Method method : overloadedMethods) {
                 try {
                     String functionName = this.generateFunctionName(method, isOverloaded, overloadedMethods);
-                    functions.add(
-                            new DynamicServiceFunction(serviceInstance, method, namespace, functionName, this.gson));
+                    functions.add(new DynamicServiceFunction(
+                            serviceInstance, method, namespace, functionName, this.gson, this.schemaMap));
                 } catch (Exception e) {
                     LOGGER.error(
                             "Failed to create function for method {} in class {}: {}",

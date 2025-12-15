@@ -56,6 +56,9 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
     @Autowired
     private ProcessorMessageResourceService messageService;
 
+    @Autowired(required = false)
+    private ProcessorSchemaService schemaService;
+
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
@@ -90,11 +93,23 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
             }
         }
 
+        // Get schema map from ProcessorSchemaService if available
+        Map<String, Schema> schemaMap = null;
+        if (schemaService != null) {
+            try {
+                // Access the generated schemas through reflection or add a getter method
+                schemaMap = schemaService.getGeneratedSchemas();
+            } catch (Exception e) {
+                // If schemas are not available yet, continue without them
+            }
+        }
+
         ReactiveHybridRepository<ReactiveFunction> repository = new ReactiveHybridRepository<>(
                 new ProcessorFunctionRepository(new ProcessorFunctionRepository.ProcessorFunctionRepositoryBuilder()
                         .setServices(services)
                         .setGson(gson)
-                        .setMessageService(messageService)));
+                        .setMessageService(messageService)
+                        .setSchemaMap(schemaMap)));
         this.processorFunctionRepository.set(repository);
     }
 

@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.functions;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -19,7 +20,7 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
     private final List<String> filterableNames;
 
     public ProcessorFunctionRepository(ProcessorFunctionRepositoryBuilder builder) {
-        ServiceFunctionGenerator generator = new ServiceFunctionGenerator(builder.gson);
+        ServiceFunctionGenerator generator = new ServiceFunctionGenerator(builder.gson, builder.schemaMap);
 
         if (builder.services != null) {
             for (Object service : builder.services) {
@@ -57,5 +58,6 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
         private List<Object> services;
         private Gson gson;
         private ProcessorMessageResourceService messageService;
+        private Map<String, Schema> schemaMap;
     }
 }

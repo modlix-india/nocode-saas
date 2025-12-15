@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
@@ -17,14 +25,8 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
+
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
@@ -48,7 +50,8 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                         "{} - {}",
                         name,
                         !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
-            else log.debug(v);
+            else
+                log.debug(v);
         }));
     }
 
@@ -77,6 +80,10 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 "/api/entity/processor/open/**",
                 "/api/entity/processor/products/internal",
                 "/api/entity/processor/products/internal/**",
-                "/api/entity/processor/tickets/req/DCRM");
+                "/api/entity/processor/tickets/req/DCRM",
+                "/api/entity/processor/function/repositoryFilter",
+                "/api/entity/processor/function/repositoryFind",
+                "/api/entity/processor/schemas/repositoryFind",
+                "/api/entity/processor/schemas/repositoryFilter");
     }
 }
