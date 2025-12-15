@@ -72,4 +72,4 @@ jobs:
 
       - run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy gateway $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy gateway-server $OCIR_REPO:${{ github.sha }}"
