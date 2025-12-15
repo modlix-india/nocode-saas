@@ -68,4 +68,4 @@ jobs:
 
       - run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy notification $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy notification-server $OCIR_REPO:${{ github.sha }}"
