@@ -2,6 +2,8 @@ name: security-dev-ci
 
 on:
   push:
+    branches:
+      - oci-development
     paths:
       - "security/**"
       - "commons/**"
