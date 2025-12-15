@@ -2,6 +2,8 @@ name: eureka-dev-ci
 
 on:
   push:
+    branches:
+      - oci-development
     paths:
       - "eureka/**"
       - "commons/**"
