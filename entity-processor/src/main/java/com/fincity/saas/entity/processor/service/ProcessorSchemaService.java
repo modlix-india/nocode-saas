@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
@@ -16,9 +15,10 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.functions.ServiceSchemaGenerator;
-import com.google.gson.Gson;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,9 +31,6 @@ public class ProcessorSchemaService
     private final AtomicBoolean initialized = new AtomicBoolean(false);
     private ApplicationContext applicationContext;
     private Map<String, Schema> generatedSchemas = new HashMap<>();
-
-    @Autowired
-    private Gson gson;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -74,7 +71,7 @@ public class ProcessorSchemaService
         }
 
         // Generate schemas from all service POJOs
-        ServiceSchemaGenerator generator = new ServiceSchemaGenerator(gson);
+        ServiceSchemaGenerator generator = new ServiceSchemaGenerator();
         this.generatedSchemas = generator.generateSchemas(services);
     }
 
@@ -92,8 +89,24 @@ public class ProcessorSchemaService
 
         // Create a new repository for this appCode/clientCode combination
         ProcessorSchemaRepository processorRepo = new ProcessorSchemaRepository(generatedSchemas);
-        schemaRepositoryCache.put(cacheKey, processorRepo);
-        return Mono.just(processorRepo);
+
+        // Lazy lookup of IRepositoryProvider beans to avoid circular dependency
+        Map<String, IRepositoryProvider> repositoryProviders = applicationContext
+                .getBeansOfType(IRepositoryProvider.class);
+
+        return Flux.fromIterable(repositoryProviders.values())
+                .flatMap(provider -> provider.getSchemaRepository(processorRepo, appCode, clientCode))
+                .collectList().map(repos -> {
+                    @SuppressWarnings("unchecked")
+                    ReactiveRepository<Schema>[] reposArray = new ReactiveRepository[repos.size() + 1];
+                    for (int i = 0; i < repos.size(); i++) {
+                        reposArray[i] = repos.get(i);
+                    }
+                    reposArray[repos.size()] = processorRepo;
+                    ReactiveRepository<Schema> finRepo = new ReactiveHybridRepository<Schema>(reposArray);
+                    schemaRepositoryCache.put(cacheKey, finRepo);
+                    return finRepo;
+                });
     }
 
     private static class ProcessorSchemaRepository implements ReactiveRepository<Schema> {

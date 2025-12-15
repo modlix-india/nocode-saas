@@ -1,5 +1,16 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
@@ -8,28 +19,17 @@ import com.fincity.saas.commons.util.HashUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-@IgnoreServerFunc
-public abstract class BaseUserDistributionService<
-                R extends UpdatableRecord<R>,
-                D extends BaseUserDistributionDto<D>,
-                O extends BaseUserDistributionDAO<R, D>>
+@IgnoreGeneration
+public abstract class BaseUserDistributionService<R extends UpdatableRecord<R>, D extends BaseUserDistributionDto<D>, O extends BaseUserDistributionDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     private static final String USER_DISTRIBUTION = "userDistribution";
@@ -72,23 +72,28 @@ public abstract class BaseUserDistributionService<
 
     private Mono<Boolean> evictRuleCache(D entity) {
         return Mono.zip(
-                        this.cacheService.evict(
-                                this.getCacheName(),
-                                super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
-                        this.cacheService.evictAll(
-                                this.getUserDistributionCacheName(entity.getAppCode(), entity.getClientCode())),
-                        (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted)
+                this.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getRuleId())),
+                this.cacheService.evictAll(
+                        this.getUserDistributionCacheName(entity.getAppCode(), entity.getClientCode())),
+                (baseEvicted, ruleEvicted) -> baseEvicted && ruleEvicted)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.evictRuleCache"));
     }
 
     @Override
     protected Mono<D> updatableEntity(D entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
-            if (existing.getUserId() != null) existing.setUserId(entity.getUserId());
-            else if (existing.getRoleId() != null) existing.setRoleId(entity.getRoleId());
-            else if (existing.getProfileId() != null) existing.setProfileId(entity.getProfileId());
-            else if (existing.getDesignationId() != null) existing.setDesignationId(entity.getDesignationId());
-            else if (existing.getDepartmentId() != null) existing.setDepartmentId(entity.getDepartmentId());
+            if (existing.getUserId() != null)
+                existing.setUserId(entity.getUserId());
+            else if (existing.getRoleId() != null)
+                existing.setRoleId(entity.getRoleId());
+            else if (existing.getProfileId() != null)
+                existing.setProfileId(entity.getProfileId());
+            else if (existing.getDesignationId() != null)
+                existing.setDesignationId(entity.getDesignationId());
+            else if (existing.getDepartmentId() != null)
+                existing.setDepartmentId(entity.getDepartmentId());
 
             return Mono.just(existing);
         });
@@ -105,16 +110,18 @@ public abstract class BaseUserDistributionService<
     public Flux<D> updateDistributions(ProcessorAccess access, ULong ruleId, List<D> userDistributions) {
 
         return FlatMapUtil.flatMapFlux(
-                        () -> this.deleteByRuleId(access, ruleId).flux(),
-                        deleted -> this.createDistributions(access, ruleId, userDistributions))
+                () -> this.deleteByRuleId(access, ruleId).flux(),
+                deleted -> this.createDistributions(access, ruleId, userDistributions))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.updateDistributions"));
     }
 
     public Flux<D> createDistributions(ProcessorAccess access, ULong ruleId, List<D> userDistributions) {
 
-        if (ruleId == null) return this.throwFluxMissingParam(BaseUserDistributionDto.Fields.ruleId);
+        if (ruleId == null)
+            return this.throwFluxMissingParam(BaseUserDistributionDto.Fields.ruleId);
 
-        for (D userDistribution : userDistributions) userDistribution.setRuleId(ruleId);
+        for (D userDistribution : userDistributions)
+            userDistribution.setRuleId(ruleId);
 
         return Flux.fromIterable(userDistributions)
                 .flatMap(userDistribution -> super.create(access, userDistribution))
@@ -123,21 +130,24 @@ public abstract class BaseUserDistributionService<
 
     public Mono<Integer> deleteByRuleId(ProcessorAccess access, ULong ruleId) {
 
-        if (ruleId == null) return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
+        if (ruleId == null)
+            return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
 
         return FlatMapUtil.flatMapMono(() -> this.dao.getUserDistributions(access, ruleId), userDistributions -> {
-                    if (userDistributions == null || userDistributions.isEmpty()) return Mono.just(0);
+            if (userDistributions == null || userDistributions.isEmpty())
+                return Mono.just(0);
 
-                    return Flux.fromIterable(userDistributions)
-                            .flatMap(entity -> super.deleteInternal(access, entity))
-                            .count()
-                            .map(Long::intValue);
-                })
+            return Flux.fromIterable(userDistributions)
+                    .flatMap(entity -> super.deleteInternal(access, entity))
+                    .count()
+                    .map(Long::intValue);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseUserDistributionService.deleteByRuleId"));
     }
 
     public Mono<Set<ULong>> getUsersByRuleId(ProcessorAccess access, ULong ruleId) {
-        if (ruleId == null) return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
+        if (ruleId == null)
+            return super.throwMissingParam(BaseUserDistributionDto.Fields.ruleId);
 
         return Mono.zip(this.getAllUserMappings(access), this.getUserDistributions(access, ruleId))
                 .map(tuple -> {
@@ -198,7 +208,8 @@ public abstract class BaseUserDistributionService<
         Map<ULong, Set<ULong>> designations = new HashMap<>();
         Map<ULong, Set<ULong>> departments = new HashMap<>();
 
-        if (users == null || users.isEmpty()) return new UserMaps(roles, profiles, designations, departments);
+        if (users == null || users.isEmpty())
+            return new UserMaps(roles, profiles, designations, departments);
 
         for (EntityProcessorUser u : users) {
             ULong userId = ULong.valueOf(u.getId());
@@ -217,7 +228,8 @@ public abstract class BaseUserDistributionService<
     }
 
     private void addListToMap(Map<ULong, Set<ULong>> map, Set<Long> keys, ULong userId) {
-        if (keys == null) return;
+        if (keys == null)
+            return;
         keys.stream().filter(Objects::nonNull).forEach(key -> this.addToMap(map, key, userId));
     }
 
@@ -232,5 +244,6 @@ public abstract class BaseUserDistributionService<
             Map<ULong, Set<ULong>> roleMap,
             Map<ULong, Set<ULong>> profileMap,
             Map<ULong, Set<ULong>> desigMap,
-            Map<ULong, Set<ULong>> deptMap) {}
+            Map<ULong, Set<ULong>> deptMap) {
+    }
 }

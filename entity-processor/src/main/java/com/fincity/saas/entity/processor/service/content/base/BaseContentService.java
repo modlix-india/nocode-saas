@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service.content.base;
 
+import java.time.LocalDateTime;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -8,7 +16,7 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
@@ -17,17 +25,11 @@ import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import java.time.LocalDateTime;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-public abstract class BaseContentService<
-                R extends UpdatableRecord<R>, D extends BaseContentDto<D>, O extends BaseContentDAO<R, D>>
+public abstract class BaseContentService<R extends UpdatableRecord<R>, D extends BaseContentDto<D>, O extends BaseContentDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     protected TicketService ticketService;
@@ -58,11 +60,10 @@ public abstract class BaseContentService<
     }
 
     @Override
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> create(ProcessorAccess access, D entity) {
         return super.create(access, entity)
-                .flatMap(cContent ->
-                        this.activityService.acContentCreate(access, cContent).then(Mono.just(cContent)));
+                .flatMap(cContent -> this.activityService.acContentCreate(access, cContent).then(Mono.just(cContent)));
     }
 
     @Override
@@ -78,9 +79,11 @@ public abstract class BaseContentService<
             existing.setContent(entity.getContent());
             existing.setHasAttachment(entity.getHasAttachment());
 
-            if (entity.getOwnerId() != null) existing.setOwnerId(entity.getOwnerId());
+            if (entity.getOwnerId() != null)
+                existing.setOwnerId(entity.getOwnerId());
 
-            if (entity.getTicketId() != null) existing.setTicketId(entity.getTicketId());
+            if (entity.getTicketId() != null)
+                existing.setTicketId(entity.getTicketId());
 
             return Mono.just(existing);
         });
@@ -120,7 +123,7 @@ public abstract class BaseContentService<
     }
 
     @Override
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
@@ -132,7 +135,8 @@ public abstract class BaseContentService<
 
     protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
 
-        if (request.getUserId() != null) return Mono.just(request);
+        if (request.getUserId() != null)
+            return Mono.just(request);
 
         Mono<Identity> ticketIdMono = request.getTicketId() != null
                 ? this.checkTicket(access, request.getTicketId())
@@ -199,10 +203,10 @@ public abstract class BaseContentService<
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(access, content.getTicketId()), ticket -> {
-                    content.setTicketId(ticket.getId());
-                    content.setOwnerId(ticket.getOwnerId());
-                    return this.create(access, content);
-                })
+            content.setTicketId(ticket.getId());
+            content.setOwnerId(ticket.getOwnerId());
+            return this.create(access, content);
+        })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -215,8 +219,8 @@ public abstract class BaseContentService<
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.ownerService.readById(access, content.getOwnerId()),
-                        owner -> this.create(access, content.setOwnerId(owner.getId())))
+                () -> this.ownerService.readById(access, content.getOwnerId()),
+                owner -> this.create(access, content.setOwnerId(owner.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -229,13 +233,13 @@ public abstract class BaseContentService<
             return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.securityService.getUserInternal(
-                                content.getUserId().toBigInteger(), null),
-                        user -> {
-                            content.setUserId(ULongUtil.valueOf(user.getId()));
-                            content.setClientId(ULongUtil.valueOf(user.getClientId()));
-                            return this.create(access, content);
-                        })
+                () -> this.securityService.getUserInternal(
+                        content.getUserId().toBigInteger(), null),
+                user -> {
+                    content.setUserId(ULongUtil.valueOf(user.getId()));
+                    content.setClientId(ULongUtil.valueOf(user.getClientId()));
+                    return this.create(access, content);
+                })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,

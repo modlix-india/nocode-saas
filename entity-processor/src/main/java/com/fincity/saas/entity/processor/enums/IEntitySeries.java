@@ -1,32 +1,32 @@
 package com.fincity.saas.entity.processor.enums;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.util.NameUtil;
 
-@IgnoreServerFunc
+@IgnoreGeneration
 public interface IEntitySeries {
 
     @JsonIgnore
-    @IgnoreServerFunc
+    @IgnoreGeneration
     default EntitySeries getEntitySeries() {
         return EntitySeries.XXX;
     }
 
     @JsonIgnore
-    @IgnoreServerFunc
+    @IgnoreGeneration
     default String getEntityName() {
         return this.getEntitySeries().getDisplayName();
     }
 
     @JsonIgnore
-    @IgnoreServerFunc
+    @IgnoreGeneration
     default String getEntityPrefix(String appCode) {
         return this.getEntitySeries().getPrefix(appCode);
     }
 
     @JsonIgnore
-    @IgnoreServerFunc
+    @IgnoreGeneration
     default String getEntityKey() {
         return NameUtil.decapitalize(this.getEntityName());
     }

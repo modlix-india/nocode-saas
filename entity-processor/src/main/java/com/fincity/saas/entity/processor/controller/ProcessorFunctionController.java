@@ -157,8 +157,8 @@ public class ProcessorFunctionController {
 
     @GetMapping("/repositoryFilter")
     public Mono<ResponseEntity<List<String>>> listFunctions(
-            @RequestParam(required = false) String appCode,
-            @RequestParam(required = false) String clientCode,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
             @RequestParam(required = false) String filter) {
         return functionService
@@ -171,8 +171,8 @@ public class ProcessorFunctionController {
 
     @GetMapping("/repositoryFind")
     public Mono<ResponseEntity<String>> findFunction(
-            @RequestParam(required = false) String appCode,
-            @RequestParam(required = false) String clientCode,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
             String namespace,
             @RequestParam String name) {

@@ -1,5 +1,13 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -13,28 +21,20 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.rule.NoOpUserDistribution;
 import com.fincity.saas.entity.processor.dto.rule.TicketDuplicationRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketDuplicationRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
-import java.util.ArrayList;
-import java.util.List;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class TicketDuplicationRuleService
-        extends BaseRuleService<
-                EntityProcessorTicketDuplicationRulesRecord,
-                TicketDuplicationRule,
-                TicketDuplicationRuleDAO,
-                NoOpUserDistribution> {
+        extends
+        BaseRuleService<EntityProcessorTicketDuplicationRulesRecord, TicketDuplicationRule, TicketDuplicationRuleDAO, NoOpUserDistribution> {
 
     private static final String TICKET_DUPLICATION_RULE = "ticketDuplicationRule";
     private static final String PRODUCT_CONDITION_CACHE = "ticketDuplicationProductRuleCondition";
@@ -115,22 +115,22 @@ public class TicketDuplicationRuleService
                 : Mono.just(Boolean.TRUE);
 
         return Mono.zip(
-                        super.evictCache(entity),
-                        productEviction,
-                        this.evictProductTemplateConditionCache(
-                                entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId()))
+                super.evictCache(entity),
+                productEviction,
+                this.evictProductTemplateConditionCache(
+                        entity.getAppCode(), entity.getClientCode(), entity.getProductTemplateId()))
                 .map((evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3()));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.productService.readById(access, productId),
-                        product -> this.getProductDuplicateCondition(access, product.getId(), source, subSource)
-                                .switchIfEmpty(this.getProductTemplateDuplicateCondition(
-                                        access, product.getProductTemplateId(), source, subSource)))
+                () -> super.productService.readById(access, productId),
+                product -> this.getProductDuplicateCondition(access, product.getId(), source, subSource)
+                        .switchIfEmpty(this.getProductTemplateDuplicateCondition(
+                                access, product.getProductTemplateId(), source, subSource)))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketDuplicationRuleService.getDuplicateRuleCondition"));
     }
@@ -147,7 +147,8 @@ public class TicketDuplicationRuleService
             ProcessorAccess access, ULong productId, String source, String subSource) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getProductDuplicationRules(access, productId, source, subSource), rules -> {
-                    if (rules.isEmpty()) return Mono.empty();
+                    if (rules.isEmpty())
+                        return Mono.empty();
 
                     return Flux.fromIterable(rules)
                             .flatMap(rule -> this.getRuleCondition(access, rule))
@@ -169,7 +170,8 @@ public class TicketDuplicationRuleService
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
         return FlatMapUtil.flatMapMono(
                 () -> this.getProductTemplateDuplicationRules(access, productTemplateId, source, subSource), rules -> {
-                    if (rules.isEmpty()) return Mono.empty();
+                    if (rules.isEmpty())
+                        return Mono.empty();
 
                     return Flux.fromIterable(rules)
                             .flatMap(rule -> this.getRuleCondition(access, rule))
@@ -183,7 +185,8 @@ public class TicketDuplicationRuleService
         return FlatMapUtil.flatMapMono(
                 () -> this.stageService.getHigherStages(access, rule.getProductTemplateId(), rule.getMaxStageId()),
                 stages -> {
-                    if (stages.isEmpty()) return Mono.just(rule.getCondition());
+                    if (stages.isEmpty())
+                        return Mono.just(rule.getCondition());
 
                     AbstractCondition stageCondition = new FilterCondition()
                             .setField(Ticket.Fields.stage)
@@ -212,7 +215,8 @@ public class TicketDuplicationRuleService
     private Mono<List<TicketDuplicationRule>> filterRulesForSubSource(
             List<TicketDuplicationRule> rules, String subSource) {
 
-        if (rules == null || rules.isEmpty()) return Mono.empty();
+        if (rules == null || rules.isEmpty())
+            return Mono.empty();
 
         List<TicketDuplicationRule> exactMatches = new ArrayList<>();
         List<TicketDuplicationRule> nullMatches = new ArrayList<>();
@@ -226,7 +230,8 @@ public class TicketDuplicationRuleService
             }
         }
 
-        if (!exactMatches.isEmpty()) return Mono.just(exactMatches);
+        if (!exactMatches.isEmpty())
+            return Mono.just(exactMatches);
         return nullMatches.isEmpty() ? Mono.empty() : Mono.just(nullMatches);
     }
 }

@@ -1,11 +1,5 @@
 package com.fincity.saas.entity.processor.functions;
 
-import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
-import com.google.gson.Gson;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -14,15 +8,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.IEntitySeries;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.google.gson.Gson;
 
 public class ServiceFunctionGenerator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceFunctionGenerator.class);
 
-    private static final Set<String> EXCLUDED_METHOD_NAMES =
-            Set.of("equals", "hashCode", "toString", "getClass", "wait", "notify", "notifyAll");
+    private static final Set<String> EXCLUDED_METHOD_NAMES = Set.of("equals", "hashCode", "toString", "getClass",
+            "wait", "notify", "notifyAll");
 
     private static final String SERVICE_SUFFIX = "Service";
     private static final String NAMESPACE_PREFIX = "EntityProcessor.";
@@ -63,7 +65,8 @@ public class ServiceFunctionGenerator {
     public List<ReactiveFunction> generateFunctions(Object serviceInstance) {
         Class<?> serviceClass = serviceInstance.getClass();
 
-        if (serviceClass.isAnnotationPresent(IgnoreServerFunc.class)) return new ArrayList<>();
+        if (serviceClass.isAnnotationPresent(IgnoreGeneration.class))
+            return new ArrayList<>();
 
         String namespace = this.getNamespace(serviceInstance, serviceClass);
         Method[] methods = serviceClass.getMethods();
@@ -104,22 +107,29 @@ public class ServiceFunctionGenerator {
     }
 
     private boolean isValidMethod(Method method, Class<?> serviceClass) {
-        if (method.isAnnotationPresent(IgnoreServerFunc.class)) return false;
+        if (method.isAnnotationPresent(IgnoreGeneration.class))
+            return false;
 
-        if (!Modifier.isPublic(method.getModifiers())) return false;
+        if (!Modifier.isPublic(method.getModifiers()))
+            return false;
 
-        if (method.isBridge() || method.isSynthetic()) return false;
+        if (method.isBridge() || method.isSynthetic())
+            return false;
 
         String methodName = method.getName();
-        if (EXCLUDED_METHOD_NAMES.contains(methodName) || methodName.charAt(0) == '_') return false;
+        if (EXCLUDED_METHOD_NAMES.contains(methodName) || methodName.charAt(0) == '_')
+            return false;
 
         Class<?> declaringClass = method.getDeclaringClass();
-        if (declaringClass == Object.class) return false;
+        if (declaringClass == Object.class)
+            return false;
 
-        if (declaringClass == serviceClass) return true;
+        if (declaringClass == serviceClass)
+            return true;
 
         Package declaringPackage = declaringClass.getPackage();
-        if (declaringPackage == null) return false;
+        if (declaringPackage == null)
+            return false;
 
         String packageName = declaringPackage.getName();
         return packageName.contains(ENTITY_PROCESSOR_SERVICE_PACKAGE) || packageName.startsWith(COMMONS_PACKAGE_PREFIX);
@@ -149,18 +159,22 @@ public class ServiceFunctionGenerator {
     private String generateFunctionName(Method method, boolean isOverloaded, List<Method> overloadedMethods) {
         String baseName = this.capitalizeFirst(method.getName());
 
-        if (!isOverloaded) return baseName;
+        if (!isOverloaded)
+            return baseName;
 
         Class<?>[] paramTypes = method.getParameterTypes();
-        if (paramTypes.length == 0) return baseName;
+        if (paramTypes.length == 0)
+            return baseName;
 
         Set<Integer> differingPositions = this.findDifferingParameterPositions(method, overloadedMethods, paramTypes);
 
-        if (differingPositions.isEmpty()) return baseName;
+        if (differingPositions.isEmpty())
+            return baseName;
 
         StringBuilder suffix = new StringBuilder();
         for (int i = 0; i < paramTypes.length; i++) {
-            if (differingPositions.contains(i)) suffix.append(this.getTypeAbbreviation(paramTypes[i]));
+            if (differingPositions.contains(i))
+                suffix.append(this.getTypeAbbreviation(paramTypes[i]));
         }
 
         return baseName + suffix;
@@ -171,13 +185,15 @@ public class ServiceFunctionGenerator {
         Set<Integer> differingPositions = new HashSet<>();
 
         for (Method otherMethod : overloadedMethods) {
-            if (otherMethod == currentMethod) continue;
+            if (otherMethod == currentMethod)
+                continue;
 
             Class<?>[] otherParamTypes = otherMethod.getParameterTypes();
             int maxLen = Math.max(currentParamTypes.length, otherParamTypes.length);
 
             for (int i = 0; i < maxLen; i++) {
-                if (differingPositions.contains(i)) continue;
+                if (differingPositions.contains(i))
+                    continue;
 
                 boolean existsInCurrent = i < currentParamTypes.length;
                 boolean existsInOther = i < otherParamTypes.length;
@@ -195,9 +211,11 @@ public class ServiceFunctionGenerator {
     }
 
     private String capitalizeFirst(String str) {
-        if (str == null || str.isEmpty()) return str;
+        if (str == null || str.isEmpty())
+            return str;
         char first = str.charAt(0);
-        if (Character.isUpperCase(first)) return str;
+        if (Character.isUpperCase(first))
+            return str;
 
         return Character.toUpperCase(first) + str.substring(1);
     }

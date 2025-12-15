@@ -1,5 +1,19 @@
 package com.fincity.saas.entity.processor.service.base;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
@@ -12,38 +26,26 @@ import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
+
 import lombok.Getter;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseUpdatableService<
-                R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
+public abstract class BaseUpdatableService<R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> implements IEntitySeries, IProcessorAccessService {
 
-    @Getter(onMethod_ = @IgnoreServerFunc)
+    @Getter(onMethod_ = @IgnoreGeneration)
     protected ProcessorMessageResourceService msgService;
 
-    @Getter(onMethod_ = @IgnoreServerFunc)
+    @Getter(onMethod_ = @IgnoreGeneration)
     protected IFeignSecurityService securityService;
 
-    @Getter(onMethod_ = @IgnoreServerFunc)
+    @Getter(onMethod_ = @IgnoreGeneration)
     protected CacheService cacheService;
 
     protected abstract String getCacheName();
@@ -137,11 +139,11 @@ public abstract class BaseUpdatableService<
     @Override
     protected Mono<ULong> getLoggedInUserId() {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> Mono.justOrEmpty(
-                                ca.isAuthenticated()
-                                        ? ULong.valueOf(ca.getUser().getId())
-                                        : null))
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.justOrEmpty(
+                        ca.isAuthenticated()
+                                ? ULong.valueOf(ca.getUser().getId())
+                                : null))
                 .switchIfEmpty(Mono.empty())
                 .onErrorResume(e -> Mono.empty());
     }
@@ -150,7 +152,8 @@ public abstract class BaseUpdatableService<
     protected Mono<D> updatableEntity(D entity) {
 
         return FlatMapUtil.flatMapMono(() -> this.readByIdInternal(entity.getId()), existing -> {
-            if (entity.getName() != null && !entity.getName().isEmpty()) existing.setName(entity.getName());
+            if (entity.getName() != null && !entity.getName().isEmpty())
+                existing.setName(entity.getName());
             existing.setDescription(entity.getDescription());
             existing.setTempActive(entity.isTempActive());
             existing.setActive(entity.isActive());
@@ -163,17 +166,19 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.create(access, entity));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     protected Mono<D> create(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
 
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
+        if (!canOutsideCreate() && access.isOutsideUser())
+            return this.throwOutsideUserAccess("create");
 
-        if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
+        if (entity.getName() == null || entity.getName().isEmpty())
+            entity.setName(entity.getCode());
 
         entity.setAppCode(access.getAppCode());
 
@@ -201,8 +206,8 @@ public abstract class BaseUpdatableService<
     public Mono<Map<String, Object>> readEager(
             String code, List<String> tableFields, MultiValueMap<String, String> queryParams) {
         return this.hasAccess()
-                .flatMap(access ->
-                        this.dao.readByCodeAndAppCodeAndClientCodeEager(code, access, tableFields, queryParams));
+                .flatMap(access -> this.dao.readByCodeAndAppCodeAndClientCodeEager(code, access, tableFields,
+                        queryParams));
     }
 
     public Mono<Map<String, Object>> readEager(
@@ -259,14 +264,15 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.update(access, entity));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> update(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
 
     @Override
     public Mono<D> update(ULong key, Map<String, Object> fields) {
-        if (key == null) return Mono.empty();
+        if (key == null)
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
@@ -282,10 +288,11 @@ public abstract class BaseUpdatableService<
                 this::update);
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
 
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
+        if (!canOutsideCreate() && access.isOutsideUser())
+            return this.throwOutsideUserAccess("update");
 
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
@@ -296,7 +303,8 @@ public abstract class BaseUpdatableService<
 
     protected Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
+        if (!canOutsideCreate() && access.isOutsideUser())
+            return this.throwOutsideUserAccess("update");
 
         return super.update(key, fields)
                 .flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
@@ -316,10 +324,11 @@ public abstract class BaseUpdatableService<
                 entityName);
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> readById(ProcessorAccess access, ULong id) {
 
-        if (id == null) return this.identityMissingError();
+        if (id == null)
+            return this.identityMissingError();
 
         return this.readByIdInternal(access, id)
                 .switchIfEmpty(this.msgService.throwMessage(
@@ -340,10 +349,11 @@ public abstract class BaseUpdatableService<
                 this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> readByCode(ProcessorAccess access, String code) {
 
-        if (code == null || code.isEmpty()) return this.identityMissingError();
+        if (code == null || code.isEmpty())
+            return this.identityMissingError();
 
         return this.readByCodeInternal(access, code)
                 .switchIfEmpty(this.msgService.throwMessage(
@@ -364,20 +374,22 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByIdentity(access, identity));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
 
-        if (identity == null || identity.isNull()) return this.identityMissingError();
+        if (identity == null || identity.isNull())
+            return this.identityMissingError();
 
         return identity.isId()
                 ? this.readById(access, identity.getULongId())
                 : this.readByCode(access, identity.getCode());
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
-        if (identity == null || identity.isNull()) return this.identityMissingError();
+        if (identity == null || identity.isNull())
+            return this.identityMissingError();
 
         return identity.isId()
                 ? this.readById(access, identity.getULongId()).map(BaseUpdatableDto::getIdentity)
@@ -399,7 +411,8 @@ public abstract class BaseUpdatableService<
 
     protected Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
 
-        if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
+        if (!canOutsideCreate() && access.isOutsideUser())
+            return this.throwOutsideUserAccess("delete");
 
         return super.delete(entity.getId())
                 .flatMap(deleted -> this.evictCache(entity).map(evicted -> deleted));

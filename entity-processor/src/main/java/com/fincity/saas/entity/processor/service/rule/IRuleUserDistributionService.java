@@ -1,25 +1,27 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@IgnoreServerFunc
+@IgnoreGeneration
 public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U extends BaseUserDistributionDto<U>> {
 
-    default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
-            BaseUserDistributionService<R, U, O> getUserDistributionService() {
+    default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>> BaseUserDistributionService<R, U, O> getUserDistributionService() {
         return null;
     }
 
@@ -27,15 +29,14 @@ public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U ext
         return this.getUserDistributionService() != null;
     }
 
-    private <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>
-            Optional<BaseUserDistributionService<R, U, O>> getOptionalUserDistributionService() {
+    private <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>> Optional<BaseUserDistributionService<R, U, O>> getOptionalUserDistributionService() {
         return Optional.ofNullable(this.getUserDistributionService());
     }
 
     default Mono<List<U>> createUserDistribution(ProcessorAccess access, D created, D requestEntity) {
         return this.getOptionalUserDistributionService()
                 .map(service -> service.createDistributions(
-                                access, created.getId(), requestEntity.getUserDistributions())
+                        access, created.getId(), requestEntity.getUserDistributions())
                         .collectList())
                 .orElseGet(() -> Mono.just(List.of()));
     }

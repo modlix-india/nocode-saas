@@ -1,24 +1,27 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import com.fincity.saas.commons.service.ConditionEvaluator;
-import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
-import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.google.gson.JsonElement;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
+
+import com.fincity.saas.commons.service.ConditionEvaluator;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.google.gson.JsonElement;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-@IgnoreServerFunc
+@IgnoreGeneration
 public class TicketCRuleExecutionService {
 
     private static final ULong ANO_USER_ID = ULong.MIN;
@@ -44,7 +47,8 @@ public class TicketCRuleExecutionService {
             ULong userId,
             JsonElement data) {
 
-        if (rules == null || rules.isEmpty()) return Mono.empty();
+        if (rules == null || rules.isEmpty())
+            return Mono.empty();
 
         final ULong finalUserId = userId != null && userId.equals(ANO_USER_ID) ? null : userId;
 
@@ -56,7 +60,8 @@ public class TicketCRuleExecutionService {
 
     private Mono<ProductTicketCRule> distributeUsers(ProductTicketCRule rule, Set<ULong> userIds) {
 
-        if (userIds == null || userIds.isEmpty()) return Mono.empty();
+        if (userIds == null || userIds.isEmpty())
+            return Mono.empty();
 
         if (userIds.size() == 1)
             return Mono.just(this.addAssignedUser(rule, userIds.iterator().next()));
@@ -76,19 +81,21 @@ public class TicketCRuleExecutionService {
 
         ULong nextUserId = lastUsedId == null ? sortedUserIds.first() : sortedUserIds.higher(lastUsedId);
 
-        if (nextUserId == null) nextUserId = sortedUserIds.first();
+        if (nextUserId == null)
+            nextUserId = sortedUserIds.first();
 
         return Mono.just(addAssignedUser(rule, nextUserId));
     }
 
     private Mono<ProductTicketCRule> getRandom(ProductTicketCRule rule, Set<ULong> userIds) {
         ULong last = rule.getLastAssignedUserId();
-        if (last != null) userIds.remove(last);
+        if (last != null)
+            userIds.remove(last);
 
         return Mono.fromSupplier(() -> userIds.stream()
-                        .skip(random.nextInt(userIds.size()))
-                        .findFirst()
-                        .orElse(null))
+                .skip(random.nextInt(userIds.size()))
+                .findFirst()
+                .orElse(null))
                 .flatMap(userId -> userId == null ? Mono.empty() : Mono.just(addAssignedUser(rule, userId)));
     }
 
@@ -101,16 +108,18 @@ public class TicketCRuleExecutionService {
     private Mono<ProductTicketCRule> findMatchedRules(
             Map<Integer, ProductTicketCRule> rules, String prefix, JsonElement data) {
 
-        if (rules == null || rules.isEmpty()) return Mono.empty();
+        if (rules == null || rules.isEmpty())
+            return Mono.empty();
 
         ConditionEvaluator evaluator = conditionEvaluatorCache.computeIfAbsent(prefix, ConditionEvaluator::new);
 
         return Flux.fromStream(rules.entrySet().stream()
-                        .filter(e -> e.getKey() != null && e.getKey() > 0)
-                        .sorted(Map.Entry.comparingByKey())
-                        .map(Map.Entry::getValue))
+                .filter(e -> e.getKey() != null && e.getKey() > 0)
+                .sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue))
                 .concatMap(rule -> {
-                    if (rule.getCondition() == null) return Mono.empty();
+                    if (rule.getCondition() == null)
+                        return Mono.empty();
                     return evaluator
                             .evaluate(rule.getCondition(), data)
                             .filter(Boolean::booleanValue)
@@ -122,7 +131,8 @@ public class TicketCRuleExecutionService {
     private Mono<ProductTicketCRule> handleDefaultRule(
             ProcessorAccess access, Map<Integer, ProductTicketCRule> rules, ULong finalUserId) {
         ProductTicketCRule defaultRule = rules.get(0);
-        if (defaultRule == null) return Mono.empty();
+        if (defaultRule == null)
+            return Mono.empty();
 
         return this.userDistributionService
                 .getUsersByRuleId(access, defaultRule.getId())

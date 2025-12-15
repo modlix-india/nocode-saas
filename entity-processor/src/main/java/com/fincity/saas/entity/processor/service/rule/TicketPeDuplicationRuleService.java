@@ -1,5 +1,9 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.LogUtil;
@@ -7,23 +11,21 @@ import com.fincity.saas.entity.processor.dao.rule.TicketPeDuplicationRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.TicketPeDuplicationRule;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
-import com.fincity.saas.entity.processor.functions.anntations.IgnoreServerFunc;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketPeDuplicationRulesRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class TicketPeDuplicationRuleService
-        extends BaseUpdatableService<
-                EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO> {
+        extends
+        BaseUpdatableService<EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO> {
 
     private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
 
@@ -72,7 +74,8 @@ public class TicketPeDuplicationRuleService
         if (entity.getPhoneNumberAndEmailType() == null)
             entity.setPhoneNumberAndEmailType(DEFAULT_RULE.getPhoneNumberAndEmailType());
 
-        if (entity.getId() != null) return Mono.just(entity);
+        if (entity.getId() != null)
+            return Mono.just(entity);
 
         return this.dao
                 .readByAppCodeAndClientCode(access)
@@ -91,7 +94,7 @@ public class TicketPeDuplicationRuleService
                 .flatMap(created -> this.evictCache(created).map(evicted -> created));
     }
 
-    @IgnoreServerFunc
+    @IgnoreGeneration
     public Mono<AbstractCondition> getTicketCondition(ProcessorAccess access, PhoneNumber phoneNumber, Email email) {
         return this.getRule(access)
                 .map(rule -> rule.getPhoneNumberAndEmailType().getTicketCondition(phoneNumber, email))
