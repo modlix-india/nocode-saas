@@ -2,8 +2,6 @@ name: notification-dev-ci
 
 on:
   push:
-    branches:
-      - oci-development
     paths:
       - "notification/**"
       - "commons2/**"
