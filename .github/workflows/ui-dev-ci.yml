@@ -2,6 +2,8 @@ name: ui-dev-ci
 
 on:
   push:
+    branches:
+      - oci-development
     paths:
       - "ui/**"
       - "commons/**"
