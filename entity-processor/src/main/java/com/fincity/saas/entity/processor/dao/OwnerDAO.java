@@ -38,7 +38,7 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 
-        if (number != null)
+        if (number != null && !number.isEmpty())
             phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS
                     .DIAL_CODE
                     .eq(dialCode.shortValue())
