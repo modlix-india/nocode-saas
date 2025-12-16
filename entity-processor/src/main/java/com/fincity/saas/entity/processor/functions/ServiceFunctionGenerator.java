@@ -62,6 +62,32 @@ public class ServiceFunctionGenerator {
         this.schemaMap = schemaMap;
     }
 
+    /**
+     * Generates functions from a list of IRepositoryProvider instances.
+     * Similar to ServiceSchemaGenerator.generateSchemas().
+     *
+     * @param repositoryProviders List of IRepositoryProvider instances to generate
+     *                            functions from
+     * @return List of generated ReactiveFunction instances
+     */
+    public List<ReactiveFunction> generateFunctions(List<IRepositoryProvider> repositoryProviders) {
+        List<ReactiveFunction> allFunctions = new ArrayList<>();
+
+        for (IRepositoryProvider provider : repositoryProviders) {
+            if (provider == null)
+                continue;
+
+            // Generate functions from the provider's service methods
+            List<ReactiveFunction> providerFunctions = generateFunctionsFromProvider(provider);
+            allFunctions.addAll(providerFunctions);
+        }
+
+        return allFunctions;
+    }
+
+    /**
+     * Generates functions from a single service instance (backward compatibility).
+     */
     public List<ReactiveFunction> generateFunctions(Object serviceInstance) {
         Class<?> serviceClass = serviceInstance.getClass();
 
@@ -104,6 +130,16 @@ public class ServiceFunctionGenerator {
         }
 
         return functions;
+    }
+
+    /**
+     * Generates functions from an IRepositoryProvider instance by examining its
+     * service methods.
+     */
+    private List<ReactiveFunction> generateFunctionsFromProvider(IRepositoryProvider provider) {
+        // Treat the provider as a service instance and generate functions from its
+        // methods
+        return generateFunctions(provider);
     }
 
     private boolean isValidMethod(Method method, Class<?> serviceClass) {

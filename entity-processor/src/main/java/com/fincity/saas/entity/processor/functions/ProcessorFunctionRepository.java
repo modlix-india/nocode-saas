@@ -22,6 +22,16 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
     public ProcessorFunctionRepository(ProcessorFunctionRepositoryBuilder builder) {
         ServiceFunctionGenerator generator = new ServiceFunctionGenerator(builder.gson, builder.schemaMap);
 
+        // If repositoryProviders are provided, use them (similar to ServiceSchemaGenerator pattern)
+        if (builder.repositoryProviders != null && !builder.repositoryProviders.isEmpty()) {
+            List<ReactiveFunction> functions = generator.generateFunctions(builder.repositoryProviders);
+            for (ReactiveFunction function : functions) {
+                String fullName = function.getSignature().getFullName();
+                repoMap.putIfAbsent(fullName, function);
+            }
+        }
+
+        // Backward compatibility: also process services if provided
         if (builder.services != null) {
             for (Object service : builder.services) {
                 if (service != null) {
@@ -55,7 +65,8 @@ public class ProcessorFunctionRepository implements ReactiveRepository<ReactiveF
     @Data
     @Accessors(chain = true)
     public static class ProcessorFunctionRepositoryBuilder {
-        private List<Object> services;
+        private List<IRepositoryProvider> repositoryProviders;
+        private List<Object> services; // Backward compatibility
         private Gson gson;
         private ProcessorMessageResourceService messageService;
         private Map<String, Schema> schemaMap;

@@ -1,29 +1,41 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.model.EventResult;
+import com.fincity.nocode.kirun.engine.model.FunctionOutput;
+import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.dto.Campaign;
+import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
 import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.util.ListFunctionRepository;
 import com.fincity.saas.entity.processor.util.MapSchemaRepository;
 import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
+import jakarta.annotation.PostConstruct;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -34,14 +46,39 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignService.class);
     private static final String CAMPAIGN_CACHE = "campaign";
 
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+
     private final ProductService productService;
     private final Gson gson;
 
-    public CampaignService(
-            ProductService productService,
-            Gson gson) {
+    @Autowired
+    @Lazy
+    private CampaignService self;
+
+    public CampaignService(ProductService productService, Gson gson) {
         this.productService = productService;
         this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.add(new AbstractProcessorFunction("Campaign", "CreateWithRequest", Map.of(
+                "campaignRequest",
+                Parameter.of("campaignRequest", Schema.ofRef("EntityProcessor.Model.Request.CampaignRequest"))),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Campaign")) {
+
+            @Override
+            public Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters executionParameters) {
+
+                JsonObject campaignRequest = executionParameters.getArguments().get("campaignRequest")
+                        .getAsJsonObject();
+                CampaignRequest campaignRequestObject = gson.fromJson(campaignRequest, CampaignRequest.class);
+                return self.create(campaignRequestObject)
+                        .map(created -> new FunctionOutput(
+                                List.of(EventResult.outputOf(Map.of("created", gson.toJsonTree(created))))));
+            }
+        });
     }
 
     @Override
@@ -99,7 +136,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
-        return Mono.empty();
+        return Mono.just(new ListFunctionRepository(this.functions));
     }
 
     @Override
@@ -108,6 +145,9 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         // Generate schema for Campaign class and create a repository with it
         Map<String, Schema> campaignSchemas = new HashMap<>();
 
+        // TODO: Here we have blocked the Campaign class by annotating with
+        // @IgnoreGeneration.
+        // When we add dynamic fields the schema will be generated dynamically from DB.
         try {
             Class<?> campaignClass = Campaign.class;
 

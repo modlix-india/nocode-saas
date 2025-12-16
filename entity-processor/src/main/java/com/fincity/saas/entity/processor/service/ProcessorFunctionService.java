@@ -1,5 +1,22 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
@@ -9,29 +26,11 @@ import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
-import com.fincity.saas.entity.processor.functions.ProcessorFunctionRepository;
-import com.google.gson.Gson;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -45,19 +44,9 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
             SchemaType.FLOAT, Float::valueOf,
             SchemaType.LONG, Long::valueOf,
             SchemaType.INTEGER, Integer::valueOf);
-    private final AtomicReference<ReactiveHybridRepository<ReactiveFunction>> processorFunctionRepository =
-            new AtomicReference<>();
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
+
+    private final Map<String, ReactiveRepository<ReactiveFunction>> functionRepositoryCache = new ConcurrentHashMap<>();
     private ApplicationContext applicationContext;
-
-    @Autowired
-    private Gson gson;
-
-    @Autowired
-    private ProcessorMessageResourceService messageService;
-
-    @Autowired(required = false)
-    private ProcessorSchemaService schemaService;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -66,98 +55,82 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        // Only initialize once, and only if this is the root application context
-        // (to avoid double initialization in web apps with parent/child contexts)
-        if (event.getApplicationContext().getParent() == null && initialized.compareAndSet(false, true)) init();
+        // No initialization needed - repositories are created lazily
     }
 
-    private void init() {
-        // Collect all service beans from the entity.processor.service package
-        List<Object> services = new ArrayList<>();
-        String[] beanNames = applicationContext.getBeanNamesForType(Object.class);
+    /**
+     * Gets the function repository for the given appCode and clientCode.
+     * Similar to ProcessorSchemaService.getSchemaRepository().
+     *
+     * @param appCode    the application code
+     * @param clientCode the client code
+     * @return Mono containing the ReactiveRepository of functions
+     */
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        String cacheKey = appCode + " - " + clientCode;
 
-        for (String beanName : beanNames) {
-            Object bean = applicationContext.getBean(beanName);
-            Class<?> beanClass = bean.getClass();
-
-            // Only process beans that:
-            // 1. Are not ProcessorMessageResourceService or ProcessorFunctionService
-            // 2. Are annotated with @Service
-            // 3. Are in entity.processor.service package but not in base subpackage
-            if (!(bean instanceof ProcessorMessageResourceService || bean instanceof ProcessorFunctionService)
-                    && beanClass.isAnnotationPresent(Service.class)) {
-                String packageName =
-                        beanClass.getPackage() != null ? beanClass.getPackage().getName() : "";
-                if (packageName.contains("entity.processor.service") && !packageName.contains("base"))
-                    services.add(bean);
-            }
+        ReactiveRepository<ReactiveFunction> cachedRepo = functionRepositoryCache.get(cacheKey);
+        if (cachedRepo != null) {
+            return Mono.just(cachedRepo);
         }
 
-        // Get schema map from ProcessorSchemaService if available
-        Map<String, Schema> schemaMap = null;
-        if (schemaService != null) {
-            try {
-                // Access the generated schemas through reflection or add a getter method
-                schemaMap = schemaService.getGeneratedSchemas();
-            } catch (Exception e) {
-                // If schemas are not available yet, continue without them
-            }
-        }
+        // Lazy lookup of IRepositoryProvider beans to avoid circular dependency
+        Map<String, IRepositoryProvider> repositoryProviders = applicationContext
+                .getBeansOfType(IRepositoryProvider.class);
 
-        ReactiveHybridRepository<ReactiveFunction> repository = new ReactiveHybridRepository<>(
-                new ProcessorFunctionRepository(new ProcessorFunctionRepository.ProcessorFunctionRepositoryBuilder()
-                        .setServices(services)
-                        .setGson(gson)
-                        .setMessageService(messageService)
-                        .setSchemaMap(schemaMap)));
-        this.processorFunctionRepository.set(repository);
-    }
-
-    public ReactiveRepository<ReactiveFunction> getFunctionRepository() {
-        ReactiveHybridRepository<ReactiveFunction> repository = processorFunctionRepository.get();
-        if (repository == null) {
-            throw new IllegalStateException("ProcessorFunctionRepository has not been initialized yet");
-        }
-        return repository;
+        return Flux.fromIterable(repositoryProviders.values())
+                .flatMap(provider -> provider.getFunctionRepository(appCode, clientCode))
+                .collectList()
+                .map(repos -> {
+                    @SuppressWarnings("unchecked")
+                    ReactiveRepository<ReactiveFunction>[] reposArray = new ReactiveRepository[repos.size()];
+                    for (int i = 0; i < repos.size(); i++) {
+                        reposArray[i] = repos.get(i);
+                    }
+                    ReactiveRepository<ReactiveFunction> finRepo = new ReactiveHybridRepository<ReactiveFunction>(
+                            reposArray);
+                    functionRepositoryCache.put(cacheKey, finRepo);
+                    return finRepo;
+                });
     }
 
     public Mono<FunctionOutput> execute(
-            String namespace, String name, Map<String, JsonElement> arguments, ServerHttpRequest request) {
+            String namespace, String name, Map<String, JsonElement> arguments, ServerHttpRequest request,
+            String appCode, String clientCode) {
 
-        ReactiveHybridRepository<ReactiveFunction> repository = processorFunctionRepository.get();
-
-        if (repository == null)
-            return Mono.error(new IllegalStateException("ProcessorFunctionRepository has not been initialized yet"));
-
-        return repository.find(namespace, name).flatMap(function -> {
-            Mono<Map<String, JsonElement>> argsMono = arguments == null
-                    ? this.getRequestParamsToArguments(function.getSignature().getParameters(), request)
-                    : Mono.just(arguments);
-            return argsMono.flatMap(args ->
-                    function.execute(new ReactiveFunctionExecutionParameters(repository, null).setArguments(args)));
-        });
+        return getFunctionRepository(appCode, clientCode)
+                .flatMap(repository -> repository.find(namespace, name).flatMap(function -> {
+                    Mono<Map<String, JsonElement>> argsMono = arguments == null
+                            ? this.getRequestParamsToArguments(function.getSignature().getParameters(), request)
+                            : Mono.just(arguments);
+                    return argsMono.flatMap(args -> function
+                            .execute(new ReactiveFunctionExecutionParameters(repository, null).setArguments(args)));
+                }));
     }
 
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
             Map<String, Parameter> parameters, ServerHttpRequest request) {
 
-        MultiValueMap<String, String> queryParams =
-                request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
+        MultiValueMap<String, String> queryParams = request == null ? new LinkedMultiValueMap<>()
+                : request.getQueryParams();
 
         return Flux.fromIterable(parameters.entrySet())
                 .flatMap(parameter -> {
                     List<String> value = queryParams.get(parameter.getKey());
 
-                    if (value == null) return Mono.empty();
+                    if (value == null)
+                        return Mono.empty();
 
                     Schema schema = parameter.getValue().getSchema();
                     Type type = schema.getType();
 
                     Parameter param = parameter.getValue();
 
-                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT)) return Mono.empty();
+                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
+                        return Mono.empty();
 
-                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(parameter, value, param));
+                    if (type.contains(SchemaType.STRING))
+                        return Mono.just(jsonElementString(parameter, value, param));
 
                     if (type.contains(SchemaType.DOUBLE)) {
                         return Mono.just(jsonElement(parameter, value, param, SchemaType.DOUBLE));
@@ -191,7 +164,8 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
 
     private Tuple2<String, JsonElement> jsonElementString(
             Entry<String, Parameter> parameter, List<String> value, Parameter param) {
-        if (!param.isVariableArgument()) return Tuples.of(parameter.getKey(), new JsonPrimitive(value.getFirst()));
+        if (!param.isVariableArgument())
+            return Tuples.of(parameter.getKey(), new JsonPrimitive(value.getFirst()));
 
         JsonArray jsonArray = new JsonArray();
         value.stream().map(JsonPrimitive::new).forEach(jsonArray::add);

@@ -68,24 +68,31 @@ public class ProcessorFunctionController {
     public Mono<ResponseEntity<String>> executeWith(
             @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
             @PathVariable(PATH_VARIABLE_NAME) String name,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
             ServerHttpRequest request) {
 
-        return this.execute(namespace, name, null, request);
+        return this.execute(namespace, name, null, request, appCode, clientCode);
     }
 
     @GetMapping(PATH_FULL_NAME)
     public Mono<ResponseEntity<String>> executeWith(
-            @PathVariable(PATH_VARIABLE_NAME) String fullName, ServerHttpRequest request) {
+            @PathVariable(PATH_VARIABLE_NAME) String fullName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            ServerHttpRequest request) {
 
         Tuple2<String, String> tup = this.splitName(fullName);
 
-        return this.execute(tup.getT1(), tup.getT2(), null, request);
+        return this.execute(tup.getT1(), tup.getT2(), null, request, appCode, clientCode);
     }
 
     @PostMapping(PATH)
     public Mono<ResponseEntity<String>> executeWith(
             @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
             @PathVariable(PATH_VARIABLE_NAME) String name,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
             @RequestBody String jsonString,
             ServerWebExchange exchange) {
 
@@ -94,12 +101,14 @@ public class ProcessorFunctionController {
         Map<String, JsonElement> arguments = job == null ? null
                 : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
-        return this.execute(namespace, name, arguments, exchange.getRequest());
+        return this.execute(namespace, name, arguments, exchange.getRequest(), appCode, clientCode);
     }
 
     @PostMapping(PATH_FULL_NAME)
     public Mono<ResponseEntity<String>> executeWith(
             @PathVariable(PATH_VARIABLE_NAME) String fullName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
             @RequestBody String jsonString,
             ServerWebExchange exchange) {
 
@@ -110,7 +119,7 @@ public class ProcessorFunctionController {
         Map<String, JsonElement> arguments = job == null ? null
                 : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
-        return this.execute(tup.getT1(), tup.getT2(), arguments, exchange.getRequest());
+        return this.execute(tup.getT1(), tup.getT2(), arguments, exchange.getRequest(), appCode, clientCode);
     }
 
     private Tuple2<String, String> splitName(String fullName) {
@@ -127,10 +136,12 @@ public class ProcessorFunctionController {
     }
 
     private Mono<ResponseEntity<String>> execute(
-            String namespace, String name, Map<String, JsonElement> job, ServerHttpRequest request) {
+            String namespace, String name, Map<String, JsonElement> job, ServerHttpRequest request,
+            String appCode, String clientCode) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.functionService.execute(namespace, name, job, request), this::extractOutputEvent)
+                () -> this.functionService.execute(namespace, name, job, request, appCode, clientCode),
+                this::extractOutputEvent)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProcessorFunctionController.execute"))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -162,8 +173,8 @@ public class ProcessorFunctionController {
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
             @RequestParam(required = false) String filter) {
         return functionService
-                .getFunctionRepository()
-                .filter(filter != null ? filter : "")
+                .getFunctionRepository(appCode, clientCode)
+                .flatMapMany(repo -> repo.filter(filter != null ? filter : ""))
                 .sort()
                 .collectList()
                 .map(ResponseEntity::ok);
@@ -177,8 +188,8 @@ public class ProcessorFunctionController {
             String namespace,
             @RequestParam String name) {
         return functionService
-                .getFunctionRepository()
-                .find(namespace, name)
+                .getFunctionRepository(appCode, clientCode)
+                .flatMap(repo -> repo.find(namespace, name))
                 .map(e -> e.getSignature())
                 .map(this.gson::toJson)
                 .map(ResponseEntity::ok);
