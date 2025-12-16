@@ -19,7 +19,6 @@ import com.fincity.saas.entity.processor.service.base.BaseValueService;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
@@ -88,6 +87,14 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         return this.getNewOrder(entity, access)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.applyOrder"));
+    }
+
+    @Override
+    protected Mono<Boolean> evictCache(Stage entity) {
+        return Mono.zip(
+                super.evictCache(entity),
+                super.cacheService.evictAll("productTicketCRule"),
+                (stageEvicted, productTicketCRuleEvicted) -> stageEvicted && productTicketCRuleEvicted);
     }
 
     private Mono<Stage> getNewOrder(Stage entity, ProcessorAccess access) {
@@ -311,20 +318,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                     return Mono.just(stageId);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getStage"));
-    }
-
-    public Mono<Set<ULong>> getAllStages(ProcessorAccess access, ULong productTemplateId, ULong... stageIds) {
-        return super.getAllValueIds(access, null, productTemplateId).flatMap(stageIdsInternal -> {
-            if (stageIdsInternal == null || stageIdsInternal.isEmpty()) return Mono.just(Set.of());
-
-            if (stageIds == null || stageIds.length == 0) return Mono.just(stageIdsInternal);
-
-            if (!stageIdsInternal.containsAll(List.of(stageIds))) return Mono.just(Set.of());
-
-            stageIdsInternal.retainAll(List.of(stageIds));
-
-            return Mono.just(stageIdsInternal);
-        });
     }
 
     public Mono<List<Stage>> reorderStages(StageReorderRequest reorderRequest) {

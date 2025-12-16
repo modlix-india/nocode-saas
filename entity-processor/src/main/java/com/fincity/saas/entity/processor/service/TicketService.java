@@ -34,6 +34,7 @@ import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
+import java.util.List;
 import java.util.Optional;
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
@@ -417,33 +418,52 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             String subSource) {
 
         if (ruleCondition != null && ruleCondition.isNonEmpty())
-            return this.fetchDuplicateAndLog(
-                            this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail),
-                            access,
-                            source,
-                            subSource)
-                    .switchIfEmpty(this.fetchDuplicateAndLog(
-                                    this.getTicket(access, productId, ticketPhone, ticketMail),
-                                    access,
-                                    source,
-                                    subSource)
-                            .switchIfEmpty(Mono.just(Boolean.FALSE)));
+            return this.checkDuplicateWithRule(
+                    access, productId, ticketPhone, ticketMail, ruleCondition, source, subSource);
 
         return this.fetchDuplicateAndLog(
                         this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource)
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
+    private Mono<Boolean> checkDuplicateWithRule(
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail,
+            AbstractCondition ruleCondition,
+            String source,
+            String subSource) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> ruleCondition.removeConditionWithField(Ticket.Fields.stage),
+                conditionWithoutStage ->
+                        this.getTickets(conditionWithoutStage, access, productId, ticketPhone, ticketMail),
+                (conditionWithoutStage, tickets) -> {
+                    if (tickets.isEmpty())
+                        return this.fetchDuplicateAndLog(
+                                this.getTicket(access, productId, ticketPhone, ticketMail), access, source, subSource);
+
+                    return this.fetchDuplicateAndLog(
+                            this.getTicket(ruleCondition, access, productId, ticketPhone, ticketMail),
+                            access,
+                            source,
+                            subSource);
+                });
+    }
+
     private Mono<Boolean> fetchDuplicateAndLog(
             Mono<Ticket> ticketMono, ProcessorAccess access, String source, String subSource) {
 
-        return ticketMono.flatMap(ticket -> {
-            if (ticket == null || ticket.getId() == null) return Mono.empty();
+        return ticketMono
+                .flatMap(ticket -> {
+                    if (ticket == null || ticket.getId() == null) return Mono.just(Boolean.FALSE);
 
-            return activityService
-                    .acReInquiry(access, ticket, null, source, subSource)
-                    .then(super.throwDuplicateError(access, ticket));
-        });
+                    return activityService
+                            .acReInquiry(access, ticket, null, source, subSource)
+                            .then(super.throwDuplicateError(access, ticket));
+                })
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
     private <T extends INoteRequest> Mono<Boolean> createNote(ProcessorAccess access, T noteRequest, Ticket ticket) {
@@ -639,13 +659,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             PhoneNumber ticketPhone,
             Email ticketMail) {
         return this.dao
-                .readByNumberAndEmail(
-                        condition,
-                        access,
-                        productId,
-                        ticketPhone != null ? ticketPhone.getCountryCode() : null,
-                        ticketPhone != null ? ticketPhone.getNumber() : null,
-                        ticketMail != null ? ticketMail.getAddress() : null)
+                .readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+    }
+
+    private Mono<List<Ticket>> getTickets(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber ticketPhone,
+            Email ticketMail) {
+        return this.dao
+                .readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 

@@ -1,14 +1,5 @@
 package com.fincity.saas.entity.processor.dao.rule;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.jooq.Condition;
-import org.jooq.Field;
-import org.jooq.Table;
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -18,7 +9,13 @@ import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-
+import java.util.ArrayList;
+import java.util.List;
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Table;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -67,6 +64,8 @@ public abstract class BaseRuleDAO<
             ULong productTemplateId,
             Integer order) {
 
+        if ((productId == null) == (productTemplateId == null)) return Mono.empty();
+
         List<AbstractCondition> conditions = new ArrayList<>(5);
 
         if (condition != null) conditions.add(condition);
@@ -92,22 +91,19 @@ public abstract class BaseRuleDAO<
 
     protected AbstractCondition buildProductCondition(ULong productId, ULong productTemplateId) {
 
-        List<AbstractCondition> productConditions = new ArrayList<>(2);
+        if ((productId == null) == (productTemplateId == null)) return null;
 
-        if (productId != null) productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productId, productId));
-
-        if (productTemplateId != null) {
-            if (productId != null)
-                productConditions.add(FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId));
-            else
-                productConditions.add(ComplexCondition.and(
+        return productId != null
+                ? ComplexCondition.and(
+                        FilterCondition.make(BaseRuleDto.Fields.productId, productId),
+                        new FilterCondition()
+                                .setField(BaseRuleDto.Fields.productTemplateId)
+                                .setOperator(FilterConditionOperator.IS_NULL))
+                : ComplexCondition.and(
                         FilterCondition.make(BaseRuleDto.Fields.productTemplateId, productTemplateId),
                         new FilterCondition()
                                 .setField(BaseRuleDto.Fields.productId)
-                                .setOperator(FilterConditionOperator.IS_NULL)));
-        }
-
-        return productConditions.isEmpty() ? null : ComplexCondition.and(productConditions);
+                                .setOperator(FilterConditionOperator.IS_NULL));
     }
 
     private AbstractCondition createDefaultRuleCondition(ULong productId, ULong productTemplateId) {

@@ -122,7 +122,7 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
      * <code>entity_processor.entity_processor_product_ticket_ru_rules.PRODUCT_TEMPLATE_ID</code>.
      * Product Template id related to this Rule Config.
      */
-    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Product Template id related to this Rule Config.");
+    public final TableField<EntityProcessorProductTicketRuRulesRecord, ULong> PRODUCT_TEMPLATE_ID = createField(DSL.name("PRODUCT_TEMPLATE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Product Template id related to this Rule Config.");
 
     /**
      * The column
@@ -279,7 +279,7 @@ public class EntityProcessorProductTicketRuRules extends TableImpl<EntityProcess
 
     @Override
     public List<UniqueKey<EntityProcessorProductTicketRuRulesRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK1_PTRUR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK2_PTRUR_AC_CC_PID_PTID_ORDER);
+        return Arrays.asList(Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK1_PTRUR_CODE, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK2_TDR_AC_CC_PID_ORDER, Keys.KEY_ENTITY_PROCESSOR_PRODUCT_TICKET_RU_RULES_UK2_TDR_AC_CC_PTID_ORDER);
     }
 
     @Override

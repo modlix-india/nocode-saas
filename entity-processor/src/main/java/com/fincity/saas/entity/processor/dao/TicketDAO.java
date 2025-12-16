@@ -10,8 +10,11 @@ import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
+import com.fincity.saas.entity.processor.model.common.Email;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
+import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +37,7 @@ import reactor.util.function.Tuples;
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
 
     private ProductTicketRuRuleService productTicketRuRuleService;
+    private TicketPeDuplicationRuleService ticketPeDuplicationRuleService;
 
     protected TicketDAO() {
         super(
@@ -49,6 +53,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         this.productTicketRuRuleService = productTicketRuRuleService;
     }
 
+    @Lazy
+    @Autowired
+    private void setTicketPeDuplicationRuleService(TicketPeDuplicationRuleService ticketPeDuplicationRuleService) {
+        this.ticketPeDuplicationRuleService = ticketPeDuplicationRuleService;
+    }
+
     public Flux<Ticket> getAllClientTicketsByDnc(ULong clientId, Boolean dnc) {
         return Flux.from(dslContext
                         .selectFrom(table)
@@ -62,19 +72,17 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .map(rec -> rec.into(this.pojoClass));
     }
 
-    public Mono<Ticket> readByNumberAndEmail(
+    public Mono<Ticket> readTicketByNumberAndEmail(
             AbstractCondition condition,
             ProcessorAccess access,
             ULong productId,
-            Integer dialCode,
-            String number,
-            String email) {
-
-        AbstractCondition ownerIdentifierConditions =
-                this.getOwnerIdentifierConditions(condition, productId, dialCode, number, email);
+            PhoneNumber phoneNumber,
+            Email email) {
 
         return FlatMapUtil.flatMapMono(
-                () -> Mono.just(super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
+                () -> this.getOwnerIdentifierConditions(condition, access, productId, phoneNumber, email)
+                        .map(ownerIdentifierConditions ->
+                                super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
                 super::filter,
                 (pCondition, jCondition) -> Mono.from(this.dslContext
                                 .selectFrom(this.table)
@@ -84,34 +92,46 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .map(e -> e.into(this.pojoClass)));
     }
 
-    private AbstractCondition getOwnerIdentifierConditions(
-            AbstractCondition condition, ULong productId, Integer dialCode, String number, String email) {
+    public Mono<List<Ticket>> readTicketsByNumberAndEmail(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber phoneNumber,
+            Email email) {
 
-        List<AbstractCondition> conditions = new ArrayList<>();
+        return FlatMapUtil.flatMapMono(
+                () -> this.getOwnerIdentifierConditions(condition, access, productId, phoneNumber, email)
+                        .map(ownerIdentifierConditions ->
+                                super.addAppCodeAndClientCode(ownerIdentifierConditions, access)),
+                super::filter,
+                (pCondition, jCondition) -> Flux.from(
+                                this.dslContext.selectFrom(this.table).where(jCondition.and(super.isActiveTrue())))
+                        .map(e -> e.into(this.pojoClass))
+                        .collectList());
+    }
 
-        if (condition != null && condition.isNonEmpty()) conditions.add(condition);
+    private Mono<AbstractCondition> getOwnerIdentifierConditions(
+            AbstractCondition condition,
+            ProcessorAccess access,
+            ULong productId,
+            PhoneNumber phoneNumber,
+            Email email) {
 
-        List<AbstractCondition> phoneEmailConditions = new ArrayList<>();
+        return FlatMapUtil.flatMapMono(
+                () -> this.ticketPeDuplicationRuleService.getTicketCondition(access, phoneNumber, email),
+                pECondition -> {
+                    List<AbstractCondition> conditions = new ArrayList<>();
 
-        if (number != null && dialCode != null)
-            phoneEmailConditions.add(ComplexCondition.and(
-                    FilterCondition.make(Ticket.Fields.dialCode, dialCode),
-                    FilterCondition.make(Ticket.Fields.phoneNumber, number)));
+                    if (condition != null && condition.isNonEmpty()) conditions.add(condition);
 
-        if (email != null) phoneEmailConditions.add(FilterCondition.make(Ticket.Fields.email, email));
+                    if (pECondition != null && pECondition.isNonEmpty()) conditions.add(pECondition);
 
-        if (!phoneEmailConditions.isEmpty()) {
-            AbstractCondition phoneEmailCondition = phoneEmailConditions.size() > 1
-                    ? ComplexCondition.or(phoneEmailConditions)
-                    : phoneEmailConditions.getFirst();
-            conditions.add(phoneEmailCondition);
-        }
+                    if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
 
-        if (productId != null) conditions.add(FilterCondition.make(Ticket.Fields.productId, productId));
+                    if (conditions.isEmpty()) return Mono.empty();
 
-        if (conditions.isEmpty()) return null;
-
-        return ComplexCondition.and(conditions);
+                    return Mono.just(ComplexCondition.and(conditions));
+                });
     }
 
     @Override
