@@ -1,16 +1,5 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -24,15 +13,26 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProd
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketRuUserDistributionService;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class ProductTicketRuRuleService
-        extends
-        BaseRuleService<EntityProcessorProductTicketRuRulesRecord, ProductTicketRuRule, ProductTicketRuRuleDAO, TicketRuUserDistribution> {
+        extends BaseRuleService<
+                EntityProcessorProductTicketRuRulesRecord,
+                ProductTicketRuRule,
+                ProductTicketRuRuleDAO,
+                TicketRuUserDistribution> {
 
     private static final String PRODUCT_TICKET_RU_RULE = "productTicketRuRule";
     private static final String CONDITION_CACHE = "ruleConditionCache";
@@ -99,8 +99,7 @@ public class ProductTicketRuRuleService
     }
 
     private Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access, List<ProductTicketRuRule> rules) {
-        if (rules.isEmpty())
-            return Mono.empty();
+        if (rules.isEmpty()) return Mono.empty();
 
         ProductTemplateMaps productTemplateMaps = this.buildRuleMaps(rules);
 
@@ -109,8 +108,8 @@ public class ProductTicketRuRuleService
 
         return this.fetchProducts(access, productIds)
                 .map(productsMap -> {
-                    List<AbstractCondition> productConditionBlocks = this
-                            .buildProductConditionBlocks(productTemplateMaps, productsMap);
+                    List<AbstractCondition> productConditionBlocks =
+                            this.buildProductConditionBlocks(productTemplateMaps, productsMap);
 
                     List<AbstractCondition> productTemplateBlocks = this.addTemplateOnlyBlocks(productTemplateMaps);
 
@@ -146,8 +145,7 @@ public class ProductTicketRuRuleService
     }
 
     private Mono<Map<ULong, Product>> fetchProducts(ProcessorAccess access, Set<ULong> productIds) {
-        if (productIds.isEmpty())
-            return Mono.just(new HashMap<>());
+        if (productIds.isEmpty()) return Mono.just(new HashMap<>());
 
         return Flux.fromIterable(productIds)
                 .flatMap(productId -> this.productService
@@ -180,8 +178,8 @@ public class ProductTicketRuRuleService
         // Use overrideRuTemplate from product, default to false if product is not found
         boolean override = product != null && product.isOverrideRuTemplate();
 
-        List<AbstractCondition> productConditions = rules.stream().map(ProductTicketRuRule::getConditionWithProduct)
-                .toList();
+        List<AbstractCondition> productConditions =
+                rules.stream().map(ProductTicketRuRule::getConditionWithProduct).toList();
 
         return override
                 ? this.takeOnlyProductCondition(first.getProductTemplateId(), productConditions, productTemplateMaps)
@@ -221,8 +219,7 @@ public class ProductTicketRuRuleService
 
         for (var entry : productTemplateMaps.templateMap.entrySet()) {
 
-            if (productTemplateMaps.usedTemplates.contains(entry.getKey()))
-                continue;
+            if (productTemplateMaps.usedTemplates.contains(entry.getKey())) continue;
 
             List<AbstractCondition> templateConditions = entry.getValue().stream()
                     .map(ProductTicketRuRule::getConditionWithProductTemplate)
@@ -237,6 +234,5 @@ public class ProductTicketRuRuleService
     private record ProductTemplateMaps(
             Map<ULong, List<ProductTicketRuRule>> productMap,
             Map<ULong, List<ProductTicketRuRule>> templateMap,
-            Set<ULong> usedTemplates) {
-    }
+            Set<ULong> usedTemplates) {}
 }

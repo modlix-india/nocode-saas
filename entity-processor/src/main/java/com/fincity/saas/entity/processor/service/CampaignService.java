@@ -1,23 +1,9 @@
 package com.fincity.saas.entity.processor.service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.model.EventResult;
-import com.fincity.nocode.kirun.engine.model.FunctionOutput;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
@@ -33,9 +19,16 @@ import com.fincity.saas.entity.processor.util.ListFunctionRepository;
 import com.fincity.saas.entity.processor.util.MapSchemaRepository;
 import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-
 import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -62,23 +55,22 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
     @PostConstruct
     private void init() {
-        this.functions.add(new AbstractProcessorFunction("Campaign", "CreateWithRequest", Map.of(
-                "campaignRequest",
-                Parameter.of("campaignRequest", Schema.ofRef("EntityProcessor.Model.Request.CampaignRequest"))),
+
+        this.functions.addAll(super.getCommonFunctions("Campaign", Campaign.class, gson));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "Campaign",
+                "CreateRequest",
+                Map.of(
+                        "campaignRequest",
+                        Parameter.of("campaignRequest", Schema.ofRef("EntityProcessor.Model.Request.CampaignRequest"))),
                 "created",
-                Schema.ofRef("EntityProcessor.DTO.Campaign")) {
-
-            @Override
-            public Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters executionParameters) {
-
-                JsonObject campaignRequest = executionParameters.getArguments().get("campaignRequest")
-                        .getAsJsonObject();
-                CampaignRequest campaignRequestObject = gson.fromJson(campaignRequest, CampaignRequest.class);
-                return self.create(campaignRequestObject)
-                        .map(created -> new FunctionOutput(
-                                List.of(EventResult.outputOf(Map.of("created", gson.toJsonTree(created))))));
-            }
-        });
+                Schema.ofRef("EntityProcessor.DTO.Campaign"),
+                "campaignRequest",
+                CampaignRequest.class,
+                gson,
+                self,
+                self::createRequest));
     }
 
     @Override
@@ -101,14 +93,14 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
                 (baseEvicted, campaignEvicted) -> baseEvicted && campaignEvicted);
     }
 
-    public Mono<Campaign> create(CampaignRequest campaignRequest) {
+    public Mono<Campaign> createRequest(CampaignRequest campaignRequest) {
 
         return FlatMapUtil.flatMapMono(
-                this::hasAccess,
-                access -> this.productService.readByIdentity(access, campaignRequest.getProductId()),
-                (access, product) -> super.createInternal(
-                        access, Campaign.of(campaignRequest).setProductId(product.getId())))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.create[CampaignRequest]"));
+                        this::hasAccess,
+                        access -> this.productService.readByIdentity(access, campaignRequest.getProductId()),
+                        (access, product) -> super.createInternal(
+                                access, Campaign.of(campaignRequest).setProductId(product.getId())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "CampaignService.createRequest[CampaignRequest]"));
     }
 
     @Override
@@ -140,8 +132,8 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     }
 
     @Override
-    public Mono<ReactiveRepository<Schema>> getSchemaRepository(ReactiveRepository<Schema> staticSchemaRepository,
-            String appCode, String clientCode) {
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
         // Generate schema for Campaign class and create a repository with it
         Map<String, Schema> campaignSchemas = new HashMap<>();
 

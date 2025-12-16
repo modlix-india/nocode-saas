@@ -1,17 +1,5 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -30,15 +18,27 @@ import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketCRuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
 import com.google.gson.JsonElement;
-
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.Getter;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class ProductTicketCRuleService
-        extends
-        BaseRuleService<EntityProcessorProductTicketCRulesRecord, ProductTicketCRule, ProductTicketCRuleDAO, TicketCUserDistribution> {
+        extends BaseRuleService<
+                EntityProcessorProductTicketCRulesRecord,
+                ProductTicketCRule,
+                ProductTicketCRuleDAO,
+                TicketCUserDistribution> {
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
     private final TicketCRuleExecutionService ticketCRuleExecutionService;
@@ -75,8 +75,7 @@ public class ProductTicketCRuleService
     @Override
     protected Mono<ProductTicketCRule> checkEntity(ProductTicketCRule entity, ProcessorAccess access) {
 
-        if (entity.isDefault())
-            return super.checkEntity(entity.setStageId(null), access);
+        if (entity.isDefault()) return super.checkEntity(entity.setStageId(null), access);
 
         if (entity.getStageId() == null)
             return this.msgService.throwMessage(
@@ -136,23 +135,21 @@ public class ProductTicketCRuleService
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateOverride(
             ProcessorAccess access, Product product, ULong stageId) {
 
-        if (!product.isOverrideCTemplate())
-            return Mono.empty();
+        if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return this.getProductRules(access, product.getId(), stageId)
                 .flatMap(rules -> rules.isEmpty()
                         ? this.getProductTemplateRules(access, product.getProductTemplateId(), stageId)
                         : Mono.just(rules))
                 .switchIfEmpty(this.getProductTemplateRules(access, product.getProductTemplateId(), stageId))
-                .map(rules -> rules.stream()
-                        .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())));
+                .map(rules ->
+                        rules.stream().collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())));
     }
 
     private Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrderWithTemplateCombine(
             ProcessorAccess access, Product product, ULong stageId) {
 
-        if (!product.isOverrideCTemplate())
-            return Mono.empty();
+        if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return Mono.zip(
                 this.getProductRules(access, product.getId(), stageId)
@@ -215,16 +212,15 @@ public class ProductTicketCRuleService
             ULong userId,
             JsonElement data) {
         return FlatMapUtil.flatMapMono(
-                () -> this.getRulesWithOrder(access, productId, stageId),
-                productRule -> this.ticketCRuleExecutionService.executeRules(
-                        access, productRule, tokenPrefix, userId, data),
-                (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
-                (productRule, eRule, uRule) -> {
-                    ULong assignedUserId = uRule.getLastAssignedUserId();
-                    if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
-                        return Mono.empty();
-                    return Mono.just(assignedUserId);
-                })
+                        () -> this.getRulesWithOrder(access, productId, stageId),
+                        productRule -> this.ticketCRuleExecutionService.executeRules(
+                                access, productRule, tokenPrefix, userId, data),
+                        (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
+                        (productRule, eRule, uRule) -> {
+                            ULong assignedUserId = uRule.getLastAssignedUserId();
+                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
+                            return Mono.just(assignedUserId);
+                        })
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }

@@ -1,5 +1,11 @@
 package com.fincity.saas.entity.processor.util;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -11,20 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
+import lombok.experimental.UtilityClass;
 import org.jooq.types.UByte;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
-
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-
-import lombok.experimental.UtilityClass;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -58,10 +55,10 @@ public class SchemaUtil {
         PRIMITIVE_SCHEMA_CACHE.put(UByte.class, Schema.ofInteger("UByte").setMinimum(0));
         PRIMITIVE_SCHEMA_CACHE.put(JsonObject.class, Schema.ofObject("JsonObject"));
         PRIMITIVE_SCHEMA_CACHE.put(BigInteger.class, Schema.ofInteger("BigInteger"));
-        Schema abstractConditionSchema = new Schema().setName("AbstractCondition")
-                .setNamespace("Commons");
-        abstractConditionSchema.setAnyOf(List.of(Schema.ofRef("Commons.FilterCondition"),
-                Schema.ofRef("Commons.ComplexCondition")));
+        Schema abstractConditionSchema =
+                new Schema().setName("AbstractCondition").setNamespace("Commons");
+        abstractConditionSchema.setAnyOf(
+                List.of(Schema.ofRef("Commons.FilterCondition"), Schema.ofRef("Commons.ComplexCondition")));
 
         PRIMITIVE_SCHEMA_CACHE.put(AbstractCondition.class, abstractConditionSchema);
     }
@@ -328,10 +325,8 @@ public class SchemaUtil {
         Class<?> currentClass = clazz;
         while (currentClass != null && currentClass != Object.class) {
             for (Field field : currentClass.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()))
-                    continue;
-                if (Modifier.isTransient(field.getModifiers()))
-                    continue;
+                if (Modifier.isStatic(field.getModifiers())) continue;
+                if (Modifier.isTransient(field.getModifiers())) continue;
 
                 String fieldName = field.getName();
                 java.lang.reflect.Type fieldGenericType = field.getGenericType();
@@ -388,8 +383,8 @@ public class SchemaUtil {
         return typeMap;
     }
 
-    private static java.lang.reflect.Type resolveType(java.lang.reflect.Type type,
-            Map<String, java.lang.reflect.Type> typeVariableMap) {
+    private static java.lang.reflect.Type resolveType(
+            java.lang.reflect.Type type, Map<String, java.lang.reflect.Type> typeVariableMap) {
         if (type instanceof java.lang.reflect.TypeVariable<?> typeVar) {
             java.lang.reflect.Type resolved = typeVariableMap.get(typeVar.getName());
             if (resolved != null) {

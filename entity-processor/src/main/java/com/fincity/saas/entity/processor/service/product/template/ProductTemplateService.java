@@ -1,11 +1,5 @@
 package com.fincity.saas.entity.processor.service.product.template;
 
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -22,7 +16,11 @@ import com.fincity.saas.entity.processor.model.request.product.template.ProductT
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
-
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -81,10 +79,10 @@ public class ProductTemplateService
         ProductTemplate productTemplate = ProductTemplate.of(productTemplateRequest);
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.create(access, productTemplate),
-                (access, created) -> (productTemplateRequest.getProductId() == null
-                        || productTemplateRequest.getProductId().isNull())
+                        super::hasAccess,
+                        access -> super.create(access, productTemplate),
+                        (access, created) -> (productTemplateRequest.getProductId() == null
+                                        || productTemplateRequest.getProductId().isNull())
                                 ? Mono.just(created)
                                 : this.updateDependentServices(access, productTemplateRequest.getProductId(), created))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.create"));
@@ -92,10 +90,10 @@ public class ProductTemplateService
 
     public Mono<ProductTemplate> attachEntity(Identity identity, ProductTemplateRequest productTemplateRequest) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.readByIdentity(access, identity),
-                (access, productTemplate) -> this.updateDependentServices(
-                        access, productTemplateRequest.getProductId(), productTemplate))
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, identity),
+                        (access, productTemplate) -> this.updateDependentServices(
+                                access, productTemplateRequest.getProductId(), productTemplate))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTemplateService.attachEntity"));
     }
 
@@ -108,9 +106,9 @@ public class ProductTemplateService
     public Mono<ProductTemplateWalkInForm> setProductTemplateWalkInForm(
             ProcessorAccess access, ULong productTemplateId, ProductTemplateWalkInForm productTemplateWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productTemplateId), productTemplate -> {
-            productTemplate.setProductTemplateWalkInFormId(productTemplateWalkInForm.getId());
-            return super.updateInternal(access, productTemplate).map(updated -> productTemplateWalkInForm);
-        })
+                    productTemplate.setProductTemplateWalkInFormId(productTemplateWalkInForm.getId());
+                    return super.updateInternal(access, productTemplate).map(updated -> productTemplateWalkInForm);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplateWalkInForm"));
     }
 }

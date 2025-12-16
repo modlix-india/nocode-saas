@@ -1,8 +1,5 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -20,7 +17,8 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
-
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -114,8 +112,7 @@ public class ProductCommService
 
         return FlatMapUtil.flatMapMono(
                 () -> this.validateByType(entity, access, connectionType, connectionSubType), validated -> {
-                    if (entity.isDefault())
-                        return checkDefault(entity, access, connectionType, connectionSubType);
+                    if (entity.isDefault()) return checkDefault(entity, access, connectionType, connectionSubType);
 
                     if (StringUtil.safeIsBlank(entity.getSource()))
                         return super.throwMissingParam(ProductComm.Fields.source);
@@ -165,20 +162,19 @@ public class ProductCommService
             ProcessorAccess access,
             ConnectionType connectionType,
             ConnectionSubType connectionSubType) {
-        if (!entity.isDefault())
-            return super.throwMissingParam(ProductComm.Fields.isDefault);
+        if (!entity.isDefault()) return super.throwMissingParam(ProductComm.Fields.isDefault);
 
         if (entity.getSource() != null || entity.getSubSource() != null)
             return super.throwInvalidParam(ProductComm.Fields.source);
 
         if (entity.getId() != null) {
             return FlatMapUtil.flatMapMono(
-                    () -> this.getDefault(access, entity.getProductId(), connectionType, connectionSubType),
-                    defaultComm -> {
-                        if (!defaultComm.getId().equals(entity.getId()))
-                            return super.throwInvalidParam(ProductComm.Fields.isDefault);
-                        return Mono.just(entity);
-                    })
+                            () -> this.getDefault(access, entity.getProductId(), connectionType, connectionSubType),
+                            defaultComm -> {
+                                if (!defaultComm.getId().equals(entity.getId()))
+                                    return super.throwInvalidParam(ProductComm.Fields.isDefault);
+                                return Mono.just(entity);
+                            })
                     .switchIfEmpty(Mono.just(entity));
         }
         return Mono.just(entity);
@@ -191,8 +187,7 @@ public class ProductCommService
     }
 
     private Mono<ProductComm> validatePhone(ProductComm entity) {
-        if (entity.getDialCode() == null)
-            return super.throwMissingParam(ProductComm.Fields.dialCode);
+        if (entity.getDialCode() == null) return super.throwMissingParam(ProductComm.Fields.dialCode);
         if (StringUtil.safeIsBlank(entity.getPhoneNumber()))
             return super.throwMissingParam(ProductComm.Fields.phoneNumber);
         return Mono.just(entity);
@@ -203,8 +198,7 @@ public class ProductCommService
 
         return existingMono
                 .flatMap(existing -> {
-                    if (existing == null)
-                        return Mono.just(entity);
+                    if (existing == null) return Mono.just(entity);
                     if (entity.getId() == null || !existing.getId().equals(entity.getId()))
                         return this.throwDuplicateError(access, existing);
                     return Mono.just(entity);
@@ -241,39 +235,38 @@ public class ProductCommService
         if (productCommRequest.getConnectionType() == null)
             return super.throwMissingParam(ProductComm.Fields.connectionType);
 
-        if (!productCommRequest.isValid())
-            return super.throwMissingParam("Communication Medium objects");
+        if (!productCommRequest.isValid()) return super.throwMissingParam("Communication Medium objects");
 
         return FlatMapUtil.flatMapMono(super::hasAccess, access -> {
-            Mono<Connection> connMono = this.connectionServices
-                    .getService(productCommRequest.getConnectionType())
-                    .getCoreDocument(
-                            access.getAppCode(),
-                            access.getClientCode(),
-                            productCommRequest.getConnectionName());
+                    Mono<Connection> connMono = this.connectionServices
+                            .getService(productCommRequest.getConnectionType())
+                            .getCoreDocument(
+                                    access.getAppCode(),
+                                    access.getClientCode(),
+                                    productCommRequest.getConnectionName());
 
-            if (productCommRequest.getProductId() != null
-                    && !productCommRequest.getProductId().isNull()) {
-                return this.productService
-                        .readByIdentity(access, productCommRequest.getProductId())
-                        .flatMap(product -> connMono.flatMap(connection -> {
-                            ULong prodId = product.getId();
-                            if (Boolean.TRUE.equals(productCommRequest.isDefault())) {
-                                return this.updateDefault(access, connection, productCommRequest)
-                                        .switchIfEmpty(super.create(
-                                                access,
-                                                ProductComm.of(productCommRequest, prodId, connection)));
-                            }
-                            return super.create(access, ProductComm.of(productCommRequest, prodId, connection));
-                        }));
-            }
-            return connMono.flatMap(connection -> {
-                ULong prodId = null;
-                return this.updateDefault(access, connection, productCommRequest)
-                        .switchIfEmpty(
-                                super.create(access, ProductComm.of(productCommRequest, prodId, connection)));
-            });
-        })
+                    if (productCommRequest.getProductId() != null
+                            && !productCommRequest.getProductId().isNull()) {
+                        return this.productService
+                                .readByIdentity(access, productCommRequest.getProductId())
+                                .flatMap(product -> connMono.flatMap(connection -> {
+                                    ULong prodId = product.getId();
+                                    if (Boolean.TRUE.equals(productCommRequest.isDefault())) {
+                                        return this.updateDefault(access, connection, productCommRequest)
+                                                .switchIfEmpty(super.create(
+                                                        access,
+                                                        ProductComm.of(productCommRequest, prodId, connection)));
+                                    }
+                                    return super.create(access, ProductComm.of(productCommRequest, prodId, connection));
+                                }));
+                    }
+                    return connMono.flatMap(connection -> {
+                        ULong prodId = null;
+                        return this.updateDefault(access, connection, productCommRequest)
+                                .switchIfEmpty(
+                                        super.create(access, ProductComm.of(productCommRequest, prodId, connection)));
+                    });
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updatableEntity"));
     }
 
@@ -285,28 +278,28 @@ public class ProductCommService
                 : productCommRequest.getProductId().getULongId();
 
         return FlatMapUtil.flatMapMono(
-                () -> prodId != null
-                        ? this.getDefault(
-                                access,
-                                prodId,
-                                connection.getConnectionType(),
-                                connection.getConnectionSubType())
-                        : this.getAppDefault(
-                                access, connection.getConnectionType(), connection.getConnectionSubType()),
-                defaultComm -> {
-                    defaultComm = switch (productCommRequest.getConnectionType()) {
-                        case MAIL ->
-                            defaultComm.setEmail(
-                                    productCommRequest.getEmail().getAddress());
-                        case TEXT, CALL ->
-                            defaultComm.setPhoneNumber(
-                                    productCommRequest.getPhoneNumber().getNumber());
-                        default -> defaultComm;
-                    };
+                        () -> prodId != null
+                                ? this.getDefault(
+                                        access,
+                                        prodId,
+                                        connection.getConnectionType(),
+                                        connection.getConnectionSubType())
+                                : this.getAppDefault(
+                                        access, connection.getConnectionType(), connection.getConnectionSubType()),
+                        defaultComm -> {
+                            defaultComm = switch (productCommRequest.getConnectionType()) {
+                                case MAIL ->
+                                    defaultComm.setEmail(
+                                            productCommRequest.getEmail().getAddress());
+                                case TEXT, CALL ->
+                                    defaultComm.setPhoneNumber(
+                                            productCommRequest.getPhoneNumber().getNumber());
+                                default -> defaultComm;
+                            };
 
-                    return super.updateInternal(access, defaultComm);
-                },
-                (defaultComm, updated) -> this.evictCache(updated).thenReturn(updated))
+                            return super.updateInternal(access, defaultComm);
+                        },
+                        (defaultComm, updated) -> this.evictCache(updated).thenReturn(updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updateDefault"));
     }
 
@@ -328,8 +321,8 @@ public class ProductCommService
     public Mono<ProductComm> getDefault(
             Identity productId, ConnectionType connectionType, ConnectionSubType connectionSubType) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.getDefault(access, productId, connectionType, connectionSubType))
+                        super::hasAccess,
+                        access -> this.getDefault(access, productId, connectionType, connectionSubType))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "ProductCommService.getDefault[Identity, String, ConnectionType]"));
     }

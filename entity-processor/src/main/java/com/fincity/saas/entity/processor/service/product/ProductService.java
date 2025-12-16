@@ -1,13 +1,5 @@
 package com.fincity.saas.entity.processor.service.product;
 
-import java.util.List;
-
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -26,7 +18,12 @@ import com.fincity.saas.entity.processor.model.request.product.ProductRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
-
+import java.util.List;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -101,13 +98,14 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> super.create(access, Product.of(productRequest)),
-                (access, created) -> productTemplateService.readByIdentity(productRequest.getProductTemplateId()),
-                (access, created, productTemplate) -> {
-                    created.setProductTemplateId(productTemplate.getId());
-                    return super.updateInternal(access, created);
-                })
+                        super::hasAccess,
+                        access -> super.create(access, Product.of(productRequest)),
+                        (access, created) ->
+                                productTemplateService.readByIdentity(productRequest.getProductTemplateId()),
+                        (access, created, productTemplate) -> {
+                            created.setProductTemplateId(productTemplate.getId());
+                            return super.updateInternal(access, created);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
@@ -115,9 +113,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     public Mono<ProductTemplate> setProductTemplate(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readByIdentity(access, productId), product -> {
-            product.setProductTemplateId(productTemplate.getId());
-            return super.updateInternal(access, product).map(updated -> productTemplate);
-        })
+                    product.setProductTemplateId(productTemplate.getId());
+                    return super.updateInternal(access, product).map(updated -> productTemplate);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
@@ -125,9 +123,9 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     public Mono<ProductWalkInForm> setProductWalkInForm(
             ProcessorAccess access, ULong productId, ProductWalkInForm productWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productId), product -> {
-            product.setProductWalkInFormId(productWalkInForm.getId());
-            return super.updateInternal(access, product).map(updated -> productWalkInForm);
-        })
+                    product.setProductWalkInFormId(productWalkInForm.getId());
+                    return super.updateInternal(access, product).map(updated -> productWalkInForm);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductWalkInForm"));
     }
 

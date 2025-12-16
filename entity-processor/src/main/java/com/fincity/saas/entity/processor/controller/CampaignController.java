@@ -19,7 +19,7 @@ public class CampaignController
         extends BaseUpdatableController<EntityProcessorCampaignsRecord, Campaign, CampaignDAO, CampaignService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Campaign>> createFromRequest(@RequestBody CampaignRequest campaignRequest) {
-        return this.service.create(campaignRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Campaign>> createRequest(@RequestBody CampaignRequest campaignRequest) {
+        return this.service.createRequest(campaignRequest).map(ResponseEntity::ok);
     }
 }

@@ -1,31 +1,27 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
+import com.fincity.saas.entity.processor.functions.ServiceSchemaGenerator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.stereotype.Service;
-
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
-import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
-import com.fincity.saas.entity.processor.functions.ServiceSchemaGenerator;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
-public class ProcessorSchemaService
-        implements ApplicationListener<ContextRefreshedEvent>, ApplicationContextAware {
+public class ProcessorSchemaService implements ApplicationListener<ContextRefreshedEvent>, ApplicationContextAware {
 
     private final Map<String, ReactiveRepository<Schema>> schemaRepositoryCache = new ConcurrentHashMap<>();
     private final AtomicBoolean initialized = new AtomicBoolean(false);
@@ -60,10 +56,11 @@ public class ProcessorSchemaService
             // 2. Are annotated with @Service
             // 3. Are in entity.processor.service package but not in base subpackage
             if (!(bean instanceof ProcessorMessageResourceService
-                    || bean instanceof ProcessorFunctionService
-                    || bean instanceof ProcessorSchemaService)
+                            || bean instanceof ProcessorFunctionService
+                            || bean instanceof ProcessorSchemaService)
                     && beanClass.isAnnotationPresent(Service.class)) {
-                String packageName = beanClass.getPackage() != null ? beanClass.getPackage().getName() : "";
+                String packageName =
+                        beanClass.getPackage() != null ? beanClass.getPackage().getName() : "";
                 if (packageName.contains("entity.processor.service") && !packageName.contains("base")) {
                     services.add(bean);
                 }
@@ -91,12 +88,13 @@ public class ProcessorSchemaService
         ProcessorSchemaRepository processorRepo = new ProcessorSchemaRepository(generatedSchemas);
 
         // Lazy lookup of IRepositoryProvider beans to avoid circular dependency
-        Map<String, IRepositoryProvider> repositoryProviders = applicationContext
-                .getBeansOfType(IRepositoryProvider.class);
+        Map<String, IRepositoryProvider> repositoryProviders =
+                applicationContext.getBeansOfType(IRepositoryProvider.class);
 
         return Flux.fromIterable(repositoryProviders.values())
                 .flatMap(provider -> provider.getSchemaRepository(processorRepo, appCode, clientCode))
-                .collectList().map(repos -> {
+                .collectList()
+                .map(repos -> {
                     @SuppressWarnings("unchecked")
                     ReactiveRepository<Schema>[] reposArray = new ReactiveRepository[repos.size() + 1];
                     for (int i = 0; i < repos.size(); i++) {

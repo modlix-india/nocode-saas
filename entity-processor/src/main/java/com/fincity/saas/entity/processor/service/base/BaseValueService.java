@@ -1,24 +1,5 @@
 package com.fincity.saas.entity.processor.service.base;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-
-import org.jooq.UpdatableRecord;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dao.base.BaseValueDAO;
@@ -32,10 +13,27 @@ import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import com.fincity.saas.entity.processor.util.NameUtil;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import org.jooq.UpdatableRecord;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
-public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends BaseValueDto<D>, O extends BaseValueDAO<R, D>>
+public abstract class BaseValueService<
+                R extends UpdatableRecord<R>, D extends BaseValueDto<D>, O extends BaseValueDAO<R, D>>
         extends BaseUpdatableService<R, D, O> {
 
     protected ProductTemplateService productTemplateService;
@@ -118,10 +116,9 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
 
             if (Boolean.FALSE.equals(existing.getIsParent())) {
                 if ((entity.getParentLevel0() != null
-                        && entity.getParentLevel0().equals(existing.getId()))
+                                && entity.getParentLevel0().equals(existing.getId()))
                         || (entity.getParentLevel1() != null
-                                && entity.getParentLevel1().equals(existing.getId())))
-                    return Mono.just(existing);
+                                && entity.getParentLevel1().equals(existing.getId()))) return Mono.just(existing);
 
                 existing.setParentLevel0(entity.getParentLevel0());
                 existing.setParentLevel1(entity.getParentLevel1());
@@ -166,8 +163,7 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
             entity.setIsParent(Boolean.FALSE);
             entity.setParentLevel0(parentEntity.getId());
 
-            if (parentEntity.getParentLevel0() != null)
-                entity.setParentLevel1(parentEntity.getParentLevel0());
+            if (parentEntity.getParentLevel0() != null) entity.setParentLevel1(parentEntity.getParentLevel0());
 
             return super.createInternal(access, entity)
                     .flatMap(cEntity -> this.evictCache(cEntity).map(evicted -> cEntity));
@@ -192,21 +188,21 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
     public Mono<List<BaseValueResponse<D>>> getAllValuesInOrder(
             Platform platform, ULong productTemplateId, ULong parentId) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.getAllValuesInOrderInternal(access, platform, productTemplateId, parentId))
+                        super::hasAccess,
+                        access -> this.getAllValuesInOrderInternal(access, platform, productTemplateId, parentId))
                 .map(BaseValueResponse::toList)
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
 
     public Mono<List<BaseValueResponse<D>>> getAllValues(Platform platform, ULong productTemplateId, ULong parentId) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.getAllValues(
-                        access.getAppCode(),
-                        access.getEffectiveClientCode(),
-                        platform,
-                        productTemplateId,
-                        parentId))
+                        super::hasAccess,
+                        access -> this.getAllValues(
+                                access.getAppCode(),
+                                access.getEffectiveClientCode(),
+                                platform,
+                                productTemplateId,
+                                parentId))
                 .map(BaseValueResponse::toList)
                 .switchIfEmpty(Mono.just(new ArrayList<>()));
     }
@@ -226,13 +222,12 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
     public Mono<NavigableMap<D, NavigableSet<D>>> getAllValuesInOrderInternal(
             ProcessorAccess access, Platform platform, ULong productTemplateId, ULong... parentIds) {
         return this.getAllValues(
-                access.getAppCode(), access.getEffectiveClientCode(), platform, productTemplateId, parentIds)
+                        access.getAppCode(), access.getEffectiveClientCode(), platform, productTemplateId, parentIds)
                 .flatMap(map -> {
-                    if (map == null || map.isEmpty())
-                        return Mono.empty();
+                    if (map == null || map.isEmpty()) return Mono.empty();
 
-                    NavigableMap<D, NavigableSet<D>> orderedMap = new TreeMap<>(
-                            Comparator.comparingInt(D::getOrder).thenComparing(D::getId));
+                    NavigableMap<D, NavigableSet<D>> orderedMap =
+                            new TreeMap<>(Comparator.comparingInt(D::getOrder).thenComparing(D::getId));
 
                     map.forEach((key, value) -> {
                         TreeSet<D> orderedSet = new TreeSet<>(
@@ -255,22 +250,18 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
     public Mono<Map.Entry<D, List<D>>> getParentChild(
             ProcessorAccess access, ULong productTemplateId, Identity parent, Identity child) {
 
-        if (parent == null || parent.isNull())
-            return Mono.empty();
+        if (parent == null || parent.isNull()) return Mono.empty();
 
         return this.readByIdentity(access, parent).flatMap(pEntity -> {
-            if (pEntity == null || !productTemplateId.equals(pEntity.getProductTemplateId()))
-                return Mono.empty();
+            if (pEntity == null || !productTemplateId.equals(pEntity.getProductTemplateId())) return Mono.empty();
 
-            if (child == null || child.isNull())
-                return Mono.just(Map.entry(pEntity, List.of()));
+            if (child == null || child.isNull()) return Mono.just(Map.entry(pEntity, List.of()));
 
             return this.readByIdentity(access, child).flatMap(cEntity -> {
                 if (cEntity == null || !productTemplateId.equals(cEntity.getProductTemplateId()))
                     return Mono.just(Map.entry(pEntity, List.of()));
 
-                if (cEntity.hasParent(pEntity.getId()))
-                    return Mono.just(Map.entry(pEntity, List.of(cEntity)));
+                if (cEntity.hasParent(pEntity.getId())) return Mono.just(Map.entry(pEntity, List.of(cEntity)));
 
                 return Mono.just(Map.entry(pEntity, List.of()));
             });
@@ -280,8 +271,7 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
     protected Mono<Map.Entry<D, Set<D>>> getValue(
             String appCode, String clientCode, Platform platform, ULong productTemplateId, ULong parentId) {
 
-        if (parentId == null)
-            return Mono.empty();
+        if (parentId == null) return Mono.empty();
 
         return this.getAllValues(appCode, clientCode, platform, productTemplateId, parentId)
                 .flatMap(map -> Mono.justOrEmpty(map.entrySet().stream()
@@ -298,8 +288,7 @@ public abstract class BaseValueService<R extends UpdatableRecord<R>, D extends B
         Set<ULong> parents = new HashSet<>(Arrays.asList(parentIds));
         parents.remove(null);
 
-        if (parents.isEmpty())
-            return this.getAllValues(appCode, clientCode, platform, productTemplateId);
+        if (parents.isEmpty()) return this.getAllValues(appCode, clientCode, platform, productTemplateId);
 
         return this.getAllValues(appCode, clientCode, platform, productTemplateId)
                 .map(values -> {
