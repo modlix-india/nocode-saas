@@ -4,6 +4,7 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreRemoteRepositories;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
 
 import java.util.Arrays;
@@ -28,6 +29,11 @@ public class Core extends SchemaImpl {
     public static final Core CORE = new Core();
 
     /**
+     * The table <code>core.core_remote_repositories</code>.
+     */
+    public final CoreRemoteRepositories CORE_REMOTE_REPOSITORIES = CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES;
+
+    /**
      * The table <code>core.core_tokens</code>.
      */
     public final CoreTokens CORE_TOKENS = CoreTokens.CORE_TOKENS;
@@ -48,6 +54,7 @@ public class Core extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES,
             CoreTokens.CORE_TOKENS
         );
     }
