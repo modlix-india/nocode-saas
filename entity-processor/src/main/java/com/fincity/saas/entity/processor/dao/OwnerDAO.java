@@ -38,13 +38,13 @@ public class OwnerDAO extends BaseProcessorDAO<EntityProcessorOwnersRecord, Owne
 
         List<Condition> phoneEmailConditions = new ArrayList<>();
 
-        if (number != null)
+        if (number != null && !number.isEmpty())
             phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS
                     .DIAL_CODE
                     .eq(dialCode.shortValue())
                     .and(ENTITY_PROCESSOR_OWNERS.PHONE_NUMBER.eq(number)));
 
-        if (email != null) phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS.EMAIL.eq(email));
+        if (email != null && !email.isEmpty()) phoneEmailConditions.add(ENTITY_PROCESSOR_OWNERS.EMAIL.eq(email));
 
         if (!phoneEmailConditions.isEmpty())
             conditions.add(
