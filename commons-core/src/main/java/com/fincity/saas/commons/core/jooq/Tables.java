@@ -4,6 +4,7 @@
 package com.fincity.saas.commons.core.jooq;
 
 
+import com.fincity.saas.commons.core.jooq.tables.CoreRemoteRepositories;
 import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
 
 
@@ -12,6 +13,11 @@ import com.fincity.saas.commons.core.jooq.tables.CoreTokens;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * The table <code>core.core_remote_repositories</code>.
+     */
+    public static final CoreRemoteRepositories CORE_REMOTE_REPOSITORIES = CoreRemoteRepositories.CORE_REMOTE_REPOSITORIES;
 
     /**
      * The table <code>core.core_tokens</code>.
