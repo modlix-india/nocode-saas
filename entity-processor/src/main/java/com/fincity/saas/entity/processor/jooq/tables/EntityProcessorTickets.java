@@ -7,6 +7,7 @@ package com.fincity.saas.entity.processor.jooq.tables;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
@@ -187,6 +188,12 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * Campaign Id related to this ticket.
      */
     public final TableField<EntityProcessorTicketsRecord, ULong> CAMPAIGN_ID = createField(DSL.name("CAMPAIGN_ID"), SQLDataType.BIGINTUNSIGNED, this, "Campaign Id related to this ticket.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
+     * Deal Tag - HOT/WARM/COLD
+     */
+    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT/WARM/COLD");
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
