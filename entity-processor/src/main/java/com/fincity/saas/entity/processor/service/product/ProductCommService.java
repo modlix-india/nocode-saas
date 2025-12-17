@@ -1,11 +1,16 @@
 package com.fincity.saas.entity.processor.service.product;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductCommDAO;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductCommsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -17,23 +22,76 @@ import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.oserver.core.service.ConnectionServiceProvider;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import com.fincity.saas.entity.processor.util.ListFunctionRepository;
+import com.fincity.saas.entity.processor.util.MapSchemaRepository;
+import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
 public class ProductCommService
-        extends BaseProcessorService<EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO> {
+        extends BaseProcessorService<EntityProcessorProductCommsRecord, ProductComm, ProductCommDAO>
+        implements IRepositoryProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductCommService.class);
     private static final String PRODUCT_COMM = "productComm";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
 
     private final ConnectionServiceProvider connectionServices;
     private final ProductService productService;
 
-    public ProductCommService(ConnectionServiceProvider connectionServices, ProductService productService) {
+    @Autowired
+    @Lazy
+    private ProductCommService self;
+
+    public ProductCommService(ConnectionServiceProvider connectionServices, ProductService productService, Gson gson) {
         this.connectionServices = connectionServices;
         this.productService = productService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("ProductComm", ProductComm.class, gson));
+
+        String dtoSchemaRef =
+                SchemaUtil.getNamespaceForClass(ProductComm.class) + "." + ProductComm.class.getSimpleName();
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductComm",
+                "CreateRequest",
+                SchemaUtil.ArgSpec.ofRef("request", ProductCommRequest.class),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductComm",
+                "GetDefault",
+                SchemaUtil.ArgSpec.identity("productId"),
+                SchemaUtil.ArgSpec.ofRef("connectionType", ConnectionType.class),
+                SchemaUtil.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                (productId, connectionType, connectionSubType) ->
+                        self.getDefault(productId, connectionType, connectionSubType)));
     }
 
     @Override
@@ -411,5 +469,36 @@ public class ProductCommService
                         productId,
                         connectionType.name(),
                         connectionSubType.name()));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+
+        Map<String, Schema> schemas = new HashMap<>();
+        try {
+            Class<?> dtoClass = ProductComm.class;
+            String namespace = SchemaUtil.getNamespaceForClass(dtoClass);
+            String name = dtoClass.getSimpleName();
+
+            Schema schema = SchemaUtil.generateSchemaForClass(dtoClass);
+            if (schema != null) {
+                schemas.put(namespace + "." + name, schema);
+                LOGGER.info("Generated schema for ProductComm class: {}.{}", namespace, name);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to generate schema for ProductComm class: {}", e.getMessage(), e);
+        }
+
+        if (!schemas.isEmpty()) {
+            return Mono.just(new MapSchemaRepository(schemas));
+        }
+
+        return Mono.empty();
     }
 }

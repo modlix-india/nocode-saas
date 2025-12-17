@@ -1,5 +1,8 @@
 package com.fincity.saas.entity.processor.service.form;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.model.User;
@@ -11,11 +14,14 @@ import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.form.WalkInFormRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
@@ -24,11 +30,21 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.util.ListFunctionRepository;
+import com.fincity.saas.entity.processor.util.MapSchemaRepository;
 import com.fincity.saas.entity.processor.util.NameUtil;
+import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -42,19 +58,55 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ProductWalkInFormService
-        extends BaseWalkInFormService<
-                EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
+        extends BaseWalkInFormService<EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO>
+        implements IRepositoryProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductWalkInFormService.class);
     private static final String SYSTEM = "SYSTEM";
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
     private final ProductService productService;
     private TicketService ticketService;
     private ActivityService activityService;
 
     private ProductTemplateWalkInFormService productTemplateWalkInFormService;
 
-    public ProductWalkInFormService(ProductService productService) {
+    @Autowired
+    @Lazy
+    private ProductWalkInFormService self;
+
+    public ProductWalkInFormService(ProductService productService, Gson gson) {
         this.productService = productService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("ProductWalkInForm", ProductWalkInForm.class, gson));
+
+        String dtoSchemaRef = SchemaUtil.getNamespaceForClass(ProductWalkInForm.class) + "."
+                + ProductWalkInForm.class.getSimpleName();
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductWalkInForm",
+                "CreateRequest",
+                SchemaUtil.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductWalkInForm",
+                "GetWalkInForm",
+                SchemaUtil.ArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::getWalkInForm));
     }
 
     @Autowired
@@ -308,5 +360,38 @@ public class ProductWalkInFormService
                         this.productTemplateWalkInFormService.getWalkInFormResponse(access, resolvedProduct.getT2()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponseInternal"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+
+        Map<String, Schema> schemas = new HashMap<>();
+
+        // TODO: When we add dynamic fields, the schema will be generated dynamically from DB.
+        try {
+            Class<?> dtoClass = ProductWalkInForm.class;
+            String namespace = SchemaUtil.getNamespaceForClass(dtoClass);
+            String name = dtoClass.getSimpleName();
+
+            Schema schema = SchemaUtil.generateSchemaForClass(dtoClass);
+            if (schema != null) {
+                schemas.put(namespace + "." + name, schema);
+                LOGGER.info("Generated schema for ProductWalkInForm class: {}.{}", namespace, name);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to generate schema for ProductWalkInForm class: {}", e.getMessage(), e);
+        }
+
+        if (!schemas.isEmpty()) {
+            return Mono.just(new MapSchemaRepository(schemas));
+        }
+
+        return Mono.empty();
     }
 }

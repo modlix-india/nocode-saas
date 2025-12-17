@@ -1,10 +1,15 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.feign.IFeignMessageService;
+import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
@@ -13,15 +18,29 @@ import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppl
 import com.fincity.saas.entity.processor.oserver.message.model.ExotelConnectAppletResponse;
 import com.fincity.saas.entity.processor.oserver.message.model.IncomingCallRequest;
 import com.fincity.saas.entity.processor.service.product.ProductCommService;
+import com.fincity.saas.entity.processor.util.ListFunctionRepository;
+import com.fincity.saas.entity.processor.util.MapSchemaRepository;
+import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Service
-public class TicketCallService {
+public class TicketCallService implements IRepositoryProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(TicketCallService.class);
     private static final ConnectionType CALL_CONNECTION = ConnectionType.CALL;
 
     private final TicketService ticketService;
@@ -32,23 +51,39 @@ public class TicketCallService {
 
     private final ProcessorMessageResourceService msgService;
 
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+
     public TicketCallService(
             TicketService ticketService,
             ProductCommService productCommService,
             IFeignMessageService messageService,
-            ProcessorMessageResourceService msgService) {
+            ProcessorMessageResourceService msgService,
+            Gson gson) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
         this.messageService = messageService;
         this.msgService = msgService;
+        this.gson = gson;
     }
 
     public Mono<ExotelConnectAppletResponse> incomingExotelCall(
             String appCode, String clientCode, ServerHttpRequest request) {
+        return this.incomingExotelCall(
+                appCode, clientCode, request.getQueryParams().toSingleValueMap());
+    }
+
+    public Mono<ExotelConnectAppletResponse> incomingExotelCall(
+            String appCode, String clientCode, Map<String, String> providerIncomingRequest) {
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, true, null, null);
 
-        ExotelConnectAppletRequest exotelRequest = ExotelConnectAppletRequest.of(request.getQueryParams());
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        if (providerIncomingRequest != null) {
+            providerIncomingRequest.forEach((k, v) -> params.put(k, List.of(v)));
+        }
+
+        ExotelConnectAppletRequest exotelRequest = ExotelConnectAppletRequest.of(params);
 
         PhoneNumber from = PhoneNumber.of(exotelRequest.getFrom());
 
@@ -66,8 +101,7 @@ public class TicketCallService {
                         .switchIfEmpty(this.createExotelTicket(access, from, productComm)),
                 (productComm, ticket) ->
                         messageService.connectCall(appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
-                                .setProviderIncomingRequest(
-                                        request.getQueryParams().toSingleValueMap())
+                                .setProviderIncomingRequest(providerIncomingRequest)
                                 .setConnectionName(productComm.getConnectionName())
                                 .setUserId(ticket.getAssignedUserId())));
     }
@@ -90,5 +124,51 @@ public class TicketCallService {
                         .setProductId(productId)
                         .setSource(source)
                         .setSubSource(subSource));
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "TicketCall",
+                "IncomingExotelCall",
+                SchemaUtil.ArgSpec.string("appCode"),
+                SchemaUtil.ArgSpec.string("clientCode"),
+                SchemaUtil.ArgSpec.stringMap("providerIncomingRequest"),
+                "result",
+                Schema.ofRef("EntityProcessor.Common.ExotelConnectAppletResponse"),
+                gson,
+                this::incomingExotelCall));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+
+        Map<String, Schema> schemas = new HashMap<>();
+        try {
+            Class<?> responseClass = ExotelConnectAppletResponse.class;
+
+            String namespace = SchemaUtil.getNamespaceForClass(responseClass);
+            String name = responseClass.getSimpleName();
+
+            Schema schema = SchemaUtil.generateSchemaForClass(responseClass);
+            if (schema != null) {
+                schemas.put(namespace + "." + name, schema);
+                LOGGER.info("Generated schema for ExotelConnectAppletResponse class: {}.{}", namespace, name);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to generate schema for ExotelConnectAppletResponse class: {}", e.getMessage(), e);
+        }
+
+        if (!schemas.isEmpty()) {
+            return Mono.just(new MapSchemaRepository(schemas));
+        }
+
+        return Mono.empty();
     }
 }

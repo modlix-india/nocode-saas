@@ -1,5 +1,8 @@
 package com.fincity.saas.entity.processor.service.product.template;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
@@ -8,6 +11,8 @@ import com.fincity.saas.entity.processor.dto.form.ProductTemplateWalkInForm;
 import com.fincity.saas.entity.processor.dto.product.ProductTemplate;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
+import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
+import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplatesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -16,7 +21,18 @@ import com.fincity.saas.entity.processor.model.request.product.template.ProductT
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.util.ListFunctionRepository;
+import com.fincity.saas.entity.processor.util.MapSchemaRepository;
+import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jooq.types.ULong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -26,15 +42,58 @@ import reactor.util.context.Context;
 
 @Service
 public class ProductTemplateService
-        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO> {
+        extends BaseUpdatableService<EntityProcessorProductTemplatesRecord, ProductTemplate, ProductTemplateDAO>
+        implements IRepositoryProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductTemplateService.class);
     private static final String PRODUCT_TEMPLATE = "productTemplate";
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+
     private ProductService productService;
+
+    @Autowired
+    @Lazy
+    private ProductTemplateService self;
+
+    public ProductTemplateService(Gson gson) {
+        this.gson = gson;
+    }
 
     @Lazy
     @Autowired
     private void setProductService(ProductService productService) {
         this.productService = productService;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("ProductTemplate", ProductTemplate.class, gson));
+
+        String dtoSchemaRef =
+                SchemaUtil.getNamespaceForClass(ProductTemplate.class) + "." + ProductTemplate.class.getSimpleName();
+
+        // ProductTemplateController: createRequest(ProductTemplateRequest)
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductTemplate",
+                "CreateRequest",
+                SchemaUtil.ArgSpec.ofRef("request", ProductTemplateRequest.class),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::createRequest));
+
+        // ProductTemplateController: attachEntity(identity, ProductTemplateRequest)
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductTemplate",
+                "AttachEntity",
+                SchemaUtil.ArgSpec.identity("identity"),
+                SchemaUtil.ArgSpec.ofRef("request", ProductTemplateRequest.class),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::attachEntity));
     }
 
     @Override
@@ -110,5 +169,36 @@ public class ProductTemplateService
                     return super.updateInternal(access, productTemplate).map(updated -> productTemplateWalkInForm);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplateWalkInForm"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+
+        Map<String, Schema> schemas = new HashMap<>();
+        try {
+            Class<?> dtoClass = ProductTemplate.class;
+            String namespace = SchemaUtil.getNamespaceForClass(dtoClass);
+            String name = dtoClass.getSimpleName();
+
+            Schema schema = SchemaUtil.generateSchemaForClass(dtoClass);
+            if (schema != null) {
+                schemas.put(namespace + "." + name, schema);
+                LOGGER.info("Generated schema for ProductTemplate class: {}.{}", namespace, name);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to generate schema for ProductTemplate class: {}", e.getMessage(), e);
+        }
+
+        if (!schemas.isEmpty()) {
+            return Mono.just(new MapSchemaRepository(schemas));
+        }
+
+        return Mono.empty();
     }
 }

@@ -38,11 +38,11 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @RestController
-@RequestMapping("api/entity/processor/functions/")
+@RequestMapping("api/entity/processor/functions")
 public class ProcessorFunctionController {
 
-    private static final String PATH = "execute/{namespace}/{name}";
-    private static final String PATH_FULL_NAME = "execute/{name}";
+    private static final String PATH = "/execute/{namespace}/{name}";
+    private static final String PATH_FULL_NAME = "/execute/{name}";
     private static final String PATH_VARIABLE_NAMESPACE = "namespace";
     private static final String PATH_VARIABLE_NAME = "name";
 
@@ -185,7 +185,7 @@ public class ProcessorFunctionController {
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
-            String namespace,
+            @RequestParam String namespace,
             @RequestParam String name) {
         return functionService
                 .getFunctionRepository(appCode, clientCode)

@@ -1,8 +1,12 @@
 package com.fincity.saas.entity.processor.util;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.model.Parameter;
+import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -10,18 +14,24 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import lombok.experimental.UtilityClass;
 import org.jooq.types.UByte;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
+import org.springframework.data.domain.Pageable;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -61,6 +71,164 @@ public class SchemaUtil {
                 List.of(Schema.ofRef("Commons.FilterCondition"), Schema.ofRef("Commons.ComplexCondition")));
 
         PRIMITIVE_SCHEMA_CACHE.put(AbstractCondition.class, abstractConditionSchema);
+    }
+
+    public record ArgSpec<P>(String name, Parameter parameter, BiFunction<Gson, JsonElement, P> parser) {
+
+        public static final String IDENTITY_SCHEMA_REF = "EntityProcessor.Model.Common.Identity";
+        public static final String PAGEABLE_SCHEMA_REF = "Commons.Pageable";
+        public static final String QUERY_SCHEMA_REF = "Commons.Query";
+        public static final String CONDITION_SCHEMA_REF = "Commons.AbstractCondition";
+
+        public static <P> ArgSpec<P> custom(String name, Schema schema, BiFunction<Gson, JsonElement, P> parser) {
+            return new ArgSpec<>(name, Parameter.of(name, schema), parser);
+        }
+
+        public static <P> ArgSpec<P> custom(String name, Parameter parameter, BiFunction<Gson, JsonElement, P> parser) {
+            return new ArgSpec<>(name, parameter, parser);
+        }
+
+        public static <P> ArgSpec<P> of(String name, Schema schema, Class<P> clazz) {
+            return new ArgSpec<>(
+                    name,
+                    Parameter.of(name, schema),
+                    (g, j) -> j == null || j.isJsonNull() ? null : g.fromJson(j, clazz));
+        }
+
+        public static <P> ArgSpec<P> ofRef(String name, String schemaRef, Class<P> clazz) {
+            return of(name, Schema.ofRef(schemaRef), clazz);
+        }
+
+        public static <P> ArgSpec<P> ofRef(String name, Class<P> clazz) {
+            String schemaRef = SchemaUtil.getNamespaceForClass(clazz) + "." + clazz.getSimpleName();
+            return ofRef(name, schemaRef, clazz);
+        }
+
+        public static ArgSpec<String> string(String name) {
+            Schema stringSchema = PRIMITIVE_SCHEMA_CACHE.get(String.class);
+            return new ArgSpec<>(
+                    name,
+                    Parameter.of(name, stringSchema == null ? Schema.ofString("String") : stringSchema),
+                    (g, j) -> j == null || j.isJsonNull() ? null : j.getAsString());
+        }
+
+        public static ArgSpec<Boolean> bool(String name) {
+            Schema boolSchema = PRIMITIVE_SCHEMA_CACHE.get(Boolean.class);
+            return new ArgSpec<>(
+                    name,
+                    Parameter.of(name, boolSchema == null ? Schema.ofBoolean("Boolean") : boolSchema),
+                    (g, j) -> j == null || j.isJsonNull() ? null : j.getAsBoolean());
+        }
+
+        public static ArgSpec<LocalDateTime> dateTimeString(String name) {
+            Schema stringSchema = PRIMITIVE_SCHEMA_CACHE.get(String.class);
+            return custom(
+                    name,
+                    stringSchema == null ? Schema.ofString("String") : stringSchema,
+                    (g, j) -> j == null || j.isJsonNull() ? null : LocalDateTime.parse(j.getAsString()));
+        }
+
+        public static ArgSpec<Map<String, String>> stringMap(String name) {
+            return custom(name, Schema.ofObject(name), (g, j) -> {
+                Map<String, String> out = new LinkedHashMap<>();
+                if (j == null || j.isJsonNull() || !j.isJsonObject()) return out;
+                for (Map.Entry<String, JsonElement> e : j.getAsJsonObject().entrySet()) {
+                    if (e.getValue() == null || e.getValue().isJsonNull()) continue;
+                    out.put(e.getKey(), e.getValue().getAsString());
+                }
+                return out;
+            });
+        }
+
+        public static ArgSpec<Identity> identity() {
+            return identity("identity");
+        }
+
+        public static ArgSpec<Identity> identity(String name) {
+            return ofRef(name, IDENTITY_SCHEMA_REF, Identity.class);
+        }
+
+        public static ArgSpec<Pageable> pageable() {
+            return pageable("pageable");
+        }
+
+        public static ArgSpec<Pageable> pageable(String name) {
+            return custom(
+                    name,
+                    Schema.ofRef(PAGEABLE_SCHEMA_REF),
+                    (g, j) -> j == null || j.isJsonNull() ? null : g.fromJson(j, Pageable.class));
+        }
+
+        public static ArgSpec<Query> query() {
+            return query("query");
+        }
+
+        public static ArgSpec<Query> query(String name) {
+            return ofRef(name, QUERY_SCHEMA_REF, Query.class);
+        }
+
+        public static ArgSpec<AbstractCondition> condition() {
+            return condition("condition");
+        }
+
+        public static ArgSpec<AbstractCondition> condition(String name) {
+            return custom(
+                    name,
+                    Schema.ofRef(CONDITION_SCHEMA_REF),
+                    (g, j) -> j == null || j.isJsonNull() ? null : g.fromJson(j, AbstractCondition.class));
+        }
+
+        public static ArgSpec<List<String>> stringList(String name) {
+            Schema stringSchema = PRIMITIVE_SCHEMA_CACHE.get(String.class);
+            Schema item = stringSchema == null ? Schema.ofString("String") : stringSchema;
+            return custom(name, Schema.ofArray(name, item), (g, j) -> {
+                if (j == null || j.isJsonNull()) return List.of();
+                if (!j.isJsonArray()) return List.of();
+                List<String> out = new java.util.ArrayList<>();
+                j.getAsJsonArray().forEach(e -> out.add(e.getAsString()));
+                return out;
+            });
+        }
+
+        public static ArgSpec<List<String>> fields() {
+            return stringList("fields");
+        }
+
+        public static ArgSpec<MultiValueMap<String, String>> queryParams() {
+            return queryParams("queryParams");
+        }
+
+        public static ArgSpec<MultiValueMap<String, String>> queryParams(String name) {
+            return custom(name, Schema.ofObject(name), (g, j) -> {
+                MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+                if (j == null || j.isJsonNull() || !j.isJsonObject()) return queryParams;
+                JsonObject obj = j.getAsJsonObject();
+                obj.entrySet().forEach(e -> {
+                    JsonElement v = e.getValue();
+                    if (v == null || v.isJsonNull()) return;
+                    if (v.isJsonArray()) v.getAsJsonArray().forEach(x -> queryParams.add(e.getKey(), x.getAsString()));
+                    else queryParams.add(e.getKey(), v.getAsString());
+                });
+                return queryParams;
+            });
+        }
+
+        public static ArgSpec<ULong> uLong(String name) {
+            return custom(
+                    name,
+                    Schema.ofInteger("ULong"),
+                    (g, j) -> j == null || j.isJsonNull() ? null : ULong.valueOf(j.getAsString()));
+        }
+
+        public static ArgSpec<List<ULong>> uLongList(String name) {
+            return custom(name, Schema.ofArray(name, Schema.ofInteger("ULong")), (g, j) -> {
+                if (j == null || j.isJsonNull()) return List.of();
+                if (!j.isJsonArray()) return List.of();
+                List<ULong> out = new java.util.ArrayList<>();
+                j.getAsJsonArray().forEach(e -> out.add(ULong.valueOf(e.getAsString())));
+                return out;
+            });
+        }
     }
 
     /**

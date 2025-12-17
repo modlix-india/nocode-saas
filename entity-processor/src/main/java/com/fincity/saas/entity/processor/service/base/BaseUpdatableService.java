@@ -2,13 +2,9 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.model.EventResult;
-import com.fincity.nocode.kirun.engine.model.FunctionOutput;
-import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
-import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
@@ -26,14 +22,12 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
-import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,14 +43,28 @@ public abstract class BaseUpdatableService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> implements IEntitySeries, IProcessorAccessService {
 
-    @Getter(onMethod_ = @IgnoreGeneration)
     protected ProcessorMessageResourceService msgService;
 
-    @Getter(onMethod_ = @IgnoreGeneration)
     protected IFeignSecurityService securityService;
 
-    @Getter(onMethod_ = @IgnoreGeneration)
     protected CacheService cacheService;
+
+    @Override
+    @IgnoreGeneration
+    public ProcessorMessageResourceService getMsgService() {
+        return this.msgService;
+    }
+
+    @Override
+    @IgnoreGeneration
+    public IFeignSecurityService getSecurityService() {
+        return this.securityService;
+    }
+
+    @IgnoreGeneration
+    public CacheService getCacheService() {
+        return this.cacheService;
+    }
 
     protected abstract String getCacheName();
 
@@ -175,12 +183,10 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.create(access, entity));
     }
 
-    @IgnoreGeneration
     protected Mono<D> create(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
-    @IgnoreGeneration
     public Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("create");
@@ -271,7 +277,6 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.update(access, entity));
     }
 
-    @IgnoreGeneration
     public Mono<D> update(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(cEntity -> this.updateInternal(access, cEntity));
     }
@@ -294,7 +299,6 @@ public abstract class BaseUpdatableService<
                 this::update);
     }
 
-    @IgnoreGeneration
     public Mono<D> updateInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
@@ -328,7 +332,6 @@ public abstract class BaseUpdatableService<
                 entityName);
     }
 
-    @IgnoreGeneration
     public Mono<D> readById(ProcessorAccess access, ULong id) {
 
         if (id == null) return this.identityMissingError();
@@ -352,7 +355,6 @@ public abstract class BaseUpdatableService<
                 this.getCacheKey(access.getAppCode(), access.getClientCode(), id));
     }
 
-    @IgnoreGeneration
     public Mono<D> readByCode(ProcessorAccess access, String code) {
 
         if (code == null || code.isEmpty()) return this.identityMissingError();
@@ -376,7 +378,6 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByIdentity(access, identity));
     }
 
-    @IgnoreGeneration
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -386,7 +387,6 @@ public abstract class BaseUpdatableService<
                 : this.readByCode(access, identity.getCode());
     }
 
-    @IgnoreGeneration
     public Mono<Identity> checkAndUpdateIdentityWithAccess(ProcessorAccess access, Identity identity) {
 
         if (identity == null || identity.isNull()) return this.identityMissingError();
@@ -432,6 +432,25 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
     }
 
+    public Mono<BaseResponse> getBaseResponseByIdentity(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId() ? this.getBaseResponse(identity.getULongId()) : this.getBaseResponse(identity.getCode());
+    }
+
+    public Mono<D> updateByIdentity(Identity identity, D entity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        if (identity.isId()) {
+            entity.setId(identity.getULongId());
+            return this.update(entity);
+        }
+
+        return this.updateByCode(identity.getCode(), entity);
+    }
+
     protected <T> Mono<T> throwMissingParam(String paramName) {
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -453,204 +472,112 @@ public abstract class BaseUpdatableService<
         String dtoNamespace = SchemaUtil.getNamespaceForClass(dtoClass);
         String dtoName = dtoClass.getSimpleName();
         String dtoSchemaRef = dtoNamespace + "." + dtoName;
-        String identitySchemaRef = "EntityProcessor.Model.Common.Identity";
         String baseResponseSchemaRef = "EntityProcessor.Model.Base.BaseResponse";
-        String querySchemaRef = "Commons.Query";
         String pageSchemaRef = "Commons.Page";
-        String pageableSchemaRef = "Commons.Pageable";
+        Schema mapSchema = Schema.ofObject("Map");
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "Create",
-                Map.of("entity", Parameter.of("entity", Schema.ofRef(dtoSchemaRef))),
+                SchemaUtil.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
-                "entity",
-                dtoClass,
                 gson,
-                this,
-		        this::create));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "ReadById",
-                Map.of("id", Parameter.of("id", Schema.ofInteger("ULong"))),
-                "result",
-                Schema.ofRef(dtoSchemaRef),
-                this,
-                (params, service) -> {
-                    String idStr = params.getArguments().get("id").getAsString();
-                    ULong id = ULong.valueOf(idStr);
-                    return service.read(id)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("result", gson.toJsonTree(result))))));
-                }));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "Read",
-                Map.of("code", Parameter.of("code", Schema.ofString("code"))),
-                "result",
-                Schema.ofRef(dtoSchemaRef),
-                this,
-                (params, service) -> {
-                    String code = params.getArguments().get("code").getAsString();
-                    return service.read(code)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("result", gson.toJsonTree(result))))));
-                }));
+                this::create));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadByIdentity",
-                Map.of("identity", Parameter.of("identity", Schema.ofRef(identitySchemaRef))),
+                SchemaUtil.ArgSpec.identity(),
                 "result",
                 Schema.ofRef(dtoSchemaRef),
-                this,
-                (params, service) -> {
-                    JsonElement identityJson = params.getArguments().get("identity");
-                    Identity identity = gson.fromJson(identityJson, Identity.class);
-                    return service.readByIdentity(identity)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("result", gson.toJsonTree(result))))));
-                }));
+                gson,
+                this::readByIdentity));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
-                "Update",
-                Map.of(
-                        "id", Parameter.of("id", Schema.ofInteger("ULong")),
-                        "entity", Parameter.of("entity", Schema.ofRef(dtoSchemaRef))),
+                "ReadEagerByIdentity",
+                SchemaUtil.ArgSpec.identity(),
+                SchemaUtil.ArgSpec.fields(),
+                SchemaUtil.ArgSpec.queryParams(),
+                "result",
+                mapSchema,
+                gson,
+                this::readEager));
+
+        functions.add(AbstractProcessorFunction.createServiceFunction(
+                entityName,
+                "UpdateByIdentity",
+                SchemaUtil.ArgSpec.identity(),
+                SchemaUtil.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "updated",
                 Schema.ofRef(dtoSchemaRef),
-                this,
-                (params, service) -> {
-                    String idStr = params.getArguments().get("id").getAsString();
-                    ULong id = ULong.valueOf(idStr);
-                    JsonElement entityJson = params.getArguments().get("entity");
-                    D entity = gson.fromJson(entityJson, dtoClass);
-                    entity.setId(id);
-                    return service.update(entity)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("updated", gson.toJsonTree(result))))));
-                }));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "UpdateByCode",
-                Map.of(
-                        "code", Parameter.of("code", Schema.ofString("code")),
-                        "entity", Parameter.of("entity", Schema.ofRef(dtoSchemaRef))),
-                "updated",
-                Schema.ofRef(dtoSchemaRef),
-                this,
-                (params, service) -> {
-                    String code = params.getArguments().get("code").getAsString();
-                    JsonElement entityJson = params.getArguments().get("entity");
-                    D entity = gson.fromJson(entityJson, dtoClass);
-                    return service.updateByCode(code, entity)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("updated", gson.toJsonTree(result))))));
-                }));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "Delete",
-                Map.of("id", Parameter.of("id", Schema.ofInteger("ULong"))),
-                "deleted",
-                Schema.ofInteger("deleted"),
-                this,
-                (params, service) -> {
-                    String idStr = params.getArguments().get("id").getAsString();
-                    ULong id = ULong.valueOf(idStr);
-                    return service.delete(id)
-                            .map(deleted -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("deleted", gson.toJsonTree(deleted))))));
-                }));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "DeleteByCode",
-                Map.of("code", Parameter.of("code", Schema.ofString("code"))),
-                "deleted",
-                Schema.ofInteger("deleted"),
-                this,
-                (params, service) -> {
-                    String code = params.getArguments().get("code").getAsString();
-                    return service.deleteByCode(code)
-                            .map(deleted -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("deleted", gson.toJsonTree(deleted))))));
-                }));
+                gson,
+                this::updateByIdentity));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "DeleteIdentity",
-                Map.of("identity", Parameter.of("identity", Schema.ofRef(identitySchemaRef))),
+                SchemaUtil.ArgSpec.identity(),
                 "deleted",
                 Schema.ofInteger("deleted"),
-                this,
-                (params, service) -> {
-                    JsonElement identityJson = params.getArguments().get("identity");
-                    Identity identity = gson.fromJson(identityJson, Identity.class);
-                    return service.deleteIdentity(identity)
-                            .map(deleted -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("deleted", gson.toJsonTree(deleted))))));
-                }));
+                gson,
+                this::deleteIdentity));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
-                "GetBaseResponseById",
-                Map.of("id", Parameter.of("id", Schema.ofInteger("ULong"))),
+                "GetBaseResponseByIdentity",
+                SchemaUtil.ArgSpec.identity(),
                 "result",
                 Schema.ofRef(baseResponseSchemaRef),
-                this,
-                (params, service) -> {
-                    String idStr = params.getArguments().get("id").getAsString();
-                    ULong id = ULong.valueOf(idStr);
-                    return service.getBaseResponse(id)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("result", gson.toJsonTree(result))))));
-                }));
-
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
-                "GetBaseResponseByCode",
-                Map.of("code", Parameter.of("code", Schema.ofString("code"))),
-                "result",
-                Schema.ofRef(baseResponseSchemaRef),
-                this,
-                (params, service) -> {
-                    String code = params.getArguments().get("code").getAsString();
-                    return service.getBaseResponse(code)
-                            .map(result -> new FunctionOutput(
-                                    List.of(EventResult.outputOf(Map.of("result", gson.toJsonTree(result))))));
-                }));
+                gson,
+                this::getBaseResponseByIdentity));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilter",
-                Map.of("pageable", Parameter.of("pageable", Schema.ofRef(pageableSchemaRef))),
+                SchemaUtil.ArgSpec.pageable(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
-                "pageable",
-                Pageable.class,
                 gson,
-                this,
-                pageable -> this.readPageFilter(pageable, null)));
+                p -> this.readPageFilter(p == null ? PageRequest.of(0, 10) : p, null)));
 
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilterQuery",
-                Map.of("query", Parameter.of("query", Schema.ofRef(querySchemaRef))),
+                SchemaUtil.ArgSpec.query(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
-                "query",
-                Query.class,
                 gson,
-                this,
                 query -> {
                     Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
                     return this.readPageFilter(pageable, query.getCondition());
+                }));
+
+        functions.add(AbstractProcessorFunction.createServiceFunction(
+                entityName,
+                "ReadPageFilterEager",
+                SchemaUtil.ArgSpec.pageable(),
+                SchemaUtil.ArgSpec.condition(),
+                SchemaUtil.ArgSpec.fields(),
+                SchemaUtil.ArgSpec.queryParams(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                (pageable, condition, fields, queryParams) -> this.readPageFilterEager(
+                        pageable == null ? PageRequest.of(0, 10) : pageable, condition, fields, queryParams)));
+
+        functions.add(AbstractProcessorFunction.createServiceFunction(
+                entityName,
+                "ReadPageFilterEagerQuery",
+                SchemaUtil.ArgSpec.query(),
+                SchemaUtil.ArgSpec.queryParams(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                (query, queryParams) -> {
+                    Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+                    return this.readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams);
                 }));
 
         return functions;

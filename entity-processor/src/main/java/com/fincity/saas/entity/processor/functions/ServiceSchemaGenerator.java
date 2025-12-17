@@ -146,17 +146,23 @@ public class ServiceSchemaGenerator {
                     .setProperties(Map.of(
                             "page", Schema.ofInteger("page").setDescription("Page number (0-indexed)"),
                             "size", Schema.ofInteger("size").setDescription("Page size"),
-                            "sort", Schema.ofObject("Sort")
-                                    .setProperties(Map.of(
-                                            "property", Schema.ofString("property").setDescription("Sort property name"),
-                                            "direction", Schema.ofString("direction")
-                                                    .setEnums(List.of(
-                                                            new JsonPrimitive("ASC"),
-                                                            new JsonPrimitive("DESC")))
-                                                    .setDescription("Sort direction"),
-                                            "ignoreCase", Schema.ofBoolean("ignoreCase")
-                                                    .setDescription("Whether to ignore case when sorting")))
-                                    .setDescription("Sort configuration")));
+                            "sort",
+                                    Schema.ofObject("Sort")
+                                            .setProperties(Map.of(
+                                                    "property",
+                                                            Schema.ofString("property")
+                                                                    .setDescription("Sort property name"),
+                                                    "direction",
+                                                            Schema.ofString("direction")
+                                                                    .setEnums(List.of(
+                                                                            new JsonPrimitive("ASC"),
+                                                                            new JsonPrimitive("DESC")))
+                                                                    .setDescription("Sort direction"),
+                                                    "ignoreCase",
+                                                            Schema.ofBoolean("ignoreCase")
+                                                                    .setDescription(
+                                                                            "Whether to ignore case when sorting")))
+                                            .setDescription("Sort configuration")));
             schemas.put("Commons.Pageable", pageableSchema);
         } catch (ClassNotFoundException e) {
             LOGGER.warn("Pageable class not found: {}", e.getMessage());

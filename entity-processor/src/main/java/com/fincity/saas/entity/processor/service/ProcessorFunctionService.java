@@ -99,15 +99,26 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
             String appCode,
             String clientCode) {
 
-        return getFunctionRepository(appCode, clientCode)
-                .flatMap(repository -> repository.find(namespace, name).flatMap(function -> {
-                    Mono<Map<String, JsonElement>> argsMono = arguments == null
-                            ? this.getRequestParamsToArguments(
-                                    function.getSignature().getParameters(), request)
-                            : Mono.just(arguments);
-                    return argsMono.flatMap(args -> function.execute(
-                            new ReactiveFunctionExecutionParameters(repository, null).setArguments(args)));
-                }));
+        ProcessorSchemaService schemaService = applicationContext.getBean(ProcessorSchemaService.class);
+
+        return Mono.zip(
+                        getFunctionRepository(appCode, clientCode),
+                        schemaService.getSchemaRepository(appCode, clientCode))
+                .flatMap(tup -> {
+                    ReactiveRepository<ReactiveFunction> functionRepository = tup.getT1();
+                    ReactiveRepository<Schema> schemaRepository = tup.getT2();
+
+                    return functionRepository.find(namespace, name).flatMap(function -> {
+                        Mono<Map<String, JsonElement>> argsMono = arguments == null
+                                ? this.getRequestParamsToArguments(
+                                        function.getSignature().getParameters(), request)
+                                : Mono.just(arguments);
+
+                        return argsMono.flatMap(args -> function.execute(
+                                new ReactiveFunctionExecutionParameters(functionRepository, schemaRepository)
+                                        .setArguments(args)));
+                    });
+                });
     }
 
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
