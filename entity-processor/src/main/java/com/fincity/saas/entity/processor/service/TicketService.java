@@ -18,6 +18,7 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
 import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -31,6 +32,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerReque
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -307,6 +309,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStage(ticket.getStage());
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
+                    existing.setTag(ticket.getTag());
 
                     return Mono.just(existing);
                 })
@@ -352,7 +355,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 super::hasAccess, access -> super.update(access, entity), this.ownerService::updateTicketOwner);
     }
 
-    @IgnoreGeneration
     public Mono<Ticket> createForCampaign(CampaignTicketRequest cTicketRequest) {
 
         ProcessorAccess access =
@@ -414,7 +416,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createForWebsite[CampaignTicketRequest]"));
     }
 
-    @IgnoreGeneration
     public Mono<Ticket> createForPartnerImportDCRM(String appCode, String clientCode, TicketPartnerRequest request) {
 
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, true, null, null);
@@ -640,7 +641,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateStageStatus"));
     }
 
-    @IgnoreGeneration
     public Mono<Ticket> updateTicketStage(
             ProcessorAccess access,
             Ticket ticket,
@@ -707,7 +707,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignTicket"));
     }
 
-    @IgnoreGeneration
     public Mono<Ticket> reassignForStage(ProcessorAccess access, Ticket ticket, ULong userId, boolean isAutomatic) {
 
         if (userId != null)
@@ -772,13 +771,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
-    @IgnoreGeneration
     public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
         return this.getTicket(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
-    @IgnoreGeneration
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
         return this.dao
                 .getAllClientTicketsByDnc(clientId, !dnc)
@@ -802,6 +799,31 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
+
+        if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
+            return this.identityMissingError(Ticket.Fields.tag);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
+                        (access, ticket, resolvedTag) -> {
+                            Tag oldTagEnum = ticket.getTag();
+                            ticket.setTag(resolvedTag);
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.update(access, ticket),
+                                    uTicket -> ticketTagRequest.getTaskRequest() != null
+                                            ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
+                                            : Mono.just(Boolean.FALSE),
+                                    (uTicket, cTask) -> this.activityService
+                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagEnum)
+                                            .thenReturn(uTicket));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
     }
 
     @Override
