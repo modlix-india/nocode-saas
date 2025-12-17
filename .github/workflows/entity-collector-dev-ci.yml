@@ -1,0 +1,82 @@
+name: entity-collector-dev-ci
+
+on:
+  push:
+    branches:
+      - oci-development
+
+    paths:
+      - "entity-collector/**"
+      - "commons/**"
+      - "commons-jooq/**"
+      - "commons-security/**"
+      - ".github/workflows/entity-collector-dev-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      OCIR_HOST: us-ashburn-1.ocir.io
+      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-entity-collector-server
+
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build dependencies
+        run: |
+          mvn -q -DskipTests clean install -f commons/pom.xml
+          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
+          mvn -q -DskipTests clean install -f commons-security/pom.xml
+
+      - name: Build entity-collector JAR
+        working-directory: entity-collector
+        run: mvn -q -DskipTests clean package
+
+      - name: Copy built jar
+        run: |
+          mkdir -p target
+          cp entity-collector/target/entity-collector-1.0.0.jar target/
+
+      - name: Login to OCIR
+        run: |
+          echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
+
+
+      - name: Build & push image
+        run: |
+             docker build -t $OCIR_REPO:${{ github.sha }} \
+                      -t $OCIR_REPO:latest \
+                      -f entity-collector/Dockerfile .
+             docker push $OCIR_REPO:${{ github.sha }}
+             docker push $OCIR_REPO:latest
+
+      - name: Install OpenVPN
+        run: sudo apt-get update && sudo apt-get install -y openvpn
+
+      - name: Connect to VPN
+        run: |
+          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
+          sudo openvpn --config vpn.ovpn --daemon
+          sleep 10
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy collector (blue/green)
+        run: |
+           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
+           "bash /home/opc/scripts/keepup.sh deploy entity-collector-server $OCIR_REPO:${{ github.sha }}"
