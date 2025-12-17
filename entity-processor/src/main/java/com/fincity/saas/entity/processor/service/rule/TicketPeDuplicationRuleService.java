@@ -71,12 +71,10 @@ public class TicketPeDuplicationRuleService
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "TicketPeDuplicationRule",
                 "GetLoggedInRule",
-                Map.of(),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Rule.TicketPeDuplicationRule"),
                 gson,
-                self,
-                TicketPeDuplicationRuleService::getLoggedInRule));
+                self::getLoggedInRule));
     }
 
     @Override
