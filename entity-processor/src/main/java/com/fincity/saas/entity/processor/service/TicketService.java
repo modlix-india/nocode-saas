@@ -15,10 +15,10 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
 import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
-import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -180,6 +180,16 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 Schema.ofRef("EntityProcessor.DTO.Product.ProductComm"),
                 gson,
                 self::getTicketProductComm));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "Ticket",
+                "UpdateTag",
+                SchemaUtil.ArgSpec.identity("ticketId"),
+                SchemaUtil.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::updateTag));
     }
 
     @Override
