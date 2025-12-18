@@ -6,26 +6,22 @@ on:
       - oci-development
     paths:
       - 'files/**'
-      - 'commons/**'
-      - 'commons-jooq/**'
-      - 'commons-security/**'
-      - 'commons-mongo/**'
-      - 'commons-mq/**'
-      - 'commons-core/**'
+      - 'commons2/**'
+      - 'commons2-jooq/**'
+      - 'commons2-security/**'
       - '.github/workflows/files-dev-ci.yml'
   workflow_dispatch:
 
-concurrency:
-  group: dev-deployment
-  cancel-in-progress: false
-
 jobs:
-  build_and_deploy:
+  build:
     runs-on: ubuntu-latest
 
     env:
       OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
       OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server
+
+    outputs:
+      image_tag: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +33,9 @@ jobs:
           cache: 'maven'
 
       - run: |
-          mvn -q -DskipTests clean install -f commons/pom.xml
-          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
-          mvn -q -DskipTests clean install -f commons-security/pom.xml
-          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
-          mvn -q -DskipTests clean install -f commons-mq/pom.xml
-          mvn -q -DskipTests clean install -f commons-core/pom.xml
+          mvn -q -DskipTests clean install -f commons2/pom.xml
+          mvn -q -DskipTests clean install -f commons2-security/pom.xml
+          mvn -q -DskipTests clean install -f commons2-jooq/pom.xml
 
       - working-directory: files
         run: mvn -q -DskipTests clean package
@@ -63,18 +56,11 @@ jobs:
           docker push $OCIR_REPO:${{ github.sha }}
           docker push $OCIR_REPO:latest
 
-      - run: sudo apt-get update && sudo apt-get install -y openvpn
+  deploy:
+    needs: build
+    runs-on: self-hosted
 
+    steps:
       - run: |
-          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
-          sudo openvpn --config vpn.ovpn --daemon
-          sleep 10
-
-      - run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-      - run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy files-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.DEV_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy files-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-files-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
