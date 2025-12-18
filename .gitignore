@@ -48,3 +48,6 @@ maven-wrapper.jar
 
 bin/
 deletedFiles/
+
+keepupscript.sh
+docker-compose.yml
