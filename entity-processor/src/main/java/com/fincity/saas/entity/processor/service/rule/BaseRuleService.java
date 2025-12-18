@@ -18,7 +18,6 @@ import com.fincity.saas.entity.processor.service.product.template.ProductTemplat
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.commons.collections4.SetValuedMap;
 import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.jooq.UpdatableRecord;
@@ -206,19 +205,17 @@ public abstract class BaseRuleService<
         if (!fetchUserDistributions || !this.isUserDistributionEnabled()) return Mono.just(rules);
 
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.attachDistributionsEager(access, rules),
-                (access, enrichedRules) -> {
+                super::hasAccess, access -> this.attachDistributionsEager(access, rules), (access, enrichedRules) -> {
                     List<Map<String, Object>> distributions = enrichedRules.stream()
-                            .map(rule -> (List<Map<String, Object>>)rule.get(BaseRuleDto.Fields.userDistributions))
+                            .map(rule -> (List<Map<String, Object>>) rule.get(BaseRuleDto.Fields.userDistributions))
                             .filter(Objects::nonNull)
                             .flatMap(List::stream)
                             .toList();
 
-                    if (distributions.isEmpty())
-                        return Mono.just(enrichedRules);
+                    if (distributions.isEmpty()) return Mono.just(enrichedRules);
 
-                    return this.enrichmentService.enrich(distributions, USER_DISTRIBUTION_RESOLVER_FIELDS, queryParams)
+                    return this.enrichmentService
+                            .enrich(distributions, USER_DISTRIBUTION_RESOLVER_FIELDS, queryParams)
                             .thenReturn(enrichedRules);
                 });
     }
