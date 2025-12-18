@@ -13,6 +13,10 @@ on:
       - ".github/workflows/notification-dev-ci.yml"
   workflow_dispatch:
 
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: false
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
