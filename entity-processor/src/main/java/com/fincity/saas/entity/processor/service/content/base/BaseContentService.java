@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.content.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -58,7 +57,6 @@ public abstract class BaseContentService<
     }
 
     @Override
-    @IgnoreGeneration
     public Mono<D> create(ProcessorAccess access, D entity) {
         return super.create(access, entity)
                 .flatMap(cContent ->
@@ -120,7 +118,6 @@ public abstract class BaseContentService<
     }
 
     @Override
-    @IgnoreGeneration
     public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),

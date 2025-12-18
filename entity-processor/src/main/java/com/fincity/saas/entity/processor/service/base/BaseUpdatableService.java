@@ -6,7 +6,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import lombok.Getter;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,28 +44,14 @@ public abstract class BaseUpdatableService<
                 R extends UpdatableRecord<R>, D extends BaseUpdatableDto<D>, O extends BaseUpdatableDAO<R, D>>
         extends AbstractFlowUpdatableService<R, ULong, D, O> implements IEntitySeries, IProcessorAccessService {
 
+    @Getter
     protected ProcessorMessageResourceService msgService;
 
+    @Getter
     protected IFeignSecurityService securityService;
 
+    @Getter
     protected CacheService cacheService;
-
-    @Override
-    @IgnoreGeneration
-    public ProcessorMessageResourceService getMsgService() {
-        return this.msgService;
-    }
-
-    @Override
-    @IgnoreGeneration
-    public IFeignSecurityService getSecurityService() {
-        return this.securityService;
-    }
-
-    @IgnoreGeneration
-    public CacheService getCacheService() {
-        return this.cacheService;
-    }
 
     protected abstract String getCacheName();
 

@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
@@ -31,7 +30,6 @@ public abstract class BaseProcessorService<
     }
 
     @Override
-    @IgnoreGeneration
     public Mono<D> create(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> access.isOutsideUser()

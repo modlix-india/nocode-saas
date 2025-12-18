@@ -7,7 +7,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.LogUtil;
@@ -131,7 +130,6 @@ public class TicketPeDuplicationRuleService
                 .flatMap(created -> this.evictCache(created).map(evicted -> created));
     }
 
-    @IgnoreGeneration
     public Mono<AbstractCondition> getTicketCondition(ProcessorAccess access, PhoneNumber phoneNumber, Email email) {
         return this.getRule(access)
                 .map(rule -> rule.getPhoneNumberAndEmailType().getTicketCondition(phoneNumber, email))

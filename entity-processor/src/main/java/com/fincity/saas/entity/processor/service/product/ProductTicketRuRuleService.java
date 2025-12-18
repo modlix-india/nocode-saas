@@ -6,7 +6,6 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -107,7 +106,6 @@ public class ProductTicketRuRuleService
                         .map(evicted -> created));
     }
 
-    @IgnoreGeneration
     public Mono<AbstractCondition> getUserReadConditions(ProcessorAccess access) {
         return super.cacheService.cacheEmptyValueOrGet(
                 this.getConditionCacheName(access.getAppCode(), access.getClientCode()),

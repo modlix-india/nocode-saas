@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.service.rule;
 
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.dao.rule.BaseUserDistributionDAO;
@@ -15,7 +14,6 @@ import org.jooq.types.ULong;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@IgnoreGeneration
 public interface IRuleUserDistributionService<D extends BaseRuleDto<U, D>, U extends BaseUserDistributionDto<U>> {
 
     default <R extends UpdatableRecord<R>, O extends BaseUserDistributionDAO<R, U>>

@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseValueDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Platform;
@@ -17,6 +18,7 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Stage extends BaseValueDto<Stage> {
 
     @Serial

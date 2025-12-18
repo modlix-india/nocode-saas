@@ -8,7 +8,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductDAO;
@@ -73,7 +72,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
         String productSchemaRef = classSchema.getNamespaceForClass(Product.class) + "." + Product.class.getSimpleName();
 
-        // ProductController: createRequest(ProductRequest)
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "CreateRequest",
@@ -83,7 +81,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 gson,
                 self::createRequest));
 
-        // ProductController: updateForPartner(ProductPartnerUpdateRequest)
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "UpdateForPartner",
@@ -93,7 +90,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 gson,
                 self::updateForPartner));
 
-        // ProductController: getProductInternal(appCode, clientCode, identity)
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "GetProductInternal",
@@ -106,7 +102,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 (appCode, clientCode, identity) -> self.readByIdentity(
                         ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)));
 
-        // ProductController: getProductsInternal(appCode, clientCode, productIds)
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "GetProductsInternal",
@@ -188,7 +183,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.create[ProductRequest]"));
     }
 
-    @IgnoreGeneration
     public Mono<ProductTemplate> setProductTemplate(
             ProcessorAccess access, Identity productId, ProductTemplate productTemplate) {
         return FlatMapUtil.flatMapMono(() -> super.readByIdentity(access, productId), product -> {
@@ -198,7 +192,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.setProductTemplate"));
     }
 
-    @IgnoreGeneration
     public Mono<ProductWalkInForm> setProductWalkInForm(
             ProcessorAccess access, ULong productId, ProductWalkInForm productWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productId), product -> {
@@ -228,7 +221,6 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductService.updateForPartner"));
     }
 
-    @IgnoreGeneration
     public Mono<List<Product>> getAllProducts(ProcessorAccess access, List<ULong> productIds) {
         return this.dao.getAllProducts(access, productIds);
     }

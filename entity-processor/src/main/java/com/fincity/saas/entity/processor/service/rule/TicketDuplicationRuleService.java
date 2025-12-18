@@ -7,7 +7,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -149,7 +148,6 @@ public class TicketDuplicationRuleService
                 .map((evicted -> evicted.getT1() && evicted.getT2() && evicted.getT3()));
     }
 
-    @IgnoreGeneration
     public Mono<AbstractCondition> getDuplicateRuleCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
 

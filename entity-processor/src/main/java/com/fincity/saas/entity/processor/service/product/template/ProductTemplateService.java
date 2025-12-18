@@ -8,7 +8,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.template.ProductTemplateDAO;
@@ -157,7 +156,6 @@ public class ProductTemplateService
         return productService.setProductTemplate(access, productId, productTemplate);
     }
 
-    @IgnoreGeneration
     public Mono<ProductTemplateWalkInForm> setProductTemplateWalkInForm(
             ProcessorAccess access, ULong productTemplateId, ProductTemplateWalkInForm productTemplateWalkInForm) {
         return FlatMapUtil.flatMapMono(() -> super.readById(access, productTemplateId), productTemplate -> {

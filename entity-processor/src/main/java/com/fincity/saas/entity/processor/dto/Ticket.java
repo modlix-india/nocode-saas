@@ -72,6 +72,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.subSource = ticket.subSource;
         this.campaignId = ticket.campaignId;
         this.dnc = ticket.dnc;
+        this.tag = ticket.tag;
         this.productTemplateId = ticket.productTemplateId;
     }
 

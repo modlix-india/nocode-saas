@@ -7,7 +7,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
@@ -230,7 +229,6 @@ public class ProductTicketCRuleService
                         stageId));
     }
 
-    @IgnoreGeneration
     public Mono<ULong> getUserAssignment(
             ProcessorAccess access,
             ULong productId,

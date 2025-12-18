@@ -2,7 +2,6 @@ package com.fincity.saas.entity.processor.service.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -17,14 +16,12 @@ import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
-@IgnoreGeneration
 public interface IProcessorAccessService {
 
     ProcessorMessageResourceService getMsgService();
 
     IFeignSecurityService getSecurityService();
 
-    @IgnoreGeneration
     default Mono<ProcessorAccess> hasAccess() {
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
@@ -37,7 +34,6 @@ public interface IProcessorAccessService {
                 (ca, isAuthenticated) -> this.getProcessorAccess(ca));
     }
 
-    @IgnoreGeneration
     default Mono<ProcessorAccess> hasPublicAccess() {
         return FlatMapUtil.flatMapMono(SecurityContextUtil::getUsersContextAuthentication, this::getProcessorAccess);
     }

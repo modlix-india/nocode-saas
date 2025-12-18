@@ -8,7 +8,6 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -297,7 +296,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return Mono.just(ticket).contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketFromOwner"));
     }
 
-    @IgnoreGeneration
     public Flux<Ticket> updateOwnerTickets(ProcessorAccess access, Owner owner) {
         return this.dao
                 .getAllOwnerTickets(owner.getId())

@@ -7,7 +7,6 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
-import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -358,7 +357,6 @@ public class ProductCommService
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductCommService.updateDefault"));
     }
 
-    @IgnoreGeneration
     public Mono<ProductComm> getProductComm(
             ProcessorAccess access,
             ULong productId,
@@ -412,7 +410,6 @@ public class ProductCommService
                         "ProductCommService.getDefault[ProcessorAccess, ULong, String, ConnectionType]"));
     }
 
-    @IgnoreGeneration
     public Mono<ProductComm> getByPhoneNumber(
             ProcessorAccess access,
             ConnectionType connectionType,
