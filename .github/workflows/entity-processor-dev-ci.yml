@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - oci-development
- 
+
     paths:
       - "entity-processor/**"
       - "commons/**"
@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-entity-processor-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-processor-server
 
     steps:
       - name: Checkout repository
@@ -78,4 +78,4 @@ jobs:
       - name: Deploy entity-processor
         run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy entity-processor $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy entity-processor $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"

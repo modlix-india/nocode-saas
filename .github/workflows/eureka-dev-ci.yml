@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-eureka-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server
 
     steps:
       - uses: actions/checkout@v4
@@ -72,4 +72,4 @@ jobs:
 
       - run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy eureka-server $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy eureka-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"
