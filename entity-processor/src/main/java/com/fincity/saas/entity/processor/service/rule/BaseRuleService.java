@@ -40,6 +40,13 @@ public abstract class BaseRuleService<
 
     private static final String FETCH_USER_DISTRIBUTIONS = "fetchUserDistributions";
 
+    private static final SetValuedMap<Class<? extends RelationResolver>, String> USER_DISTRIBUTION_RESOLVER_FIELDS =
+            new HashSetValuedHashMap<>();
+
+    static {
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
+    }
+
     protected ProductService productService;
     private ProductTemplateService productTemplateService;
     private RecordEnrichmentService enrichmentService;
@@ -198,9 +205,10 @@ public abstract class BaseRuleService<
 
         if (!fetchUserDistributions || !this.isUserDistributionEnabled()) return Mono.just(rules);
 
-        return super.hasAccess()
-                .flatMap(access -> this.attachDistributionsEager(access, rules))
-                .flatMap(enrichedRules -> {
+        return FlatMapUtil.flatMapMono(
+                super::hasAccess,
+                access -> this.attachDistributionsEager(access, rules),
+                (access, enrichedRules) -> {
                     List<Map<String, Object>> distributions = enrichedRules.stream()
                             .map(rule -> (List<Map<String, Object>>)rule.get(BaseRuleDto.Fields.userDistributions))
                             .filter(Objects::nonNull)
@@ -210,12 +218,8 @@ public abstract class BaseRuleService<
                     if (distributions.isEmpty())
                         return Mono.just(enrichedRules);
 
-                    SetValuedMap<Class<? extends RelationResolver>, String> resolverFields = new HashSetValuedHashMap<>();
-                    resolverFields.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
-
-                    return this.enrichmentService.enrich(distributions, resolverFields, queryParams)
+                    return this.enrichmentService.enrich(distributions, USER_DISTRIBUTION_RESOLVER_FIELDS, queryParams)
                             .thenReturn(enrichedRules);
-
                 });
     }
 }
