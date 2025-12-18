@@ -6,24 +6,26 @@ on:
       - oci-development
 
     paths:
-      - "entity-collector/**"
-      - "commons/**"
-      - "commons-jooq/**"
-      - "commons-security/**"
-      - ".github/workflows/entity-collector-dev-ci.yml"
+      - 'entity-collector/**'
+      - 'commons/**'
+      - 'commons-jooq/**'
+      - 'commons-security/**'
+      - '.github/workflows/entity-collector-dev-ci.yml'
   workflow_dispatch:
+
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: false
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-entity-collector-server
-
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-entity-collector-server
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -32,6 +34,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: 'maven'
 
       - name: Build dependencies
         run: |
@@ -52,14 +55,13 @@ jobs:
         run: |
           echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" --password-stdin
 
-
       - name: Build & push image
         run: |
-             docker build -t $OCIR_REPO:${{ github.sha }} \
-                      -t $OCIR_REPO:latest \
-                      -f entity-collector/Dockerfile .
-             docker push $OCIR_REPO:${{ github.sha }}
-             docker push $OCIR_REPO:latest
+          docker build -t $OCIR_REPO:${{ github.sha }} \
+                   -t $OCIR_REPO:latest \
+                   -f entity-collector/Dockerfile .
+          docker push $OCIR_REPO:${{ github.sha }}
+          docker push $OCIR_REPO:latest
 
       - name: Install OpenVPN
         run: sudo apt-get update && sudo apt-get install -y openvpn
@@ -78,5 +80,5 @@ jobs:
 
       - name: Deploy collector (blue/green)
         run: |
-           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-           "bash /home/opc/scripts/keepup.sh deploy entity-collector-server $OCIR_REPO:${{ github.sha }}"
+          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
+          "bash /home/opc/scripts/keepup.sh deploy entity-collector $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"

@@ -5,23 +5,27 @@ on:
     branches:
       - oci-development
     paths:
-      - "security/**"
-      - "commons/**"
-      - "commons-security/**"
-      - "commons-mongo/**"
-      - "commons-mq/**"
-      - "commons-jooq/**"
-      - "commons-core/**"
-      - ".github/workflows/security-dev-ci.yml"
+      - 'security/**'
+      - 'commons/**'
+      - 'commons-security/**'
+      - 'commons-mongo/**'
+      - 'commons-mq/**'
+      - 'commons-jooq/**'
+      - 'commons-core/**'
+      - '.github/workflows/security-dev-ci.yml'
   workflow_dispatch:
+
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: false
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-security-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-security-server
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +33,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
+          cache: 'maven'
 
       - run: |
           mvn -q -DskipTests clean install -f commons/pom.xml
@@ -72,4 +77,4 @@ jobs:
 
       - run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy security-server $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy security-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"

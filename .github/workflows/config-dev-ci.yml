@@ -6,20 +6,24 @@ on:
       - oci-development
 
     paths:
-      - "config/**"
-      - "commons/**"
-      - "commons-jooq/**"
-      - "commons-security/**"
-      - ".github/workflows/config-dev-ci.yml"
+      - 'config/**'
+      - 'commons/**'
+      - 'commons-jooq/**'
+      - 'commons-security/**'
+      - '.github/workflows/config-dev-ci.yml'
   workflow_dispatch:
+
+concurrency:
+  group: dev-deployment
+  cancel-in-progress: false
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-config-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-config-server
       ENVIRONMENT: ocidev
 
     steps:
@@ -30,7 +34,8 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
+          cache: 'maven'
 
       - name: Build dependencies
         run: |
@@ -80,4 +85,4 @@ jobs:
       - name: Deploy config
         run: |
           ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy config-server $OCIR_REPO:${{ github.sha }}"
+            "bash /home/opc/scripts/keepup.sh deploy config-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"
