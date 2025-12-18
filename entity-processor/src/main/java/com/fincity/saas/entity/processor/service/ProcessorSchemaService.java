@@ -3,8 +3,9 @@ package com.fincity.saas.entity.processor.service;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveHybridRepository;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
-import com.fincity.saas.entity.processor.functions.ServiceSchemaGenerator;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.ServiceSchemaGenerator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ public class ProcessorSchemaService implements ApplicationListener<ContextRefres
 
     private final Map<String, ReactiveRepository<Schema>> schemaRepositoryCache = new ConcurrentHashMap<>();
     private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private ApplicationContext applicationContext;
     private Map<String, Schema> generatedSchemas = new HashMap<>();
 
@@ -68,7 +70,7 @@ public class ProcessorSchemaService implements ApplicationListener<ContextRefres
         }
 
         // Generate schemas from all service POJOs
-        ServiceSchemaGenerator generator = new ServiceSchemaGenerator();
+        ServiceSchemaGenerator generator = new ServiceSchemaGenerator(classSchema);
         this.generatedSchemas = generator.generateSchemas(services);
     }
 
@@ -101,7 +103,7 @@ public class ProcessorSchemaService implements ApplicationListener<ContextRefres
                         reposArray[i] = repos.get(i);
                     }
                     reposArray[repos.size()] = processorRepo;
-                    ReactiveRepository<Schema> finRepo = new ReactiveHybridRepository<Schema>(reposArray);
+                    ReactiveRepository<Schema> finRepo = new ReactiveHybridRepository<>(reposArray);
                     schemaRepositoryCache.put(cacheKey, finRepo);
                     return finRepo;
                 });

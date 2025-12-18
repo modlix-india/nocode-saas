@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.util;
+package com.fincity.saas.commons.functions.repository;
 
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -26,3 +26,4 @@ public class MapSchemaRepository implements ReactiveRepository<Schema> {
         return Flux.fromIterable(filterableNames).filter(fullName -> fullName.contains(name));
     }
 }
+

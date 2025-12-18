@@ -1,9 +1,9 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.google.gson.JsonElement;
 import java.util.Map;

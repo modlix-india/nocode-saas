@@ -4,27 +4,22 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.CampaignDAO;
 import com.fincity.saas.entity.processor.dto.Campaign;
-import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorCampaignsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.CampaignRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
-import com.fincity.saas.entity.processor.util.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.MapSchemaRepository;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -35,13 +30,14 @@ import reactor.util.context.Context;
 public class CampaignService extends BaseUpdatableService<EntityProcessorCampaignsRecord, Campaign, CampaignDAO>
         implements IRepositoryProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CampaignService.class);
     private static final String CAMPAIGN_CACHE = "campaign";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
     private final ProductService productService;
     private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -60,7 +56,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Campaign",
                 "CreateRequest",
-                SchemaUtil.ArgSpec.ofRef("campaignRequest", CampaignRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignRequest", CampaignRequest.class),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Campaign"),
                 gson,
@@ -128,34 +124,6 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     @Override
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
-        // Generate schema for Campaign class and create a repository with it
-        Map<String, Schema> campaignSchemas = new HashMap<>();
-
-        // TODO: Here we have blocked the Campaign class by annotating with
-        // @IgnoreGeneration.
-        // When we add dynamic fields the schema will be generated dynamically from DB.
-        try {
-            Class<?> campaignClass = Campaign.class;
-
-            String namespace = SchemaUtil.getNamespaceForClass(campaignClass);
-            String name = campaignClass.getSimpleName();
-
-            Schema schema = SchemaUtil.generateSchemaForClass(campaignClass);
-            if (schema != null) {
-                campaignSchemas.put(namespace + "." + name, schema);
-                LOGGER.info("Generated schema for Campaign class: {}.{}", namespace, name);
-            }
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to generate schema for Campaign class: {}", e.getMessage(), e);
-        }
-
-        // If we have Campaign schema, create a hybrid repository combining static and
-        // Campaign schemas
-        if (!campaignSchemas.isEmpty()) {
-            return Mono.just(new MapSchemaRepository(campaignSchemas));
-        }
-
-        return Mono.empty();
+        return this.defaultSchemaRepositoryFor(Campaign.class, classSchema);
     }
 }

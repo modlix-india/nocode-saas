@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.functions.annotations;
+package com.fincity.saas.commons.functions.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,3 +8,4 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface IgnoreGeneration {}
+

@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.functions;
+package com.fincity.saas.commons.functions;
 
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
@@ -9,7 +9,6 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.model.Parameter;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.kirun.engine.util.string.StringUtil;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,7 +72,7 @@ public abstract class AbstractProcessorFunction extends AbstractReactiveFunction
     public static <P, R> AbstractProcessorFunction createServiceFunction(
             String namespaceSuffix,
             String functionName,
-            SchemaUtil.ArgSpec<P> p1,
+            ClassSchema.ArgSpec<P> p1,
             String resultEventName,
             Schema resultSchema,
             Gson gson,
@@ -94,8 +93,8 @@ public abstract class AbstractProcessorFunction extends AbstractReactiveFunction
     public static <P1, P2, R> AbstractProcessorFunction createServiceFunction(
             String namespaceSuffix,
             String functionName,
-            SchemaUtil.ArgSpec<P1> p1,
-            SchemaUtil.ArgSpec<P2> p2,
+            ClassSchema.ArgSpec<P1> p1,
+            ClassSchema.ArgSpec<P2> p2,
             String resultEventName,
             Schema resultSchema,
             Gson gson,
@@ -121,9 +120,9 @@ public abstract class AbstractProcessorFunction extends AbstractReactiveFunction
     public static <P1, P2, P3, R> AbstractProcessorFunction createServiceFunction(
             String namespaceSuffix,
             String functionName,
-            SchemaUtil.ArgSpec<P1> p1,
-            SchemaUtil.ArgSpec<P2> p2,
-            SchemaUtil.ArgSpec<P3> p3,
+            ClassSchema.ArgSpec<P1> p1,
+            ClassSchema.ArgSpec<P2> p2,
+            ClassSchema.ArgSpec<P3> p3,
             String resultEventName,
             Schema resultSchema,
             Gson gson,
@@ -152,10 +151,10 @@ public abstract class AbstractProcessorFunction extends AbstractReactiveFunction
     public static <P1, P2, P3, P4, R> AbstractProcessorFunction createServiceFunction(
             String namespaceSuffix,
             String functionName,
-            SchemaUtil.ArgSpec<P1> p1,
-            SchemaUtil.ArgSpec<P2> p2,
-            SchemaUtil.ArgSpec<P3> p3,
-            SchemaUtil.ArgSpec<P4> p4,
+            ClassSchema.ArgSpec<P1> p1,
+            ClassSchema.ArgSpec<P2> p2,
+            ClassSchema.ArgSpec<P3> p3,
+            ClassSchema.ArgSpec<P4> p4,
             String resultEventName,
             Schema resultSchema,
             Gson gson,

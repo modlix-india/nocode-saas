@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.util;
+package com.fincity.saas.commons.functions.repository;
 
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -28,3 +28,4 @@ public class ListFunctionRepository implements ReactiveRepository<ReactiveFuncti
                 .findFirst());
     }
 }
+

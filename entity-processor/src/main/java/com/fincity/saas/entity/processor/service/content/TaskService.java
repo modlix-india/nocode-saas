@@ -5,30 +5,26 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskDAO;
 import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTasksRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
-import com.fincity.saas.entity.processor.util.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.MapSchemaRepository;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -40,11 +36,12 @@ import reactor.util.context.Context;
 public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO>
         implements IRepositoryProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TaskService.class);
     private static final String TASK_CACHE = "task";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TaskTypeService taskTypeService;
 
@@ -66,13 +63,13 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         this.functions.addAll(super.getCommonFunctions("Task", Task.class, gson));
 
-        String taskSchemaRef = SchemaUtil.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
+        String taskSchemaRef = classSchema.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
 
         // TaskController: createRequest(TaskRequest)
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Task",
                 "CreateRequest",
-                SchemaUtil.ArgSpec.ofRef("taskRequest", TaskRequest.class),
+                ClassSchema.ArgSpec.ofRef("taskRequest", TaskRequest.class),
                 "created",
                 Schema.ofRef(taskSchemaRef),
                 gson,
@@ -82,8 +79,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Task",
                 "SetReminder",
-                SchemaUtil.ArgSpec.identity("identity"),
-                SchemaUtil.ArgSpec.dateTimeString("reminderDate"),
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.dateTimeString("reminderDate"),
                 "result",
                 Schema.ofRef(taskSchemaRef),
                 gson,
@@ -93,9 +90,9 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Task",
                 "SetTaskCompleted",
-                SchemaUtil.ArgSpec.identity("identity"),
-                SchemaUtil.ArgSpec.bool("completed"),
-                SchemaUtil.ArgSpec.dateTimeString("completedDate"),
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.bool("completed"),
+                ClassSchema.ArgSpec.dateTimeString("completedDate"),
                 "result",
                 Schema.ofRef(taskSchemaRef),
                 gson,
@@ -105,9 +102,9 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Task",
                 "SetTaskCancelled",
-                SchemaUtil.ArgSpec.identity("identity"),
-                SchemaUtil.ArgSpec.bool("cancelled"),
-                SchemaUtil.ArgSpec.dateTimeString("cancelledDate"),
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.bool("cancelled"),
+                ClassSchema.ArgSpec.dateTimeString("cancelledDate"),
                 "result",
                 Schema.ofRef(taskSchemaRef),
                 gson,
@@ -279,26 +276,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     @Override
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
-
-        Map<String, Schema> schemas = new HashMap<>();
-        try {
-            Class<?> dtoClass = Task.class;
-            String namespace = SchemaUtil.getNamespaceForClass(dtoClass);
-            String name = dtoClass.getSimpleName();
-
-            Schema schema = SchemaUtil.generateSchemaForClass(dtoClass);
-            if (schema != null) {
-                schemas.put(namespace + "." + name, schema);
-                LOGGER.info("Generated schema for Task class: {}.{}", namespace, name);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Failed to generate schema for Task class: {}", e.getMessage(), e);
-        }
-
-        if (!schemas.isEmpty()) {
-            return Mono.just(new MapSchemaRepository(schemas));
-        }
-
-        return Mono.empty();
+        return this.defaultSchemaRepositoryFor(Task.class, classSchema);
     }
 }

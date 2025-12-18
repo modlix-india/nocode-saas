@@ -5,15 +5,18 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -21,14 +24,10 @@ import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketCRuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
-import com.fincity.saas.entity.processor.util.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.MapSchemaRepository;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +36,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -55,11 +52,12 @@ public class ProductTicketCRuleService
                 TicketCUserDistribution>
         implements IRepositoryProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProductTicketCRuleService.class);
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final TicketCRuleExecutionService ticketCRuleExecutionService;
 
     @Getter
@@ -262,26 +260,6 @@ public class ProductTicketCRuleService
     @Override
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
-
-        Map<String, Schema> schemas = new HashMap<>();
-        try {
-            Class<?> dtoClass = ProductTicketCRule.class;
-            String namespace = SchemaUtil.getNamespaceForClass(dtoClass);
-            String name = dtoClass.getSimpleName();
-
-            Schema schema = SchemaUtil.generateSchemaForClass(dtoClass);
-            if (schema != null) {
-                schemas.put(namespace + "." + name, schema);
-                LOGGER.info("Generated schema for ProductTicketCRule class: {}.{}", namespace, name);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Failed to generate schema for ProductTicketCRule class: {}", e.getMessage(), e);
-        }
-
-        if (!schemas.isEmpty()) {
-            return Mono.just(new MapSchemaRepository(schemas));
-        }
-
-        return Mono.empty();
+        return this.defaultSchemaRepositoryFor(ProductComm.class, classSchema);
     }
 }

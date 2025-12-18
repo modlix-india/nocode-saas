@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.enums;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.util.NameUtil;
 
 @IgnoreGeneration

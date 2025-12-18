@@ -5,6 +5,10 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -26,30 +30,23 @@ import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
-import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.util.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.MapSchemaRepository;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -63,7 +60,6 @@ import reactor.util.context.Context;
 public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
         implements IRepositoryProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PartnerService.class);
     private static final String PARTNER_CACHE = "Partner";
 
     private static final String FETCH_PARTNERS = "fetchPartners";
@@ -73,6 +69,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
     private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TicketService ticketService;
 
@@ -102,17 +100,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private void init() {
         this.functions.addAll(super.getCommonFunctions("Partner", Partner.class, gson));
 
-        // CreateRequest
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "CreateRequest",
-                SchemaUtil.ArgSpec.ofRef("partnerRequest", PartnerRequest.class),
+                ClassSchema.ArgSpec.ofRef("partnerRequest", PartnerRequest.class),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::createRequest));
 
-        // GetLoggedInPartner
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "GetLoggedInPartner",
@@ -121,17 +117,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 gson,
                 self::getLoggedInPartner));
 
-        // UpdateLoggedInPartnerVerificationStatus
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "UpdateLoggedInPartnerVerificationStatus",
-                SchemaUtil.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::updateLoggedInPartnerVerificationStatus));
 
-        // ToggleLoggedInPartnerDnc
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "ToggleLoggedInPartnerDnc",
@@ -140,22 +134,20 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 gson,
                 self::toggleLoggedInPartnerDnc));
 
-        // UpdatePartnerVerificationStatus
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "UpdatePartnerVerificationStatus",
-                SchemaUtil.ArgSpec.identity("partnerId"),
-                SchemaUtil.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
+                EntityProcessorArgSpec.identity("partnerId"),
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::updatePartnerVerificationStatus));
 
-        // TogglePartnerDnc
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "TogglePartnerDnc",
-                SchemaUtil.ArgSpec.identity("partnerId"),
+                EntityProcessorArgSpec.identity("partnerId"),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
@@ -607,30 +599,6 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Override
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
-        // Generate schema for Partner class and create a repository with it
-        Map<String, Schema> partnerSchemas = new HashMap<>();
-
-        // TODO: When we add dynamic fields, the schema will be generated dynamically from DB.
-        try {
-            Class<?> partnerClass = Partner.class;
-
-            String namespace = SchemaUtil.getNamespaceForClass(partnerClass);
-            String name = partnerClass.getSimpleName();
-
-            Schema schema = SchemaUtil.generateSchemaForClass(partnerClass);
-            if (schema != null) {
-                partnerSchemas.put(namespace + "." + name, schema);
-                LOGGER.info("Generated schema for Partner class: {}.{}", namespace, name);
-            }
-        } catch (Exception e) {
-            LOGGER.error("Failed to generate schema for Partner class: {}", e.getMessage(), e);
-        }
-
-        // If we have Partner schema, create a repository with it
-        if (!partnerSchemas.isEmpty()) {
-            return Mono.just(new MapSchemaRepository(partnerSchemas));
-        }
-
-        return Mono.empty();
+        return this.defaultSchemaRepositoryFor(Partner.class, classSchema);
     }
 }

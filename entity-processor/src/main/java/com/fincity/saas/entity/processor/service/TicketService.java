@@ -5,6 +5,11 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
@@ -16,9 +21,6 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
-import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
-import com.fincity.saas.entity.processor.functions.IRepositoryProvider;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -42,19 +44,13 @@ import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
-import com.fincity.saas.entity.processor.util.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.MapSchemaRepository;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.jooq.types.ULong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -67,7 +63,6 @@ import reactor.util.context.Context;
 public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO>
         implements IRepositoryProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TicketService.class);
     private static final String TICKET_CACHE = "ticket";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
 
@@ -89,6 +84,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Autowired
     @Lazy
     private TicketService self;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -125,7 +122,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "CreateRequest",
-                SchemaUtil.ArgSpec.ofRef("ticketRequest", TicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -134,7 +131,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "CreateForCampaign",
-                SchemaUtil.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -143,8 +140,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "CreateForWebsite",
-                SchemaUtil.ArgSpec.string("productCode"),
-                SchemaUtil.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.string("productCode"),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -153,8 +150,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "UpdateStageStatus",
-                SchemaUtil.ArgSpec.identity("ticketId"),
-                SchemaUtil.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class),
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -163,8 +160,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "ReassignTicket",
-                SchemaUtil.ArgSpec.identity("ticketId"),
-                SchemaUtil.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class),
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -173,9 +170,9 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "GetTicketProductComm",
-                SchemaUtil.ArgSpec.identity("ticketId"),
-                SchemaUtil.ArgSpec.ofRef("connectionType", ConnectionType.class),
-                SchemaUtil.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class),
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class),
+                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Product.ProductComm"),
                 gson,
@@ -184,8 +181,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "UpdateTag",
-                SchemaUtil.ArgSpec.identity("ticketId"),
-                SchemaUtil.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class),
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -844,30 +841,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Override
     public Mono<ReactiveRepository<Schema>> getSchemaRepository(
             ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
-
-        Map<String, Schema> ticketSchemas = new HashMap<>();
-
-        // TODO: When we add dynamic fields, the schema will be generated dynamically from DB.
-        try {
-            Class<?> ticketClass = Ticket.class;
-
-            String namespace = SchemaUtil.getNamespaceForClass(ticketClass);
-            String name = ticketClass.getSimpleName();
-
-            Schema schema = SchemaUtil.generateSchemaForClass(ticketClass);
-            if (schema != null) {
-                ticketSchemas.put(namespace + "." + name, schema);
-                LOGGER.info("Generated schema for Ticket class: {}.{}", namespace, name);
-            }
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to generate schema for Ticket class: {}", e.getMessage(), e);
-        }
-
-        if (!ticketSchemas.isEmpty()) {
-            return Mono.just(new MapSchemaRepository(ticketSchemas));
-        }
-
-        return Mono.empty();
+        return this.defaultSchemaRepositoryFor(Ticket.class, classSchema);
     }
 }

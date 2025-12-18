@@ -4,6 +4,9 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -14,13 +17,11 @@ import com.fincity.saas.commons.util.Case;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.IEntitySeries;
-import com.fincity.saas.entity.processor.functions.AbstractProcessorFunction;
-import com.fincity.saas.entity.processor.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
-import com.fincity.saas.entity.processor.util.SchemaUtil;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -469,7 +470,8 @@ public abstract class BaseUpdatableService<
 
     protected List<ReactiveFunction> getCommonFunctions(String entityName, Class<D> dtoClass, Gson gson) {
         List<ReactiveFunction> functions = new ArrayList<>();
-        String dtoNamespace = SchemaUtil.getNamespaceForClass(dtoClass);
+        String dtoNamespace = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor())
+                .getNamespaceForClass(dtoClass);
         String dtoName = dtoClass.getSimpleName();
         String dtoSchemaRef = dtoNamespace + "." + dtoName;
         String baseResponseSchemaRef = "EntityProcessor.Model.Base.BaseResponse";
@@ -479,7 +481,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "Create",
-                SchemaUtil.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
+                ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
@@ -488,7 +490,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadByIdentity",
-                SchemaUtil.ArgSpec.identity(),
+                EntityProcessorArgSpec.identity(),
                 "result",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
@@ -497,9 +499,9 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadEagerByIdentity",
-                SchemaUtil.ArgSpec.identity(),
-                SchemaUtil.ArgSpec.fields(),
-                SchemaUtil.ArgSpec.queryParams(),
+                EntityProcessorArgSpec.identity(),
+                ClassSchema.ArgSpec.fields(),
+                ClassSchema.ArgSpec.queryParams(),
                 "result",
                 mapSchema,
                 gson,
@@ -508,8 +510,8 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "UpdateByIdentity",
-                SchemaUtil.ArgSpec.identity(),
-                SchemaUtil.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
+                EntityProcessorArgSpec.identity(),
+                ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "updated",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
@@ -518,7 +520,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "DeleteIdentity",
-                SchemaUtil.ArgSpec.identity(),
+                EntityProcessorArgSpec.identity(),
                 "deleted",
                 Schema.ofInteger("deleted"),
                 gson,
@@ -527,7 +529,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "GetBaseResponseByIdentity",
-                SchemaUtil.ArgSpec.identity(),
+                EntityProcessorArgSpec.identity(),
                 "result",
                 Schema.ofRef(baseResponseSchemaRef),
                 gson,
@@ -536,7 +538,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilter",
-                SchemaUtil.ArgSpec.pageable(),
+                ClassSchema.ArgSpec.pageable(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
                 gson,
@@ -545,7 +547,7 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilterQuery",
-                SchemaUtil.ArgSpec.query(),
+                ClassSchema.ArgSpec.query(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
                 gson,
@@ -557,10 +559,10 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilterEager",
-                SchemaUtil.ArgSpec.pageable(),
-                SchemaUtil.ArgSpec.condition(),
-                SchemaUtil.ArgSpec.fields(),
-                SchemaUtil.ArgSpec.queryParams(),
+                ClassSchema.ArgSpec.pageable(),
+                ClassSchema.ArgSpec.condition(),
+                ClassSchema.ArgSpec.fields(),
+                ClassSchema.ArgSpec.queryParams(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
                 gson,
@@ -570,8 +572,8 @@ public abstract class BaseUpdatableService<
         functions.add(AbstractProcessorFunction.createServiceFunction(
                 entityName,
                 "ReadPageFilterEagerQuery",
-                SchemaUtil.ArgSpec.query(),
-                SchemaUtil.ArgSpec.queryParams(),
+                ClassSchema.ArgSpec.query(),
+                ClassSchema.ArgSpec.queryParams(),
                 "result",
                 Schema.ofRef(pageSchemaRef),
                 gson,
