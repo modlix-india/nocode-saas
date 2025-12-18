@@ -7,6 +7,9 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.BaseRuleDAO;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
@@ -14,6 +17,10 @@ import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import org.apache.commons.collections4.SetValuedMap;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +42,13 @@ public abstract class BaseRuleService<
 
     protected ProductService productService;
     private ProductTemplateService productTemplateService;
+    private RecordEnrichmentService enrichmentService;
+
+    @Lazy
+    @Autowired
+    private void setEnrichmentService(RecordEnrichmentService enrichmentService) {
+        this.enrichmentService = enrichmentService;
+    }
 
     @Lazy
     @Autowired
@@ -184,6 +198,24 @@ public abstract class BaseRuleService<
 
         if (!fetchUserDistributions || !this.isUserDistributionEnabled()) return Mono.just(rules);
 
-        return super.hasAccess().flatMap(access -> this.attachDistributionsEager(access, rules));
+        return super.hasAccess()
+                .flatMap(access -> this.attachDistributionsEager(access, rules))
+                .flatMap(enrichedRules -> {
+                    List<Map<String, Object>> distributions = enrichedRules.stream()
+                            .map(rule -> (List<Map<String, Object>>)rule.get(BaseRuleDto.Fields.userDistributions))
+                            .filter(Objects::nonNull)
+                            .flatMap(List::stream)
+                            .toList();
+
+                    if (distributions.isEmpty())
+                        return Mono.just(enrichedRules);
+
+                    SetValuedMap<Class<? extends RelationResolver>, String> resolverFields = new HashSetValuedHashMap<>();
+                    resolverFields.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
+
+                    return this.enrichmentService.enrich(distributions, resolverFields, queryParams)
+                            .thenReturn(enrichedRules);
+
+                });
     }
 }
