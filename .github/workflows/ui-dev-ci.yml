@@ -15,10 +15,6 @@ on:
       - '.github/workflows/ui-dev-ci.yml'
   workflow_dispatch:
 
-concurrency:
-  group: dev-deployment
-  cancel-in-progress: false
-
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
@@ -76,5 +72,10 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
 
       - run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy ui-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log"
+          for i in {1..5}; do
+            echo "SSH attempt $i..."
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=10 opc@${{ secrets.DEV_SERVER_IP }} \
+              "bash /home/opc/scripts/keepup.sh deploy ui-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log" && break
+            echo "SSH failed, waiting 30 seconds before retry..."
+            sleep 30
+          done
