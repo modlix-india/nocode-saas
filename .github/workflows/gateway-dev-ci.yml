@@ -59,7 +59,15 @@ jobs:
           docker push $OCIR_REPO:${{ github.sha }}
           docker push $OCIR_REPO:latest
 
-      - run: sudo apt-get update && sudo apt-get install -y openvpn
+      - name: Cache OpenVPN
+        id: cache-openvpn
+        uses: actions/cache@v4
+        with:
+          path: /usr/sbin/openvpn
+          key: openvpn-${{ runner.os }}
+
+      - if: steps.cache-openvpn.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y openvpn
 
       - run: |
           echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
@@ -75,7 +83,10 @@ jobs:
           for i in {1..5}; do
             echo "SSH attempt $i..."
             ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=10 opc@${{ secrets.DEV_SERVER_IP }} \
-              "bash /home/opc/scripts/keepup.sh deploy gateway-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log" && break
-            echo "SSH failed, waiting 30 seconds before retry..."
-            sleep 30
+              "bash /home/opc/scripts/keepup.sh deploy gateway-server $OCIR_REPO:${{ github.sha }} 2>&1 | tee -a /var/log/keepup.log" && exit 0
+            SLEEP_TIME=$((RANDOM % 50 + 10))
+            echo "SSH failed, waiting $SLEEP_TIME seconds before retry..."
+            sleep $SLEEP_TIME
           done
+          echo "All SSH attempts failed"
+          exit 1
