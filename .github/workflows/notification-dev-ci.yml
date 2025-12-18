@@ -5,12 +5,12 @@ on:
     branches:
       - oci-development
     paths:
-      - "notification/**"
-      - "commons2/**"
-      - "commons2-security/**"
-      - "commons2-jooq/**"
-      - "commons2-mq/**"
-      - ".github/workflows/notification-dev-ci.yml"
+      - 'notification/**'
+      - 'commons2/**'
+      - 'commons2-security/**'
+      - 'commons2-jooq/**'
+      - 'commons2-mq/**'
+      - '.github/workflows/notification-dev-ci.yml'
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +31,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
+          cache: 'maven'
 
       - run: |
           mvn -q -DskipTests clean install -f commons2/pom.xml
