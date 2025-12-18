@@ -5,23 +5,20 @@ on:
     branches:
       - oci-development
     paths:
-      - "eureka/**"
-      - "commons/**"
-      - "commons-security/**"
-      - "commons-mongo/**"
-      - "commons-mq/**"
-      - "commons-jooq/**"
-      - "commons-core/**"
-      - ".github/workflows/eureka-dev-ci.yml"
+      - 'eureka/**'
+      - '.github/workflows/eureka-dev-ci.yml'
   workflow_dispatch:
 
 jobs:
-  build_and_deploy:
+  build:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-eureka-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server
+
+    outputs:
+      image_tag: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +26,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
-
-      - run: |
-          mvn -q -DskipTests clean install -f commons/pom.xml
-          mvn -q -DskipTests clean install -f commons-security/pom.xml
-          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
-          mvn -q -DskipTests clean install -f commons-mq/pom.xml
-          mvn -q -DskipTests clean install -f commons-jooq/pom.xml
-          mvn -q -DskipTests clean install -f commons-core/pom.xml
+          java-version: '21'
+          cache: 'maven'
 
       - working-directory: eureka
         run: mvn -q -DskipTests clean package
@@ -58,18 +48,11 @@ jobs:
           docker push $OCIR_REPO:${{ github.sha }}
           docker push $OCIR_REPO:latest
 
-      - run: sudo apt-get update && sudo apt-get install -y openvpn
+  deploy:
+    needs: build
+    runs-on: self-hosted
 
+    steps:
       - run: |
-          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
-          sudo openvpn --config vpn.ovpn --daemon
-          sleep 10
-
-      - run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-      - run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy eureka-server $OCIR_REPO:${{ github.sha }}"
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.DEV_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy eureka-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-eureka-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"

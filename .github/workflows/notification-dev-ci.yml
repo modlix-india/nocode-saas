@@ -5,21 +5,24 @@ on:
     branches:
       - oci-development
     paths:
-      - "notification/**"
-      - "commons2/**"
-      - "commons2-security/**"
-      - "commons2-jooq/**"
-      - "commons2-mq/**"
-      - ".github/workflows/notification-dev-ci.yml"
+      - 'notification/**'
+      - 'commons2/**'
+      - 'commons2-security/**'
+      - 'commons2-jooq/**'
+      - 'commons2-mq/**'
+      - '.github/workflows/notification-dev-ci.yml'
   workflow_dispatch:
 
 jobs:
-  build_and_deploy:
+  build:
     runs-on: ubuntu-latest
 
     env:
-      OCIR_HOST: us-ashburn-1.ocir.io
-      OCIR_REPO: us-ashburn-1.ocir.io/idfmutpuhiky/dev-notification-server
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server
+
+    outputs:
+      image_tag: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +30,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
+          cache: 'maven'
 
       - run: |
           mvn -q -DskipTests clean install -f commons2/pom.xml
@@ -54,18 +58,11 @@ jobs:
           docker push $OCIR_REPO:${{ github.sha }}
           docker push $OCIR_REPO:latest
 
-      - run: sudo apt-get update && sudo apt-get install -y openvpn
+  deploy:
+    needs: build
+    runs-on: self-hosted
 
+    steps:
       - run: |
-          echo "${{ secrets.VPN_CONFIG }}" | base64 --decode > vpn.ovpn
-          sudo openvpn --config vpn.ovpn --daemon
-          sleep 10
-
-      - run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-      - run: |
-          ssh -o StrictHostKeyChecking=no opc@${{ secrets.DEV_SERVER_IP }} \
-            "bash /home/opc/scripts/keepup.sh deploy notification-server $OCIR_REPO:${{ github.sha }}"
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.DEV_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy notification-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/dev-notification-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
