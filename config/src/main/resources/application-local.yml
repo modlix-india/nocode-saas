@@ -3,7 +3,7 @@ spring:
     config:
       server:
         native:
-          search-locations: file:///C:/kiran/fincity/nocode-saas/configfiles
+          search-locations: file:///C:\Users\CEPL\nocode-saas\configfiles
 server:
   port: 8888
 

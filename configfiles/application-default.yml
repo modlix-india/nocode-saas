@@ -2,7 +2,7 @@ security:
   db:
     url: r2dbc:mysql://localhost:3306/security?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/security
   subdomain:
@@ -13,7 +13,7 @@ files:
   db:
     url: jdbc:mysql://localhost:3306/files?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/files
   resources:
@@ -26,7 +26,7 @@ multi:
   db:
     url: r2dbc:mysql://localhost:3306/multi?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/multi
 
@@ -34,13 +34,13 @@ schedular:
   db:
     url: r2dbc:mysql://localhost:3306/schedular?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/schedular
 
 ui:
   mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/ui?authSource=admin
+    uri: mongodb://rooto:rooto@localhost:27017/ui?authSource=admin
   cdnHostName: cdn-local.modlix.com
   cdnReplacePlus: true
   # Don't forget to add slash in the end.
@@ -61,11 +61,11 @@ ui:
 
 core:
   mongo:
-    uri: mongodb://root:Kiran%40123@localhost:27017/core?authSource=admin
+    uri: mongodb://rooto:rooto@localhost:27017/core?authSource=admin
   db:
     url: r2dbc:mysql://localhost:3306/core?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/core
 
@@ -73,7 +73,7 @@ entity-processor:
   db:
     url: r2dbc:mysql://localhost:3306/entity_processor?serverTimezone=UTC
     username: root
-    password: Kiran@123
+    password: Shiva@123
     flyway:
       url: jdbc:mysql://localhost:3306/entity_processor
 
@@ -106,7 +106,7 @@ spring:
     enabled: false
 
 redis:
-  url: redis://Kiran%40123@localhost:6379
+  url: redis://Shiva%123@localhost:6379
   codec: object
   cache:
     prefix: cmn
@@ -126,8 +126,8 @@ logging:
 mq:
   host: localhost
   port: 5672
-  username: fincity
-  password: fincity
+  username: shiva
+  password: shiva
 
 smsService:
   provider:
