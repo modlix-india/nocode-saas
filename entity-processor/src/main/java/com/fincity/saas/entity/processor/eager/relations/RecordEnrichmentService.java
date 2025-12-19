@@ -116,6 +116,7 @@ public class RecordEnrichmentService {
             for (Map<String, Object> rec : recs) {
                 Object idObj = rec.get(field);
                 if (idObj instanceof ULong id) ids.add(id);
+                if (idObj instanceof Number numberId) ids.add(ULong.valueOf(numberId.longValue()));
             }
 
             if (!ids.isEmpty()) fieldIdsMap.put(field, ids);
@@ -137,6 +138,11 @@ public class RecordEnrichmentService {
             Map<String, Object> rec, String field, Map<ULong, Map<String, Object>> resolvedData) {
         if (rec.get(field) instanceof ULong id) {
             Map<String, Object> resolvedInfo = resolvedData.get(id);
+            if (resolvedInfo != null) rec.put(field, resolvedInfo);
+        }
+
+        if (rec.get(field) instanceof Number numberId) {
+            Map<String, Object> resolvedInfo = resolvedData.get(ULong.valueOf(numberId.longValue()));
             if (resolvedInfo != null) rec.put(field, resolvedInfo);
         }
     }
