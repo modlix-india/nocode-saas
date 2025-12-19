@@ -136,12 +136,14 @@ public class RecordEnrichmentService {
 
     private void enrichSingleRecord(
             Map<String, Object> rec, String field, Map<ULong, Map<String, Object>> resolvedData) {
-        if (rec.get(field) instanceof ULong id) {
-            Map<String, Object> resolvedInfo = resolvedData.get(id);
+        Object id = rec.get(field);
+
+        if (id instanceof ULong uLongId) {
+            Map<String, Object> resolvedInfo = resolvedData.get(uLongId);
             if (resolvedInfo != null) rec.put(field, resolvedInfo);
         }
 
-        if (rec.get(field) instanceof Number numberId) {
+        if (id instanceof Number numberId) {
             Map<String, Object> resolvedInfo = resolvedData.get(ULong.valueOf(numberId.longValue()));
             if (resolvedInfo != null) rec.put(field, resolvedInfo);
         }
