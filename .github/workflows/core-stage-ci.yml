@@ -2,6 +2,8 @@ name: core-stage-ci
 
 on:
   push:
+    branches:
+      - oci-stage
 
     paths:
       - 'core/**'
