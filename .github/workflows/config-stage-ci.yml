@@ -2,6 +2,8 @@ name: config-stage-ci
 
 on:
   push:
+    branches:
+      - oci-stage
     
     paths:
       - 'config/**'
