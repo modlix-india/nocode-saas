@@ -2,8 +2,7 @@ name: config-stage-ci
 
 on:
   push:
-    branches:
-      - oci-stage
+    
     paths:
       - 'config/**'
       - '.github/workflows/config-stage-ci.yml'
