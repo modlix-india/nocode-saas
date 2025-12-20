@@ -1,0 +1,60 @@
+name: config-stage-ci
+
+on:
+  push:
+    branches:
+      - oci-stage
+    paths:
+      - 'config/**'
+      - '.github/workflows/config-stage-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server
+      ENVIRONMENT: ocistage
+
+    outputs:
+      image_tag: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: 'maven'
+
+      - working-directory: config
+        run: mvn -q -DskipTests clean package
+
+      - run: |
+          mkdir -p target
+          cp config/target/*.jar target/
+
+      - run: |
+          echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST \
+            -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" \
+            --password-stdin
+
+      - run: |
+          docker build -t $OCIR_REPO:${{ github.sha }} \
+                       -t $OCIR_REPO:latest \
+                       --build-arg profileName=${ENVIRONMENT} \
+                       -f config/Dockerfile .
+          docker push $OCIR_REPO:${{ github.sha }}
+          docker push $OCIR_REPO:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - run: |
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.STAGE_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy config-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-config-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
