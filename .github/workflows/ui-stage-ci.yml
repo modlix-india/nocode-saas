@@ -1,0 +1,65 @@
+name: ui-stage-ci
+
+on:
+  push:
+    
+    paths:
+      - 'ui/**'
+      - 'commons/**'
+      - 'commons-security/**'
+      - 'commons-mongo/**'
+      - '.github/workflows/ui-stage-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      OCIR_HOST: ocir.us-ashburn-1.oci.oraclecloud.com
+      OCIR_REPO: ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server
+
+    outputs:
+      image_tag: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: 'maven'
+
+      - run: |
+          mvn -q -DskipTests clean install -f commons/pom.xml
+          mvn -q -DskipTests clean install -f commons-security/pom.xml
+          mvn -q -DskipTests clean install -f commons-mongo/pom.xml
+
+      - working-directory: ui
+        run: mvn -q -DskipTests clean package
+
+      - run: |
+          mkdir -p target
+          cp ui/target/*.jar target/
+
+      - run: |
+          echo "${{ secrets.OCI_NON_PROD_CLI_AUTH_TOKEN }}" | docker login $OCIR_HOST \
+            -u "${{ secrets.OCI_NON_PROD_DOCKER_USER_NAME }}" \
+            --password-stdin
+
+      - run: |
+          docker build -t $OCIR_REPO:${{ github.sha }} \
+                       -t $OCIR_REPO:latest \
+                       -f ui/Dockerfile .
+          docker push $OCIR_REPO:${{ github.sha }}
+          docker push $OCIR_REPO:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - run: |
+          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.STAGE_SERVER_IP }} \
+            "bash /home/opc/scripts/keepup.sh deploy ui-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/stage-ui-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
