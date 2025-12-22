@@ -5,9 +5,11 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.product.Product;
@@ -77,6 +79,18 @@ public class ProductTicketCRuleService
     @PostConstruct
     private void init() {
         this.functions.addAll(super.getCommonFunctions("ProductTicketCRule", ProductTicketCRule.class, gson));
+
+        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTicketCRule.class) + "." + ProductTicketCRule.class.getSimpleName();
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductTicketCRule",
+                "CreateMultiple",
+                ClassSchema.ArgSpec.of("rule", Schema.ofRef(dtoSchemaRef), ProductTicketCRule.class),
+                EntityProcessorArgSpec.uLongList("stageIds"),
+                "result",
+                Schema.ofArray("result", Schema.ofRef(dtoSchemaRef)),
+                gson,
+                (rule, stageIds) -> self.createMultiple(rule, stageIds).collectList()));
     }
 
     @Autowired
