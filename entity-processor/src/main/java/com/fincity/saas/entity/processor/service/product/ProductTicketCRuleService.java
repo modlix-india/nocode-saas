@@ -28,6 +28,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -118,6 +119,30 @@ public class ProductTicketCRuleService
                                 entity.getProductTemplateId(),
                                 entity.getStageId())),
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
+    }
+
+    public Flux<ProductTicketCRule> createMultiple(ProductTicketCRule rule, List<ULong> stageIds) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> {
+                            if (this.isUserDistributionEnabled()) {
+                                if (rule.isDistributionsEmpty())
+                                    return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+                                if (!rule.isDistributionsValid())
+                                    return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+                            }
+                            return Flux.fromIterable(stageIds)
+                                    .flatMap(stageId -> this.checkEntity(rule.setStageId(stageId), access))
+                                    .collectList();
+                        },
+                        (access, checkedEntities) -> Flux.fromIterable(checkedEntities)
+                                .flatMap(entity -> super.createInternal(access, entity)
+                                        .flatMap(created -> this.createUserDistribution(access, created, rule)
+                                                .map(userDistributions -> (ProductTicketCRule)
+                                                        created.setUserDistributions(userDistributions))))
+                                .collectList())
+                .flatMapMany(Flux::fromIterable)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.createMultiple"));
     }
 
     public Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrder(
