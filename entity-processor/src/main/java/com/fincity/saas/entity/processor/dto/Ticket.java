@@ -5,6 +5,7 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
@@ -40,6 +41,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String subSource;
     private ULong campaignId;
     private Boolean dnc = Boolean.FALSE;
+    private Tag tag;
 
     private ULong productTemplateId = null;
 
@@ -69,6 +71,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.campaignId = ticket.campaignId;
         this.dnc = ticket.dnc;
         this.productTemplateId = ticket.productTemplateId;
+        this.tag = ticket.tag;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {

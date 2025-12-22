@@ -12,6 +12,7 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -25,6 +26,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerReque
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -183,11 +185,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ticket.setOwnerId(owner.getId());
 
-        if (ticket.getName() == null && owner.getName() != null ) ticket.setName(owner.getName());
+        if (ticket.getName() == null && owner.getName() != null) ticket.setName(owner.getName());
 
-        if (ticket.getEmail() == null && owner.getEmail() != null ) ticket.setEmail(owner.getEmail());
+        if (ticket.getEmail() == null && owner.getEmail() != null) ticket.setEmail(owner.getEmail());
 
-        if (ticket.getPhoneNumber() == null && owner.getPhoneNumber() != null ) {
+        if (ticket.getPhoneNumber() == null && owner.getPhoneNumber() != null) {
             ticket.setDialCode(owner.getDialCode());
             ticket.setPhoneNumber(owner.getPhoneNumber());
         }
@@ -213,6 +215,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStage(ticket.getStage());
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
+                    existing.setTag(ticket.getTag());
 
                     return Mono.just(existing);
                 })
@@ -702,5 +705,30 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
+
+        if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
+            return this.identityMissingError(Ticket.Fields.tag);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
+                        (access, ticket, resolvedTag) -> {
+                            Tag oldTagEnum = ticket.getTag();
+                            ticket.setTag(resolvedTag);
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.update(access, ticket),
+                                    uTicket -> ticketTagRequest.getTaskRequest() != null
+                                            ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
+                                            : Mono.just(Boolean.FALSE),
+                                    (uTicket, cTask) -> this.activityService
+                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagEnum)
+                                            .thenReturn(uTicket));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
     }
 }
