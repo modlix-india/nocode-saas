@@ -132,7 +132,11 @@ public class ProductTicketCRuleService
                                     return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
                             }
                             return Flux.fromIterable(stageIds)
-                                    .flatMap(stageId -> this.checkEntity(rule.setStageId(stageId), access))
+                                    .index()
+                                    .flatMap(stageTup -> this.checkEntity(
+                                            (ProductTicketCRule) rule.setStageId(stageTup.getT2())
+                                                    .setOrder(stageTup.getT1().intValue()),
+                                            access))
                                     .collectList();
                         },
                         (access, checkedEntities) -> Flux.fromIterable(checkedEntities)
