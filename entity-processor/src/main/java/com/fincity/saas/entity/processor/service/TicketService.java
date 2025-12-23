@@ -237,7 +237,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 sTicket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 loggedInAssignedUser,
-                                sTicket.toJsonElement()),
+                                sTicket),
                         (sTicket, userId) -> this.setTicketAssignment(
                                 access, sTicket, userId != null ? userId : loggedInAssignedUser))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
@@ -724,11 +724,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 access.getUserId(),
-                                ticket.toJsonElement()),
+                                ticket),
                         ruleUserId -> ruleUserId == null
                                 ? Mono.just(ticket)
                                 : this.updateTicketForReassignment(
                                         access, ticket, ruleUserId, AUTOMATIC_REASSIGNMENT, isAutomatic))
+                .switchIfEmpty(Mono.just(ticket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForStage"));
     }
 

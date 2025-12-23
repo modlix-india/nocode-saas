@@ -12,6 +12,7 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.Product;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
@@ -173,7 +174,12 @@ public class ProductTicketCRuleService
                                     return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
                             }
                             return Flux.fromIterable(stageIds)
-                                    .flatMap(stageId -> this.checkEntity(rule.setStageId(stageId), access))
+                                    .index()
+                                    .flatMap(stageTup -> this.checkEntity(
+                                            (ProductTicketCRule) rule.setStageId(stageTup.getT2())
+                                                    .setOrder((rule.getOrder() != null ? rule.getOrder() : 0)
+                                                            + stageTup.getT1().intValue()),
+                                            access))
                                     .collectList();
                         },
                         (access, checkedEntities) -> Flux.fromIterable(checkedEntities)
@@ -269,22 +275,23 @@ public class ProductTicketCRuleService
     }
 
     public Mono<ULong> getUserAssignment(
-            ProcessorAccess access,
-            ULong productId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data) {
-        return FlatMapUtil.flatMapMono(
-                        () -> this.getRulesWithOrder(access, productId, stageId),
-                        productRule -> this.ticketCRuleExecutionService.executeRules(
-                                access, productRule, tokenPrefix, userId, data),
-                        (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
-                        (productRule, eRule, uRule) -> {
-                            ULong assignedUserId = uRule.getLastAssignedUserId();
-                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
-                            return Mono.just(assignedUserId);
-                        })
+            ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
+        return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
+                    if (productRule.isEmpty()) return Mono.empty();
+
+                    if (productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
+
+                    return FlatMapUtil.flatMapMono(
+                            () -> this.ticketCRuleExecutionService.executeRules(
+                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement()),
+                            super::updateInternalForOutsideUser,
+                            (eRule, uRule) -> {
+                                ULong assignedUserId = uRule.getLastAssignedUserId();
+                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
+                                    return Mono.empty();
+                                return Mono.just(assignedUserId);
+                            });
+                })
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
     }
