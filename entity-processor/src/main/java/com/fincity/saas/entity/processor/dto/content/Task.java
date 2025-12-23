@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.content;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
@@ -18,6 +19,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Task extends BaseContentDto<Task> {
 
     @Serial

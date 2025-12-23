@@ -1,5 +1,19 @@
 package com.fincity.saas.commons.core.service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.reactive.ReactiveSchemaUtil;
@@ -41,21 +55,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+
 import jakarta.annotation.PostConstruct;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -125,6 +126,9 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     @Autowired
     private EventDefinitionService edService;
 
+    @Autowired
+    private RemoteRepositoryService remoteRepositoryService;
+
     public CoreFunctionService(FeignAuthenticationService feignAuthenticationService, Gson gson) {
         super(CoreFunction.class, feignAuthenticationService, gson);
     }
@@ -147,8 +151,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                         .setNotificationService(notificationService)
                         .setAiService(aiService)
                         .setEcService(ecService)
-                        .setEdService(edService)
-                ));
+                        .setEdService(edService)));
     }
 
     @Override
@@ -166,19 +169,37 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> this.getFunctionRepository(appCode, clientCode)
-                                .map(appFunctionRepo ->
-                                        new ReactiveHybridRepository<>(this.coreFunctionRepository, appFunctionRepo)),
-                        (ca, funRepo) -> funRepo.find(namespace, name),
-                        (ca, funRepo, fun) -> schemaService
+                                .map(appFunctionRepo -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+                                        appFunctionRepo)),
+                        (ca, funRepo) -> this.remoteRepositoryService.getRemoteRepositories(appCode, clientCode),
+                        (ca, funRepo, remoteRepositories) -> {
+                            if (remoteRepositories.isPresent()) {
+                                funRepo = new ReactiveHybridRepository<>(
+                                        remoteRepositories.get().getT1(),
+                                        funRepo);
+                            }
+                            return Mono.just(funRepo);
+                        },
+                        (ca, funRepo, remoteRepositories, remRepo) -> remRepo.find(namespace, name),
+                        (ca, funRepo, remoteRepositories, remRepo, fun) -> schemaService
                                 .getSchemaRepository(appCode, clientCode)
-                                .map(appSchemaRepo -> new ReactiveHybridRepository<>(
-                                        new KIRunReactiveSchemaRepository(),
-                                        new CoreSchemaRepository(),
-                                        appSchemaRepo)),
-                        (ca, funRepo, fun, schRepo) -> job == null
-                                ? getRequestParamsToArguments(fun.getSignature().getParameters(), request, schRepo)
-                                : Mono.just(job),
-                        (ca, funRepo, fun, schRepo, args) -> {
+                                .map(appSchemaRepo -> {
+                                    if (!remoteRepositories.isPresent()) {
+                                        return new ReactiveHybridRepository<>(
+                                                new KIRunReactiveSchemaRepository(),
+                                                new CoreSchemaRepository(),
+                                                appSchemaRepo);
+                                    }
+                                    return new ReactiveHybridRepository<>(
+                                            new KIRunReactiveSchemaRepository(),
+                                            new CoreSchemaRepository(),
+                                            appSchemaRepo, remoteRepositories.get().getT2());
+                                }),
+                        (ca, funRepo, remoteRepositories, remRepo, fun, schRepo) ->
+                                job == null
+                                        ? getRequestParamsToArguments(fun.getSignature().getParameters(), request, schRepo)
+                                        : Mono.just(job),
+                        (ca, funRepo, remoteRepositories, remRepo, fun, schRepo, args) -> {
                             if (fun instanceof DefinitionFunction df
                                     && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
                                     && !SecurityContextUtil.hasAuthority(
@@ -193,7 +214,7 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                                     new ReactiveHybridRepository<>(
                                             new KIRunReactiveFunctionRepository(),
                                             this.coreFunctionRepository,
-                                            funRepo),
+                                            remRepo),
                                     schRepo)
                                     .setArguments(args)
                                     .setValuesMap(Map.of(ate.getPrefix(), ate)));
@@ -204,14 +225,15 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
             Map<String, Parameter> parameters, ServerHttpRequest request, ReactiveRepository<Schema> schemaRepository) {
 
-        MultiValueMap<String, String> queryParams =
-                request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
+        MultiValueMap<String, String> queryParams = request == null ? new LinkedMultiValueMap<>()
+                : request.getQueryParams();
 
         return Flux.fromIterable(parameters.entrySet())
                 .flatMap(e -> {
                     List<String> value = queryParams.get(e.getKey());
 
-                    if (value == null) return Mono.empty();
+                    if (value == null)
+                        return Mono.empty();
 
                     Schema schema = e.getValue().getSchema();
 
@@ -229,9 +251,11 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
                     Parameter param = e.getValue();
                     List<String> value = queryParams.get(e.getKey());
 
-                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT)) return Mono.empty();
+                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
+                        return Mono.empty();
 
-                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(e, value, param));
+                    if (type.contains(SchemaType.STRING))
+                        return Mono.just(jsonElementString(e, value, param));
 
                     if (type.contains(SchemaType.DOUBLE)) {
                         return Mono.just(jsonElement(e, value, param, SchemaType.DOUBLE));
@@ -264,7 +288,8 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
 
     private Tuple2<String, JsonElement> jsonElementString(
             Entry<String, Parameter> e, List<String> value, Parameter param) {
-        if (!param.isVariableArgument()) return Tuples.of(e.getKey(), new JsonPrimitive(value.getFirst()));
+        if (!param.isVariableArgument())
+            return Tuples.of(e.getKey(), new JsonPrimitive(value.getFirst()));
 
         JsonArray jsonArray = new JsonArray();
         value.stream().map(JsonPrimitive::new).forEach(jsonArray::add);

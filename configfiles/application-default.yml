@@ -19,7 +19,7 @@ files:
   resources:
     endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
     accessKeyId: 2229a18802734bc30a8419a2e622187c
-    secretAccessKey: 81fd8713ca9127a53e8c9264ae3025f47a02543bd44400d1ad1970208900823a
+    secretAccessKey: 70f021767a550c7b4fa5a3d356c730f7098eeb23834ea6b52b91a9df751f736d
     bucketPrefix: local
 
 multi:
