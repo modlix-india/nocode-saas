@@ -6,11 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import com.fincity.nocode.kirun.engine.json.schema.Schema;
-import com.fincity.nocode.kirun.engine.model.EventResult;
-import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -19,7 +16,7 @@ import reactor.core.publisher.Mono;
 public interface IFeignEntityProcessor {
 
     @GetMapping("/api/entity/processor/schemas/repositoryFind")
-    Mono<Schema> findSchema(
+    Mono<String> findSchema(
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
@@ -34,7 +31,7 @@ public interface IFeignEntityProcessor {
             @RequestParam(required = false, defaultValue = "") String filter);
 
     @GetMapping("/api/entity/processor/functions/repositoryFind")
-    Mono<FunctionSignature> findFunction(
+    Mono<String> findFunction(
             @RequestParam String appCode,
             @RequestParam String clientCode,
             @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
@@ -49,10 +46,15 @@ public interface IFeignEntityProcessor {
             @RequestParam(required = false, defaultValue = "") String filter);
 
     @PostMapping("/api/entity/processor/functions/execute/{namespace}/{name}")
-    Mono<List<EventResult>> executeFunction(
+    Mono<String> executeFunction(
+            @RequestHeader(name = "Authorization") String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
+            @RequestHeader("clientCode") String headerClientCode,
+            @RequestHeader("appCode") String headerAppCode,
             @PathVariable String namespace,
             @PathVariable String name,
-            @RequestParam String appCode,
-            @RequestParam String clientCode,
+            @RequestParam String paramAppCode,
+            @RequestParam String paramClientCode,
             @RequestBody String jsonString);
 }

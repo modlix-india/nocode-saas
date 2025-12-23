@@ -15,12 +15,16 @@ import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.dao.RemoteRepositoryDAO;
 import com.fincity.saas.commons.core.dto.RemoteRepository;
+import com.fincity.saas.commons.core.feign.IFeignEntityProcessor;
 import com.fincity.saas.commons.core.jooq.enums.CoreRemoteRepositoriesRepoName;
 import com.fincity.saas.commons.core.jooq.tables.records.CoreRemoteRepositoriesRecord;
+import com.fincity.saas.commons.core.kirun.repository.entityprocessor.EPRemoteFunctionRepository;
+import com.fincity.saas.commons.core.kirun.repository.entityprocessor.EPRemoteSchemaRepository;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
+import com.google.gson.Gson;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -35,11 +39,15 @@ public class RemoteRepositoryService
     private static final String CACHE_RR_NAME = "cacheRemoteRepositories";
 
     private final CacheService cacheService;
-
+    private final Gson gson;
     private final Map<String, Optional<Tuple2<ReactiveRepository<ReactiveFunction>, ReactiveRepository<Schema>>>> functionRepositories = new ConcurrentHashMap<>();
 
-    public RemoteRepositoryService(CacheService cacheService) {
+    private final IFeignEntityProcessor feignEntityProcessor;
+
+    public RemoteRepositoryService(CacheService cacheService, Gson gson, IFeignEntityProcessor feignEntityProcessor) {
         this.cacheService = cacheService;
+        this.gson = gson;
+        this.feignEntityProcessor = feignEntityProcessor;
     }
 
     @Override
@@ -52,16 +60,16 @@ public class RemoteRepositoryService
     @Override
     protected Mono<RemoteRepository> updatableEntity(RemoteRepository entity) {
         return FlatMapUtil.flatMapMono(
-                () -> this.read(entity.getId()),
-                existing -> {
-                    if (entity.getAppCode() != null) {
-                        existing.setAppCode(entity.getAppCode());
-                    }
-                    if (entity.getRepoName() != null) {
-                        existing.setRepoName(entity.getRepoName());
-                    }
-                    return Mono.just(existing);
-                })
+                        () -> this.read(entity.getId()),
+                        existing -> {
+                            if (entity.getAppCode() != null) {
+                                existing.setAppCode(entity.getAppCode());
+                            }
+                            if (entity.getRepoName() != null) {
+                                existing.setRepoName(entity.getRepoName());
+                            }
+                            return Mono.just(existing);
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.updatableEntity"));
     }
 
@@ -85,8 +93,8 @@ public class RemoteRepositoryService
     @PreAuthorize("hasAuthority('Authorities.Application_CREATE')")
     public Mono<RemoteRepository> create(RemoteRepository entity) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> super.create(entity))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> super.create(entity))
                 .flatMap(this.cacheService.evictFunction(CACHE_RR_NAME, entity.getAppCode()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.create"));
     }
@@ -100,8 +108,8 @@ public class RemoteRepositoryService
     @PreAuthorize("hasAuthority('Authorities.Application_READ')")
     public Mono<RemoteRepository> read(ULong id) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> super.read(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> super.read(id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.read"));
     }
 
@@ -114,8 +122,8 @@ public class RemoteRepositoryService
     @PreAuthorize("hasAuthority('Authorities.Application_UPDATE')")
     public Mono<RemoteRepository> update(RemoteRepository entity) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> super.update(entity))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> super.update(entity))
                 .flatMap(this.cacheService.evictFunction(CACHE_RR_NAME, entity.getAppCode()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.update"));
     }
@@ -129,8 +137,8 @@ public class RemoteRepositoryService
     @PreAuthorize("hasAuthority('Authorities.Application_DELETE')")
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
-                ca -> super.delete(id))
+                        SecurityContextUtil::getUsersContextAuthentication,
+                        ca -> super.delete(id))
                 .flatMap(this.cacheService.evictAllFunction(CACHE_RR_NAME))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.delete"));
     }
@@ -149,13 +157,20 @@ public class RemoteRepositoryService
 
                 rrNames -> {
 
+                    Optional<Tuple2<ReactiveRepository<ReactiveFunction>, ReactiveRepository<Schema>>> op;
                     if (rrNames.isEmpty()) {
                         this.functionRepositories.put(cacheKey, Optional.empty());
-                        return Mono.just(Optional
-                                .<Tuple2<ReactiveRepository<ReactiveFunction>, ReactiveRepository<Schema>>>empty());
+                        op = Optional
+                                .<Tuple2<ReactiveRepository<ReactiveFunction>, ReactiveRepository<Schema>>>empty();
+                    } else {
+                        op = Optional.of(Tuples.of(
+                                new EPRemoteFunctionRepository(this.feignEntityProcessor, appCode, clientCode,
+                                        this.gson),
+                                new EPRemoteSchemaRepository(this.feignEntityProcessor, appCode, clientCode,
+                                        this.gson)));
                     }
 
-                    return Mono.just(Optional.of(Tuples.of()));
+                    return Mono.just(op);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "RemoteRepositoryService.getRemoteRepositories"));
     }
 }

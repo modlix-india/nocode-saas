@@ -1,6 +1,17 @@
 package com.fincity.saas.entity.processor.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
+import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
+import com.fincity.nocode.kirun.engine.json.schema.type.Type;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.configuration.AbstractJooqBaseConfiguration;
 import com.fincity.saas.commons.security.ISecurityConfiguration;
@@ -17,14 +28,8 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
+
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
@@ -48,21 +53,37 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                         "{} - {}",
                         name,
                         !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
-            else log.debug(v);
+            else
+                log.debug(v);
         }));
     }
 
     @Override
     public Gson makeGson() {
         Gson baseGson = super.makeGson();
-        return baseGson.newBuilder()
+
+        // Create adapter instances that need Gson reference
+        ArraySchemaType.ArraySchemaTypeAdapter arraySchemaTypeAdapter = new ArraySchemaType.ArraySchemaTypeAdapter();
+        AdditionalType.AdditionalTypeAdapter additionalTypeAdapter = new AdditionalType.AdditionalTypeAdapter();
+
+        // Build Gson with all adapters
+        Gson gson = baseGson.newBuilder()
                 .registerTypeAdapter(Identity.class, new IdentityTypeAdapter())
                 .registerTypeAdapter(Email.class, new EmailTypeAdapter())
                 .registerTypeAdapter(PhoneNumber.class, new PhoneNumberTypeAdapter())
                 .registerTypeAdapter(Pageable.class, new PageableTypeAdapter())
                 .registerTypeAdapterFactory(new AbstractConditionTypeAdapter.Factory())
                 .registerTypeAdapterFactory(new PageTypeAdapter.Factory())
+                .registerTypeAdapter(Type.class, new Type.SchemaTypeAdapter())
+                .registerTypeAdapter(AdditionalType.class, additionalTypeAdapter)
+                .registerTypeAdapter(ArraySchemaType.class, arraySchemaTypeAdapter)
                 .create();
+
+        // Set Gson on adapters that need it (for circular references)
+        arraySchemaTypeAdapter.setGson(gson);
+        additionalTypeAdapter.setGson(gson);
+
+        return gson;
     }
 
     @Bean
