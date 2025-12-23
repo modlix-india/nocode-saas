@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.rule;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
@@ -15,6 +16,7 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class TicketPeDuplicationRule extends BaseUpdatableDto<TicketPeDuplicationRule> {
 
     @Serial

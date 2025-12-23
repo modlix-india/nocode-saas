@@ -82,7 +82,7 @@ public abstract class BaseWalkInFormService<
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".createOrUpdate"));
     }
 
-    public Mono<D> create(WalkInFormRequest walkInFormRequest) {
+    public Mono<D> createRequest(WalkInFormRequest walkInFormRequest) {
         if (walkInFormRequest.getProductId() == null)
             return msgService.throwMessage(
                     msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -132,7 +132,7 @@ public abstract class BaseWalkInFormService<
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, this.getClass().getSimpleName() + ".getWalkInForm"));
     }
 
-    public Mono<WalkInFormResponse> getWalkInFormResponse(ProcessorAccess access, ULong productId) {
+    protected Mono<WalkInFormResponse> getWalkInFormResponse(ProcessorAccess access, ULong productId) {
         return this.getWalkInFormInternal(access, productId)
                 .map(walkInForm -> new WalkInFormResponse()
                         .setProductId(walkInForm.getProductId())

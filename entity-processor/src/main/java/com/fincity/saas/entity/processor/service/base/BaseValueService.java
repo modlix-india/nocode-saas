@@ -37,7 +37,7 @@ public abstract class BaseValueService<
 
     protected ProductTemplateService productTemplateService;
 
-    public abstract Mono<D> applyOrder(D entity, ProcessorAccess access);
+    protected abstract Mono<D> applyOrder(D entity, ProcessorAccess access);
 
     @Autowired
     private void setValueTemplateService(ProductTemplateService productTemplateService) {
@@ -144,7 +144,7 @@ public abstract class BaseValueService<
     }
 
     @Override
-    public Mono<D> create(ProcessorAccess access, D entity) {
+    protected Mono<D> create(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
                 () -> this.checkEntity(entity, access),
                 vEntity -> this.applyOrder(vEntity, access),
@@ -156,7 +156,7 @@ public abstract class BaseValueService<
                 (vEntity, aEntity, cEntity) -> this.evictCache(cEntity).map(evicted -> cEntity));
     }
 
-    public Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
+    protected Mono<D> createChild(ProcessorAccess access, D entity, D parentEntity) {
 
         return FlatMapUtil.flatMapMono(() -> this.checkEntity(entity, access), vEntity -> {
             entity.setIsParent(Boolean.FALSE);

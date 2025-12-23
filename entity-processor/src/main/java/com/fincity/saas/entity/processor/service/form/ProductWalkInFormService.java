@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service.form;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
@@ -16,6 +23,7 @@ import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.form.WalkInFormRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
@@ -24,8 +32,12 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.SourceUtil;
 import com.fincity.saas.entity.processor.service.TicketService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.jooq.types.ULong;
@@ -42,19 +54,56 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ProductWalkInFormService
-        extends BaseWalkInFormService<
-                EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO> {
+        extends BaseWalkInFormService<EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO>
+        implements IRepositoryProvider {
 
     private static final String SYSTEM = "SYSTEM";
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
     private final ProductService productService;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private TicketService ticketService;
     private ActivityService activityService;
 
     private ProductTemplateWalkInFormService productTemplateWalkInFormService;
 
-    public ProductWalkInFormService(ProductService productService) {
+    @Autowired
+    @Lazy
+    private ProductWalkInFormService self;
+
+    public ProductWalkInFormService(ProductService productService, Gson gson) {
         this.productService = productService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("ProductWalkInForm", ProductWalkInForm.class, gson));
+
+        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductWalkInForm.class) + "."
+                + ProductWalkInForm.class.getSimpleName();
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductWalkInForm",
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductWalkInForm",
+                "GetWalkInForm",
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::getWalkInForm));
     }
 
     @Autowired
@@ -308,5 +357,16 @@ public class ProductWalkInFormService
                         this.productTemplateWalkInFormService.getWalkInFormResponse(access, resolvedProduct.getT2()))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponseInternal"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(ProductWalkInForm.class, classSchema);
     }
 }
