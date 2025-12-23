@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.*;
 import org.apache.commons.lang.NotImplementedException;
@@ -32,6 +34,7 @@ import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -519,6 +522,27 @@ public class ProfileService
                         .collectList()
                         .map(user::setProfiles))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
+    }
+
+    public Mono<Profile> readInternal(ULong profileId) {
+        return this.cacheService.cacheValueOrGet(PROFILE, () -> this.dao.readInternal(profileId), profileId);
+    }
+
+    public Mono<Profile> readById(ULong profileId) {
+        return this.readInternal(profileId);
+    }
+
+    public Mono<List<Profile>> readByIds(List<ULong> profileIds) {
+
+        if (profileIds == null || profileIds.isEmpty())
+            return Mono.just(List.of());
+
+        return this.readAllFilter(
+                new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(profileIds)
+        ).collectList();
     }
 
 }

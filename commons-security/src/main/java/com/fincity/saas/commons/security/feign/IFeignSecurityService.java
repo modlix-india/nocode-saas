@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.security.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,10 +19,6 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.model.EntityProcessorUser;
-import com.fincity.saas.commons.security.model.NotificationUser;
-import com.fincity.saas.commons.security.model.User;
-import com.fincity.saas.commons.security.model.UsersListRequest;
 
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
@@ -223,4 +220,12 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
     Mono<String> getAppStatus(@PathVariable String appCode);
+
+    @GetMapping(value = "${security.feign.getProfileInternal:/api/security/app/internal/{id}}")
+    Mono<Profile> getProfileInternal(@PathVariable("id") BigInteger id);
+
+    @GetMapping(value = "${security.feign.getProfilesInternal:/api/security/app/internal}")
+    Mono<List<Profile>> getProfilesInternal(
+            @RequestParam List<BigInteger> profileIds);
+
 }

@@ -3,6 +3,7 @@ package com.fincity.security.controller;
 import java.beans.PropertyEditorSupport;
 import java.util.List;
 
+import com.fincity.security.dto.User;
 import org.jooq.types.UInteger;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.validation.DataBinder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -118,5 +120,17 @@ public class ProfileController {
         String appCode = request.getHeaders().getFirst("appCode");
 
         return this.service.getProfileUsers(appCode, profileIds).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/{id}")
+    public Mono<ResponseEntity<Profile>> getProfileInternal(
+            @PathVariable ULong id) {
+        return this.service.readById(id).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal")
+    public Mono<ResponseEntity<List<Profile>>> getProfilesInternal(
+            @RequestParam List<ULong> profileIds) {
+        return this.service.readByIds(profileIds).map(ResponseEntity::ok);
     }
 }
