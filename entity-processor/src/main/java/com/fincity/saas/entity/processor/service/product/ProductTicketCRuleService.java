@@ -135,7 +135,8 @@ public class ProductTicketCRuleService
                                     .index()
                                     .flatMap(stageTup -> this.checkEntity(
                                             (ProductTicketCRule) rule.setStageId(stageTup.getT2())
-                                                    .setOrder(stageTup.getT1().intValue()),
+                                                    .setOrder((rule.getOrder() != null ? rule.getOrder() : 0)
+                                                            + stageTup.getT1().intValue()),
                                             access))
                                     .collectList();
                         },
