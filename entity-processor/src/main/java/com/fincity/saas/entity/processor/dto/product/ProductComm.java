@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.product;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.request.product.ProductCommRequest;
 import com.fincity.saas.entity.processor.oserver.core.document.Connection;
@@ -17,6 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class ProductComm extends BaseProcessorDto<ProductComm> {
 
     @Serial

@@ -1,6 +1,13 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.rule.TicketPeDuplicationRuleDAO;
@@ -13,7 +20,13 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.List;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -22,14 +35,41 @@ import reactor.util.context.Context;
 @Service
 public class TicketPeDuplicationRuleService
         extends BaseUpdatableService<
-                EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO> {
+                EntityProcessorTicketPeDuplicationRulesRecord, TicketPeDuplicationRule, TicketPeDuplicationRuleDAO>
+        implements IRepositoryProvider {
 
     private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private final Gson gson;
+
+    @Autowired
+    @Lazy
+    private TicketPeDuplicationRuleService self;
 
     private static final TicketPeDuplicationRule DEFAULT_RULE = (TicketPeDuplicationRule) new TicketPeDuplicationRule()
             .setPhoneNumberAndEmailType(PhoneNumberAndEmailType.PHONE_NUMBER_ONLY)
             .setActive(Boolean.TRUE)
             .setId(ULong.MIN);
+
+    public TicketPeDuplicationRuleService(Gson gson) {
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("TicketPeDuplicationRule", TicketPeDuplicationRule.class, gson));
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "TicketPeDuplicationRule",
+                "GetLoggedInRule",
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Rule.TicketPeDuplicationRule"),
+                gson,
+                self::getLoggedInRule));
+    }
 
     @Override
     protected String getCacheName() {
@@ -85,7 +125,7 @@ public class TicketPeDuplicationRuleService
     }
 
     @Override
-    public Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
+    protected Mono<TicketPeDuplicationRule> create(ProcessorAccess access, TicketPeDuplicationRule entity) {
         return super.create(access, entity)
                 .flatMap(created -> this.evictCache(created).map(evicted -> created));
     }
@@ -111,5 +151,16 @@ public class TicketPeDuplicationRuleService
                 this.getCacheName(),
                 () -> this.dao.readByAppCodeAndClientCode(access),
                 super.getCacheKey("rule", access.getAppCode(), access.getClientCode()));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(TicketPeDuplicationRule.class, classSchema);
     }
 }

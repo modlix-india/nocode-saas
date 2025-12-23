@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -50,6 +51,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
+@IgnoreGeneration
 public class ActivityService extends BaseService<EntityProcessorActivitiesRecord, Activity, ActivityDAO> {
 
     private static final List<String> sUpdatedFields = List.of(
