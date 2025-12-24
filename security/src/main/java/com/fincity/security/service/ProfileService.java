@@ -34,7 +34,6 @@ import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
 import com.fincity.security.service.appregistration.IAppRegistrationHelperService;
 
 import io.r2dbc.spi.R2dbcDataIntegrityViolationException;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -161,6 +160,10 @@ public class ProfileService
                                         .evict(cacheName, e.getClientId());
                             }).map(x -> e);
                 })
+                .flatMap(e ->
+                        this.cacheService.evict(PROFILE, e.getId())
+                                .thenReturn(e)
+                )
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
@@ -319,6 +322,10 @@ public class ProfileService
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
+                .flatMap(result ->
+                        this.cacheService.evict(PROFILE, id)
+                                .thenReturn(result)
+                )
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException
                                 || ex instanceof R2dbcDataIntegrityViolationException

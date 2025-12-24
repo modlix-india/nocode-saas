@@ -7,8 +7,6 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.jooq.tables.records.SecurityProfileRoleRecord;
 import org.jooq.*;

@@ -125,12 +125,7 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/otp/generate",
 
-                "/api/security/otp/verify",
-
-                "/api/security/app/internal",
-
-                "/api/security/app/internal/**"
-                );
+                "/api/security/otp/verify");
     }
 
 }
