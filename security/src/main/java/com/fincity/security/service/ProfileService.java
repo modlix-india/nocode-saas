@@ -140,30 +140,7 @@ public class ProfileService
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
-                .flatMap(e -> {
-
-                    String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
-                            + (e.getRootProfileId() == null ? e.getId()
-                                    : e.getRootProfileId());
-
-                    if (e.getRootProfileId() == null)
-                        return this.cacheService.evictAll(cacheName).map(x -> e);
-
-                    return this.dao.isBeingUsedByManagingClients(e.getClientId(), e.getId(),
-                            e.getRootProfileId())
-                            .flatMap(used -> {
-
-                                if (used)
-                                    return this.cacheService.evictAll(cacheName);
-
-                                return this.cacheService
-                                        .evict(cacheName, e.getClientId());
-                            }).map(x -> e);
-                })
-                .flatMap(e ->
-                        this.cacheService.evict(PROFILE, e.getId())
-                                .thenReturn(e)
-                )
+                .flatMap(this::evictAuthoritiesAndProfileCache)
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
@@ -317,15 +294,12 @@ public class ProfileService
 
                 ca -> this.clientHierarchyService
                         .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
-
-                (ca, hierarchy) -> this.dao.delete(id, hierarchy)
+                (ca, hierarchy)-> this.dao.read(id, hierarchy),
+                        (ca, hierarchy,profile)-> this.evictAuthoritiesAndProfileCache(profile),
+                (ca, hierarchy,profile,evicted) -> this.dao.delete(id, hierarchy)
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
-                .flatMap(result ->
-                        this.cacheService.evict(PROFILE, id)
-                                .thenReturn(result)
-                )
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException
                                 || ex instanceof R2dbcDataIntegrityViolationException
@@ -550,6 +524,38 @@ public class ProfileService
                         .setOperator(FilterConditionOperator.IN)
                         .setMultiValue(profileIds)
         ).collectList();
+    }
+
+    private Mono<Profile> evictAuthoritiesAndProfileCache(Profile e) {
+
+        String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
+                + (e.getRootProfileId() == null ? e.getId() : e.getRootProfileId());
+
+        Mono<Profile> authoritiesEviction;
+
+        if (e.getRootProfileId() == null) {
+            authoritiesEviction =
+                    this.cacheService.evictAll(cacheName).thenReturn(e);
+        } else {
+            authoritiesEviction =
+                    this.dao.isBeingUsedByManagingClients(
+                                    e.getClientId(), e.getId(), e.getRootProfileId())
+                            .flatMap(used -> {
+
+                                if (used)
+                                    return this.cacheService.evictAll(cacheName);
+
+                                return this.cacheService
+                                        .evict(cacheName, e.getClientId());
+                            })
+                            .thenReturn(e);
+        }
+
+        return authoritiesEviction
+                .flatMap(p ->
+                        this.cacheService.evict(PROFILE, p.getId())
+                                .thenReturn(p)
+                );
     }
 
 }
