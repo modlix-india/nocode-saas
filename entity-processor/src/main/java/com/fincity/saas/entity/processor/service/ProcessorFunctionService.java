@@ -1,22 +1,5 @@
 package com.fincity.saas.entity.processor.service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.type.SchemaType;
@@ -30,7 +13,21 @@ import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -75,8 +72,8 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
         }
 
         // Lazy lookup of IRepositoryProvider beans to avoid circular dependency
-        Map<String, IRepositoryProvider> repositoryProviders = applicationContext
-                .getBeansOfType(IRepositoryProvider.class);
+        Map<String, IRepositoryProvider> repositoryProviders =
+                applicationContext.getBeansOfType(IRepositoryProvider.class);
 
         return Flux.fromIterable(repositoryProviders.values())
                 .flatMap(provider -> provider.getFunctionRepository(appCode, clientCode))
@@ -104,8 +101,8 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
         ProcessorSchemaService schemaService = applicationContext.getBean(ProcessorSchemaService.class);
 
         return Mono.zip(
-                getFunctionRepository(appCode, clientCode),
-                schemaService.getSchemaRepository(appCode, clientCode))
+                        getFunctionRepository(appCode, clientCode),
+                        schemaService.getSchemaRepository(appCode, clientCode))
                 .flatMap(tup -> {
                     ReactiveRepository<ReactiveFunction> functionRepository = tup.getT1();
                     ReactiveRepository<Schema> schemaRepository = tup.getT2();
@@ -126,26 +123,23 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
     private Mono<Map<String, JsonElement>> getRequestParamsToArguments(
             Map<String, Parameter> parameters, ServerHttpRequest request) {
 
-        MultiValueMap<String, String> queryParams = request == null ? new LinkedMultiValueMap<>()
-                : request.getQueryParams();
+        MultiValueMap<String, String> queryParams =
+                request == null ? new LinkedMultiValueMap<>() : request.getQueryParams();
 
         return Flux.fromIterable(parameters.entrySet())
                 .flatMap(parameter -> {
                     List<String> value = queryParams.get(parameter.getKey());
 
-                    if (value == null)
-                        return Mono.empty();
+                    if (value == null) return Mono.empty();
 
                     Schema schema = parameter.getValue().getSchema();
                     Type type = schema.getType();
 
                     Parameter param = parameter.getValue();
 
-                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT))
-                        return Mono.empty();
+                    if (type.contains(SchemaType.ARRAY) || type.contains(SchemaType.OBJECT)) return Mono.empty();
 
-                    if (type.contains(SchemaType.STRING))
-                        return Mono.just(jsonElementString(parameter, value, param));
+                    if (type.contains(SchemaType.STRING)) return Mono.just(jsonElementString(parameter, value, param));
 
                     if (type.contains(SchemaType.DOUBLE)) {
                         return Mono.just(jsonElement(parameter, value, param, SchemaType.DOUBLE));
@@ -179,8 +173,7 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
 
     private Tuple2<String, JsonElement> jsonElementString(
             Entry<String, Parameter> parameter, List<String> value, Parameter param) {
-        if (!param.isVariableArgument())
-            return Tuples.of(parameter.getKey(), new JsonPrimitive(value.getFirst()));
+        if (!param.isVariableArgument()) return Tuples.of(parameter.getKey(), new JsonPrimitive(value.getFirst()));
 
         JsonArray jsonArray = new JsonArray();
         value.stream().map(JsonPrimitive::new).forEach(jsonArray::add);
