@@ -9,7 +9,6 @@ import com.fincity.saas.commons.functions.AbstractProcessorFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
-import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -26,8 +25,8 @@ import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketCRuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -81,7 +80,8 @@ public class ProductTicketCRuleService
     private void init() {
         this.functions.addAll(super.getCommonFunctions("ProductTicketCRule", ProductTicketCRule.class, gson));
 
-        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTicketCRule.class) + "." + ProductTicketCRule.class.getSimpleName();
+        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTicketCRule.class) + "."
+                + ProductTicketCRule.class.getSimpleName();
 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "ProductTicketCRule",

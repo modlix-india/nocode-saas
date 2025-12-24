@@ -56,7 +56,8 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
         if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
 
         entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
+        entity.setClientCode(
+                access.isOutsideUser() ? access.getUserInherit().getManagedClientCode() : access.getClientCode());
 
         entity.setCreatedBy(access.getUserId());
 
