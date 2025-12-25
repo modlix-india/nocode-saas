@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.jooq.tables.records.SecurityProfileRoleRecord;
 import org.jooq.*;
@@ -914,6 +913,13 @@ public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, UL
                 .map(e -> e.value2() == null ? e.value1() : e.value2())
                 .distinct()
                 .collectList();
+    }
+
+    public Mono<Profile> readInternal(ULong id) {
+        return Mono.from(this.dslContext.selectFrom(this.table)
+                        .where(this.idField.eq(id))
+                )
+                .map(e -> e.into(this.pojoClass));
     }
 
 }
