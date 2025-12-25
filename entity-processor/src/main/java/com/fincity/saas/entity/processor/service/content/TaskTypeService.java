@@ -1,6 +1,12 @@
 package com.fincity.saas.entity.processor.service.content;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskTypeDAO;
 import com.fincity.saas.entity.processor.dto.content.TaskType;
@@ -10,7 +16,12 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.TaskTypeRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -18,9 +29,28 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTypesRecord, TaskType, TaskTypeDAO> {
+public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTypesRecord, TaskType, TaskTypeDAO>
+        implements IRepositoryProvider {
 
     private static final String TASK_TYPE_CACHE = "taskType";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+
+    @Autowired
+    @Lazy
+    private TaskTypeService self;
+
+    public TaskTypeService(Gson gson) {
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.addAll(super.getCommonFunctions("TaskType", TaskType.class, gson));
+    }
 
     @Override
     protected String getCacheName() {
@@ -49,7 +79,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create"));
     }
 
-    public Flux<TaskType> create(List<TaskTypeRequest> taskTypeRequests) {
+    public Flux<TaskType> createRequests(List<TaskTypeRequest> taskTypeRequests) {
 
         if (taskTypeRequests == null || taskTypeRequests.isEmpty()) return Flux.empty();
 
@@ -72,14 +102,25 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[List<TaskTypeRequest>]"));
     }
 
-    public Mono<TaskType> create(TaskTypeRequest taskTypeRequest) {
+    public Mono<TaskType> createRequest(TaskTypeRequest taskTypeRequest) {
         return super.create(TaskType.of(taskTypeRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[TaskTypeRequest]"));
     }
 
-    public Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
+    private Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
         return this.dao
                 .existsByName(appCode, clientCode, names)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.existsByName"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(TaskType.class, classSchema);
     }
 }

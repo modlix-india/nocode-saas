@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 public class NoteController extends BaseContentController<EntityProcessorNotesRecord, Note, NoteDAO, NoteService> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Note>> createFromRequest(@RequestBody NoteRequest noteRequest) {
-        return this.service.create(noteRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Note>> createRequest(@RequestBody NoteRequest noteRequest) {
+        return this.service.createRequest(noteRequest).map(ResponseEntity::ok);
     }
 }

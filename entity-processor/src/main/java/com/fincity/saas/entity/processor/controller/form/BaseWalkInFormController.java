@@ -22,8 +22,8 @@ public abstract class BaseWalkInFormController<
         extends BaseUpdatableController<R, D, O, S> {
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<D>> createFromRequest(@RequestBody WalkInFormRequest walkInFormRequest) {
-        return this.service.create(walkInFormRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<D>> createRequest(@RequestBody WalkInFormRequest walkInFormRequest) {
+        return this.service.createRequest(walkInFormRequest).map(ResponseEntity::ok);
     }
 
     @GetMapping(REQ_PATH_ID + "/by-product")

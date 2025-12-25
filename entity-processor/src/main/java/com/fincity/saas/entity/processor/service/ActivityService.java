@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -25,6 +26,7 @@ import com.fincity.saas.entity.processor.dto.content.Task;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
@@ -49,6 +51,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
+@IgnoreGeneration
 public class ActivityService extends BaseService<EntityProcessorActivitiesRecord, Activity, ActivityDAO> {
 
     private static final List<String> sUpdatedFields = List.of(
@@ -761,5 +764,45 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         });
 
         return DifferenceExtractor.extract(iObject, eObject);
+    }
+
+    public Mono<Void> acTagChange(ProcessorAccess access, Ticket ticket, String comment, Tag oldTagEnum) {
+
+        if (oldTagEnum == null) {
+            return this.acTagCreate(access, ticket, comment)
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagChange"));
+        }
+        return this.acTagUpdate(access, ticket, comment, oldTagEnum)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagChange"));
+    }
+
+    private Mono<Void> acTagCreate(ProcessorAccess access, Ticket ticket, String comment) {
+
+        if (ticket.getTag() == null) return Mono.empty();
+
+        return this.createActivityInternal(
+                        access,
+                        ActivityAction.TAG_CREATE,
+                        null,
+                        comment,
+                        Map.of(Activity.Fields.ticketId, ticket.getId(), Ticket.Fields.tag, ticket.getTag()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagCreate"));
+    }
+
+    private Mono<Void> acTagUpdate(ProcessorAccess access, Ticket ticket, String comment, Tag oldTag) {
+
+        return this.createActivityInternal(
+                        access,
+                        ActivityAction.TAG_UPDATE,
+                        null,
+                        comment,
+                        Map.of(
+                                Activity.Fields.ticketId,
+                                ticket.getId(),
+                                ActivityAction.getOldName(Ticket.Fields.tag),
+                                oldTag,
+                                Ticket.Fields.tag,
+                                ticket.getTag()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTagUpdate"));
     }
 }
