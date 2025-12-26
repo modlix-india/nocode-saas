@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dao.rule.TicketRuUserDistributionDAO;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -7,6 +8,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import org.springframework.stereotype.Service;
 
 @Service
+@IgnoreGeneration
 public class TicketRuUserDistributionService
         extends BaseUserDistributionService<
                 EntityProcessorTicketRuUserDistributionsRecord, TicketRuUserDistribution, TicketRuUserDistributionDAO> {

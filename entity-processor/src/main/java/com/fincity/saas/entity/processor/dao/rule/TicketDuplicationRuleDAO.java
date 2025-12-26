@@ -58,6 +58,8 @@ public class TicketDuplicationRuleDAO
 
         if (source == null) return Mono.empty();
 
+        if ((productId == null) == (productTemplateId == null)) return Mono.empty();
+
         List<AbstractCondition> conditions = new ArrayList<>(5);
         if (condition != null) conditions.add(condition);
 

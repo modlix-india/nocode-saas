@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.product;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketRuUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -15,6 +16,7 @@ import lombok.experimental.FieldNameConstants;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class ProductTicketRuRule extends BaseRuleDto<TicketRuUserDistribution, ProductTicketRuRule> {
 
     @Serial

@@ -868,14 +868,16 @@ public class MobileAppService {
                         } else {
                             // Preserve existing iOS fields if present
                             logger.info("Preserving existing iOS fields (not creating new)");
-                            if (!StringUtil.safeIsBlank(existing.getIosBundleId())) {
-                                mobileApp.setIosBundleId(existing.getIosBundleId());
-                            }
-                            if (!StringUtil.safeIsBlank(existing.getIosTeamId())) {
-                                mobileApp.setIosTeamId(existing.getIosTeamId());
-                            }
-                            if (!StringUtil.safeIsBlank(existing.getIosProvisioningProfile())) {
-                                mobileApp.setIosProvisioningProfile(existing.getIosProvisioningProfile());
+                            if (isPlatformAccount) {
+                                if (!StringUtil.safeIsBlank(existing.getIosBundleId())) {
+                                    mobileApp.setIosBundleId(existing.getIosBundleId());
+                                }
+                                if (!StringUtil.safeIsBlank(existing.getIosTeamId())) {
+                                    mobileApp.setIosTeamId(existing.getIosTeamId());
+                                }
+                                if (!StringUtil.safeIsBlank(existing.getIosProvisioningProfile())) {
+                                    mobileApp.setIosProvisioningProfile(existing.getIosProvisioningProfile());
+                                }
                             }
                             logger.info("After preserving: iosBundleId={}, iosTeamId={}, hasProvisioningProfile={}",
                                     mobileApp.getIosBundleId(), mobileApp.getIosTeamId(),

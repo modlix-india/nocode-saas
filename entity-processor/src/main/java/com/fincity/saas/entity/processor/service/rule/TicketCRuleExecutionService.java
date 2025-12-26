@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.service.ConditionEvaluator;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
+@IgnoreGeneration
 public class TicketCRuleExecutionService {
 
     private static final ULong ANO_USER_ID = ULong.MIN;

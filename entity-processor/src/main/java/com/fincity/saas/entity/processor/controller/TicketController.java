@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerReque
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.TicketService;
@@ -33,14 +34,20 @@ public class TicketController
     public static final String DCRM_REQ_PATH = REQ_PATH + "/DCRM";
 
     @PostMapping(REQ_PATH)
-    public Mono<ResponseEntity<Ticket>> createFromRequest(@RequestBody TicketRequest ticketRequest) {
-        return this.service.create(ticketRequest).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Ticket>> createRequest(@RequestBody TicketRequest ticketRequest) {
+        return this.service.createRequest(ticketRequest).map(ResponseEntity::ok);
     }
 
     @PatchMapping(REQ_PATH_ID + "/stage")
     public Mono<ResponseEntity<Ticket>> updateStageStatus(
             @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody TicketStatusRequest ticketStatusRequest) {
         return this.service.updateStageStatus(identity, ticketStatusRequest).map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/tag")
+    public Mono<ResponseEntity<Ticket>> updateTag(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody TicketTagRequest ticketTagRequest) {
+        return this.service.updateTag(identity, ticketTagRequest).map(ResponseEntity::ok);
     }
 
     @PatchMapping(REQ_PATH_ID + "/reassign")

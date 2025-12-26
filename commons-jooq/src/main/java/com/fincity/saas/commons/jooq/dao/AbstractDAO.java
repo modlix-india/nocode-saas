@@ -99,8 +99,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 orderBy.add(field.sort(order.getDirection() == Direction.ASC ? SortOrder.ASC : SortOrder.DESC));
         });
 
-        final Mono<Integer> recordsCount =
-                Mono.from(selectJoinStepTuple.getT2()).map(Record1::value1);
+        final Mono<Integer> recordsCount = Mono.from(selectJoinStepTuple.getT2()).map(Record1::value1);
 
         SelectJoinStep<Record> selectJoinStep = selectJoinStepTuple.getT1();
         if (!orderBy.isEmpty()) {
@@ -108,7 +107,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         }
 
         Mono<List<D>> recordsList = Flux.from(
-                        selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
+                selectJoinStep.limit(pageable.getPageSize()).offset(pageable.getOffset()))
                 .map(e -> e.into(this.pojoClass))
                 .collectList();
 
@@ -163,9 +162,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         Field field = table.field(jooqFieldName);
 
-        if (field != null) return field;
+        if (field != null)
+            return field;
 
-        if (selectJoinStep != null) return this.findFieldInSelect(selectJoinStep, jooqFieldName);
+        if (selectJoinStep != null)
+            return this.findFieldInSelect(selectJoinStep, jooqFieldName);
 
         return null;
     }
@@ -191,11 +192,12 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     public Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
 
-        if (condition == null) return Mono.just(DSL.noCondition());
+        if (condition == null)
+            return Mono.just(DSL.noCondition());
 
         return (condition instanceof ComplexCondition cc
-                        ? this.complexConditionFilter(cc, selectJoinStep)
-                        : Mono.just(this.filterConditionFilter((FilterCondition) condition, selectJoinStep)))
+                ? this.complexConditionFilter(cc, selectJoinStep)
+                : Mono.just(this.filterConditionFilter((FilterCondition) condition, selectJoinStep)))
                 .map(c -> condition.isNegate() ? c.not() : c);
     }
 
@@ -203,20 +205,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return this.filterConditionFilter(fc, null);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
 
         Field field = this.getField(fc.getField(), selectJoinStep); // NO SONAR
         // Field has to be a raw type because we are generalizing
 
-        if (field == null) return DSL.noCondition();
+        if (field == null)
+            return DSL.noCondition();
 
         if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
             return field.between(
-                            fc.isValueField()
-                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
-                                    : this.fieldValue(field, fc.getValue()))
+                    fc.isValueField()
+                            ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
+                            : this.fieldValue(field, fc.getValue()))
                     .and(
                             fc.isToValueField()
                                     ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
@@ -229,7 +232,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 || fc.getOperator() == FilterConditionOperator.LESS_THAN
                 || fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
             if (fc.isValueField()) {
-                if (fc.getField() == null) return DSL.noCondition();
+                if (fc.getField() == null)
+                    return DSL.noCondition();
                 return switch (fc.getOperator()) {
                     case EQUALS -> field.eq(this.getField(fc.getField(), selectJoinStep));
                     case GREATER_THAN -> field.gt(this.getField(fc.getField(), selectJoinStep));
@@ -240,7 +244,8 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 };
             }
 
-            if (fc.getValue() == null) return DSL.noCondition();
+            if (fc.getValue() == null)
+                return DSL.noCondition();
             Object v = this.fieldValue(field, fc.getValue());
             return switch (fc.getOperator()) {
                 case EQUALS -> field.eq(this.fieldValue(field, v));
@@ -265,9 +270,11 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected List<?> multiFieldValue(Field<?> field, Object obValue, List<?> values) { // NOSONAR
 
-        if (values != null && !values.isEmpty()) return values;
+        if (values != null && !values.isEmpty())
+            return values;
 
-        if (obValue == null) return List.of();
+        if (obValue == null)
+            return List.of();
 
         int from = 0;
         String iValue = obValue.toString().trim();
@@ -276,13 +283,16 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         for (int i = 0; i <= iValue.length(); i++) { // NOSONAR
             // Having multiple continue statements is confusing
 
-            if (i < iValue.length() && iValue.charAt(i) != ',') continue;
+            if (i < iValue.length() && iValue.charAt(i) != ',')
+                continue;
 
-            if (i > 0 && iValue.charAt(i - 1) == '\\') continue;
+            if (i > 0 && iValue.charAt(i - 1) == '\\')
+                continue;
 
             String str = iValue.substring(from, i).trim();
 
-            if (str.isEmpty()) continue;
+            if (str.isEmpty())
+                continue;
 
             obj.add(this.fieldValue(field, str));
             from = i + 1;
@@ -293,17 +303,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected Object fieldValue(Field<?> field, Object value) {
 
-        if (value == null) return null;
+        if (value == null)
+            return null;
 
         DataType<?> dt = field.getDataType();
 
-        if (dt.isString() || dt.isJSON() || dt.isEnum()) return value.toString();
+        if (dt.isString() || dt.isJSON() || dt.isEnum())
+            return value.toString();
 
         if (dt.isNumeric()) {
 
-            if (value instanceof Number) return value;
+            if (value instanceof Number)
+                return value;
 
-            if (dt.hasPrecision()) return Double.valueOf(value.toString());
+            if (dt.hasPrecision())
+                return Double.valueOf(value.toString());
 
             return Long.valueOf(value.toString());
         }
@@ -324,14 +338,15 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
     protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
 
-        if (cc.getConditions() == null || cc.getConditions().isEmpty()) return Mono.just(DSL.noCondition());
+        if (cc.getConditions() == null || cc.getConditions().isEmpty())
+            return Mono.just(DSL.noCondition());
 
         return Flux.concat(cc.getConditions().stream()
-                        .map(condition -> this.filter(condition, selectJoinStep))
-                        .toList())
+                .map(condition -> this.filter(condition, selectJoinStep))
+                .toList())
                 .collectList()
-                .map(conditions ->
-                        cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conditions) : DSL.or(conditions));
+                .map(conditions -> cc.getOperator() == ComplexConditionOperator.AND ? DSL.and(conditions)
+                        : DSL.or(conditions));
     }
 
     protected Mono<Record> getRecordById(I id) {

@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.CampaignPlatform;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
@@ -17,6 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Campaign extends BaseUpdatableDto<Campaign> {
 
     @Serial
@@ -30,7 +32,7 @@ public class Campaign extends BaseUpdatableDto<Campaign> {
 
     public Campaign() {
         super();
-        this.relationsMap.put(Campaign.Fields.productId, EntitySeries.PRODUCT.getTable());
+        this.relationsMap.put(Fields.productId, EntitySeries.PRODUCT.getTable());
     }
 
     public Campaign(Campaign campaign) {

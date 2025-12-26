@@ -1,9 +1,10 @@
 package com.fincity.saas.entity.processor.dto.product;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.ProductTemplateType;
-import com.fincity.saas.entity.processor.model.request.product.teamplate.ProductTemplateRequest;
+import com.fincity.saas.entity.processor.model.request.product.template.ProductTemplateRequest;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,6 +18,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class ProductTemplate extends BaseUpdatableDto<ProductTemplate> {
 
     @Serial

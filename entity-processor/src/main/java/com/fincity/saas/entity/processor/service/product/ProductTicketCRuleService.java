@@ -1,11 +1,21 @@
 package com.fincity.saas.entity.processor.service.product;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.product.ProductTicketCRuleDAO;
+import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.dto.product.ProductTicketCRule;
+import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.TicketCUserDistribution;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTicketCRulesRecord;
@@ -15,7 +25,10 @@ import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.rule.BaseRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketCRuleExecutionService;
 import com.fincity.saas.entity.processor.service.rule.TicketCUserDistributionService;
-import com.google.gson.JsonElement;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +38,10 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -36,9 +51,15 @@ public class ProductTicketCRuleService
                 EntityProcessorProductTicketCRulesRecord,
                 ProductTicketCRule,
                 ProductTicketCRuleDAO,
-                TicketCUserDistribution> {
+                TicketCUserDistribution>
+        implements IRepositoryProvider {
 
     private static final String PRODUCT_TICKET_C_RULE = "productTicketCRule";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+
+    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final TicketCRuleExecutionService ticketCRuleExecutionService;
 
     @Getter
@@ -46,8 +67,31 @@ public class ProductTicketCRuleService
 
     private StageService stageService;
 
-    protected ProductTicketCRuleService(TicketCRuleExecutionService ticketCRuleExecutionService) {
+    @Autowired
+    @Lazy
+    private ProductTicketCRuleService self;
+
+    protected ProductTicketCRuleService(TicketCRuleExecutionService ticketCRuleExecutionService, Gson gson) {
         this.ticketCRuleExecutionService = ticketCRuleExecutionService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.addAll(super.getCommonFunctions("ProductTicketCRule", ProductTicketCRule.class, gson));
+
+        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTicketCRule.class) + "."
+                + ProductTicketCRule.class.getSimpleName();
+
+        this.functions.add(AbstractProcessorFunction.createServiceFunction(
+                "ProductTicketCRule",
+                "CreateMultiple",
+                ClassSchema.ArgSpec.of("rule", Schema.ofRef(dtoSchemaRef), ProductTicketCRule.class),
+                EntityProcessorArgSpec.uLongList("stageIds"),
+                "result",
+                Schema.ofArray("result", Schema.ofRef(dtoSchemaRef)),
+                gson,
+                (rule, stageIds) -> self.createMultiple(rule, stageIds).collectList()));
     }
 
     @Autowired
@@ -101,8 +145,8 @@ public class ProductTicketCRuleService
                             super.getCacheKey(
                                     entity.getAppCode(),
                                     entity.getClientCode(),
+                                    BaseRuleDto.Fields.productId,
                                     entity.getProductId(),
-                                    entity.getProductTemplateId(),
                                     entity.getStageId())),
                     (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
 
@@ -113,9 +157,39 @@ public class ProductTicketCRuleService
                         super.getCacheKey(
                                 entity.getAppCode(),
                                 entity.getClientCode(),
+                                BaseRuleDto.Fields.productTemplateId,
                                 entity.getProductTemplateId(),
                                 entity.getStageId())),
                 (baseEvicted, stageEvicted) -> baseEvicted && stageEvicted);
+    }
+
+    public Flux<ProductTicketCRule> createMultiple(ProductTicketCRule rule, List<ULong> stageIds) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> {
+                            if (this.isUserDistributionEnabled()) {
+                                if (rule.isDistributionsEmpty())
+                                    return super.throwMissingParam(BaseRuleDto.Fields.userDistributions);
+                                if (!rule.isDistributionsValid())
+                                    return super.throwInvalidParam(BaseRuleDto.Fields.userDistributions);
+                            }
+                            return Flux.fromIterable(stageIds)
+                                    .index()
+                                    .flatMap(stageTup -> this.checkEntity(
+                                            (ProductTicketCRule) rule.setStageId(stageTup.getT2())
+                                                    .setOrder((rule.getOrder() != null ? rule.getOrder() : 0)
+                                                            + stageTup.getT1().intValue()),
+                                            access))
+                                    .collectList();
+                        },
+                        (access, checkedEntities) -> Flux.fromIterable(checkedEntities)
+                                .flatMap(entity -> super.createInternal(access, entity)
+                                        .flatMap(created -> this.createUserDistribution(access, created, rule)
+                                                .map(userDistributions -> (ProductTicketCRule)
+                                                        created.setUserDistributions(userDistributions))))
+                                .collectList())
+                .flatMapMany(Flux::fromIterable)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductTicketCRuleService.createMultiple"));
     }
 
     public Mono<Map<Integer, ProductTicketCRule>> getRulesWithOrder(
@@ -134,7 +208,7 @@ public class ProductTicketCRuleService
 
         if (!product.isOverrideCTemplate()) return Mono.empty();
 
-        return this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+        return this.getProductRules(access, product.getId(), stageId)
                 .flatMap(rules -> rules.isEmpty()
                         ? this.getProductTemplateRules(access, product.getProductTemplateId(), stageId)
                         : Mono.just(rules))
@@ -149,7 +223,7 @@ public class ProductTicketCRuleService
         if (!product.isOverrideCTemplate()) return Mono.empty();
 
         return Mono.zip(
-                this.getProductRules(access, product.getId(), product.getProductTemplateId(), stageId)
+                this.getProductRules(access, product.getId(), stageId)
                         .map(rules -> rules.stream()
                                 .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())))
                         .switchIfEmpty(Mono.just(Map.of())),
@@ -157,18 +231,18 @@ public class ProductTicketCRuleService
                         .map(rules -> rules.stream()
                                 .collect(Collectors.toMap(ProductTicketCRule::getOrder, Function.identity())))
                         .switchIfEmpty(Mono.just(Map.of())),
-                (rules, templateRules) -> {
-                    int totalSize = rules.size() + templateRules.size();
+                (productRules, productTemplateRules) -> {
+                    int totalSize = productRules.size() + productTemplateRules.size();
                     Map<Integer, ProductTicketCRule> combined = LinkedHashMap.newLinkedHashMap(totalSize);
 
                     AtomicInteger orderCounter = new AtomicInteger(totalSize - 1);
 
-                    rules.entrySet().stream()
+                    productRules.entrySet().stream()
                             .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
 
-                    templateRules.entrySet().stream()
+                    productTemplateRules.entrySet().stream()
                             .sorted(Map.Entry.<Integer, ProductTicketCRule>comparingByKey()
                                     .reversed())
                             .forEach(entry -> combined.put(orderCounter.getAndDecrement(), entry.getValue()));
@@ -177,13 +251,13 @@ public class ProductTicketCRuleService
                 });
     }
 
-    private Mono<List<ProductTicketCRule>> getProductRules(
-            ProcessorAccess access, ULong productId, ULong productTemplateId, ULong stageId) {
+    private Mono<List<ProductTicketCRule>> getProductRules(ProcessorAccess access, ULong productId, ULong stageId) {
 
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
-                () -> this.dao.getRules(access, productId, productTemplateId, stageId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, productTemplateId, stageId));
+                () -> this.dao.getRules(access, productId, null, stageId),
+                super.getCacheKey(
+                        access.getAppCode(), access.getClientCode(), BaseRuleDto.Fields.productId, productId, stageId));
     }
 
     private Mono<List<ProductTicketCRule>> getProductTemplateRules(
@@ -192,27 +266,44 @@ public class ProductTicketCRuleService
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
                 () -> this.dao.getRules(access, null, productTemplateId, stageId),
-                super.getCacheKey(access.getAppCode(), access.getClientCode(), productTemplateId, stageId));
+                super.getCacheKey(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        BaseRuleDto.Fields.productTemplateId,
+                        productTemplateId,
+                        stageId));
     }
 
     public Mono<ULong> getUserAssignment(
-            ProcessorAccess access,
-            ULong productId,
-            ULong stageId,
-            String tokenPrefix,
-            ULong userId,
-            JsonElement data) {
-        return FlatMapUtil.flatMapMono(
-                        () -> this.getRulesWithOrder(access, productId, stageId),
-                        productRule -> this.ticketCRuleExecutionService.executeRules(
-                                access, productRule, tokenPrefix, userId, data),
-                        (productRule, eRule) -> super.updateInternalForOutsideUser(eRule),
-                        (productRule, eRule, uRule) -> {
-                            ULong assignedUserId = uRule.getLastAssignedUserId();
-                            if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0))) return Mono.empty();
-                            return Mono.just(assignedUserId);
-                        })
+            ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
+        return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
+                    if (productRule.isEmpty()) return Mono.empty();
+
+                    if (productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
+
+                    return FlatMapUtil.flatMapMono(
+                            () -> this.ticketCRuleExecutionService.executeRules(
+                                    access, productRule, tokenPrefix, userId, ticket.toJsonElement()),
+                            super::updateInternalForOutsideUser,
+                            (eRule, uRule) -> {
+                                ULong assignedUserId = uRule.getLastAssignedUserId();
+                                if (assignedUserId == null || assignedUserId.equals(ULong.valueOf(0)))
+                                    return Mono.empty();
+                                return Mono.just(assignedUserId);
+                            });
+                })
                 .onErrorResume(e -> Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductStageRuleService.getUserAssignment"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(ProductComm.class, classSchema);
     }
 }

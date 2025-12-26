@@ -1,5 +1,16 @@
 package com.fincity.saas.commons.core.mq.services;
 
+import java.math.BigInteger;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.stereotype.Service;
+
 import com.fincity.saas.commons.core.document.EventAction;
 import com.fincity.saas.commons.core.model.EventActionTask;
 import com.fincity.saas.commons.core.service.CoreFunctionService;
@@ -17,18 +28,9 @@ import com.fincity.saas.commons.util.StringUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
-import org.springframework.stereotype.Service;
+
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.math.BigInteger;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class EventCallFunctionService implements IEventActionService {
@@ -38,7 +40,8 @@ public class EventCallFunctionService implements IEventActionService {
     private final Gson gson;
     private final IFeignSecurityService securityService;
 
-    public EventCallFunctionService(CoreFunctionService functionService, CoreMessageResourceService msgService, IFeignSecurityService securityService, Gson gson) {
+    public EventCallFunctionService(CoreFunctionService functionService, CoreMessageResourceService msgService,
+            IFeignSecurityService securityService, Gson gson) {
         this.functionService = functionService;
         this.msgService = msgService;
         this.gson = gson;
@@ -59,7 +62,8 @@ public class EventCallFunctionService implements IEventActionService {
         String functionParameterName = StringUtil.safeValueOf(taskParameter.get("functionParameterName"));
 
         if (StringUtil.safeIsBlank(namespace) || StringUtil.safeIsBlank(name))
-            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg), CoreMessageResourceService.UNABLE_TO_EXECUTE, name, namespace, job);
+            return this.msgService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    CoreMessageResourceService.UNABLE_TO_EXECUTE, name, namespace, job);
 
         Map<String, JsonElement> params = new HashMap<>();
 
@@ -67,7 +71,8 @@ public class EventCallFunctionService implements IEventActionService {
             params.put(functionParameterName, job);
         }
 
-        return this.execute(namespace, name, queObject.getAppCode(), queObject.getClientCode(), params);
+        return this.execute(namespace, name, queObject.getAppCode(), queObject.getClientCode(),
+                queObject.getAuthentication(), params);
     }
 
     private Mono<Boolean> execute(
@@ -75,12 +80,15 @@ public class EventCallFunctionService implements IEventActionService {
             String name,
             String appCode,
             String clientCode,
+            ContextAuthentication authentication,
             Map<String, JsonElement> job) {
 
-        return this.securityService.getClientByCode(clientCode).map(this::makeAnonymousContextAuth).flatMap(ca ->
-                        this.functionService.execute(namespace, name, appCode, clientCode, job, null)
-                                .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(new SecurityContextImpl(ca))))
-                )
+        return this.securityService.getClientByCode(clientCode)
+                .map(e -> authentication != null ? authentication
+                        : this.makeAnonymousContextAuth(appCode, clientCode, e))
+                .flatMap(ca -> this.functionService.execute(namespace, name, appCode, clientCode, job, null)
+                        .contextWrite(ReactiveSecurityContextHolder
+                                .withSecurityContext(Mono.just(new SecurityContextImpl(ca)))))
                 .map(e -> true)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -90,7 +98,7 @@ public class EventCallFunctionService implements IEventActionService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventCallFunctionService.execute"));
     }
 
-    private ContextAuthentication makeAnonymousContextAuth(Client client) {
+    private ContextAuthentication makeAnonymousContextAuth(String appCode, String clientCode, Client client) {
 
         return new ContextAuthentication(
                 new ContextUser()
@@ -117,12 +125,12 @@ public class EventCallFunctionService implements IEventActionService {
                 client.getId(),
                 client.getCode(),
                 client.getTypeCode(),
-                null,
+                client.getLevelType(),
                 client.getCode(),
                 "",
                 LocalDateTime.MAX,
-                null,
-                null,
+                appCode,
+                clientCode,
                 null);
     }
 }
