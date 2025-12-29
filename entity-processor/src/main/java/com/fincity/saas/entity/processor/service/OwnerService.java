@@ -39,7 +39,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     private final TicketService ticketService;
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -58,7 +58,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Owner",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("ownerRequest", OwnerRequest.class),
+                ClassSchema.ArgSpec.ofRef("ownerRequest", OwnerRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Owner"),
                 gson,

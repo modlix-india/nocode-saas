@@ -44,7 +44,7 @@ public class ProductTemplateWalkInFormService
     private final Gson gson;
     private final ProductTemplateService productTemplateService;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -67,7 +67,7 @@ public class ProductTemplateWalkInFormService
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "ProductTemplateWalkInForm",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class),
+                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
                 gson,

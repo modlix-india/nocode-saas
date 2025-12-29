@@ -47,7 +47,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private ProductTemplateService productTemplateService;
 
@@ -75,7 +75,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("productRequest", ProductRequest.class),
+                ClassSchema.ArgSpec.ofRef("productRequest", ProductRequest.class, classSchema),
                 "created",
                 Schema.ofRef(productSchemaRef),
                 gson,
@@ -84,7 +84,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Product",
                 "UpdateForPartner",
-                ClassSchema.ArgSpec.ofRef("request", ProductPartnerUpdateRequest.class),
+                ClassSchema.ArgSpec.ofRef("request", ProductPartnerUpdateRequest.class, classSchema),
                 "updated",
                 Schema.ofInteger("updated"),
                 gson,

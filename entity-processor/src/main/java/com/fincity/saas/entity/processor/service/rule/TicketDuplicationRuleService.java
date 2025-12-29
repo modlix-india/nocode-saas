@@ -50,7 +50,7 @@ public class TicketDuplicationRuleService
     private static final String PRODUCT_TEMPLATE_CONDITION_CACHE = "ticketDuplicationProductTemplateRuleCondition";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final Gson gson;
 
     private StageService stageService;

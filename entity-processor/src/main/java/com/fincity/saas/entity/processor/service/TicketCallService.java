@@ -49,7 +49,7 @@ public class TicketCallService implements IRepositoryProvider {
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketCallService(
             TicketService ticketService,

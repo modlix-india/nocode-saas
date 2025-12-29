@@ -41,7 +41,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TaskTypeService taskTypeService;
 
@@ -69,7 +69,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Task",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("taskRequest", TaskRequest.class),
+                ClassSchema.ArgSpec.ofRef("taskRequest", TaskRequest.class, classSchema),
                 "created",
                 Schema.ofRef(taskSchemaRef),
                 gson,

@@ -84,7 +84,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Lazy
     private TicketService self;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -121,7 +121,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -130,7 +130,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Ticket",
                 "CreateForCampaign",
-                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -140,7 +140,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 "Ticket",
                 "CreateForWebsite",
                 ClassSchema.ArgSpec.string("productCode"),
-                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -150,7 +150,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 "Ticket",
                 "UpdateStageStatus",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -160,7 +160,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 "Ticket",
                 "ReassignTicket",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -170,8 +170,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 "Ticket",
                 "GetTicketProductComm",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class),
-                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class),
+                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Product.ProductComm"),
                 gson,
@@ -181,7 +181,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 "Ticket",
                 "UpdateTag",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
