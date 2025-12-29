@@ -64,7 +64,7 @@ public class ProductWalkInFormService
     private final Gson gson;
     private final ProductService productService;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private TicketService ticketService;
     private ActivityService activityService;
 
@@ -90,7 +90,7 @@ public class ProductWalkInFormService
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "ProductWalkInForm",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class),
+                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
                 gson,

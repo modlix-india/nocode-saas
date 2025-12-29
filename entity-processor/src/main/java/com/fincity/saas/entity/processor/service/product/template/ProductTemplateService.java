@@ -45,7 +45,7 @@ public class ProductTemplateService
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private ProductService productService;
 
@@ -74,7 +74,7 @@ public class ProductTemplateService
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "ProductTemplate",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("request", ProductTemplateRequest.class),
+                ClassSchema.ArgSpec.ofRef("request", ProductTemplateRequest.class, classSchema),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
@@ -84,7 +84,7 @@ public class ProductTemplateService
                 "ProductTemplate",
                 "AttachEntity",
                 EntityProcessorArgSpec.identity("identity"),
-                ClassSchema.ArgSpec.ofRef("request", ProductTemplateRequest.class),
+                ClassSchema.ArgSpec.ofRef("request", ProductTemplateRequest.class, classSchema),
                 "result",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
