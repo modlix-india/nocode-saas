@@ -70,7 +70,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TicketService ticketService;
 
@@ -103,7 +103,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("partnerRequest", PartnerRequest.class),
+                ClassSchema.ArgSpec.ofRef("partnerRequest", PartnerRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
@@ -120,7 +120,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Partner",
                 "UpdateLoggedInPartnerVerificationStatus",
-                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
@@ -138,7 +138,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 "Partner",
                 "UpdatePartnerVerificationStatus",
                 EntityProcessorArgSpec.identity("partnerId"),
-                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class),
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,

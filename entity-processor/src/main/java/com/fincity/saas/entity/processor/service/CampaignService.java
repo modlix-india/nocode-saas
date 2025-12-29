@@ -37,7 +37,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     private final ProductService productService;
     private final Gson gson;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -56,7 +56,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Campaign",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("campaignRequest", CampaignRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignRequest", CampaignRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Campaign"),
                 gson,

@@ -51,7 +51,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -69,7 +69,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Stage",
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("stageRequest", StageRequest.class),
+                ClassSchema.ArgSpec.ofRef("stageRequest", StageRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.Model.Response.BaseValueResponse"),
                 gson,
@@ -78,8 +78,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Stage",
                 "GetAllValues",
-                ClassSchema.ArgSpec.ofRef("platform", Platform.class),
-                ClassSchema.ArgSpec.ofRef("stageType", StageType.class),
+                ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
                 EntityProcessorArgSpec.uLong("productTemplateId"),
                 EntityProcessorArgSpec.uLong("parentId"),
                 "result",
@@ -90,8 +90,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Stage",
                 "GetAllValuesInOrder",
-                ClassSchema.ArgSpec.ofRef("platform", Platform.class),
-                ClassSchema.ArgSpec.ofRef("stageType", StageType.class),
+                ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
                 EntityProcessorArgSpec.uLong("productTemplateId"),
                 EntityProcessorArgSpec.uLong("parentId"),
                 "result",
@@ -102,7 +102,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Stage",
                 "ReorderStages",
-                ClassSchema.ArgSpec.ofRef("reorderRequest", StageReorderRequest.class),
+                ClassSchema.ArgSpec.ofRef("reorderRequest", StageReorderRequest.class, classSchema),
                 "result",
                 Schema.ofArray("result", Schema.ofRef("EntityProcessor.DTO.Stage")),
                 gson,

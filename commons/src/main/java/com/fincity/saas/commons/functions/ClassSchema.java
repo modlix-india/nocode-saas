@@ -456,10 +456,15 @@ public class ClassSchema {
 			return of(name, Schema.ofRef(schemaRef), clazz);
 		}
 
-		public static <P> ArgSpec<P> ofRef(String name, Class<P> clazz) {
-			String schemaRef = ClassSchema.getInstance().getNamespaceForClass(clazz) + "." + clazz.getSimpleName();
-			return ofRef(name, schemaRef, clazz);
-		}
+	public static <P> ArgSpec<P> ofRef(String name, Class<P> clazz) {
+		String schemaRef = ClassSchema.getInstance().getNamespaceForClass(clazz) + "." + clazz.getSimpleName();
+		return ofRef(name, schemaRef, clazz);
+	}
+
+	public static <P> ArgSpec<P> ofRef(String name, Class<P> clazz, ClassSchema classSchema) {
+		String schemaRef = classSchema.getNamespaceForClass(clazz) + "." + clazz.getSimpleName();
+		return ofRef(name, schemaRef, clazz);
+	}
 
 		public static ArgSpec<String> string(String name) {
 			Schema stringSchema = PRIMITIVE_SCHEMA_CACHE.get(String.class);
