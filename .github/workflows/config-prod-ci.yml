@@ -57,5 +57,5 @@ jobs:
 
     steps:
       - run: |
-          ssh -i /home/ubuntu/keys/dev-internal.key opc@${{ secrets.PROD_SERVER_IP }} \
+          ssh -i /home/ubuntu/keys/prod-internal.key opc@${{ secrets.PROD_SERVER_IP }} \
             "bash /home/opc/scripts/keepup.sh deploy config-server ocir.us-ashburn-1.oci.oraclecloud.com/idfmutpuhiky/prod-config-server:${{ needs.build.outputs.image_tag }} 2>&1 | tee -a /var/log/keepup.log"
