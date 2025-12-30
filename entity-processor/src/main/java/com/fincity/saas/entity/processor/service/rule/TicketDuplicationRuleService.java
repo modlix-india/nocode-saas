@@ -162,7 +162,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductDuplicateCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
-        return super.cacheService.cacheEmptyValueOrGet(
+        return super.cacheService.cacheValueOrGet(
                 this.getProductConditionCacheName(access.getAppCode(), access.getClientCode(), productId),
                 () -> this.getProductDuplicateConditionInternal(access, productId, source, subSource),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, source, subSource));
@@ -183,7 +183,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductTemplateDuplicateCondition(
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
-        return super.cacheService.cacheEmptyValueOrGet(
+        return super.cacheService.cacheValueOrGet(
                 this.getProductTemplateConditionCacheName(
                         access.getAppCode(), access.getClientCode(), productTemplateId),
                 () -> this.getProductTemplateDuplicateConditionInternal(access, productTemplateId, source, subSource),
