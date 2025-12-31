@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
@@ -12,6 +13,7 @@ import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.E
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -24,6 +26,7 @@ import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -115,6 +118,13 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
      * Content of the note.
      */
     public final TableField<EntityProcessorNotesRecord, String> CONTENT = createField(DSL.name("CONTENT"), SQLDataType.CLOB, this, "Content of the note.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_notes.ATTACHMENT_FILE_DETAIL</code>.
+     * File Details if note has an attachment
+     */
+    public final TableField<EntityProcessorNotesRecord, FileDetail> ATTACHMENT_FILE_DETAIL = createField(DSL.name("ATTACHMENT_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if note has an attachment", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
 
     /**
      * The column
