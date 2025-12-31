@@ -666,14 +666,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acOwnerShipTransfer"));
     }
 
-    public Mono<Void> acCallLog(ULong ticketId, String comment, String customer) {
-        return this.createActivityInternal(
-                        ActivityAction.CALL_LOG,
-                        comment,
-                        Map.of(Activity.Fields.ticketId, ticketId, "customer", customer))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCallLog"));
-    }
-
     public Mono<Void> acCallLog(ProcessorAccess access, ULong ticketId, String comment, String customer) {
         return this.createActivityInternal(
                         access,
