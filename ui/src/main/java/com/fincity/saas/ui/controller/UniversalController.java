@@ -1,10 +1,19 @@
 package com.fincity.saas.ui.controller;
 
+import java.time.ZoneOffset;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
@@ -19,8 +28,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Mono;
-
-import java.time.ZoneOffset;
 
 @RestController
 public class UniversalController {
@@ -48,13 +55,11 @@ public class UniversalController {
             .badRequest()
             .build();
 
-
     private final static String START = "<html><head><title>SSO</title><script>var designMode = window.self !== window.top;";
     private final static String END = "</script></head><body></body></html>";
 
-
     public UniversalController(JSService jsService, IndexHTMLService indexHTMLService, ManifestService manifestService,
-                               URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
+            URIPathService uriPathService, IFeignSecurityService securityService, Gson gson) {
         this.jsService = jsService;
         this.indexHTMLService = indexHTMLService;
         this.manifestService = manifestService;
@@ -65,7 +70,7 @@ public class UniversalController {
 
     @GetMapping(value = "js/dist/**")
     public Mono<ResponseEntity<String>> indexJS(@RequestHeader(name = "If-None-Match", required = false) String eTag,
-                                                ServerHttpRequest request) {
+            ServerHttpRequest request) {
 
         int index = request.getURI().getPath().indexOf("/js/dist/");
         String filePath = request.getURI().getPath().substring(index + 9);
@@ -77,8 +82,8 @@ public class UniversalController {
 
     @GetMapping(value = "manifest/manifest.json", produces = MimeTypeUtils.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<String>> manifest(@RequestHeader("appCode") String appCode,
-                                                 @RequestHeader("clientCode") String clientCode,
-                                                 @RequestHeader(name = "If-None-Match", required = false) String eTag) {
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
         return manifestService.getManifest(appCode, clientCode)
                 .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
@@ -87,8 +92,8 @@ public class UniversalController {
 
     @GetMapping(value = "/apiDocs", produces = MimeTypeUtils.TEXT_HTML_VALUE)
     public Mono<ResponseEntity<String>> apiDocs(@RequestHeader("appCode") String appCode,
-                                                @RequestHeader("clientCode") String clientCode,
-                                                @RequestHeader(name = "If-None-Match", required = false) String eTag) {
+            @RequestHeader("clientCode") String clientCode,
+            @RequestHeader(name = "If-None-Match", required = false) String eTag) {
 
         return uriPathService.generateApiDocs(appCode, clientCode)
                 .flatMap(e -> ResponseEntityUtils.makeResponseEntity(e, eTag, cacheAge))
@@ -97,6 +102,8 @@ public class UniversalController {
 
     @GetMapping(value = "**")
     public Mono<ResponseEntity<String>> defaultGetRequest(
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader(name = "If-None-Match", required = false) String eTag,
@@ -109,19 +116,22 @@ public class UniversalController {
 
         if (!request.getPath().toString().contains("/api/"))
             return pageMono;
-        
+
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+                ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
-                        (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc).map(ResponseEntity::ok))
+                (ca, cc) -> uriPathService.getResponse(request, null, appCode, cc, forwardedHost, forwardedPort)
+                        .map(ResponseEntity::ok))
                 .switchIfEmpty(pageMono);
     }
 
-    @RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = {RequestMethod.POST,
-            RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
+    @RequestMapping(value = "**", produces = MimeTypeUtils.APPLICATION_JSON_VALUE, method = { RequestMethod.POST,
+            RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE })
     public Mono<ResponseEntity<String>> defaultRequests(
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader(name = "If-None-Match", required = false) String eTag,
@@ -132,11 +142,12 @@ public class UniversalController {
                 : this.gson.fromJson(jsonString, JsonObject.class);
 
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
+                ca -> ca.isAuthenticated() ? Mono.just(ca.getClientCode()) : Mono.just(clientCode),
 
-                        (ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc).map(ResponseEntity::ok))
+                (ca, cc) -> uriPathService.getResponse(request, jsonObject, appCode, cc, forwardedHost, forwardedPort)
+                        .map(ResponseEntity::ok))
                 .switchIfEmpty(Mono.just(RESPONSE_BAD_REQUEST));
     }
 
@@ -148,12 +159,12 @@ public class UniversalController {
 
     @GetMapping(value = "/sso/{token}", produces = MimeTypeUtils.TEXT_HTML_VALUE)
     public Mono<String> ssoRedirection(@PathVariable String token,
-                                       @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
-                                       @RequestHeader(required = false) String clientCode,
-                                       @RequestHeader(required = false) String appCode,
-                                       @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
-                                       @RequestParam(required = false, defaultValue = "/") String redirectUrl,
-                                       ServerHttpRequest request) {
+            @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
+            @RequestHeader(required = false) String clientCode,
+            @RequestHeader(required = false) String appCode,
+            @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
+            @RequestParam(required = false, defaultValue = "/") String redirectUrl,
+            ServerHttpRequest request) {
 
         String addr = ipAddress;
         if (addr == null) {
