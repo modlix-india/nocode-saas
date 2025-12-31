@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
 
 public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
 
-    public static final String NAMESPACE_PREFIX = "EntityProcessor";
     private static final String ERROR_EVENT_NAME = "error";
     private static final ClassSchema classSchema = ClassSchema.getInstance();
 
@@ -70,30 +69,30 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
         return new FunctionOutput(List.of(EventResult.outputOf(Map.of(resultEventName, gson.toJsonTree(result)))));
     }
 
-    private static FunctionOutput toErrorOutput(Gson gson, Throwable throwable) {
+    private static FunctionOutput toErrorOutput(Gson gson, Exception exception) {
         GenericException.GenericExceptionData errorData;
         
-        if (throwable instanceof GenericException genericException) {
+        if (exception instanceof GenericException genericException) {
             errorData = genericException.toExceptionData();
         } else {
             String exceptionId = GenericException.uniqueId();
             errorData = new GenericException.GenericExceptionData()
                     .setExceptionId(exceptionId)
-                    .setMessage(throwable.getMessage() != null ? throwable.getMessage() : "An unexpected error occurred")
-                    .setStackTrace(getStackTraceAsString(throwable))
-                    .setDebugMessage(throwable.getMessage());
+                    .setMessage(exception.getMessage() != null ? exception.getMessage() : "An unexpected error occurred")
+                    .setStackTrace(getStackTraceAsString(exception))
+                    .setDebugMessage(exception.getMessage());
         }
 
         return new FunctionOutput(List.of(
                 EventResult.of(Event.ERROR, Map.of(ERROR_EVENT_NAME, gson.toJsonTree(errorData)))));
     }
 
-    private static String getStackTraceAsString(Throwable throwable) {
+    private static String getStackTraceAsString(Exception exception) {
         StringBuilder sb = new StringBuilder();
-        for (StackTraceElement element : throwable.getStackTrace()) {
+        for (StackTraceElement element : exception.getStackTrace()) {
             sb.append(element.toString()).append("\n");
         }
-        Throwable cause = throwable.getCause();
+        Throwable cause = exception.getCause();
         if (cause != null) {
             sb.append("---------- Cause ").append(cause.getMessage()).append("\n");
             for (StackTraceElement element : cause.getStackTrace()) {
@@ -116,7 +115,9 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
             protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters executionParameters) {
                 return executor.get()
                         .map(result -> toFunctionOutput(resultEventName, resultSchema, gson, result))
-                        .onErrorResume(throwable -> Mono.just(toErrorOutput(gson, throwable)));
+                        .onErrorResume(throwable -> throwable instanceof Exception exception
+                                ? Mono.just(toErrorOutput(gson, exception))
+                                : Mono.error(throwable));
             }
         };
     }
@@ -140,9 +141,11 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
                     P p = p1.parser().apply(gson, executionParameters.getArguments().get(p1.name()));
                     return executor.apply(p)
                             .map(result -> toFunctionOutput(resultEventName, resultSchema, gson, result))
-                            .onErrorResume(throwable -> Mono.just(toErrorOutput(gson, throwable)));
-                } catch (Throwable throwable) {
-                    return Mono.just(toErrorOutput(gson, throwable));
+                            .onErrorResume(throwable -> throwable instanceof Exception exception
+                                    ? Mono.just(toErrorOutput(gson, exception))
+                                    : Mono.error(throwable));
+                } catch (Exception exception) {
+                    return Mono.just(toErrorOutput(gson, exception));
                 }
             }
         };
@@ -172,9 +175,11 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
                             .apply(gson, executionParameters.getArguments().get(p2.name()));
                     return executor.apply(a, b)
                             .map(result -> toFunctionOutput(resultEventName, resultSchema, gson, result))
-                            .onErrorResume(throwable -> Mono.just(toErrorOutput(gson, throwable)));
-                } catch (Throwable throwable) {
-                    return Mono.just(toErrorOutput(gson, throwable));
+                            .onErrorResume(throwable -> throwable instanceof Exception exception
+                                    ? Mono.just(toErrorOutput(gson, exception))
+                                    : Mono.error(throwable));
+                } catch (Exception exception) {
+                    return Mono.just(toErrorOutput(gson, exception));
                 }
             }
         };
@@ -208,9 +213,11 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
                             .apply(gson, executionParameters.getArguments().get(p3.name()));
                     return executor.apply(a, b, c)
                             .map(result -> toFunctionOutput(resultEventName, resultSchema, gson, result))
-                            .onErrorResume(throwable -> Mono.just(toErrorOutput(gson, throwable)));
-                } catch (Throwable throwable) {
-                    return Mono.just(toErrorOutput(gson, throwable));
+                            .onErrorResume(throwable -> throwable instanceof Exception exception
+                                    ? Mono.just(toErrorOutput(gson, exception))
+                                    : Mono.error(throwable));
+                } catch (Exception exception) {
+                    return Mono.just(toErrorOutput(gson, exception));
                 }
             }
         };
@@ -248,9 +255,11 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
                             .apply(gson, executionParameters.getArguments().get(p4.name()));
                     return executor.apply(a, b, c, d)
                             .map(result -> toFunctionOutput(resultEventName, resultSchema, gson, result))
-                            .onErrorResume(throwable -> Mono.just(toErrorOutput(gson, throwable)));
-                } catch (Throwable throwable) {
-                    return Mono.just(toErrorOutput(gson, throwable));
+                            .onErrorResume(throwable -> throwable instanceof Exception exception
+                                    ? Mono.just(toErrorOutput(gson, exception))
+                                    : Mono.error(throwable));
+                } catch (Exception exception) {
+                    return Mono.just(toErrorOutput(gson, exception));
                 }
             }
         };
