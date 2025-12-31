@@ -4,7 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -31,13 +31,15 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
         implements IRepositoryProvider {
 
     private static final String CAMPAIGN_CACHE = "campaign";
+    private static final String NAMESPACE = "EntityProcessor.Campaign";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
     private final ProductService productService;
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -53,8 +55,8 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
 
         this.functions.addAll(super.getCommonFunctions("Campaign", Campaign.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Campaign",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("campaignRequest", CampaignRequest.class, classSchema),
                 "created",
