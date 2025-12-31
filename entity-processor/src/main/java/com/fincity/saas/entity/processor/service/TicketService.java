@@ -726,7 +726,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 access.getUserId(),
-                                ticket),
+                                ticket,
+                                false),
                         ruleUserId -> ruleUserId == null
                                 ? Mono.just(ticket)
                                 : this.updateTicketForReassignment(

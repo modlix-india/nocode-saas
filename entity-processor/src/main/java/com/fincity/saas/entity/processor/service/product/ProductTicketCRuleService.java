@@ -278,10 +278,22 @@ public class ProductTicketCRuleService
 
     public Mono<ULong> getUserAssignment(
             ProcessorAccess access, ULong productId, ULong stageId, String tokenPrefix, ULong userId, Ticket ticket) {
+        return getUserAssignment(access, productId, stageId, tokenPrefix, userId, ticket, true);
+    }
+
+    public Mono<ULong> getUserAssignment(
+            ProcessorAccess access,
+            ULong productId,
+            ULong stageId,
+            String tokenPrefix,
+            ULong userId,
+            Ticket ticket,
+            boolean isCreate) {
         return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
                     if (productRule.isEmpty()) return Mono.empty();
 
-                    if (productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
+                    // During updates/reassignment, if only the default rule exists, return empty (don't change assignment)
+                    if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
 
                     return FlatMapUtil.flatMapMono(
                             () -> this.ticketCRuleExecutionService.executeRules(
