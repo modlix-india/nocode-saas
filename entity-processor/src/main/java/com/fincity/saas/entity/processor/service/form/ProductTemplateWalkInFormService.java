@@ -3,7 +3,7 @@ package com.fincity.saas.entity.processor.service.form;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -39,12 +39,14 @@ public class ProductTemplateWalkInFormService
         implements IRepositoryProvider {
 
     private static final String PRODUCT_TEMPLATE_WALK_IN_FORM_CACHE = "productTemplateWalkInForm";
+    private static final String NAMESPACE = "EntityProcessor.ProductTemplateWalkInForm";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
     private final ProductTemplateService productTemplateService;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -64,17 +66,17 @@ public class ProductTemplateWalkInFormService
         String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTemplateWalkInForm.class) + "."
                 + ProductTemplateWalkInForm.class.getSimpleName();
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductTemplateWalkInForm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class),
+                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
                 "created",
                 Schema.ofRef(dtoSchemaRef),
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductTemplateWalkInForm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetWalkInForm",
                 EntityProcessorArgSpec.identity("productId"),
                 "result",

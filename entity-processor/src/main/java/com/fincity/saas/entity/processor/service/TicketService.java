@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -64,6 +64,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
     private static final String TICKET_CACHE = "ticket";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
+    private static final String NAMESPACE = "EntityProcessor.Ticket";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -84,7 +85,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Lazy
     private TicketService self;
 
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -118,70 +120,70 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         this.functions.addAll(super.getCommonFunctions("Ticket", Ticket.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateForCampaign",
-                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 self::createForCampaign));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateForWebsite",
                 ClassSchema.ArgSpec.string("productCode"),
-                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
                 "created",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 (productCode, req) -> self.createForWebsite(req, productCode)));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "UpdateStageStatus",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 self::updateStageStatus));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "ReassignTicket",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
                 self::reassignTicket));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetTicketProductComm",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class),
-                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class),
+                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Product.ProductComm"),
                 gson,
                 self::getTicketProductComm));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Ticket",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "UpdateTag",
                 EntityProcessorArgSpec.identity("ticketId"),
-                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class),
+                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class, classSchema),
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Ticket"),
                 gson,
@@ -724,7 +726,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 access.getUserId(),
-                                ticket),
+                                ticket,
+                                false),
                         ruleUserId -> ruleUserId == null
                                 ? Mono.just(ticket)
                                 : this.updateTicketForReassignment(
