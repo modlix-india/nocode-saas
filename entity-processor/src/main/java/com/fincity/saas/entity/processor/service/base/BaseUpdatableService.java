@@ -4,7 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -464,8 +464,8 @@ public abstract class BaseUpdatableService<
         String pageSchemaRef = "Commons.Page";
         Schema mapSchema = Schema.ofObject("Map");
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "Create",
                 ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "created",
@@ -473,8 +473,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 this::create));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadByIdentity",
                 EntityProcessorArgSpec.identity(),
                 "result",
@@ -482,8 +482,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 this::readByIdentity));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadEagerByIdentity",
                 EntityProcessorArgSpec.identity(),
                 ClassSchema.ArgSpec.fields(),
@@ -493,8 +493,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 this::readEager));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "UpdateByIdentity",
                 EntityProcessorArgSpec.identity(),
                 ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
@@ -503,8 +503,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 this::updateByIdentity));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "DeleteIdentity",
                 EntityProcessorArgSpec.identity(),
                 "deleted",
@@ -512,8 +512,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 this::deleteIdentity));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadPageFilter",
                 ClassSchema.ArgSpec.pageable(),
                 "result",
@@ -521,8 +521,8 @@ public abstract class BaseUpdatableService<
                 gson,
                 p -> this.readPageFilter(p == null ? PageRequest.of(0, 10) : p, null)));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadPageFilterQuery",
                 ClassSchema.ArgSpec.query(),
                 "result",
@@ -533,8 +533,8 @@ public abstract class BaseUpdatableService<
                     return this.readPageFilter(pageable, query.getCondition());
                 }));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadPageFilterEager",
                 ClassSchema.ArgSpec.pageable(),
                 ClassSchema.ArgSpec.condition(),
@@ -546,8 +546,8 @@ public abstract class BaseUpdatableService<
                 (pageable, condition, fields, queryParams) -> this.readPageFilterEager(
                         pageable == null ? PageRequest.of(0, 10) : pageable, condition, fields, queryParams)));
 
-        functions.add(AbstractProcessorFunction.createServiceFunction(
-                entityName,
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
                 "ReadPageFilterEagerQuery",
                 ClassSchema.ArgSpec.query(),
                 ClassSchema.ArgSpec.queryParams(),
