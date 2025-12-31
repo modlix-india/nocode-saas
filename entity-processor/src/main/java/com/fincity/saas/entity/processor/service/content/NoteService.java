@@ -20,8 +20,10 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -35,13 +37,10 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
     private static final String NOTE_CACHE = "note";
     private static final String NAMESPACE = "EntityProcessor.Note";
-
-    private final List<ReactiveFunction> functions = new ArrayList<>();
-    private final Gson gson;
-
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
-
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
     @Autowired
     @Lazy
     private NoteService self;
@@ -102,6 +101,15 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
         return Mono.just(Note.of(noteRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createContent"));
+    }
+
+    @Override
+    protected Mono<Note> updatableEntity(Note entity) {
+
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setAttachmentFileDetail(entity.getAttachmentFileDetail());
+            return Mono.just(existing);
+        });
     }
 
     @Override
