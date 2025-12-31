@@ -25,7 +25,7 @@ public class AbstractOverridableDataController<D extends AbstractOverridableDTO<
     @Override
     @GetMapping("/nomap2")
     public Mono<ResponseEntity<Page<D>>> readPageFilter(Pageable pageable,
-                                                        ServerHttpRequest request) {
+            ServerHttpRequest request) {
         return Mono.just(ResponseEntity.badRequest()
                 .build());
     }
@@ -39,11 +39,13 @@ public class AbstractOverridableDataController<D extends AbstractOverridableDTO<
 
     @GetMapping()
     public Mono<ResponseEntity<Page<ListResultObject<D>>>> readPageFilterLRO(
-            @RequestParam(required = false, defaultValue = "false") boolean eager, Pageable pageable,
+            @RequestParam(required = false, defaultValue = "false") boolean eager,
+            @RequestParam(required = false, defaultValue = "false") boolean clientOnly,
+            Pageable pageable,
             ServerHttpRequest request) {
         final Pageable finPageable = (pageable == null ? PageRequest.of(0, 10, Direction.ASC, PATH_VARIABLE_ID)
                 : pageable);
-        return this.service.readPageFilterLRO(eager, finPageable, request.getQueryParams())
+        return this.service.readPageFilterLRO(eager, clientOnly, finPageable, request.getQueryParams())
                 .map(ResponseEntity::ok);
     }
 
