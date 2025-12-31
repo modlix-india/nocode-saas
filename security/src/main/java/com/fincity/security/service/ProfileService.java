@@ -290,27 +290,27 @@ public class ProfileService
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
-                (ca, hierarchy)-> this.dao.read(id, hierarchy),
-                        (ca, hierarchy,profile)-> this.evictAuthoritiesAndProfileCache(profile),
-                (ca, hierarchy,profile,evicted) -> this.dao.delete(id, hierarchy)
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        (ca, hierarchy) -> this.dao.read(id, hierarchy),
+                        (ca, hierarchy, profile) -> this.evictAuthoritiesAndProfileCache(profile),
+                        (ca, hierarchy, profile, evicted) -> this.dao.delete(id, hierarchy)
 
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException
                                 || ex instanceof R2dbcDataIntegrityViolationException
-                                        ? this.securityMessageResourceService
-                                                .throwMessage(
-                                                        msg -> new GenericException(
-                                                                HttpStatus.FORBIDDEN,
-                                                                msg,
-                                                                ex),
-                                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
-                                        : Mono.error(ex));
+                                ? this.securityMessageResourceService
+                                .throwMessage(
+                                        msg -> new GenericException(
+                                                HttpStatus.FORBIDDEN,
+                                                msg,
+                                                ex),
+                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
+                                : Mono.error(ex));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ') and hasAuthority('Authorities.Client_UPDATE')")
@@ -526,29 +526,29 @@ public class ProfileService
         ).collectList();
     }
 
-    private Mono<Profile> evictAuthoritiesAndProfileCache(Profile e) {
+    private Mono<Profile> evictAuthoritiesAndProfileCache(Profile profile) {
 
         String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
-                + (e.getRootProfileId() == null ? e.getId() : e.getRootProfileId());
+                + (profile.getRootProfileId() == null ? profile.getId() : profile.getRootProfileId());
 
         Mono<Profile> authoritiesEviction;
 
-        if (e.getRootProfileId() == null) {
+        if (profile.getRootProfileId() == null) {
             authoritiesEviction =
-                    this.cacheService.evictAll(cacheName).thenReturn(e);
+                    this.cacheService.evictAll(cacheName).thenReturn(profile);
         } else {
             authoritiesEviction =
                     this.dao.isBeingUsedByManagingClients(
-                                    e.getClientId(), e.getId(), e.getRootProfileId())
+                                    profile.getClientId(), profile.getId(), profile.getRootProfileId())
                             .flatMap(used -> {
 
                                 if (used)
                                     return this.cacheService.evictAll(cacheName);
 
                                 return this.cacheService
-                                        .evict(cacheName, e.getClientId());
+                                        .evict(cacheName, profile.getClientId());
                             })
-                            .thenReturn(e);
+                            .thenReturn(profile);
         }
 
         return authoritiesEviction
