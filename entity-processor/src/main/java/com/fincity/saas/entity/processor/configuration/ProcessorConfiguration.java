@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.gson.IdentityTypeAdapter;
 import com.fincity.saas.entity.processor.gson.PageTypeAdapter;
 import com.fincity.saas.entity.processor.gson.PageableTypeAdapter;
 import com.fincity.saas.entity.processor.gson.PhoneNumberTypeAdapter;
+import com.fincity.saas.entity.processor.gson.SortTypeAdapter;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
@@ -69,6 +71,7 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
                 .registerTypeAdapter(Email.class, new EmailTypeAdapter())
                 .registerTypeAdapter(PhoneNumber.class, new PhoneNumberTypeAdapter())
                 .registerTypeAdapter(Pageable.class, new PageableTypeAdapter())
+                .registerTypeAdapter(Sort.class, new SortTypeAdapter())
                 .registerTypeAdapterFactory(new AbstractConditionTypeAdapter.Factory())
                 .registerTypeAdapterFactory(new PageTypeAdapter.Factory())
                 .registerTypeAdapter(Type.class, new Type.SchemaTypeAdapter())

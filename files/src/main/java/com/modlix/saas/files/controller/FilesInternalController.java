@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.modlix.saas.files.model.DownloadOptions;
 import com.modlix.saas.files.model.FileDetail;
@@ -77,5 +79,13 @@ public class FilesInternalController {
 
         return ResponseEntity.ok(("secured".equals(resourceType) ? this.securedService : this.staticService)
                 .readFileAsBase64(clientCode, url, metadataRequired));
+    }
+
+    @PostMapping(value = "/aiUploader", consumes = { "multipart/form-data" })
+    public ResponseEntity<String> aiUploader(
+            @RequestParam String clientCode,
+            @RequestPart(name = "file") MultipartFile file) {
+
+        return ResponseEntity.ok(this.staticService.uploadAiFile(clientCode, file));
     }
 }
