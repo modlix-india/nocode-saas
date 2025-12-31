@@ -37,7 +37,8 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     private final ProductService productService;
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy

@@ -44,7 +44,8 @@ public class ProductTemplateWalkInFormService
     private final Gson gson;
     private final ProductTemplateService productTemplateService;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy

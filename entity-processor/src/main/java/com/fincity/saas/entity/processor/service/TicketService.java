@@ -84,7 +84,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Lazy
     private TicketService self;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,

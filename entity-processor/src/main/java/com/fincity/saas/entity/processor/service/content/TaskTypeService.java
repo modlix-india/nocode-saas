@@ -37,7 +37,8 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy

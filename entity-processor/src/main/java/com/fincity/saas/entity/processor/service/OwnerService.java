@@ -39,7 +39,8 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     private final TicketService ticketService;
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy

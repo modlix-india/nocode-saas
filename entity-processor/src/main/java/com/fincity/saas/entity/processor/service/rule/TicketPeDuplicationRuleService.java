@@ -41,7 +41,8 @@ public class TicketPeDuplicationRuleService
     private static final String TICKET_PE_DUPLICATION_RULE_CACHE = "ticketPeDuplicationRule";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final Gson gson;
 
     @Autowired

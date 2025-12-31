@@ -70,7 +70,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TicketService ticketService;
 

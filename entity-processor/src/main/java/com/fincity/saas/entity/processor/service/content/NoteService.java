@@ -38,7 +38,8 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -54,7 +55,8 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         this.functions.addAll(super.getCommonFunctions("Note", Note.class, gson));
 
         String noteSchemaRef = classSchema.getNamespaceForClass(Note.class) + "." + Note.class.getSimpleName();
-        ClassSchema.ArgSpec<NoteRequest> noteRequest = ClassSchema.ArgSpec.ofRef("noteRequest", NoteRequest.class, classSchema);
+        ClassSchema.ArgSpec<NoteRequest> noteRequest =
+                ClassSchema.ArgSpec.ofRef("noteRequest", NoteRequest.class, classSchema);
 
         this.functions.add(AbstractProcessorFunction.createServiceFunction(
                 "Note",

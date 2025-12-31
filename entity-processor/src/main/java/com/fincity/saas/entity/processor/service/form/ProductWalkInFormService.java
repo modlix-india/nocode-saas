@@ -64,7 +64,8 @@ public class ProductWalkInFormService
     private final Gson gson;
     private final ProductService productService;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private TicketService ticketService;
     private ActivityService activityService;
 

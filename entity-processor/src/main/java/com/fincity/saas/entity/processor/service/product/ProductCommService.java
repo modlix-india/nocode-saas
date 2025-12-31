@@ -45,7 +45,8 @@ public class ProductCommService
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private final ConnectionServiceProvider connectionServices;
     private final ProductService productService;
