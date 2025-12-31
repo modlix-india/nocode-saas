@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -37,11 +37,13 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         implements IRepositoryProvider {
 
     private static final String TASK_CACHE = "task";
+    private static final String NAMESPACE = "EntityProcessor.Task";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
-    private static final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TaskTypeService taskTypeService;
 
@@ -66,8 +68,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         String taskSchemaRef = classSchema.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
 
         // TaskController: createRequest(TaskRequest)
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Task",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("taskRequest", TaskRequest.class, classSchema),
                 "created",
@@ -76,8 +78,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 self::createRequest));
 
         // TaskController: setReminder(identity, reminderDate)
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Task",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "SetReminder",
                 EntityProcessorArgSpec.identity("identity"),
                 ClassSchema.ArgSpec.dateTimeString("reminderDate"),
@@ -87,8 +89,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 self::setReminder));
 
         // TaskController: setTaskCompleted(identity, completed, completedDate)
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Task",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "SetTaskCompleted",
                 EntityProcessorArgSpec.identity("identity"),
                 ClassSchema.ArgSpec.bool("completed"),
@@ -99,8 +101,8 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 self::setTaskCompleted));
 
         // TaskController: setTaskCancelled(identity, cancelled, cancelledDate)
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Task",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "SetTaskCancelled",
                 EntityProcessorArgSpec.identity("identity"),
                 ClassSchema.ArgSpec.bool("cancelled"),
