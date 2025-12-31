@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
@@ -12,6 +19,7 @@ import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.Identity;
@@ -25,6 +33,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerReque
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketStatusRequest;
+import com.fincity.saas.entity.processor.model.request.ticket.TicketTagRequest;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionSubType;
 import com.fincity.saas.entity.processor.oserver.core.enums.ConnectionType;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
@@ -34,9 +43,14 @@ import com.fincity.saas.entity.processor.service.product.ProductCommService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketCRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketDuplicationRuleService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -45,10 +59,15 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO> {
+public class TicketService extends BaseProcessorService<EntityProcessorTicketsRecord, Ticket, TicketDAO>
+        implements IRepositoryProvider {
 
     private static final String TICKET_CACHE = "ticket";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
+    private static final String NAMESPACE = "EntityProcessor.Ticket";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
 
     private final OwnerService ownerService;
     private final ProductService productService;
@@ -62,6 +81,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private final PartnerService partnerService;
     private final ProductCommService productCommService;
 
+    @Autowired
+    @Lazy
+    private TicketService self;
+
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+
     public TicketService(
             @Lazy OwnerService ownerService,
             ProductService productService,
@@ -73,7 +99,8 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             @Lazy NoteService noteService,
             @Lazy CampaignService campaignService,
             @Lazy PartnerService partnerService,
-            ProductCommService productCommService) {
+            ProductCommService productCommService,
+            Gson gson) {
         this.ownerService = ownerService;
         this.productService = productService;
         this.stageService = stageService;
@@ -85,6 +112,82 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         this.campaignService = campaignService;
         this.partnerService = partnerService;
         this.productCommService = productCommService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("Ticket", Ticket.class, gson));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("ticketRequest", TicketRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateForCampaign",
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::createForCampaign));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateForWebsite",
+                ClassSchema.ArgSpec.string("productCode"),
+                ClassSchema.ArgSpec.ofRef("campaignTicketRequest", CampaignTicketRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                (productCode, req) -> self.createForWebsite(req, productCode)));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdateStageStatus",
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketStatusRequest", TicketStatusRequest.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::updateStageStatus));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "ReassignTicket",
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketReassignRequest", TicketReassignRequest.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::reassignTicket));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetTicketProductComm",
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("connectionSubType", ConnectionSubType.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Product.ProductComm"),
+                gson,
+                self::getTicketProductComm));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdateTag",
+                EntityProcessorArgSpec.identity("ticketId"),
+                ClassSchema.ArgSpec.ofRef("ticketTagRequest", TicketTagRequest.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::updateTag));
     }
 
     @Override
@@ -136,7 +239,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 sTicket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 loggedInAssignedUser,
-                                sTicket.toJsonElement()),
+                                sTicket),
                         (sTicket, userId) -> this.setTicketAssignment(
                                 access, sTicket, userId != null ? userId : loggedInAssignedUser))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.checkTicket"));
@@ -183,11 +286,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         ticket.setOwnerId(owner.getId());
 
-        if (ticket.getName() == null && owner.getName() != null ) ticket.setName(owner.getName());
+        if (ticket.getName() == null && owner.getName() != null) ticket.setName(owner.getName());
 
-        if (ticket.getEmail() == null && owner.getEmail() != null ) ticket.setEmail(owner.getEmail());
+        if (ticket.getEmail() == null && owner.getEmail() != null) ticket.setEmail(owner.getEmail());
 
-        if (ticket.getPhoneNumber() == null && owner.getPhoneNumber() != null ) {
+        if (ticket.getPhoneNumber() == null && owner.getPhoneNumber() != null) {
             ticket.setDialCode(owner.getDialCode());
             ticket.setPhoneNumber(owner.getPhoneNumber());
         }
@@ -213,13 +316,14 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                     existing.setStage(ticket.getStage());
                     existing.setStatus(ticket.getStatus());
                     existing.setSubSource(ticket.getSubSource());
+                    existing.setTag(ticket.getTag());
 
                     return Mono.just(existing);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
-    public Mono<Ticket> create(TicketRequest ticketRequest) {
+    public Mono<Ticket> createRequest(TicketRequest ticketRequest) {
 
         if (!ticketRequest.hasSourceInfo())
             return this.msgService.throwMessage(
@@ -484,7 +588,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         noteRequest.setOwnerId(null);
 
         return this.noteService
-                .createInternal(access, noteRequest)
+                .createRequest(access, noteRequest)
                 .map(cNote -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createNote"));
     }
@@ -580,7 +684,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         taskRequest.setOwnerId(null);
 
         return this.taskService
-                .createInternal(access, taskRequest)
+                .createRequest(access, taskRequest)
                 .map(cTask -> Boolean.TRUE)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.createTask"));
     }
@@ -622,11 +726,13 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getStage(),
                                 this.getEntityPrefix(access.getAppCode()),
                                 access.getUserId(),
-                                ticket.toJsonElement()),
+                                ticket,
+                                false),
                         ruleUserId -> ruleUserId == null
                                 ? Mono.just(ticket)
                                 : this.updateTicketForReassignment(
                                         access, ticket, ruleUserId, AUTOMATIC_REASSIGNMENT, isAutomatic))
+                .switchIfEmpty(Mono.just(ticket))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.reassignForStage"));
     }
 
@@ -702,5 +808,41 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 ticket.getSubSource()))
                 .switchIfEmpty(Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicketProductComm"));
+    }
+
+    public Mono<Ticket> updateTag(Identity ticketId, TicketTagRequest ticketTagRequest) {
+
+        if (ticketTagRequest == null || ticketTagRequest.getTag() == null)
+            return this.identityMissingError(Ticket.Fields.tag);
+
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.readByIdentity(access, ticketId),
+                        (access, ticket) -> Mono.just(ticketTagRequest.getTag()),
+                        (access, ticket, resolvedTag) -> {
+                            Tag oldTagEnum = ticket.getTag();
+                            ticket.setTag(resolvedTag);
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.update(access, ticket),
+                                    uTicket -> ticketTagRequest.getTaskRequest() != null
+                                            ? this.createTask(access, ticketTagRequest.getTaskRequest(), uTicket)
+                                            : Mono.just(Boolean.FALSE),
+                                    (uTicket, cTask) -> this.activityService
+                                            .acTagChange(access, uTicket, ticketTagRequest.getComment(), oldTagEnum)
+                                            .thenReturn(uTicket));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTag"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(Ticket.class, classSchema);
     }
 }

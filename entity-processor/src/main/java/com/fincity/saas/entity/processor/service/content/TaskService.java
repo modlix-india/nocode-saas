@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service.content;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskDAO;
 import com.fincity.saas.entity.processor.dto.content.Task;
@@ -12,23 +19,98 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.content.TaskRequest;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO> {
+public class TaskService extends BaseContentService<EntityProcessorTasksRecord, Task, TaskDAO>
+        implements IRepositoryProvider {
 
     private static final String TASK_CACHE = "task";
+    private static final String NAMESPACE = "EntityProcessor.Task";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TaskTypeService taskTypeService;
 
     @Autowired
+    @Lazy
+    private TaskService self;
+
+    public TaskService(Gson gson) {
+        this.gson = gson;
+    }
+
+    @Autowired
     private void setTaskTypeService(TaskTypeService taskTypeService) {
         this.taskTypeService = taskTypeService;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("Task", Task.class, gson));
+
+        String taskSchemaRef = classSchema.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
+
+        // TaskController: createRequest(TaskRequest)
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("taskRequest", TaskRequest.class, classSchema),
+                "created",
+                Schema.ofRef(taskSchemaRef),
+                gson,
+                self::createRequest));
+
+        // TaskController: setReminder(identity, reminderDate)
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "SetReminder",
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.dateTimeString("reminderDate"),
+                "result",
+                Schema.ofRef(taskSchemaRef),
+                gson,
+                self::setReminder));
+
+        // TaskController: setTaskCompleted(identity, completed, completedDate)
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "SetTaskCompleted",
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.bool("completed"),
+                ClassSchema.ArgSpec.dateTimeString("completedDate"),
+                "result",
+                Schema.ofRef(taskSchemaRef),
+                gson,
+                self::setTaskCompleted));
+
+        // TaskController: setTaskCancelled(identity, cancelled, cancelledDate)
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "SetTaskCancelled",
+                EntityProcessorArgSpec.identity("identity"),
+                ClassSchema.ArgSpec.bool("cancelled"),
+                ClassSchema.ArgSpec.dateTimeString("cancelledDate"),
+                "result",
+                Schema.ofRef(taskSchemaRef),
+                gson,
+                self::setTaskCancelled));
     }
 
     @Override
@@ -41,17 +123,18 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
         return EntitySeries.TASK;
     }
 
-    public Mono<Task> create(TaskRequest taskRequest) {
-        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createInternal(access, taskRequest))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.create"));
+    public Mono<Task> createRequest(TaskRequest taskRequest) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> this.createRequest(access, taskRequest))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createRequest"));
     }
 
-    public Mono<Task> createInternal(ProcessorAccess access, TaskRequest taskRequest) {
+    public Mono<Task> createRequest(ProcessorAccess access, TaskRequest taskRequest) {
         return FlatMapUtil.flatMapMono(
                         () -> this.updateIdentities(access, taskRequest),
                         task -> this.createContent(taskRequest),
                         (task, content) -> super.createContent(access, content))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createInternal"));
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "TaskService.createRequest[ProcessorAccess, TaskRequest]"));
     }
 
     private Mono<TaskRequest> updateIdentities(ProcessorAccess access, TaskRequest taskRequest) {
@@ -185,5 +268,16 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                     statusName);
 
         return Mono.just(task).contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkTaskStatus"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(Task.class, classSchema);
     }
 }

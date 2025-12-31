@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto.form;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import java.io.Serial;
 import lombok.Data;
@@ -15,6 +16,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class ProductTemplateWalkInForm extends BaseWalkInFormDto<ProductTemplateWalkInForm> {
 
     @Serial

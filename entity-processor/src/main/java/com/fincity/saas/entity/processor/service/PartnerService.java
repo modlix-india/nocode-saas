@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
@@ -29,7 +36,11 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,17 +57,34 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO> {
+public class PartnerService extends BaseUpdatableService<EntityProcessorPartnersRecord, Partner, PartnerDAO>
+        implements IRepositoryProvider {
 
     private static final String PARTNER_CACHE = "Partner";
+    private static final String NAMESPACE = "EntityProcessor.Partner";
 
     private static final String FETCH_PARTNERS = "fetchPartners";
 
     private static final String FETCH_LEADS = "fetchLeads";
 
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+
+    private final Gson gson;
+
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+
     private TicketService ticketService;
 
     private TicketBucketService ticketBucketService;
+
+    @Autowired
+    @Lazy
+    private PartnerService self;
+
+    public PartnerService(Gson gson) {
+        this.gson = gson;
+    }
 
     @Lazy
     @Autowired
@@ -68,6 +96,64 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Autowired
     private void setTicketBucketService(TicketBucketService ticketBucketService) {
         this.ticketBucketService = ticketBucketService;
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.addAll(super.getCommonFunctions("Partner", Partner.class, gson));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("partnerRequest", PartnerRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetLoggedInPartner",
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::getLoggedInPartner));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdateLoggedInPartnerVerificationStatus",
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::updateLoggedInPartnerVerificationStatus));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "ToggleLoggedInPartnerDnc",
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::toggleLoggedInPartnerDnc));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdatePartnerVerificationStatus",
+                EntityProcessorArgSpec.identity("partnerId"),
+                ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::updatePartnerVerificationStatus));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "TogglePartnerDnc",
+                EntityProcessorArgSpec.identity("partnerId"),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::togglePartnerDnc));
     }
 
     @Override
@@ -121,7 +207,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.hasAccess"));
     }
 
-    public Mono<Partner> createPartner(PartnerRequest partnerRequest) {
+    public Mono<Partner> createRequest(PartnerRequest partnerRequest) {
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.securityService.getClientById(
@@ -197,7 +283,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
 
-    public Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
+    private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
         return this.cacheService
                 .cacheValueOrGet(
                         this.getCacheName(),
@@ -455,7 +541,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return query.setCondition(ComplexCondition.and(query.getCondition(), condition));
     }
 
-    public Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
+    private Mono<AbstractCondition> addClientIds(Partner partner, AbstractCondition condition) {
 
         if (condition == null || condition.isEmpty())
             return Mono.<AbstractCondition>just(FilterCondition.make(User.Fields.clientId, partner.getClientId())
@@ -469,7 +555,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
     }
 
-    public Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
+    private Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
 
         return FlatMapUtil.flatMapMono(
                         () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
@@ -482,7 +568,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateClientCondition"));
     }
 
-    public Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
+    private Mono<AbstractCondition> addClientConditions(AbstractCondition condition, List<ULong> clientIds) {
 
         if (clientIds == null || clientIds.isEmpty())
             return Mono.<AbstractCondition>empty()
@@ -505,5 +591,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                 .setOperator(FilterConditionOperator.IN)
                                 .setMultiValue(clientIds)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientConditions"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(Partner.class, classSchema);
     }
 }

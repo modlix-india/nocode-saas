@@ -1,7 +1,11 @@
 package com.fincity.saas.entity.processor.service.base;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.jooq.flow.service.AbstractFlowUpdatableService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
@@ -16,6 +20,9 @@ import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +33,7 @@ import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.MultiValueMap;
@@ -119,17 +127,17 @@ public abstract class BaseUpdatableService<
     }
 
     @Autowired
-    public void setMsgService(ProcessorMessageResourceService msgService) {
+    protected void setMsgService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
     @Autowired
-    public void setCacheService(CacheService cacheService) {
+    protected void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
     }
 
     @Autowired
-    public void setSecurityService(IFeignSecurityService securityService) {
+    protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
@@ -162,7 +170,7 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.create(access, entity));
     }
 
-    public Mono<D> create(ProcessorAccess access, D entity) {
+    protected Mono<D> create(ProcessorAccess access, D entity) {
         return this.checkEntity(entity, access).flatMap(e -> this.createInternal(access, e));
     }
 
@@ -289,7 +297,7 @@ public abstract class BaseUpdatableService<
         return super.update(entity).flatMap(updated -> this.evictCache(updated).map(evicted -> updated));
     }
 
-    public Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
+    protected Mono<D> updateInternal(ProcessorAccess access, ULong key, Map<String, Object> fields) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("update");
 
@@ -388,7 +396,7 @@ public abstract class BaseUpdatableService<
         return FlatMapUtil.flatMapMono(this::hasAccess, access -> this.read(id), this::deleteInternal);
     }
 
-    public Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
+    protected Mono<Integer> deleteInternal(ProcessorAccess access, D entity) {
 
         if (!canOutsideCreate() && access.isOutsideUser()) return this.throwOutsideUserAccess("delete");
 
@@ -411,6 +419,25 @@ public abstract class BaseUpdatableService<
         return this.hasAccess().flatMap(access -> this.readByCode(access, code)).map(BaseUpdatableDto::getBaseResponse);
     }
 
+    public Mono<BaseResponse> getBaseResponseByIdentity(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId() ? this.getBaseResponse(identity.getULongId()) : this.getBaseResponse(identity.getCode());
+    }
+
+    public Mono<D> updateByIdentity(Identity identity, D entity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        if (identity.isId()) {
+            entity.setId(identity.getULongId());
+            return this.update(entity);
+        }
+
+        return this.updateByCode(identity.getCode(), entity);
+    }
+
     protected <T> Mono<T> throwMissingParam(String paramName) {
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -425,5 +452,113 @@ public abstract class BaseUpdatableService<
                 ProcessorMessageResourceService.INVALID_PARAMETERS,
                 Case.TITLE.getConverter().apply(paramName),
                 this.getEntityName());
+    }
+
+    protected List<ReactiveFunction> getCommonFunctions(String entityName, Class<D> dtoClass, Gson gson) {
+        List<ReactiveFunction> functions = new ArrayList<>();
+        String dtoNamespace = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor())
+                .getNamespaceForClass(dtoClass);
+        String dtoName = dtoClass.getSimpleName();
+        String dtoSchemaRef = dtoNamespace + "." + dtoName;
+        String baseResponseSchemaRef = "EntityProcessor.Model.Base.BaseResponse";
+        String pageSchemaRef = "Commons.Page";
+        Schema mapSchema = Schema.ofObject("Map");
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "Create",
+                ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                this::create));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadByIdentity",
+                EntityProcessorArgSpec.identity(),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                this::readByIdentity));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadEagerByIdentity",
+                EntityProcessorArgSpec.identity(),
+                ClassSchema.ArgSpec.fields(),
+                ClassSchema.ArgSpec.queryParams(),
+                "result",
+                mapSchema,
+                gson,
+                this::readEager));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "UpdateByIdentity",
+                EntityProcessorArgSpec.identity(),
+                ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
+                "updated",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                this::updateByIdentity));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "DeleteIdentity",
+                EntityProcessorArgSpec.identity(),
+                "deleted",
+                Schema.ofInteger("deleted"),
+                gson,
+                this::deleteIdentity));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadPageFilter",
+                ClassSchema.ArgSpec.pageable(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                p -> this.readPageFilter(p == null ? PageRequest.of(0, 10) : p, null)));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadPageFilterQuery",
+                ClassSchema.ArgSpec.query(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                query -> {
+                    Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+                    return this.readPageFilter(pageable, query.getCondition());
+                }));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadPageFilterEager",
+                ClassSchema.ArgSpec.pageable(),
+                ClassSchema.ArgSpec.condition(),
+                ClassSchema.ArgSpec.fields(),
+                ClassSchema.ArgSpec.queryParams(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                (pageable, condition, fields, queryParams) -> this.readPageFilterEager(
+                        pageable == null ? PageRequest.of(0, 10) : pageable, condition, fields, queryParams)));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                "EntityProcessor." + entityName,
+                "ReadPageFilterEagerQuery",
+                ClassSchema.ArgSpec.query(),
+                ClassSchema.ArgSpec.queryParams(),
+                "result",
+                Schema.ofRef(pageSchemaRef),
+                gson,
+                (query, queryParams) -> {
+                    Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+                    return this.readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams);
+                }));
+
+        return functions;
     }
 }

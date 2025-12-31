@@ -1,7 +1,13 @@
 package com.fincity.saas.entity.processor.service.rule;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
@@ -17,10 +23,13 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -33,17 +42,36 @@ public class TicketDuplicationRuleService
                 EntityProcessorTicketDuplicationRulesRecord,
                 TicketDuplicationRule,
                 TicketDuplicationRuleDAO,
-                NoOpUserDistribution> {
+                NoOpUserDistribution>
+        implements IRepositoryProvider {
 
     private static final String TICKET_DUPLICATION_RULE = "ticketDuplicationRule";
     private static final String PRODUCT_CONDITION_CACHE = "ticketDuplicationProductRuleCondition";
     private static final String PRODUCT_TEMPLATE_CONDITION_CACHE = "ticketDuplicationProductTemplateRuleCondition";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private final Gson gson;
 
     private StageService stageService;
 
     @Autowired
     private void setStageService(StageService stageService) {
         this.stageService = stageService;
+    }
+
+    @Autowired
+    @Lazy
+    private TicketDuplicationRuleService self;
+
+    public TicketDuplicationRuleService(Gson gson) {
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+        this.functions.addAll(super.getCommonFunctions("TicketDuplicationRule", TicketDuplicationRule.class, gson));
     }
 
     @Override
@@ -135,7 +163,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductDuplicateCondition(
             ProcessorAccess access, ULong productId, String source, String subSource) {
-        return super.cacheService.cacheEmptyValueOrGet(
+        return super.cacheService.cacheValueOrGet(
                 this.getProductConditionCacheName(access.getAppCode(), access.getClientCode(), productId),
                 () -> this.getProductDuplicateConditionInternal(access, productId, source, subSource),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), productId, source, subSource));
@@ -156,7 +184,7 @@ public class TicketDuplicationRuleService
 
     private Mono<AbstractCondition> getProductTemplateDuplicateCondition(
             ProcessorAccess access, ULong productTemplateId, String source, String subSource) {
-        return super.cacheService.cacheEmptyValueOrGet(
+        return super.cacheService.cacheValueOrGet(
                 this.getProductTemplateConditionCacheName(
                         access.getAppCode(), access.getClientCode(), productTemplateId),
                 () -> this.getProductTemplateDuplicateConditionInternal(access, productTemplateId, source, subSource),
@@ -226,5 +254,16 @@ public class TicketDuplicationRuleService
 
         if (!exactMatches.isEmpty()) return Mono.just(exactMatches);
         return nullMatches.isEmpty() ? Mono.empty() : Mono.just(nullMatches);
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(TicketDuplicationRule.class, classSchema);
     }
 }

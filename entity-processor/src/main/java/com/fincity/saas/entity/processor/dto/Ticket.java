@@ -1,10 +1,12 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
@@ -23,6 +25,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Ticket extends BaseProcessorDto<Ticket> {
 
     @Serial
@@ -40,6 +43,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private String subSource;
     private ULong campaignId;
     private Boolean dnc = Boolean.FALSE;
+    private Tag tag;
 
     private ULong productTemplateId = null;
 
@@ -68,6 +72,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.subSource = ticket.subSource;
         this.campaignId = ticket.campaignId;
         this.dnc = ticket.dnc;
+        this.tag = ticket.tag;
         this.productTemplateId = ticket.productTemplateId;
     }
 

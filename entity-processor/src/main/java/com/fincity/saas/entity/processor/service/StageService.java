@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.StageDAO;
 import com.fincity.saas.entity.processor.dto.Stage;
@@ -16,12 +23,18 @@ import com.fincity.saas.entity.processor.model.request.StageReorderRequest;
 import com.fincity.saas.entity.processor.model.request.StageRequest;
 import com.fincity.saas.entity.processor.model.response.BaseValueResponse;
 import com.fincity.saas.entity.processor.service.base.BaseValueService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -31,9 +44,72 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
-public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO> {
+public class StageService extends BaseValueService<EntityProcessorStagesRecord, Stage, StageDAO>
+        implements IRepositoryProvider {
 
     private static final String STAGE_CACHE = "stage";
+    private static final String NAMESPACE = "EntityProcessor.Stage";
+
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+
+    @Autowired
+    @Lazy
+    private StageService self;
+
+    public StageService(Gson gson) {
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions("Stage", Stage.class, gson));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("stageRequest", StageRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.Model.Response.BaseValueResponse"),
+                gson,
+                self::createRequest));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetAllValues",
+                ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
+                EntityProcessorArgSpec.uLong("productTemplateId"),
+                EntityProcessorArgSpec.uLong("parentId"),
+                "result",
+                Schema.ofArray("result", Schema.ofRef("EntityProcessor.Model.Response.BaseValueResponse")),
+                gson,
+                self::getAllValues));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetAllValuesInOrder",
+                ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
+                ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
+                EntityProcessorArgSpec.uLong("productTemplateId"),
+                EntityProcessorArgSpec.uLong("parentId"),
+                "result",
+                Schema.ofArray("result", Schema.ofRef("EntityProcessor.Model.Response.BaseValueResponse")),
+                gson,
+                self::getAllValuesInOrder));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "ReorderStages",
+                ClassSchema.ArgSpec.ofRef("reorderRequest", StageReorderRequest.class, classSchema),
+                "result",
+                Schema.ofArray("result", Schema.ofRef("EntityProcessor.DTO.Stage")),
+                gson,
+                self::reorderStages));
+    }
 
     @Override
     protected String getCacheName() {
@@ -51,7 +127,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     }
 
     @Override
-    public Mono<Stage> applyOrder(Stage entity, ProcessorAccess access) {
+    protected Mono<Stage> applyOrder(Stage entity, ProcessorAccess access) {
 
         if (entity.isChild()) return Mono.just(entity);
 
@@ -131,7 +207,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.getAllValues"));
     }
 
-    public Mono<BaseValueResponse<Stage>> create(StageRequest stageRequest) {
+    public Mono<BaseValueResponse<Stage>> createRequest(StageRequest stageRequest) {
 
         if (!stageRequest.isStageTypeValid())
             return this.msgService.throwMessage(
@@ -254,7 +330,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.updateOrCreateChildren"));
     }
 
-    public Mono<Stage> getLatestStageByOrder(ProcessorAccess access, ULong productTemplateId) {
+    private Mono<Stage> getLatestStageByOrder(ProcessorAccess access, ULong productTemplateId) {
         return super.getAllValuesInOrderInternal(access, null, productTemplateId)
                 .map(NavigableMap::lastKey)
                 .switchIfEmpty(Mono.empty())
@@ -354,5 +430,16 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                     .collectList();
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.reorderStages"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(Stage.class, classSchema);
     }
 }
