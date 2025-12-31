@@ -115,7 +115,8 @@ public class EventsQueListener {
         } else {
             final Mono<Boolean> finalReceivedMono = receivedMono;
             return this.securityService.getClientByCode(qob.getClientCode())
-                    .map(client -> this.makeAnonymousContextAuth(qob.getAppCode(), qob.getClientCode(), client))
+                    .map(client -> this.makeAnonymousContextAuth
+                            (qob.getAppCode(), qob.getClientCode(), client))
                     .flatMap(ca -> finalReceivedMono.contextWrite(ReactiveSecurityContextHolder
                             .withSecurityContext(Mono.just(new SecurityContextImpl(ca)))))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventsQueListener.receive")).then();
