@@ -4,6 +4,7 @@ import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,6 +23,8 @@ public class Note extends BaseContentDto<Note> {
     @Serial
     private static final long serialVersionUID = 4656579497586549236L;
 
+    private FileDetail attachmentFileDetail;
+
     public Note() {
         super();
     }
@@ -35,6 +38,8 @@ public class Note extends BaseContentDto<Note> {
                 .setContent(noteRequest.getContent())
                 .setHasAttachment(noteRequest.getHasAttachment())
                 .setContentEntitySeries(noteRequest.getContentEntitySeries());
+
+        note.setAttachmentFileDetail(noteRequest.getAttachmentFileDetail());
 
         return switch (note.getContentEntitySeries()) {
             case OWNER -> note.setOwnerId(noteRequest.getOwnerId().getULongId());
