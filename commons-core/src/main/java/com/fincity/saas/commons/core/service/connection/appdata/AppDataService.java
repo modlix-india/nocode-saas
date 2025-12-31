@@ -870,6 +870,8 @@ public class AppDataService {
 
     public Mono<Page<Map<String, Object>>> readPage(
             String appCode, String clientCode, String storageName, Query query) {
+        logger.info("App code: {}, client code: {} in storage: {} with query: {}", appCode, clientCode,
+                storageName, query);
         Mono<Page<Map<String, Object>>> mono = FlatMapUtil.flatMapMonoWithNull(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> Mono.just(appCode == null ? ca.getUrlAppCode() : appCode),
