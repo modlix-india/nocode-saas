@@ -7,29 +7,34 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 
 @ReactiveFeignClient(name = "core")
 public interface IFeignCoreService {
 
-	String PATH = "api/core/function/execute/{namespace}/{name}";
-	String PATH_VARIABLE_NAMESPACE = "namespace";
-	String PATH_VARIABLE_NAME = "name";
+    String PATH = "api/core/function/execute/{namespace}/{name}";
+    String PATH_VARIABLE_NAMESPACE = "namespace";
+    String PATH_VARIABLE_NAME = "name";
 
-	@GetMapping(PATH)
-	Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+    @GetMapping(PATH)
+    Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
             @RequestHeader String appCode,
-			@RequestHeader String clientCode,
-			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
-			@PathVariable(PATH_VARIABLE_NAME) String name,
-			@RequestParam MultiValueMap<String, String> queryParams);
+            @RequestHeader String clientCode,
+            @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
+            @PathVariable(PATH_VARIABLE_NAME) String name,
+            @RequestParam MultiValueMap<String, String> queryParams);
 
-	@PostMapping(PATH)
-	Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+    @PostMapping(PATH)
+    Mono<String> executeWith(@RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestHeader("X-Forwarded-Host") String forwardedHost,
+            @RequestHeader("X-Forwarded-Port") String forwardedPort,
             @RequestHeader String appCode,
-			@RequestHeader String clientCode,
-			@PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
-			@PathVariable(PATH_VARIABLE_NAME) String name,
-			@RequestBody String jsonString);
+            @RequestHeader String clientCode,
+            @PathVariable(PATH_VARIABLE_NAMESPACE) String namespace,
+            @PathVariable(PATH_VARIABLE_NAME) String name,
+            @RequestBody String jsonString);
 }

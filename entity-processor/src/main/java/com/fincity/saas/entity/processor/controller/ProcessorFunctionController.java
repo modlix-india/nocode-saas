@@ -1,10 +1,15 @@
 package com.fincity.saas.entity.processor.controller;
 
+import com.fincity.nocode.kirun.engine.model.FunctionOutput;
+import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.entity.processor.service.ProcessorFunctionService;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
-
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -16,14 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
-
-import com.fincity.nocode.kirun.engine.model.FunctionOutput;
-import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.saas.entity.processor.service.ProcessorFunctionService;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -41,8 +38,7 @@ public class ProcessorFunctionController {
 
     private final Gson gson;
 
-    public ProcessorFunctionController(
-            @Lazy ProcessorFunctionService functionService, Gson gson) {
+    public ProcessorFunctionController(@Lazy ProcessorFunctionService functionService, Gson gson) {
 
         this.functionService = functionService;
         this.gson = gson;
@@ -82,8 +78,8 @@ public class ProcessorFunctionController {
 
         JsonObject job = StringUtil.safeIsBlank(jsonString) ? null : this.gson.fromJson(jsonString, JsonObject.class);
 
-        Map<String, JsonElement> arguments = job == null ? null
-                : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        Map<String, JsonElement> arguments =
+                job == null ? null : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
         return this.execute(namespace, name, arguments, exchange.getRequest(), appCode, clientCode);
     }
@@ -100,8 +96,8 @@ public class ProcessorFunctionController {
 
         Tuple2<String, String> tup = this.splitName(fullName);
 
-        Map<String, JsonElement> arguments = job == null ? null
-                : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+        Map<String, JsonElement> arguments =
+                job == null ? null : job.entrySet().stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 
         return this.execute(tup.getT1(), tup.getT2(), arguments, exchange.getRequest(), appCode, clientCode);
     }
@@ -127,7 +123,8 @@ public class ProcessorFunctionController {
             String appCode,
             String clientCode) {
 
-        return this.functionService.execute(namespace, name, job, request, appCode, clientCode)
+        return this.functionService
+                .execute(namespace, name, job, request, appCode, clientCode)
                 .map(FunctionOutput::allResults)
                 .map(this.gson::toJson)
                 .map(ResponseEntity::ok);

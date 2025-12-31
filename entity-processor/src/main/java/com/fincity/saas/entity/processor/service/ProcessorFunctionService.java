@@ -7,6 +7,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -38,6 +40,8 @@ import reactor.util.function.Tuples;
 
 @Service
 public class ProcessorFunctionService implements ApplicationListener<ContextRefreshedEvent>, ApplicationContextAware {
+
+    private final Logger logger = LoggerFactory.getLogger(ProcessorFunctionService.class);
 
     private static final Map<SchemaType, java.util.function.Function<String, Number>> CONVERTOR = Map.of(
             SchemaType.DOUBLE, Double::valueOf,
@@ -110,16 +114,21 @@ public class ProcessorFunctionService implements ApplicationListener<ContextRefr
                     ReactiveRepository<ReactiveFunction> functionRepository = tup.getT1();
                     ReactiveRepository<Schema> schemaRepository = tup.getT2();
 
-                    return functionRepository.find(namespace, name).flatMap(function -> {
-                        Mono<Map<String, JsonElement>> argsMono = arguments == null
-                                ? this.getRequestParamsToArguments(
-                                        function.getSignature().getParameters(), request)
-                                : Mono.just(arguments);
+                    return functionRepository.find(namespace, name)
+                            .flatMap(x -> schemaRepository.filter("").collectList().map(y -> {
+                                logger.info("Schemaaas : {}", y);
+                                return x;
+                            }))
+                            .flatMap(function -> {
+                                Mono<Map<String, JsonElement>> argsMono = arguments == null
+                                        ? this.getRequestParamsToArguments(
+                                                function.getSignature().getParameters(), request)
+                                        : Mono.just(arguments);
 
-                        return argsMono.flatMap(args -> function.execute(
-                                new ReactiveFunctionExecutionParameters(functionRepository, schemaRepository)
-                                        .setArguments(args)));
-                    });
+                                return argsMono.flatMap(args -> function.execute(
+                                        new ReactiveFunctionExecutionParameters(functionRepository, schemaRepository)
+                                                .setArguments(args)));
+                            });
                 });
     }
 
