@@ -4,7 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -41,6 +41,7 @@ public class ProductCommService
         implements IRepositoryProvider {
 
     private static final String PRODUCT_COMM = "productComm";
+    private static final String NAMESPACE = "EntityProcessor.ProductComm";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -69,8 +70,8 @@ public class ProductCommService
         String dtoSchemaRef =
                 classSchema.getNamespaceForClass(ProductComm.class) + "." + ProductComm.class.getSimpleName();
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductComm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("request", ProductCommRequest.class, classSchema),
                 "created",
@@ -78,8 +79,8 @@ public class ProductCommService
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductComm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetDefault",
                 EntityProcessorArgSpec.identity("productId"),
                 ClassSchema.ArgSpec.ofRef("connectionType", ConnectionType.class, classSchema),

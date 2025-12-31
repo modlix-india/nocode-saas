@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -43,6 +43,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
         implements IRepositoryProvider {
 
     private static final String PRODUCT_CACHE = "product";
+    private static final String NAMESPACE = "EntityProcessor.Product";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -73,8 +74,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
 
         String productSchemaRef = classSchema.getNamespaceForClass(Product.class) + "." + Product.class.getSimpleName();
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Product",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("productRequest", ProductRequest.class, classSchema),
                 "created",
@@ -82,8 +83,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Product",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "UpdateForPartner",
                 ClassSchema.ArgSpec.ofRef("request", ProductPartnerUpdateRequest.class, classSchema),
                 "updated",
@@ -91,8 +92,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 gson,
                 self::updateForPartner));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Product",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetProductInternal",
                 ClassSchema.ArgSpec.string("appCode"),
                 ClassSchema.ArgSpec.string("clientCode"),
@@ -103,8 +104,8 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
                 (appCode, clientCode, identity) -> self.readByIdentity(
                         ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Product",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetProductsInternal",
                 ClassSchema.ArgSpec.string("appCode"),
                 ClassSchema.ArgSpec.string("clientCode"),

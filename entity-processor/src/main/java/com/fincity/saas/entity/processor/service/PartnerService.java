@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -61,6 +61,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         implements IRepositoryProvider {
 
     private static final String PARTNER_CACHE = "Partner";
+    private static final String NAMESPACE = "EntityProcessor.Partner";
 
     private static final String FETCH_PARTNERS = "fetchPartners";
 
@@ -101,8 +102,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private void init() {
         this.functions.addAll(super.getCommonFunctions("Partner", Partner.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("partnerRequest", PartnerRequest.class, classSchema),
                 "created",
@@ -110,16 +111,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetLoggedInPartner",
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::getLoggedInPartner));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "UpdateLoggedInPartnerVerificationStatus",
                 ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
                 "result",
@@ -127,16 +128,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 gson,
                 self::updateLoggedInPartnerVerificationStatus));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "ToggleLoggedInPartnerDnc",
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::toggleLoggedInPartnerDnc));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "UpdatePartnerVerificationStatus",
                 EntityProcessorArgSpec.identity("partnerId"),
                 ClassSchema.ArgSpec.ofRef("status", PartnerVerificationStatus.class, classSchema),
@@ -145,8 +146,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 gson,
                 self::updatePartnerVerificationStatus));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Partner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "TogglePartnerDnc",
                 EntityProcessorArgSpec.identity("partnerId"),
                 "result",

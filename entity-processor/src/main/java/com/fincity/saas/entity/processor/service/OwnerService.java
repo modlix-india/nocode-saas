@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -35,6 +35,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
         implements IRepositoryProvider {
 
     private static final String OWNER_CACHE = "owner";
+    private static final String NAMESPACE = "EntityProcessor.Owner";
 
     private final TicketService ticketService;
     private final List<ReactiveFunction> functions = new ArrayList<>();
@@ -56,8 +57,8 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
         this.functions.addAll(super.getCommonFunctions("Owner", Owner.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Owner",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("ownerRequest", OwnerRequest.class, classSchema),
                 "created",

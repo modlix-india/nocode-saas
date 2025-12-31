@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -48,6 +48,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
         implements IRepositoryProvider {
 
     private static final String STAGE_CACHE = "stage";
+    private static final String NAMESPACE = "EntityProcessor.Stage";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -67,8 +68,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
 
         this.functions.addAll(super.getCommonFunctions("Stage", Stage.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Stage",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("stageRequest", StageRequest.class, classSchema),
                 "created",
@@ -76,8 +77,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Stage",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetAllValues",
                 ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
                 ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
@@ -88,8 +89,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 gson,
                 self::getAllValues));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Stage",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetAllValuesInOrder",
                 ClassSchema.ArgSpec.ofRef("platform", Platform.class, classSchema),
                 ClassSchema.ArgSpec.ofRef("stageType", StageType.class, classSchema),
@@ -100,8 +101,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                 gson,
                 self::getAllValuesInOrder));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Stage",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "ReorderStages",
                 ClassSchema.ArgSpec.ofRef("reorderRequest", StageReorderRequest.class, classSchema),
                 "result",

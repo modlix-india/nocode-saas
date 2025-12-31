@@ -4,7 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -49,6 +49,7 @@ public class TicketPeDuplicationRuleService
     @Lazy
     private TicketPeDuplicationRuleService self;
 
+    private static final String NAMESPACE = "EntityProcessor.TicketPeDuplicationRule";
     private static final TicketPeDuplicationRule DEFAULT_RULE = (TicketPeDuplicationRule) new TicketPeDuplicationRule()
             .setPhoneNumberAndEmailType(PhoneNumberAndEmailType.PHONE_NUMBER_ONLY)
             .setActive(Boolean.TRUE)
@@ -63,8 +64,8 @@ public class TicketPeDuplicationRuleService
 
         this.functions.addAll(super.getCommonFunctions("TicketPeDuplicationRule", TicketPeDuplicationRule.class, gson));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "TicketPeDuplicationRule",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetLoggedInRule",
                 "result",
                 Schema.ofRef("EntityProcessor.DTO.Rule.TicketPeDuplicationRule"),

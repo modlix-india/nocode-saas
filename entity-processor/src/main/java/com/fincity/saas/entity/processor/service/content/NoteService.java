@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -34,6 +34,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         implements IRepositoryProvider {
 
     private static final String NOTE_CACHE = "note";
+    private static final String NAMESPACE = "EntityProcessor.Note";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -58,8 +59,8 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         ClassSchema.ArgSpec<NoteRequest> noteRequest =
                 ClassSchema.ArgSpec.ofRef("noteRequest", NoteRequest.class, classSchema);
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Note",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 noteRequest,
                 "created",

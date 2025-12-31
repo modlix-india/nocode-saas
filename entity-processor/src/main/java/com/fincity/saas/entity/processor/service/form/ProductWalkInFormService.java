@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -59,6 +59,7 @@ public class ProductWalkInFormService
 
     private static final String SYSTEM = "SYSTEM";
     private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
+    private static final String NAMESPACE = "EntityProcessor.ProductWalkInForm";
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
@@ -88,8 +89,8 @@ public class ProductWalkInFormService
         String dtoSchemaRef = classSchema.getNamespaceForClass(ProductWalkInForm.class) + "."
                 + ProductWalkInForm.class.getSimpleName();
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductWalkInForm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
                 "created",
@@ -97,8 +98,8 @@ public class ProductWalkInFormService
                 gson,
                 self::createRequest));
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "ProductWalkInForm",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "GetWalkInForm",
                 EntityProcessorArgSpec.identity("productId"),
                 "result",

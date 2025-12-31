@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -37,6 +37,7 @@ import reactor.core.publisher.Mono;
 public class TicketCallService implements IRepositoryProvider {
 
     private static final ConnectionType CALL_CONNECTION = ConnectionType.CALL;
+    private static final String NAMESPACE = "EntityProcessor.TicketCall";
 
     private final TicketService ticketService;
 
@@ -126,8 +127,8 @@ public class TicketCallService implements IRepositoryProvider {
 
     @PostConstruct
     private void init() {
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "TicketCall",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "IncomingExotelCall",
                 ClassSchema.ArgSpec.string("appCode"),
                 ClassSchema.ArgSpec.string("clientCode"),

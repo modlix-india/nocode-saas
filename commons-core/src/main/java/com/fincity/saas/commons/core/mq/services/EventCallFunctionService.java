@@ -1,14 +1,11 @@
 package com.fincity.saas.commons.core.mq.services;
 
-import java.math.BigInteger;
-import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.core.document.EventAction;
@@ -18,10 +15,6 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import com.fincity.saas.commons.mq.events.EventQueObject;
-import com.fincity.saas.commons.security.dto.Client;
-import com.fincity.saas.commons.security.feign.IFeignSecurityService;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
@@ -35,17 +28,17 @@ import reactor.util.context.Context;
 @Service
 public class EventCallFunctionService implements IEventActionService {
 
+    private final Logger logger = LoggerFactory.getLogger(EventCallFunctionService.class);
+
     private final CoreFunctionService functionService;
     private final CoreMessageResourceService msgService;
     private final Gson gson;
-    private final IFeignSecurityService securityService;
 
     public EventCallFunctionService(CoreFunctionService functionService, CoreMessageResourceService msgService,
-            IFeignSecurityService securityService, Gson gson) {
+            Gson gson) {
         this.functionService = functionService;
         this.msgService = msgService;
         this.gson = gson;
-        this.securityService = securityService;
     }
 
     @SuppressWarnings("unchecked")
@@ -71,8 +64,7 @@ public class EventCallFunctionService implements IEventActionService {
             params.put(functionParameterName, job);
         }
 
-        return this.execute(namespace, name, queObject.getAppCode(), queObject.getClientCode(),
-                queObject.getAuthentication(), params);
+        return this.execute(namespace, name, queObject.getAppCode(), queObject.getClientCode(), params);
     }
 
     private Mono<Boolean> execute(
@@ -80,15 +72,11 @@ public class EventCallFunctionService implements IEventActionService {
             String name,
             String appCode,
             String clientCode,
-            ContextAuthentication authentication,
             Map<String, JsonElement> job) {
 
-        return this.securityService.getClientByCode(clientCode)
-                .map(e -> authentication != null ? authentication
-                        : this.makeAnonymousContextAuth(appCode, clientCode, e))
-                .flatMap(ca -> this.functionService.execute(namespace, name, appCode, clientCode, job, null)
-                        .contextWrite(ReactiveSecurityContextHolder
-                                .withSecurityContext(Mono.just(new SecurityContextImpl(ca)))))
+        logger.info("Executing function: {} in namespace: {} with job: {}", name, namespace, job);
+
+        return this.functionService.execute(namespace, name, appCode, clientCode, job, null)
                 .map(e -> true)
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
@@ -96,41 +84,5 @@ public class EventCallFunctionService implements IEventActionService {
                         "Function",
                         namespace + "." + name))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EventCallFunctionService.execute"));
-    }
-
-    private ContextAuthentication makeAnonymousContextAuth(String appCode, String clientCode, Client client) {
-
-        return new ContextAuthentication(
-                new ContextUser()
-                        .setId(BigInteger.ZERO)
-                        .setCreatedBy(BigInteger.ZERO)
-                        .setUpdatedBy(BigInteger.ZERO)
-                        .setCreatedAt(LocalDateTime.now())
-                        .setUpdatedAt(LocalDateTime.now())
-                        .setClientId(client.getId())
-                        .setUserName("_Anonymous")
-                        .setEmailId("nothing@nothing")
-                        .setPhoneNumber("+910000000000")
-                        .setFirstName("Anonymous")
-                        .setLastName("")
-                        .setLocaleCode("en")
-                        .setPassword("")
-                        .setPasswordHashed(false)
-                        .setAccountNonExpired(true)
-                        .setAccountNonLocked(true)
-                        .setCredentialsNonExpired(true)
-                        .setNoFailedAttempt((short) 0)
-                        .setStringAuthorities(List.of("Authorities._Anonymous")),
-                false,
-                client.getId(),
-                client.getCode(),
-                client.getTypeCode(),
-                client.getLevelType(),
-                client.getCode(),
-                "",
-                LocalDateTime.MAX,
-                appCode,
-                clientCode,
-                null);
     }
 }
