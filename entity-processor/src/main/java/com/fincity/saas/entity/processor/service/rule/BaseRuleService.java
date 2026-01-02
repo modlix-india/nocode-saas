@@ -15,6 +15,7 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DepartmentResolver;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ public abstract class BaseRuleService<
     static {
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(ProfileFieldResolver.class, BaseUserDistributionDto.Fields.profileId);
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(DepartmentResolver.class, BaseUserDistributionDto.Fields.departmentId);
     }
 
     protected ProductService productService;

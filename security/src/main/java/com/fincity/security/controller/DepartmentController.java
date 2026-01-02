@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.util.MultiValueMap;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -43,4 +45,16 @@ public class DepartmentController
                         .thenReturn(page))
                 .map(ResponseEntity::ok);
     }
+    @GetMapping("/internal" + PATH_ID)
+    public Mono<ResponseEntity<Department>> getDepartmentInternal(
+            @PathVariable ULong id, @RequestParam MultiValueMap<String, String> queryParams) {
+        return this.service.readById(id, queryParams).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal")
+    public Mono<ResponseEntity<List<Department>>> getDepartmentInternal(
+            @RequestParam List<ULong> departmentIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        return this.service.readByIds(departmentIds, queryParams).map(ResponseEntity::ok);
+    }
+
 }

@@ -123,6 +123,10 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
 
                 "/api/security/plans/internal/limits",
 
+                "/api/security/departments/internal/**",
+
+                "/api/security/departments/internal",
+
                 "/api/security/otp/generate",
 
                 "/api/security/otp/verify");
