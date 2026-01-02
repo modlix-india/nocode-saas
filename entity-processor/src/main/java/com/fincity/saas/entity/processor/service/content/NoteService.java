@@ -5,7 +5,7 @@ import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.functions.AbstractProcessorFunction;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -34,11 +34,11 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         implements IRepositoryProvider {
 
     private static final String NOTE_CACHE = "note";
-
+    private static final String NAMESPACE = "EntityProcessor.Note";
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-
-    private final ClassSchema classSchema = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -54,10 +54,11 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
         this.functions.addAll(super.getCommonFunctions("Note", Note.class, gson));
 
         String noteSchemaRef = classSchema.getNamespaceForClass(Note.class) + "." + Note.class.getSimpleName();
-        ClassSchema.ArgSpec<NoteRequest> noteRequest = ClassSchema.ArgSpec.ofRef("noteRequest", NoteRequest.class);
+        ClassSchema.ArgSpec<NoteRequest> noteRequest =
+                ClassSchema.ArgSpec.ofRef("noteRequest", NoteRequest.class, classSchema);
 
-        this.functions.add(AbstractProcessorFunction.createServiceFunction(
-                "Note",
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
                 "CreateRequest",
                 noteRequest,
                 "created",
@@ -99,6 +100,15 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
 
         return Mono.just(Note.of(noteRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "NoteService.createContent"));
+    }
+
+    @Override
+    protected Mono<Note> updatableEntity(Note entity) {
+
+        return super.updatableEntity(entity).flatMap(existing -> {
+            existing.setAttachmentFileDetail(entity.getAttachmentFileDetail());
+            return Mono.just(existing);
+        });
     }
 
     @Override

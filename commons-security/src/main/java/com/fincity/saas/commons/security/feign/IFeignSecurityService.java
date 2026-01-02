@@ -22,7 +22,7 @@ import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
-
+import com.fincity.saas.commons.security.model.Profile;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -223,4 +223,12 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
     Mono<String> getAppStatus(@PathVariable String appCode);
+
+    @GetMapping(value = "${security.feign.getProfileInternal:/api/security/app/profiles/internal/{id}}")
+    Mono<Profile> getProfileInternal(@PathVariable("id") BigInteger id);
+
+    @GetMapping(value = "${security.feign.getProfilesInternal:/api/security/app/profiles/internal}")
+    Mono<List<Profile>> getProfilesInternal(
+            @RequestParam List<BigInteger> profileIds);
+
 }

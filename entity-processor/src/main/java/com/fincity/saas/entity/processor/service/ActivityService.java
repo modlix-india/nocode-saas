@@ -33,6 +33,7 @@ import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.ticket.CallLogRequest;
 import com.fincity.saas.entity.processor.service.base.BaseService;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.time.LocalDateTime;
@@ -665,12 +666,44 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acOwnerShipTransfer"));
     }
 
-    public Mono<Void> acCallLog(ULong ticketId, String comment, String customer) {
+    public Mono<Void> acCallLog(ProcessorAccess access, Ticket ticket, String comment) {
         return this.createActivityInternal(
+                        access,
                         ActivityAction.CALL_LOG,
+                        null,
                         comment,
-                        Map.of(Activity.Fields.ticketId, ticketId, "customer", customer))
+                        Map.of(Activity.Fields.ticketId, ticket.getId(), "customer", ticket.getName()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCallLog"));
+    }
+
+    public Mono<Void> createCallLog(CallLogRequest callLogRequest) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> this.ticketService.readByIdentity(access, callLogRequest.getTicketId()),
+                        (access, ticket) -> {
+                            Map<String, Object> contextMap = new HashMap<>();
+                            contextMap.put(Activity.Fields.ticketId, ticket.getId());
+                            contextMap.put("customer", ticket.getName());
+                            if (callLogRequest.getIsOutbound() != null)
+                                contextMap.put("isOutbound", callLogRequest.getIsOutbound());
+                            if (callLogRequest.getCallStatus() != null)
+                                contextMap.put(
+                                        "callStatus",
+                                        callLogRequest.getCallStatus().getLiteral());
+                            if (callLogRequest.getCallDate() != null)
+                                contextMap.put("callDate", callLogRequest.getCallDate());
+                            if (callLogRequest.getCallDuration() != null)
+                                contextMap.put("callDuration", callLogRequest.getCallDuration());
+
+                            return this.createActivityInternal(
+                                    access,
+                                    ActivityAction.CALL_LOG,
+                                    callLogRequest.getCallDate(),
+                                    callLogRequest.getComment(),
+                                    contextMap);
+                        })
+                .then()
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createCallLog"));
     }
 
     public Mono<Void> acWhatsapp(ULong ticketId, String comment, String customer) {

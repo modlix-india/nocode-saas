@@ -154,4 +154,14 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
         };
 
     }
+
+    public String uploadAiFile(String clientCode, MultipartFile file) {
+
+        String path = "aiGen/" + clientCode;
+        String fileName = file.getOriginalFilename();
+
+        FileDetail fileDetail = this.getFSService().createFilesFromMultipartFile("SYSTEM", path, fileName, file, false);
+
+        return "/api/files/static/file/SYSTEM/" + path + "/" + fileDetail.getName();
+    }
 }
