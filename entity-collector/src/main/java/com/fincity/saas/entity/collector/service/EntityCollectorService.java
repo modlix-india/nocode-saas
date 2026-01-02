@@ -68,7 +68,9 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         integration.getId(), mapper.convertValue(responseBody, new TypeReference<>() {}), null),
 
                                 (extractPayload, integration, logId) -> this.getConnectionOAuth2Token(
-                                                 integration.getInAppCode(), integration.getClientCode(), EntityUtil.META_CONNECTION_NAME)
+                                                integration.getInAppCode(),
+                                                integration.getClientCode(),
+                                                EntityUtil.META_CONNECTION_NAME)
                                         // Treat blank token as empty to stop the chain
                                         .filter(token -> token != null && !token.isBlank())
                                         // If empty/blank, log and STOP further processing for this item
@@ -97,6 +99,13 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         entityCollectorLogService,
                                         logId)),
                                 (extractPayload, integration, logId, token, metaData, normalizedEntity) ->
+                                        normalizedEntity.flatMap( response -> this.entityCollectorLogService.update(
+                                                logId,
+                                                mapper.convertValue(response, new TypeReference<>() {}),
+                                                EntityCollectorLogStatus.RESPONSE_CREATED,
+                                                "Entity Response Created For Facebook Form")),
+
+                                (extractPayload, integration, logId, token, metaData, normalizedEntity, responseLog) ->
                                         normalizedEntity.flatMap(response -> msgService
                                                 .getMessage(
                                                         EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE)
@@ -124,21 +133,26 @@ public class EntityCollectorService extends AbstractConnectionService {
                         mapper.convertValue(websiteBody, new TypeReference<>() {}),
                         getClientIpAddress(request)),
 
-                (host, integration, logId) -> handleWebsiteEntity(
-                        websiteBody, integration, logId),
+                (host, integration, logId) -> handleWebsiteEntity(websiteBody, integration, logId),
 
-                (host, integration, logId, response) ->
+                (host, integration, logId, response) -> this.entityCollectorLogService.update(
+                        logId,
+                        mapper.convertValue(response, new TypeReference<>() {}),
+                        EntityCollectorLogStatus.RESPONSE_CREATED,
+                        "Entity Response Created For Facebook Form"),
+
+                (host, integration, logId, response, responseLog) ->
                         msgService.getMessage(EntityCollectorMessageResourceService.SUCCESS_ENTITY_MESSAGE),
 
-                (host, integration, logId, response, sMessage) -> EntityUtil.sendEntityToTarget(integration, response, websiteBody.getProductURL()),
+                (host, integration, logId, response, responseLog, sMessage) ->
+                        EntityUtil.sendEntityToTarget(integration, response, websiteBody.getProductURL()),
 
-                (host, integration, logId, response, sMessage, result) -> this.entityCollectorLogService.update(
+                (host, integration, logId, response, responseLog, sMessage, result) -> this.entityCollectorLogService.update(
                         logId,
                         mapper.convertValue(response, new TypeReference<>() {}),
                         EntityCollectorLogStatus.SUCCESS,
                         sMessage),
-
-                (host, integration, logId, response, sMessage, result, uLog) -> Mono.just(result));
+                (host, integration, logId, response, responseLog, sMessage, result, uLog) -> Mono.just(result));
     }
 
     private Mono<EntityResponse> handleWebsiteEntity(WebsiteDetails websiteDetails, EntityIntegration integration, ULong logId) {
