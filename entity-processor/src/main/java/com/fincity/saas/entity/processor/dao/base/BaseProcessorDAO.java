@@ -9,7 +9,7 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.util.FilterUtil;
+import java.util.ArrayList;
 import java.util.List;
 import org.jooq.Field;
 import org.jooq.Table;
@@ -148,11 +148,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             AbstractCondition userProcessedCondition, List<FilterCondition> clientConditions, ProcessorAccess access) {
 
         List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
-        List<FilterCondition> updatedClientConditions =
-                this.updateClientConditions(clientConditions, managingClientIds);
-
-        AbstractCondition clientCondition =
-                ComplexCondition.and(updatedClientConditions.toArray(new FilterCondition[0]));
+        AbstractCondition clientCondition = this.updateClientConditions(clientConditions, managingClientIds);
 
         return FlatMapUtil.flatMapMono(
                         () -> userProcessedCondition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
@@ -212,26 +208,31 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                         .findConditionWithField(BaseProcessorDto.Fields.clientId)
                         .collectList(),
                 clientConditions -> {
-                    List<FilterCondition> updatedClientConditions =
+                    AbstractCondition updatedClientCondition =
                             updateClientConditions(clientConditions, managingClientIds);
-                    return this.processUserConditions(condition, this.getUserField(access), updatedClientConditions);
+                    return this.processUserConditions(
+                            condition, this.getUserField(access), updatedClientCondition, access);
                 });
     }
 
     private Mono<AbstractCondition> processUserConditions(
-            AbstractCondition condition, String userField, List<FilterCondition> clientConditions) {
+            AbstractCondition condition, String userField, AbstractCondition clientCondition, ProcessorAccess access) {
 
         return FlatMapUtil.flatMapMono(
-                () -> condition.findConditionWithField(userField).collectList(),
-                userConditions -> this.removeExistingConditionsAndCombine(
-                        condition, userField, clientConditions, userConditions));
+                () -> condition.findConditionWithField(userField).collectList(), userConditions -> {
+                    List<ULong> userHierarchy = access.getUserInherit().getSubOrg();
+                    AbstractCondition updatedUserCondition =
+                            this.updateUserConditions(userConditions, userField, userHierarchy);
+                    return this.removeExistingConditionsAndCombine(
+                            condition, userField, clientCondition, updatedUserCondition);
+                });
     }
 
     private Mono<AbstractCondition> removeExistingConditionsAndCombine(
             AbstractCondition condition,
             String userField,
-            List<FilterCondition> clientConditions,
-            List<FilterCondition> userConditions) {
+            AbstractCondition clientCondition,
+            AbstractCondition userCondition) {
 
         return FlatMapUtil.flatMapMonoWithNull(
                 () -> condition.removeConditionWithField(BaseProcessorDto.Fields.clientId),
@@ -239,24 +240,17 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                         ? conditionWithoutClient.removeConditionWithField(userField)
                         : Mono.empty(),
                 (conditionWithoutClient, finalCondition) -> {
-                    ComplexCondition or = ComplexCondition.or(
-                            ComplexCondition.and(clientConditions.toArray(new FilterCondition[0])),
-                            ComplexCondition.and(userConditions.toArray(new FilterCondition[0])));
+                    ComplexCondition or = ComplexCondition.or(clientCondition, userCondition);
 
                     return Mono.just(
                             this.isEmptyCondition(finalCondition) ? or : ComplexCondition.and(finalCondition, or));
                 });
     }
 
-    private List<FilterCondition> updateClientConditions(
+    private AbstractCondition updateClientConditions(
             List<FilterCondition> clientConditions, List<ULong> managingClientIds) {
-        if (clientConditions.isEmpty())
-            return List.of(this.createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
-
-        clientConditions.forEach(
-                fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), managingClientIds)));
-
-        return clientConditions;
+        return this.updateConditionsWithHierarchy(
+                clientConditions, BaseProcessorDto.Fields.clientId, managingClientIds);
     }
 
     private Mono<AbstractCondition> addUserIds(AbstractCondition condition, ProcessorAccess access) {
@@ -275,11 +269,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
         return FlatMapUtil.flatMapMono(
                 () -> condition.findConditionWithField(userField).collectList(), userConditions -> {
-                    List<FilterCondition> updatedUserConditions =
-                            this.updateUserConditions(userConditions, userField, userHierarchy);
-
                     AbstractCondition userCondition =
-                            ComplexCondition.and(updatedUserConditions.toArray(new FilterCondition[0]));
+                            this.updateUserConditions(userConditions, userField, userHierarchy);
 
                     return FlatMapUtil.flatMapMono(
                                     () -> condition.removeConditionWithField(userField),
@@ -291,14 +282,19 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                 });
     }
 
-    private List<FilterCondition> updateUserConditions(
+    private AbstractCondition updateUserConditions(
             List<FilterCondition> userConditions, String userField, List<ULong> userHierarchy) {
+        return this.updateConditionsWithHierarchy(userConditions, userField, userHierarchy);
+    }
 
-        if (userConditions.isEmpty()) return List.of(this.createInCondition(userField, userHierarchy));
+    private AbstractCondition updateConditionsWithHierarchy(
+            List<FilterCondition> conditions, String field, List<ULong> hierarchy) {
+        if (conditions.isEmpty()) return this.createInCondition(field, hierarchy);
 
-        userConditions.forEach(fc -> fc.setMultiValue(FilterUtil.intersectLists(fc.getMultiValue(), userHierarchy)));
+        List<AbstractCondition> combinedConditions = new ArrayList<>(conditions);
+        combinedConditions.add(this.createInCondition(field, hierarchy));
 
-        return userConditions;
+        return ComplexCondition.and(combinedConditions);
     }
 
     private FilterCondition createInCondition(String field, List<?> values) {
