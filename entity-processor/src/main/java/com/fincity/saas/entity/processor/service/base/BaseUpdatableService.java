@@ -460,7 +460,6 @@ public abstract class BaseUpdatableService<
                 .getNamespaceForClass(dtoClass);
         String dtoName = dtoClass.getSimpleName();
         String dtoSchemaRef = dtoNamespace + "." + dtoName;
-        String baseResponseSchemaRef = "EntityProcessor.Model.Base.BaseResponse";
         String pageSchemaRef = "Commons.Page";
         Schema mapSchema = Schema.ofObject("Map");
 
