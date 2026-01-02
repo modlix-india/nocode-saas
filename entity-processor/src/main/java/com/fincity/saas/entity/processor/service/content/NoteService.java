@@ -20,10 +20,8 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.content.base.BaseContentService;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -41,6 +39,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
+
     @Autowired
     @Lazy
     private NoteService self;

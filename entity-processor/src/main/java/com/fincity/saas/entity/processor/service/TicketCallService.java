@@ -107,8 +107,7 @@ public class TicketCallService implements IRepositoryProvider {
                                 .setProviderIncomingRequest(providerIncomingRequest)
                                 .setConnectionName(productComm.getConnectionName())
                                 .setUserId(ticket.getAssignedUserId())),
-                (productComm, ticket, response) ->
-                        this.logCall(access, ticket, from).thenReturn(response));
+                (productComm, ticket, response) -> this.logCall(access, ticket).thenReturn(response));
     }
 
     private Mono<Ticket> createExotelTicket(ProcessorAccess access, PhoneNumber from, ProductComm productComm) {
@@ -131,14 +130,8 @@ public class TicketCallService implements IRepositoryProvider {
                         .setSubSource(subSource));
     }
 
-    private Mono<Void> logCall(ProcessorAccess access, Ticket ticket, PhoneNumber phoneNumber) {
-        String customer = ticket.getName() != null && !ticket.getName().isEmpty()
-                ? ticket.getName()
-                : (phoneNumber != null && phoneNumber.getNumber() != null ? phoneNumber.getNumber() : "Unknown");
-        String phoneDisplay =
-                phoneNumber != null && phoneNumber.getNumber() != null ? phoneNumber.getNumber() : "unknown";
-        String comment = String.format("Incoming call from %s", phoneDisplay);
-        return activityService.acCallLog(access, ticket.getId(), comment, customer);
+    private Mono<Void> logCall(ProcessorAccess access, Ticket ticket) {
+        return activityService.acCallLog(access, ticket, null);
     }
 
     @PostConstruct

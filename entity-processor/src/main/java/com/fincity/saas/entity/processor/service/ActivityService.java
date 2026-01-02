@@ -666,27 +666,24 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acOwnerShipTransfer"));
     }
 
-    public Mono<Void> acCallLog(ProcessorAccess access, ULong ticketId, String comment, String customer) {
+    public Mono<Void> acCallLog(ProcessorAccess access, Ticket ticket, String comment) {
         return this.createActivityInternal(
                         access,
                         ActivityAction.CALL_LOG,
                         null,
                         comment,
-                        Map.of(Activity.Fields.ticketId, ticketId, "customer", customer))
+                        Map.of(Activity.Fields.ticketId, ticket.getId(), "customer", ticket.getName()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acCallLog"));
     }
 
     public Mono<Void> createCallLog(CallLogRequest callLogRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.ticketService.checkAndUpdateIdentityWithAccess(
-                                access, callLogRequest.getTicketId()),
+                        access -> this.ticketService.readByIdentity(access, callLogRequest.getTicketId()),
                         (access, ticket) -> {
                             Map<String, Object> contextMap = new HashMap<>();
-                            contextMap.put(Activity.Fields.ticketId, ticket.getULongId());
-                            contextMap.put(
-                                    "customer",
-                                    callLogRequest.getCustomer() != null ? callLogRequest.getCustomer() : "");
+                            contextMap.put(Activity.Fields.ticketId, ticket.getId());
+                            contextMap.put("customer", ticket.getName());
                             if (callLogRequest.getIsOutbound() != null)
                                 contextMap.put("isOutbound", callLogRequest.getIsOutbound());
                             if (callLogRequest.getCallStatus() != null)
