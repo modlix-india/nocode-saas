@@ -54,7 +54,6 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         if (hasNoAccessAssignment()) return super.processorAccessCondition(condition, access);
 
         if (condition == null) {
-            // When condition is null, process both user and client conditions
             return FlatMapUtil.flatMapMono(
                     () -> this.addUserIds(null, access),
                     uCondition -> this.processUserAndClientConditions(uCondition, access));
@@ -78,26 +77,21 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             List<FilterCondition> existingClientConditions,
             ProcessorAccess access) {
 
-        if (!existingUserConditions.isEmpty() && !existingClientConditions.isEmpty()) {
+        if (!existingUserConditions.isEmpty() && !existingClientConditions.isEmpty())
             return FlatMapUtil.flatMapMono(
                     () -> this.addUserIds(originalCondition, access),
                     uCondition -> this.processBothUserAndClientConditions(originalCondition, uCondition, access));
-        }
 
-        if (!existingUserConditions.isEmpty()) {
+        if (!existingUserConditions.isEmpty())
             return FlatMapUtil.flatMapMono(
                     () -> this.addUserIds(originalCondition, access),
                     uCondition -> this.processOnlyUserCondition(uCondition, access));
-        }
 
-        if (!existingClientConditions.isEmpty()) {
-            // Only clientId filter exists, skip user hierarchy and process only clientId
+        if (!existingClientConditions.isEmpty())
             return FlatMapUtil.flatMapMono(
                     () -> this.addClientIds(originalCondition, access),
                     cCondition -> super.processorAccessCondition(cCondition, access));
-        }
 
-        // No filters exist, process both user and client conditions
         return FlatMapUtil.flatMapMono(
                 () -> this.addUserIds(originalCondition, access),
                 uCondition -> this.processUserAndClientConditions(uCondition, access));
