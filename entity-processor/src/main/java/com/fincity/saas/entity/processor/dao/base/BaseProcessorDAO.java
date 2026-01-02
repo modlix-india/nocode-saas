@@ -69,10 +69,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                                 .findConditionWithField(BaseProcessorDto.Fields.clientId)
                                 .collectList(),
                         existingClientConditions -> this.processUserConditionBasedOnFilters(
-                                condition,
-                                existingUserConditions,
-                                existingClientConditions,
-                                access)));
+                                condition, existingUserConditions, existingClientConditions, access)));
     }
 
     private Mono<AbstractCondition> processUserConditionBasedOnFilters(
