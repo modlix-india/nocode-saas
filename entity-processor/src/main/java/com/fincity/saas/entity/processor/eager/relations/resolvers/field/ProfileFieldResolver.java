@@ -17,8 +17,7 @@ import reactor.core.publisher.Mono;
 @Component
 public class ProfileFieldResolver implements RelationResolver {
 
-    private static final Set<String> SUPPORTED_FIELDS =
-            Set.of("profileId");
+    private static final Set<String> SUPPORTED_FIELDS = Set.of("profileId");
 
     private final IFeignSecurityService securityService;
 
@@ -47,7 +46,8 @@ public class ProfileFieldResolver implements RelationResolver {
                     .flatMap(profileMap -> this.applyEagerFiltering(profileMap, eager, eagerFields));
 
         return securityService
-                .getProfilesInternal(idsToResolve.stream().map(ULong::toBigInteger).toList())
+                .getProfilesInternal(
+                        idsToResolve.stream().map(ULong::toBigInteger).toList())
                 .map(profileList -> profileList.stream()
                         .collect(Collectors.toMap(
                                 profileResponse -> ULongUtil.valueOf(profileResponse.getId()), IClassConvertor::toMap)))

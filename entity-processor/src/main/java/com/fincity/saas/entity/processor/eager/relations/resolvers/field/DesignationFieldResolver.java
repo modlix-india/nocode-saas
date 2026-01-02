@@ -5,15 +5,14 @@ import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
-import org.jooq.types.ULong;
-import org.springframework.stereotype.Component;
-import org.springframework.util.MultiValueMap;
-import reactor.core.publisher.Mono;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jooq.types.ULong;
+import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Mono;
 
 @Component
 public class DesignationFieldResolver implements RelationResolver {
@@ -27,7 +26,7 @@ public class DesignationFieldResolver implements RelationResolver {
     }
 
     @Override
-    public Set<String> getFields(){
+    public Set<String> getFields() {
         return SUPPORTED_FIELDS;
     }
 
@@ -47,7 +46,8 @@ public class DesignationFieldResolver implements RelationResolver {
                 .getDesignationsInternal(
                         idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
                 .map(designationList -> designationList.stream()
-                        .collect(Collectors.toMap(designation -> ULongUtil.valueOf(designation.getId()), IClassConvertor::toMap)))
+                        .collect(Collectors.toMap(
+                                designation -> ULongUtil.valueOf(designation.getId()), IClassConvertor::toMap)))
                 .flatMap(designationMap -> this.applyEagerFiltering(designationMap, eager, eagerFields));
     }
 }

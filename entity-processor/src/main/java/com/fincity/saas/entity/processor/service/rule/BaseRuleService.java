@@ -47,7 +47,8 @@ public abstract class BaseRuleService<
     static {
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(ProfileFieldResolver.class, BaseUserDistributionDto.Fields.profileId);
-        USER_DISTRIBUTION_RESOLVER_FIELDS.put(DesignationFieldResolver.class, BaseUserDistributionDto.Fields.designationId);
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(
+                DesignationFieldResolver.class, BaseUserDistributionDto.Fields.designationId);
     }
 
     protected ProductService productService;

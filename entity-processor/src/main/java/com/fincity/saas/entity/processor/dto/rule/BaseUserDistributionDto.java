@@ -32,7 +32,7 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
     protected BaseUserDistributionDto() {
         super();
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
-        this.relationsResolverMap.put(DesignationFieldResolver.class,Fields.designationId);
+        this.relationsResolverMap.put(DesignationFieldResolver.class, Fields.designationId);
     }
 
     protected BaseUserDistributionDto(BaseUserDistributionDto<T> userDistribution) {
