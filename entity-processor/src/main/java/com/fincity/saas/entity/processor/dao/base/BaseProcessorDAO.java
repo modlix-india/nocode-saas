@@ -53,11 +53,10 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
         if (hasNoAccessAssignment()) return super.processorAccessCondition(condition, access);
 
-        if (condition == null) {
+        if (condition == null)
             return FlatMapUtil.flatMapMono(
                     () -> this.addUserIds(null, access),
                     uCondition -> this.processUserAndClientConditions(uCondition, access));
-        }
 
         String userField = this.getUserField(access);
 
