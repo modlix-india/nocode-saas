@@ -119,4 +119,16 @@ public class ProfileController {
 
         return this.service.getProfileUsers(appCode, profileIds).map(ResponseEntity::ok);
     }
+
+    @GetMapping("/profiles/internal/{id}")
+    public Mono<ResponseEntity<Profile>> getProfileInternal(
+            @PathVariable ULong id) {
+        return this.service.readById(id).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/profiles/internal")
+    public Mono<ResponseEntity<List<Profile>>> getProfilesInternal(
+            @RequestParam List<ULong> profileIds) {
+        return this.service.readByIds(profileIds).map(ResponseEntity::ok);
+    }
 }

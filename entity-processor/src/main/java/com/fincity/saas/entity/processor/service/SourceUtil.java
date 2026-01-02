@@ -9,4 +9,5 @@ public class SourceUtil {
     public static final String DEFAULT_CALL_SOURCE = SOCIAL_MEDIA;
     public static final String DEFAULT_CALL_SUB_SOURCE = "Website Phone";
     public static final String WALK_IN = "Walk-In";
+    public static final String CHANNEL_PARTNER = "Channel Partner";
 }

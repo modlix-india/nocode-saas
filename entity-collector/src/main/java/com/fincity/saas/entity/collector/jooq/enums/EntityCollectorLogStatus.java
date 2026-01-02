@@ -21,7 +21,9 @@ public enum EntityCollectorLogStatus implements EnumType {
 
     SUCCESS("SUCCESS"),
 
-    WITH_ERRORS("WITH_ERRORS");
+    WITH_ERRORS("WITH_ERRORS"),
+
+    RESPONSE_CREATED("RESPONSE_CREATED");
 
     private final String literal;
 
