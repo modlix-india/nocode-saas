@@ -485,6 +485,48 @@ public class FileSystemService {
         }
     }
 
+    public FileDetail copyFile(String sourceClientCode, String sourcePath, String destClientCode, String destPath,
+            String fileName) {
+        try {
+            // Construct the file path (relative to client code, without leading slash)
+            String sourceFilePath = sourcePath;
+            if (sourceFilePath.startsWith(R2_FILE_SEPARATOR_STRING))
+                sourceFilePath = sourceFilePath.substring(1);
+            sourceFilePath = sourceFilePath + R2_FILE_SEPARATOR_STRING + fileName;
+
+            // First check if the file exists in the database
+            FileDetail sourceFileDetail = this.getFileDetail(sourceClientCode, sourceFilePath);
+            if (sourceFileDetail == null || sourceFileDetail.isDirectory()) {
+                this.messageService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        FilesMessageResourceService.UNKNOWN_ERROR,
+                        "Source file not found: " + sourceClientCode + "/" + sourceFilePath);
+                return null;
+            }
+
+            // Construct the S3 key: clientCode/path/to/file (matching how files are stored)
+            String sourceKey = sourceClientCode;
+            if (sourceFilePath.startsWith(R2_FILE_SEPARATOR_STRING))
+                sourceKey += sourceFilePath;
+            else
+                sourceKey += R2_FILE_SEPARATOR_STRING + sourceFilePath;
+
+            // Get the file from source S3
+            File sourceFile = this.getAsFile(sourceKey, true);
+            if (sourceFile == null || !sourceFile.exists()) {
+                this.messageService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        FilesMessageResourceService.UNKNOWN_ERROR, "Source file not found in S3: " + sourceKey);
+                return null;
+            }
+
+            // Create the file at destination
+            return this.createFileFromFile(destClientCode, destPath, fileName, sourceFile.toPath(), true, "inline");
+        } catch (Exception e) {
+            this.messageService.throwMessage(msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                    FilesMessageResourceService.UNKNOWN_ERROR, e.getMessage(), e);
+            return null;
+        }
+    }
+
     public <T> void evictCache(String clientCode) {
 
         this.cacheService.evictAll(CACHE_NAME_EXISTS + "-" + this.fileSystemType.name() + "-" + clientCode);
