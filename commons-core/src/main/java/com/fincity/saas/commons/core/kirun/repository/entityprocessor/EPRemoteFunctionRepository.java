@@ -4,6 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.core.feign.IFeignEntityProcessor;
+import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.google.gson.Gson;
 
 import reactor.core.publisher.Flux;
@@ -15,11 +16,13 @@ public class EPRemoteFunctionRepository implements ReactiveRepository<ReactiveFu
     private final String appCode;
     private final String clientCode;
     private final Gson gson;
+    private final CoreMessageResourceService messageService;
 
     public EPRemoteFunctionRepository(IFeignEntityProcessor feignEntityProcessor, String appCode, String clientCode,
-            Gson gson) {
+            Gson gson, CoreMessageResourceService messageService) {
         this.appCode = appCode;
         this.clientCode = clientCode;
+        this.messageService = messageService;
         this.feignEntityProcessor = feignEntityProcessor;
         this.gson = gson;
     }
@@ -29,7 +32,7 @@ public class EPRemoteFunctionRepository implements ReactiveRepository<ReactiveFu
         return this.feignEntityProcessor.findFunction(this.appCode, this.clientCode, false, namespace, name)
                 .map(str -> gson.fromJson(str, FunctionSignature.class))
                 .map(fs -> new EPRemoteFunction(fs, this.feignEntityProcessor, this.appCode, this.clientCode,
-                        this.gson));
+                        this.gson, this.messageService));
     }
 
     @Override
