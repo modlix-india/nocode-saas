@@ -167,58 +167,63 @@ public class CoreFunctionService extends AbstractFunctionService<CoreFunction, C
             Map<String, JsonElement> job,
             ServerHttpRequest request) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.getFunctionRepository(appCode, clientCode)
-                                .map(appFunctionRepo -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
-                                        appFunctionRepo)),
-                        (ca, funRepo) -> this.remoteRepositoryService.getRemoteRepositories(appCode, clientCode),
-                        (ca, funRepo, remoteRepositories) -> {
-                            if (remoteRepositories.isPresent()) {
-                                funRepo = new ReactiveHybridRepository<>(
-                                        remoteRepositories.get().getT1(),
-                                        funRepo);
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> this.getFunctionRepository(appCode, clientCode)
+                        .map(appFunctionRepo -> new ReactiveHybridRepository<>(this.coreFunctionRepository,
+                                appFunctionRepo)),
+                (ca, funRepo) -> this.remoteRepositoryService.getRemoteRepositories(appCode, clientCode),
+                (ca, funRepo, remoteRepositories) -> {
+                    if (remoteRepositories.isPresent()) {
+                        funRepo = new ReactiveHybridRepository<>(
+                                remoteRepositories.get().getT1(),
+                                funRepo);
+                    }
+                    return Mono.just(funRepo);
+                },
+                (ca, funRepo, remoteRepositories, remRepo) -> remRepo.find(namespace, name),
+                (ca, funRepo, remoteRepositories, remRepo, fun) -> schemaService
+                        .getSchemaRepository(appCode, clientCode)
+                        .map(appSchemaRepo -> {
+                            if (!remoteRepositories.isPresent()) {
+                                return new ReactiveHybridRepository<>(
+                                        new KIRunReactiveSchemaRepository(),
+                                        new CoreSchemaRepository(),
+                                        appSchemaRepo);
                             }
-                            return Mono.just(funRepo);
-                        },
-                        (ca, funRepo, remoteRepositories, remRepo) -> remRepo.find(namespace, name),
-                        (ca, funRepo, remoteRepositories, remRepo, fun) -> schemaService
-                                .getSchemaRepository(appCode, clientCode)
-                                .map(appSchemaRepo -> {
-                                    if (!remoteRepositories.isPresent()) {
-                                        return new ReactiveHybridRepository<>(
-                                                new KIRunReactiveSchemaRepository(),
-                                                new CoreSchemaRepository(),
-                                                appSchemaRepo);
-                                    }
-                                    return new ReactiveHybridRepository<>(
-                                            new KIRunReactiveSchemaRepository(),
-                                            new CoreSchemaRepository(),
-                                            appSchemaRepo, remoteRepositories.get().getT2());
-                                }),
-                        (ca, funRepo, remoteRepositories, remRepo, fun, schRepo) ->
-                                job == null
-                                        ? getRequestParamsToArguments(fun.getSignature().getParameters(), request, schRepo)
-                                        : Mono.just(job),
-                        (ca, funRepo, remoteRepositories, remRepo, fun, schRepo, args) -> {
-                            if (fun instanceof DefinitionFunction df
-                                    && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
-                                    && !SecurityContextUtil.hasAuthority(
+                            return new ReactiveHybridRepository<>(
+                                    new KIRunReactiveSchemaRepository(),
+                                    new CoreSchemaRepository(),
+                                    appSchemaRepo, remoteRepositories.get().getT2());
+                        }),
+                (ca, funRepo, remoteRepositories, remRepo, fun, schRepo) -> job == null
+                        ? getRequestParamsToArguments(fun.getSignature().getParameters(), request, schRepo)
+                        : Mono.just(job),
+                (ca, funRepo, remoteRepositories, remRepo, fun, schRepo, args) -> {
+                    if (fun instanceof DefinitionFunction df
+                            && !StringUtil.safeIsBlank(df.getExecutionAuthorization())
+                            && !SecurityContextUtil.hasAuthority(
                                     df.getExecutionAuthorization(), ca.getAuthorities()))
-                                return this.messageResourceService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                        AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION);
 
-                            AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
+                    AuthoritiesTokenExtractor ate = new AuthoritiesTokenExtractor(ca.getAuthorities());
 
-                            return fun.execute(new ReactiveFunctionExecutionParameters(
-                                    new ReactiveHybridRepository<>(
-                                            new KIRunReactiveFunctionRepository(),
-                                            this.coreFunctionRepository,
-                                            remRepo),
-                                    schRepo)
-                                    .setArguments(args)
-                                    .setValuesMap(Map.of(ate.getPrefix(), ate)));
-                        })
+                    ReactiveRepository<ReactiveFunction> execRepo = new ReactiveHybridRepository<>(
+                            new KIRunReactiveFunctionRepository(),
+                            this.coreFunctionRepository,
+                            remRepo);
+
+                    if (remoteRepositories.isPresent()) {
+                        execRepo = new ReactiveHybridRepository<>(
+                                remoteRepositories.get().getT1(),
+                                execRepo);
+                    }
+
+                    return fun.execute(new ReactiveFunctionExecutionParameters(execRepo, schRepo)
+                            .setArguments(args)
+                            .setValuesMap(Map.of(ate.getPrefix(), ate)));
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CoreFunctionService.execute"));
     }
 
