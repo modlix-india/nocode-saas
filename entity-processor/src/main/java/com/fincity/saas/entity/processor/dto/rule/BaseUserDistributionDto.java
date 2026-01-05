@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.dto.rule;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DesignationFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import java.io.Serial;
 import lombok.Data;
@@ -31,6 +32,7 @@ public abstract class BaseUserDistributionDto<T extends BaseUserDistributionDto<
     protected BaseUserDistributionDto() {
         super();
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
+        this.relationsResolverMap.put(DesignationFieldResolver.class, Fields.designationId);
     }
 
     protected BaseUserDistributionDto(BaseUserDistributionDto<T> userDistribution) {

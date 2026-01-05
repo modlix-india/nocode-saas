@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.security.model.Designation;
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -189,6 +190,16 @@ public interface IFeignSecurityService {
     @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal}")
     Mono<List<Client>> getClientInternal(
             @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getDesignationInternal:/api/security/designations/internal/{id}}")
+    Mono<Designation> getDesignationInternal(
+            @PathVariable("id") BigInteger id,
+            @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getDesignationsInternal:/api/security/designations/internal}")
+    Mono<List<Designation>> getDesignationsInternal(
+            @RequestParam List<BigInteger> designationIds,
+            @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(
