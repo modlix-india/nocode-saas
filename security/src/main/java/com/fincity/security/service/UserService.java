@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
+
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -60,7 +62,6 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -1043,11 +1044,9 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         userStatusCodes)
                 .flatMapMany(map -> Flux.fromIterable(map.entrySet()))
                 .flatMap(e -> this.clientService.getClientInfoById(e.getValue()).map(c -> Tuples.of(e.getKey(), c)))
-                .collectList()
-                .map(e -> e.stream()
-                        .map(x -> new UserClient(x.getT1(), x.getT2()))
-                        .sorted()
-                        .toList());
+                .flatMap(e -> this.clientService.fillManagingClientDetails(e.getT2()).map(c -> Tuples.of(e.getT1(), c)))
+                .map(e -> new UserClient(e.getT1(), e.getT2()))
+                .collectList();
     }
 
     // Don't call this method other than from the client service register method
