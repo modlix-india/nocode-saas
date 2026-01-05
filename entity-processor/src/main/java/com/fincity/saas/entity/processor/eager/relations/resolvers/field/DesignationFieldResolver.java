@@ -15,13 +15,13 @@ import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 @Component
-public class ProfileFieldResolver implements RelationResolver {
+public class DesignationFieldResolver implements RelationResolver {
 
-    private static final Set<String> SUPPORTED_FIELDS = Set.of("profileId");
+    private static final Set<String> SUPPORTED_FIELDS = Set.of("designationId");
 
     private final IFeignSecurityService securityService;
 
-    public ProfileFieldResolver(IFeignSecurityService securityService) {
+    public DesignationFieldResolver(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
@@ -30,10 +30,8 @@ public class ProfileFieldResolver implements RelationResolver {
         return SUPPORTED_FIELDS;
     }
 
-    @Override
     public Mono<Map<ULong, Map<String, Object>>> resolveBatch(
             Set<ULong> idsToResolve, MultiValueMap<String, String> queryParams) {
-
         if (idsToResolve == null || idsToResolve.isEmpty()) return Mono.just(Map.of());
 
         Boolean eager = EagerUtil.getIsEagerParams(queryParams);
@@ -41,16 +39,15 @@ public class ProfileFieldResolver implements RelationResolver {
 
         if (idsToResolve.size() == 1)
             return this.securityService
-                    .getProfileInternal(idsToResolve.iterator().next().toBigInteger())
-                    .map(profileResponse -> Map.of(ULongUtil.valueOf(profileResponse.getId()), profileResponse.toMap()))
-                    .flatMap(profileMap -> this.applyEagerFiltering(profileMap, eager, eagerFields));
-
-        return securityService
-                .getProfilesInternal(
-                        idsToResolve.stream().map(ULong::toBigInteger).toList())
-                .map(profileList -> profileList.stream()
+                    .getDesignationInternal(idsToResolve.iterator().next().toBigInteger(), queryParams)
+                    .map(designation -> Map.of(ULongUtil.valueOf(designation.getId()), designation.toMap()))
+                    .flatMap(designationMap -> this.applyEagerFiltering(designationMap, eager, eagerFields));
+        return this.securityService
+                .getDesignationsInternal(
+                        idsToResolve.stream().map(ULong::toBigInteger).toList(), queryParams)
+                .map(designationList -> designationList.stream()
                         .collect(Collectors.toMap(
-                                profileResponse -> ULongUtil.valueOf(profileResponse.getId()), IClassConvertor::toMap)))
-                .flatMap(profileMap -> this.applyEagerFiltering(profileMap, eager, eagerFields));
+                                designation -> ULongUtil.valueOf(designation.getId()), IClassConvertor::toMap)))
+                .flatMap(designationMap -> this.applyEagerFiltering(designationMap, eager, eagerFields));
     }
 }

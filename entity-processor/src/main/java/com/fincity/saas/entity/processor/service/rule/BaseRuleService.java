@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DesignationFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ProfileFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -46,6 +47,8 @@ public abstract class BaseRuleService<
     static {
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(ProfileFieldResolver.class, BaseUserDistributionDto.Fields.profileId);
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(
+                DesignationFieldResolver.class, BaseUserDistributionDto.Fields.designationId);
     }
 
     protected ProductService productService;
