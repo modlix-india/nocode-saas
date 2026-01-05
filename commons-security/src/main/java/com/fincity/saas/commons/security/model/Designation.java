@@ -4,12 +4,9 @@ import com.fincity.saas.commons.util.IClassConvertor;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
-
-
 
 @Data
 @Accessors(chain = true)
