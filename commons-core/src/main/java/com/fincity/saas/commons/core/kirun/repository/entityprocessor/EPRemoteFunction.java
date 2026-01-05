@@ -3,6 +3,8 @@ package com.fincity.saas.commons.core.kirun.repository.entityprocessor;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -12,6 +14,8 @@ import com.fincity.nocode.kirun.engine.model.FunctionSignature;
 import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutionParameters;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.core.feign.IFeignEntityProcessor;
+import com.fincity.saas.commons.core.service.CoreMessageResourceService;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.google.gson.Gson;
@@ -30,14 +34,16 @@ public class EPRemoteFunction implements ReactiveFunction {
     private final String appCode;
     private final String clientCode;
     private final Gson gson;
+    private final CoreMessageResourceService messageService;
 
     public EPRemoteFunction(FunctionSignature functionSignature, IFeignEntityProcessor feignEntityProcessor,
-            String appCode, String clientCode, Gson gson) {
+            String appCode, String clientCode, Gson gson, CoreMessageResourceService messageService) {
         this.functionSignature = functionSignature;
         this.appCode = appCode;
         this.clientCode = clientCode;
         this.feignEntityProcessor = feignEntityProcessor;
         this.gson = gson;
+        this.messageService = messageService;
     }
 
     @SuppressWarnings("unchecked")
@@ -48,16 +54,25 @@ public class EPRemoteFunction implements ReactiveFunction {
                 ca -> Mono.deferContextual(ctx -> {
                     String forwardedHost = ctx.get(FORWARDED_HOST);
                     String forwardedPort = ctx.get(FORWARDED_PORT);
-                    return this.feignEntityProcessor
+                    return FlatMapUtil.flatMapMono(() -> this.feignEntityProcessor
                             .executeFunction(ca.getAccessToken(), forwardedHost,
                                     forwardedPort, ca.getUrlClientCode(),
                                     ca.getUrlAppCode(),
                                     this.functionSignature.getNamespace(),
                                     this.functionSignature.getName(), this.appCode, this.clientCode,
-                                    this.gson.toJson(parameters.getArguments()))
-                            .map(str -> (List<EventResult>) this.gson.fromJson(str, new TypeToken<List<EventResult>>() {
-                            }.getType()))
-                            .map(FunctionOutput::new);
+                                    this.gson.toJson(parameters.getArguments())),
+                            str -> Mono.just(
+                                    (List<EventResult>) this.gson.fromJson(str, new TypeToken<List<EventResult>>() {
+                                    }.getType())),
+
+                            (str, output) -> Mono.just(new FunctionOutput(output)))
+                            .switchIfEmpty(
+                                    this.messageService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.INTERNAL_SERVER_ERROR, msg),
+                                            CoreMessageResourceService.EMPTY_FUNCTION_RESPONSE,
+                                            this.functionSignature.getNamespace() + "."
+                                                    + this.functionSignature.getName()))
+                            .contextWrite(Context.of(LogUtil.METHOD_NAME, "EPRemoteFunction.execute (in Context)"));
                 }))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "EPRemoteFunction.execute"));
 
