@@ -195,7 +195,10 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         List<ULong> managingClientIds = access.getUserInherit().getManagingClientIds();
 
         if (isEmptyCondition(condition))
-            return Mono.just(this.createInCondition(BaseProcessorDto.Fields.clientId, managingClientIds));
+            return Mono.just(new FilterCondition()
+                    .setField(BaseProcessorDto.Fields.clientId)
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(managingClientIds));
 
         return this.processExistingClientConditions(condition, access, managingClientIds);
     }
@@ -259,7 +262,11 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
         List<ULong> userHierarchy = access.getUserInherit().getSubOrg();
 
-        if (isEmptyCondition(condition)) return Mono.just(this.createInCondition(userField, userHierarchy));
+        if (isEmptyCondition(condition))
+            return Mono.just(new FilterCondition()
+                    .setField(userField)
+                    .setOperator(FilterConditionOperator.IN)
+                    .setMultiValue(userHierarchy));
 
         return this.processExistingUserConditions(condition, userField, userHierarchy);
     }
@@ -289,18 +296,16 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
 
     private AbstractCondition updateConditionsWithHierarchy(
             List<FilterCondition> conditions, String field, List<ULong> hierarchy) {
-        if (conditions.isEmpty()) return this.createInCondition(field, hierarchy);
 
-        List<AbstractCondition> combinedConditions = new ArrayList<>(conditions);
-        combinedConditions.add(this.createInCondition(field, hierarchy));
-
-        return ComplexCondition.and(combinedConditions);
-    }
-
-    private FilterCondition createInCondition(String field, List<?> values) {
-        return new FilterCondition()
+        AbstractCondition hierarchyCondition = new FilterCondition()
                 .setField(field)
                 .setOperator(FilterConditionOperator.IN)
-                .setMultiValue(values);
+                .setMultiValue(hierarchy);
+
+        if (conditions.isEmpty()) return hierarchyCondition;
+
+        List<AbstractCondition> combinedConditions = new ArrayList<>(conditions);
+
+        return ComplexCondition.and(ComplexCondition.or(combinedConditions), hierarchyCondition);
     }
 }
