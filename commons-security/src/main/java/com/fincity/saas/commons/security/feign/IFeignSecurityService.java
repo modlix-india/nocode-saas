@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.security.model.Designation;
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,7 +23,7 @@ import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
-
+import com.fincity.saas.commons.security.model.Profile;
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -190,6 +191,16 @@ public interface IFeignSecurityService {
     Mono<List<Client>> getClientInternal(
             @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
 
+    @GetMapping(value = "${security.feign.getDesignationInternal:/api/security/designations/internal/{id}}")
+    Mono<Designation> getDesignationInternal(
+            @PathVariable("id") BigInteger id,
+            @RequestParam MultiValueMap<String, String> params);
+
+    @GetMapping(value = "${security.feign.getDesignationsInternal:/api/security/designations/internal}")
+    Mono<List<Designation>> getDesignationsInternal(
+            @RequestParam List<BigInteger> designationIds,
+            @RequestParam MultiValueMap<String, String> params);
+
     @GetMapping(value = "${security.feign.getProfileUsers:/api/security/app/profiles/internal/users}")
     Mono<List<BigInteger>> getProfileUsers(
             @RequestHeader("appCode") String headerAppCode, @RequestParam List<BigInteger> profileIds);
@@ -223,4 +234,12 @@ public interface IFeignSecurityService {
 
     @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
     Mono<String> getAppStatus(@PathVariable String appCode);
+
+    @GetMapping(value = "${security.feign.getProfileInternal:/api/security/app/profiles/internal/{id}}")
+    Mono<Profile> getProfileInternal(@PathVariable("id") BigInteger id);
+
+    @GetMapping(value = "${security.feign.getProfilesInternal:/api/security/app/profiles/internal}")
+    Mono<List<Profile>> getProfilesInternal(
+            @RequestParam List<BigInteger> profileIds);
+
 }

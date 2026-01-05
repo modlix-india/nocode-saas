@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.*;
 import org.apache.commons.lang.NotImplementedException;
@@ -138,26 +140,7 @@ public class ProfileService
 
         )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.create"))
-                .flatMap(e -> {
-
-                    String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
-                            + (e.getRootProfileId() == null ? e.getId()
-                                    : e.getRootProfileId());
-
-                    if (e.getRootProfileId() == null)
-                        return this.cacheService.evictAll(cacheName).map(x -> e);
-
-                    return this.dao.isBeingUsedByManagingClients(e.getClientId(), e.getId(),
-                            e.getRootProfileId())
-                            .flatMap(used -> {
-
-                                if (used)
-                                    return this.cacheService.evictAll(cacheName);
-
-                                return this.cacheService
-                                        .evict(cacheName, e.getClientId());
-                            }).map(x -> e);
-                })
+                .flatMap(this::evictAuthoritiesAndProfileCache)
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
                         .flatMap(msg -> Mono.error(new GenericException(HttpStatus.FORBIDDEN,
@@ -307,26 +290,27 @@ public class ProfileService
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                SecurityContextUtil::getUsersContextAuthentication,
+                        SecurityContextUtil::getUsersContextAuthentication,
 
-                ca -> this.clientHierarchyService
-                        .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        ca -> this.clientHierarchyService
+                                .getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
+                        (ca, hierarchy) -> this.dao.read(id, hierarchy),
+                        (ca, hierarchy, profile) -> this.evictAuthoritiesAndProfileCache(profile),
+                        (ca, hierarchy, profile, evicted) -> this.dao.delete(id, hierarchy)
 
-                (ca, hierarchy) -> this.dao.delete(id, hierarchy)
-
-        )
+                )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.delete"))
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException
                                 || ex instanceof R2dbcDataIntegrityViolationException
-                                        ? this.securityMessageResourceService
-                                                .throwMessage(
-                                                        msg -> new GenericException(
-                                                                HttpStatus.FORBIDDEN,
-                                                                msg,
-                                                                ex),
-                                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
-                                        : Mono.error(ex));
+                                ? this.securityMessageResourceService
+                                .throwMessage(
+                                        msg -> new GenericException(
+                                                HttpStatus.FORBIDDEN,
+                                                msg,
+                                                ex),
+                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
+                                : Mono.error(ex));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Profile_READ') and hasAuthority('Authorities.Client_UPDATE')")
@@ -519,6 +503,59 @@ public class ProfileService
                         .collectList()
                         .map(user::setProfiles))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProfileService.getUsersForProfiles"));
+    }
+
+    public Mono<Profile> readInternal(ULong profileId) {
+        return this.cacheService.cacheValueOrGet(PROFILE, () -> this.dao.readInternal(profileId), profileId);
+    }
+
+    public Mono<Profile> readById(ULong profileId) {
+        return this.readInternal(profileId);
+    }
+
+    public Mono<List<Profile>> readByIds(List<ULong> profileIds) {
+
+        if (profileIds == null || profileIds.isEmpty())
+            return Mono.just(List.of());
+
+        return this.readAllFilter(
+                new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(profileIds)
+        ).collectList();
+    }
+
+    private Mono<Profile> evictAuthoritiesAndProfileCache(Profile profile) {
+
+        String cacheName = CACHE_AUTHORITIES_BY_ID + "_"
+                + (profile.getRootProfileId() == null ? profile.getId() : profile.getRootProfileId());
+
+        Mono<Profile> authoritiesEviction;
+
+        if (profile.getRootProfileId() == null) {
+            authoritiesEviction =
+                    this.cacheService.evictAll(cacheName).thenReturn(profile);
+        } else {
+            authoritiesEviction =
+                    this.dao.isBeingUsedByManagingClients(
+                                    profile.getClientId(), profile.getId(), profile.getRootProfileId())
+                            .flatMap(used -> {
+
+                                if (used)
+                                    return this.cacheService.evictAll(cacheName);
+
+                                return this.cacheService
+                                        .evict(cacheName, profile.getClientId());
+                            })
+                            .thenReturn(profile);
+        }
+
+        return authoritiesEviction
+                .flatMap(p ->
+                        this.cacheService.evict(PROFILE, p.getId())
+                                .thenReturn(p)
+                );
     }
 
 }

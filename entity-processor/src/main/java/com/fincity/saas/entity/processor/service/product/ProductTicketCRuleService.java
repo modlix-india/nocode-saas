@@ -292,7 +292,8 @@ public class ProductTicketCRuleService
         return FlatMapUtil.flatMapMono(() -> this.getRulesWithOrder(access, productId, stageId), productRule -> {
                     if (productRule.isEmpty()) return Mono.empty();
 
-                    // During updates/reassignment, if only the default rule exists, return empty (don't change assignment)
+                    // During updates/reassignment, if only the default rule exists, return empty (don't change
+                    // assignment)
                     if (!isCreate && productRule.size() == 1 && productRule.containsKey(0)) return Mono.empty();
 
                     return FlatMapUtil.flatMapMono(
