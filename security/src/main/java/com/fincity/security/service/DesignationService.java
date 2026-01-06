@@ -3,6 +3,8 @@ package com.fincity.security.service;
 import java.util.List;
 import java.util.Map;
 
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -206,5 +208,21 @@ public class DesignationService
             designationFlux = designationFlux.filter(designation -> designation.getDepartmentId() != null && designation.getDepartmentId().intValue() != 0).flatMap(designation -> this.departmentService.readInternal(designation.getDepartmentId()).map(designation::setDepartment));
 
         return designationFlux.collectList();
+    }
+    
+    public Mono<Designation> readById(ULong designationId, MultiValueMap<String, String> queryParams){
+        return FlatMapUtil.flatMapMono(
+                ()-> this.readInternal(designationId),
+                designation -> this.fillDetails(List.of(designation), queryParams).map(List::getFirst));
+    }
+    
+    public Mono<List<Designation>> readByIds(List<ULong> designationIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                ()-> this.readAllFilter(new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(designationIds))
+                        .collectList(),
+                designations -> this.fillDetails(designations, queryParams));
     }
 }

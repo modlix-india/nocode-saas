@@ -47,6 +47,8 @@ public class TicketCallService implements IRepositoryProvider {
 
     private final ProcessorMessageResourceService msgService;
 
+    private final ActivityService activityService;
+
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
 
@@ -58,11 +60,13 @@ public class TicketCallService implements IRepositoryProvider {
             ProductCommService productCommService,
             IFeignMessageService messageService,
             ProcessorMessageResourceService msgService,
+            ActivityService activityService,
             Gson gson) {
         this.ticketService = ticketService;
         this.productCommService = productCommService;
         this.messageService = messageService;
         this.msgService = msgService;
+        this.activityService = activityService;
         this.gson = gson;
     }
 
@@ -102,7 +106,8 @@ public class TicketCallService implements IRepositoryProvider {
                         messageService.connectCall(appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
                                 .setProviderIncomingRequest(providerIncomingRequest)
                                 .setConnectionName(productComm.getConnectionName())
-                                .setUserId(ticket.getAssignedUserId())));
+                                .setUserId(ticket.getAssignedUserId())),
+                (productComm, ticket, response) -> this.logCall(access, ticket).thenReturn(response));
     }
 
     private Mono<Ticket> createExotelTicket(ProcessorAccess access, PhoneNumber from, ProductComm productComm) {
@@ -123,6 +128,10 @@ public class TicketCallService implements IRepositoryProvider {
                         .setProductId(productId)
                         .setSource(source)
                         .setSubSource(subSource));
+    }
+
+    private Mono<Void> logCall(ProcessorAccess access, Ticket ticket) {
+        return activityService.acCallLog(access, ticket, null);
     }
 
     @PostConstruct
