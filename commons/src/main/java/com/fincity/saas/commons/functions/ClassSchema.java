@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 import java.lang.reflect.*;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +34,7 @@ public class ClassSchema {
     public static final String CONDITION_SCHEMA_REF = "Commons.AbstractCondition";
     private static final Map<String, ClassSchema> INSTANCES = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Schema> PRIMITIVE_SCHEMA_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, Schema> JOOQ_SCHEMA_MAP = new ConcurrentHashMap<>();
 
     static {
         registerPrimitive(String.class, Schema.ofString("String"));
@@ -46,8 +48,8 @@ public class ClassSchema {
         registerPrimitive(float.class, Schema.ofFloat("float"));
         registerPrimitive(Boolean.class, Schema.ofBoolean("Boolean"));
         registerPrimitive(boolean.class, Schema.ofBoolean("boolean"));
-        registerPrimitive(java.time.LocalDateTime.class, Schema.ofRef("System.Date.Timestamp"));
-        registerPrimitive(java.time.LocalDate.class, Schema.ofRef("System.Date.Timestamp"));
+        registerPrimitive(LocalDateTime.class, Schema.ofRef("System.Date.Timestamp"));
+        registerPrimitive(LocalDate.class, Schema.ofRef("System.Date.Timestamp"));
         registerPrimitive(JsonObject.class, Schema.ofObject("JsonObject"));
         registerPrimitive(BigInteger.class, Schema.ofInteger("BigInteger"));
 
@@ -57,6 +59,13 @@ public class ClassSchema {
                 .setAnyOf(List.of(Schema.ofRef("Commons.FilterCondition"), Schema.ofRef("Commons.ComplexCondition")));
 
         registerPrimitive(AbstractCondition.class, abstractConditionSchema);
+
+        registerJooqSchema("org.jooq.types.ULong", Schema.ofLong("ULong").setDescription("Unsigned 64-bit integer"));
+        registerJooqSchema(
+                "org.jooq.types.UInteger", Schema.ofInteger("UInteger").setDescription("Unsigned 32-bit integer"));
+        registerJooqSchema(
+                "org.jooq.types.UShort", Schema.ofInteger("UShort").setDescription("Unsigned 16-bit integer"));
+        registerJooqSchema("org.jooq.types.UByte", Schema.ofInteger("UByte").setDescription("Unsigned 8-bit integer"));
     }
 
     private final Map<String, Schema> schemaCache = new ConcurrentHashMap<>();
@@ -71,6 +80,15 @@ public class ClassSchema {
 
     private static void registerPrimitive(Class<?> clazz, Schema schema) {
         PRIMITIVE_SCHEMA_CACHE.put(clazz, schema);
+    }
+
+    private static void registerJooqSchema(String className, Schema schema) {
+        try {
+            Class<?> jooqClass = Class.forName(className);
+            JOOQ_SCHEMA_MAP.put(jooqClass.getName(), schema);
+        } catch (ClassNotFoundException e) {
+            // JOOQ classes not available, ignore
+        }
     }
 
     public static ClassSchema getInstance() {
@@ -92,6 +110,13 @@ public class ClassSchema {
     public boolean isPrimitiveType(Class<?> type) {
         if (type == null) return false;
         return PRIMITIVE_SCHEMA_CACHE.containsKey(type) || type.isPrimitive();
+    }
+
+    private Schema getJooqSchema(Class<?> clazz) {
+        if (clazz == null) {
+            return null;
+        }
+        return JOOQ_SCHEMA_MAP.get(clazz.getName());
     }
 
     public boolean shouldIncludeClass(Class<?> clazz) {
@@ -178,6 +203,13 @@ public class ClassSchema {
         if (schemaCache.containsKey(cacheKey)) return schemaCache.get(cacheKey);
         if (PRIMITIVE_SCHEMA_CACHE.containsKey(clazz)) return PRIMITIVE_SCHEMA_CACHE.get(clazz);
 
+        // Check JOOQ schema registry
+        Schema jooqSchema = getJooqSchema(clazz);
+        if (jooqSchema != null) {
+            schemaCache.put(cacheKey, jooqSchema);
+            return jooqSchema;
+        }
+
         if (clazz.isEnum()) {
             Schema enumSchema = buildEnumSchema(clazz, namespace, name);
             schemaCache.put(cacheKey, enumSchema);
@@ -225,53 +257,57 @@ public class ClassSchema {
     }
 
     private Schema getSchemaForType(Class<?> type, Type genericType, Set<Class<?>> visited) {
-        if (PRIMITIVE_SCHEMA_CACHE.containsKey(type)) {
-            return PRIMITIVE_SCHEMA_CACHE.get(type);
-        }
+        if (type == null) return null;
 
-        if (type.isArray()) {
-            Schema itemSchema = getSchemaForType(type.getComponentType(), null, visited);
-            return Schema.ofArray(type.getSimpleName(), itemSchema);
-        }
+        if (PRIMITIVE_SCHEMA_CACHE.containsKey(type)) return PRIMITIVE_SCHEMA_CACHE.get(type);
 
-        if (type.isEnum()) {
-            return Schema.ofRef(getNamespaceForClass(type) + "." + type.getSimpleName());
-        }
+        Schema jooqSchema = this.getJooqSchema(type);
+        if (jooqSchema != null) return jooqSchema;
 
-        // Handle List / Flux
-        if (List.class.isAssignableFrom(type) || Flux.class.isAssignableFrom(type)) {
-            Schema itemSchema = Schema.ofObject("item");
-            if (genericType instanceof ParameterizedType paramType) {
-                Type[] args = paramType.getActualTypeArguments();
-                if (args.length > 0 && args[0] instanceof Class<?> itemClass) {
-                    String itemNamespace = getNamespaceForClass(itemClass);
-                    String itemName = itemClass.getSimpleName();
-                    itemSchema = generateSchemaForClass(itemClass, visited, itemNamespace, itemName);
-                }
-            }
-            return Schema.ofArray(type.getSimpleName(), itemSchema);
-        }
+        if (type.isArray()) return this.getArraySchema(type, visited);
 
-        // Handle Mono (Unwrap)
-        if (Mono.class.isAssignableFrom(type)) {
-            if (genericType instanceof ParameterizedType paramType) {
-                Type[] args = paramType.getActualTypeArguments();
-                if (args.length > 0 && args[0] instanceof Class<?> monoClass) {
-                    String monoNamespace = getNamespaceForClass(monoClass);
-                    String monoName = monoClass.getSimpleName();
-                    return generateSchemaForClass(monoClass, visited, monoNamespace, monoName);
-                }
-            }
-            return Schema.ofObject("result");
-        }
+        if (type.isEnum()) return Schema.ofRef(getNamespaceForClass(type) + "." + type.getSimpleName());
 
-        if (Map.class.isAssignableFrom(type)) {
-            return Schema.ofObject("Map");
-        }
+        if (List.class.isAssignableFrom(type) || Flux.class.isAssignableFrom(type))
+            return this.getCollectionSchema(type, genericType, visited);
 
-        String namespace = getNamespaceForClass(type);
+        if (Mono.class.isAssignableFrom(type)) return this.getMonoSchema(genericType, visited);
+
+        if (Map.class.isAssignableFrom(type)) return Schema.ofObject("Map");
+
+        String namespace = this.getNamespaceForClass(type);
         String name = type.getSimpleName();
-        return generateSchemaForClass(type, visited, namespace, name);
+        return this.generateSchemaForClass(type, visited, namespace, name);
+    }
+
+    private Schema getArraySchema(Class<?> type, Set<Class<?>> visited) {
+        Schema itemSchema = getSchemaForType(type.getComponentType(), null, visited);
+        return Schema.ofArray(type.getSimpleName(), itemSchema);
+    }
+
+    private Schema getCollectionSchema(Class<?> type, Type genericType, Set<Class<?>> visited) {
+        Schema itemSchema = Schema.ofObject("item");
+        if (genericType instanceof ParameterizedType paramType) {
+            Type[] args = paramType.getActualTypeArguments();
+            if (args.length > 0 && args[0] instanceof Class<?> itemClass) {
+                String itemNamespace = getNamespaceForClass(itemClass);
+                String itemName = itemClass.getSimpleName();
+                itemSchema = generateSchemaForClass(itemClass, visited, itemNamespace, itemName);
+            }
+        }
+        return Schema.ofArray(type.getSimpleName(), itemSchema);
+    }
+
+    private Schema getMonoSchema(Type genericType, Set<Class<?>> visited) {
+        if (genericType instanceof ParameterizedType paramType) {
+            Type[] args = paramType.getActualTypeArguments();
+            if (args.length > 0 && args[0] instanceof Class<?> monoClass) {
+                String monoNamespace = getNamespaceForClass(monoClass);
+                String monoName = monoClass.getSimpleName();
+                return generateSchemaForClass(monoClass, visited, monoNamespace, monoName);
+            }
+        }
+        return Schema.ofObject("result");
     }
 
     private Schema buildEnumSchema(Class<?> clazz, String namespace, String name) {
