@@ -160,10 +160,46 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
     }
 
     /**
+     * Setter for
+     * <code>notification.notification_inapp.NOTIFICATION_CATEGORY</code>.
+     * Notification category
+     */
+    public NotificationInappRecord setNotificationCategory(String value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>notification.notification_inapp.NOTIFICATION_CATEGORY</code>.
+     * Notification category
+     */
+    public String getNotificationCategory() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>notification.notification_inapp.URL</code>. Notification
+     * URL
+     */
+    public NotificationInappRecord setUrl(String value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>notification.notification_inapp.URL</code>. Notification
+     * URL
+     */
+    public String getUrl() {
+        return (String) get(9);
+    }
+
+    /**
      * Setter for <code>notification.notification_inapp.READ_AT</code>. Read at
      */
     public NotificationInappRecord setReadAt(LocalDateTime value) {
-        set(8, value);
+        set(10, value);
         return this;
     }
 
@@ -171,7 +207,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * Getter for <code>notification.notification_inapp.READ_AT</code>. Read at
      */
     public LocalDateTime getReadAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -179,7 +215,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * when this row is created
      */
     public NotificationInappRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(11, value);
         return this;
     }
 
@@ -188,7 +224,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -214,7 +250,7 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
     /**
      * Create a detached, initialised NotificationInappRecord
      */
-    public NotificationInappRecord(ULong id, ULong userId, String appCode, String notificationName, String title, String message, String mimeUrl, String notificationType, LocalDateTime readAt, LocalDateTime createdAt) {
+    public NotificationInappRecord(ULong id, ULong userId, String appCode, String notificationName, String title, String message, String mimeUrl, String notificationType, String notificationCategory, String url, LocalDateTime readAt, LocalDateTime createdAt) {
         super(NotificationInapp.NOTIFICATION_INAPP);
 
         setId(id);
@@ -225,6 +261,8 @@ public class NotificationInappRecord extends UpdatableRecordImpl<NotificationIna
         setMessage(message);
         setMimeUrl(mimeUrl);
         setNotificationType(notificationType);
+        setNotificationCategory(notificationCategory);
+        setUrl(url);
         setReadAt(readAt);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();
