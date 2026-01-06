@@ -593,6 +593,14 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientConditions"));
     }
 
+    public Mono<List<ULong>> getPartnerClientIdsByManagerId(String appCode, String clientCode, ULong managerId) {
+        return this.dao
+                .getPartnersByManagerId(appCode, clientCode, managerId)
+                .map(partners -> partners.stream().map(Partner::getClientId).toList())
+                .switchIfEmpty(Mono.just(List.of()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerClientIdsByManagerId"));
+    }
+
     @Override
     public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
         return Mono.just(new ListFunctionRepository(this.functions));
