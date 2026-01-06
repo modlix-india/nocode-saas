@@ -15,4 +15,6 @@ public class NotificationInApp {
     private LocalDateTime readAt;
     private String type;
     private String mimeUrl;
+    private String notificationCategory;
+    private String url;
 }

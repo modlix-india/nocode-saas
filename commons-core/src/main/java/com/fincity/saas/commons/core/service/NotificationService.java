@@ -85,6 +85,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
             String targetType,
             String filterAuthorization,
             String notificationName,
+            String notificationCategory,
             Map<String, Object> payload) {
 
         return FlatMapUtil.flatMapMono(
@@ -144,6 +145,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                                             .setTriggeredUserId(ca.getUser().getId())
                                             .setFilterAuthorization(filterAuthorization)
                                             .setNotificationName(notificationName)
+                                            .setNotificationCategory(notificationCategory)
                                             .setConnectionName(connectionName)
                                             .setPayload(payload))
                                     .flatMap(q -> Mono.deferContextual(cv -> {
