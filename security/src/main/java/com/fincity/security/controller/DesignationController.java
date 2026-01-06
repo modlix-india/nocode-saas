@@ -13,10 +13,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("api/security/designations")
@@ -33,5 +38,17 @@ public class DesignationController
                         .fillDetails(page.getContent(), request.getQueryParams())
                         .thenReturn(page))
                 .map(ResponseEntity::ok);
+    }
+    
+    @GetMapping("/internal" + PATH_ID)
+    public Mono<ResponseEntity<Designation>> getDesignationInternal(
+            @PathVariable ULong id, @RequestParam MultiValueMap<String, String> queryParams) {
+        return this.service.readById(id, queryParams).map(ResponseEntity::ok);
+    }
+    
+    @GetMapping("/internal")
+    public Mono<ResponseEntity<List<Designation>>> getDesignationsInternal(
+            @RequestParam List<ULong> designationIds, @RequestParam MultiValueMap<String, String> queryParms){
+        return this.service.readByIds(designationIds, queryParms).map(ResponseEntity::ok);
     }
 }

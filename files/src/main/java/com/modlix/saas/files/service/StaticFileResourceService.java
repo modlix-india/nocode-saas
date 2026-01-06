@@ -3,9 +3,13 @@ package com.modlix.saas.files.service;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -163,5 +167,45 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
         FileDetail fileDetail = this.getFSService().createFilesFromMultipartFile("SYSTEM", path, fileName, file, false);
 
         return "/api/files/static/file/SYSTEM/" + path + "/" + fileDetail.getName();
+    }
+
+    public List<FileDetail> copyToClientPage(String clientCode, String pageName, List<String> fileUrls) {
+        List<FileDetail> copiedFiles = new ArrayList<>();
+
+        for (String fileUrl : fileUrls) {
+            // Parse URL: /api/files/static/file/SYSTEM/aiGen/<clientCode>/<fileName>
+            // Extract clientCode and fileName from URL
+            String urlPath = fileUrl.replace("/api/files/static/file/SYSTEM/aiGen/", "");
+            int lastSlash = urlPath.lastIndexOf('/');
+            if (lastSlash == -1)
+                continue;
+
+            String urlClientCode = urlPath.substring(0, lastSlash);
+            String fileName = urlPath.substring(lastSlash + 1);
+
+            // Decode the fileName (URLs are encoded)
+            try {
+                fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                // If decoding fails, use the original fileName
+            }
+
+            // Source path: aiGen/<clientCode>
+            String sourcePath = "aiGen/" + urlClientCode;
+
+            // Destination path: sitezump/<pageName>
+            String destPath = "sitezump/" + pageName;
+
+            // Copy the file
+            FileDetail copiedFile = this.getFSService().copyFile("SYSTEM", sourcePath, clientCode, destPath, fileName);
+            if (copiedFile != null) {
+                // Set the URL for the copied file
+                FileDetail fileDetailWithUrl = this.convertToFileDetailWhileCreation(destPath, clientCode, copiedFile);
+                copiedFiles.add(fileDetailWithUrl);
+            }
+        }
+
+        this.getFSService().evictCache(clientCode);
+        return copiedFiles;
     }
 }
