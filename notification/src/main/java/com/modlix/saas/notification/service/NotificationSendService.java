@@ -94,6 +94,6 @@ public class NotificationSendService {
 
         if (!isInApp) return;
 
-        this.inAppService.sendInApp(users, notification, qob.getAppCode(), qob.getPayload());
+        this.inAppService.sendInApp(users, notification, qob.getAppCode(), qob.getNotificationCategory(), qob.getPayload());
     }
 }
