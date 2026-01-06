@@ -63,6 +63,7 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String RULE_CONDITION_MISSING = "rule_condition_missing";
     public static final String MAX_ENTITY_CREATION_INVALID = "max_entity_creation_invalid";
     public static final String DUPLICATE_SOURCE_SUBSOURCE_RULE = "duplicate_source_subsource_rule";
+    public static final String TICKET_CREATION_FAILED = "ticket_creation_failed";
 
     protected ProcessorMessageResourceService() {
         super(Map.of(Locale.ENGLISH, ResourceBundle.getBundle("messages", Locale.ENGLISH)));
