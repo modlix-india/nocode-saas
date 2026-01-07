@@ -40,9 +40,10 @@ public class NotificationController {
             @RequestParam(required = false, name = "appCode") String paramAppCode,
             @RequestHeader(required = false, name = "appCode") String headerAppCode,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String category,
             Pageable pageable) {
         return ResponseEntity.ok(this.inAppNotificationService
-                .readNotifications(StringUtil.safeValueOf(paramAppCode, headerAppCode), type, pageable));
+                .readNotifications(StringUtil.safeValueOf(paramAppCode, headerAppCode), type, category, pageable));
     }
 
     // Need to add server send events endpoint to get new notifications

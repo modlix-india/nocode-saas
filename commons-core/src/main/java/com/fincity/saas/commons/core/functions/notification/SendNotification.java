@@ -33,6 +33,7 @@ public class SendNotification extends AbstractReactiveFunction {
     private static final String TARGET_TYPE = "targetType";
     private static final String FILTER_AUTHORIZATION = "filterAuthorization";
     private static final String NOTIFICATION_NAME = "notificationName";
+    private static final String NOTIFICATION_CATEGORY = "notificationCategory";
     private static final String PAYLOAD = "payload";
     private static final String CONNECTION_NAME = "connectionName";
 
@@ -59,6 +60,7 @@ public class SendNotification extends AbstractReactiveFunction {
                                 new JsonPrimitive(NotificationService.CLIENT_CODE)))),
                 Parameter.ofEntry(FILTER_AUTHORIZATION, Schema.ofString(FILTER_AUTHORIZATION).setDefaultValue(new JsonPrimitive(""))),
                 Parameter.ofEntry(NOTIFICATION_NAME, Schema.ofString(NOTIFICATION_NAME)),
+                Parameter.ofEntry(NOTIFICATION_CATEGORY, Schema.ofString(NOTIFICATION_CATEGORY).setDefaultValue(new JsonPrimitive("Default"))),
                 Parameter.ofEntry(PAYLOAD, Schema.ofObject(PAYLOAD).setDefaultValue(new JsonObject()))));
 
         return new FunctionSignature()
@@ -79,6 +81,7 @@ public class SendNotification extends AbstractReactiveFunction {
         String connectionName = context.getArguments().get(CONNECTION_NAME).getAsString();
         String filterAuthorization = context.getArguments().get(FILTER_AUTHORIZATION).getAsString();
         String notificationName = context.getArguments().get(NOTIFICATION_NAME).getAsString();
+        String notificationCategory = context.getArguments().get(NOTIFICATION_CATEGORY).getAsString();
 
         Map<String, Object> payload =
                 JsonUtil.toMap(context.getArguments().get(PAYLOAD).getAsJsonObject());
@@ -95,7 +98,7 @@ public class SendNotification extends AbstractReactiveFunction {
 
             return notificationService
                     .processAndSendNotification(inAppCode, inClientCode, connectionName, targetId, inTargetCode, targetType, inFilterAuthorization,
-                            notificationName, payload)
+                            notificationName, notificationCategory, payload)
                     .switchIfEmpty(Mono.just(Boolean.FALSE))
                     .map(e -> new FunctionOutput(
                             List.of(EventResult.outputOf(Map.of(EVENT_DATA, new JsonPrimitive(e))))));
