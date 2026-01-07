@@ -70,7 +70,7 @@ public class PartnerController
     }
 
     @PostMapping("/clients")
-    public Mono<ResponseEntity<Page<Map<String, Object>>>> createClient(
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPartnerClient(
             @RequestBody Query query, ServerHttpRequest request) {
         return this.service.readPartnerClient(query, request.getQueryParams()).map(ResponseEntity::ok);
     }
