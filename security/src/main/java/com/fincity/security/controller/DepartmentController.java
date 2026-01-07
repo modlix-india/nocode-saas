@@ -45,6 +45,7 @@ public class DepartmentController
                         .thenReturn(page))
                 .map(ResponseEntity::ok);
     }
+
     @GetMapping("/internal" + PATH_ID)
     public Mono<ResponseEntity<Department>> getDepartmentInternal(
             @PathVariable ULong id, @RequestParam MultiValueMap<String, String> queryParams) {

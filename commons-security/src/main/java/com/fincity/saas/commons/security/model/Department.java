@@ -1,5 +1,6 @@
-package com.fincity.saas.commons.security.dto;
+package com.fincity.saas.commons.security.model;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
 
@@ -13,6 +14,9 @@ import lombok.experimental.FieldNameConstants;
 @Accessors(chain = true)
 @FieldNameConstants
 public class Department implements Serializable, IClassConvertor {
+
+    @Serial
+    private static final long serialVersionUID = 7698050889822071798L;
 
     private BigInteger id;
     private BigInteger clientId;

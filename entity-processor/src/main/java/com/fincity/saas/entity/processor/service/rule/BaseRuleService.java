@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.dto.rule.BaseRuleDto;
 import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DepartmentFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DesignationFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.ProfileFieldResolver;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
@@ -16,7 +17,6 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
-import com.fincity.saas.entity.processor.eager.relations.resolvers.field.DepartmentResolver;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
 import java.util.List;
 import java.util.Map;
@@ -48,8 +48,10 @@ public abstract class BaseRuleService<
     static {
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(UserFieldResolver.class, BaseUserDistributionDto.Fields.userId);
         USER_DISTRIBUTION_RESOLVER_FIELDS.put(ProfileFieldResolver.class, BaseUserDistributionDto.Fields.profileId);
-        USER_DISTRIBUTION_RESOLVER_FIELDS.put(DesignationFieldResolver.class, BaseUserDistributionDto.Fields.designationId);
-        USER_DISTRIBUTION_RESOLVER_FIELDS.put(DepartmentResolver.class, BaseUserDistributionDto.Fields.departmentId);
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(
+                DesignationFieldResolver.class, BaseUserDistributionDto.Fields.designationId);
+        USER_DISTRIBUTION_RESOLVER_FIELDS.put(
+                DepartmentFieldResolver.class, BaseUserDistributionDto.Fields.departmentId);
     }
 
     protected ProductService productService;
