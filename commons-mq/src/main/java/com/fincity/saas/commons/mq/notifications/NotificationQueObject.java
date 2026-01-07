@@ -28,6 +28,7 @@ public class NotificationQueObject implements Serializable {
     private String targetCode;
     private String filterAuthorization;
     private String notificationName;
+    private String notificationCategory;
     private String connectionName;
     private String xDebug;
     private Map<String, Object> payload;

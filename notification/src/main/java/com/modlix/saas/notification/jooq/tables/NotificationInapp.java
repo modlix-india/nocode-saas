@@ -102,6 +102,19 @@ public class NotificationInapp extends TableImpl<NotificationInappRecord> {
     public final TableField<NotificationInappRecord, String> NOTIFICATION_TYPE = createField(DSL.name("NOTIFICATION_TYPE"), SQLDataType.VARCHAR(256).nullable(false), this, "Notification type");
 
     /**
+     * The column
+     * <code>notification.notification_inapp.NOTIFICATION_CATEGORY</code>.
+     * Notification category
+     */
+    public final TableField<NotificationInappRecord, String> NOTIFICATION_CATEGORY = createField(DSL.name("NOTIFICATION_CATEGORY"), SQLDataType.VARCHAR(256).nullable(false).defaultValue(DSL.inline("Default", SQLDataType.VARCHAR)), this, "Notification category");
+
+    /**
+     * The column <code>notification.notification_inapp.URL</code>. Notification
+     * URL
+     */
+    public final TableField<NotificationInappRecord, String> URL = createField(DSL.name("URL"), SQLDataType.CLOB, this, "Notification URL");
+
+    /**
      * The column <code>notification.notification_inapp.READ_AT</code>. Read at
      */
     public final TableField<NotificationInappRecord, LocalDateTime> READ_AT = createField(DSL.name("READ_AT"), SQLDataType.LOCALDATETIME(0), this, "Read at");

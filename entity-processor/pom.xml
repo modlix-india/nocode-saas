@@ -38,7 +38,7 @@
         <package.c.server>entity.processor</package.c.server>
         <!-- internal -->
         <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
-        <package.i.nocode-kirun-version>3.14.0</package.i.nocode-kirun-version>
+        <package.i.nocode-kirun-version>3.14.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
         <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
         <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>

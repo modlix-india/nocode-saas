@@ -369,7 +369,12 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
 
         return FlatMapUtil.flatMapMono(
                         () -> this.campaignService.readByCampaignId(
-                                access, cTicketRequest.getCampaignDetails().getCampaignId()),
+                                        access, cTicketRequest.getCampaignDetails().getCampaignId())
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                                        this.campaignService.getEntityName(),
+                                        cTicketRequest.getCampaignDetails().getCampaignId())),
                         campaign -> this.productService.readById(access, campaign.getProductId()),
                         (campaign, product) ->
                                 Mono.just(Ticket.of(cTicketRequest).setCampaignId(campaign.getId())),
@@ -381,7 +386,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 cTicketRequest.getLeadDetails().getSource(),
                                 cTicketRequest.getLeadDetails().getSubSource()),
                         (campaign, product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (campaign, product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket),
+                        (campaign, product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket)
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.TICKET_CREATION_FAILED,
+                                        "campaign")),
                         (campaign, product, ticket, isDuplicate, pTicket, created) ->
                                 this.createNote(access, cTicketRequest, created),
                         (campaign, product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService
@@ -414,7 +423,11 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                                 cTicketRequest.getLeadDetails().getSource(),
                                 cTicketRequest.getLeadDetails().getSubSource()),
                         (product, ticket, isDuplicate) -> Mono.just(ticket.setProductId(product.getId())),
-                        (product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket),
+                        (product, ticket, isDuplicate, pTicket) -> super.create(access, pTicket)
+                                .switchIfEmpty(this.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.TICKET_CREATION_FAILED,
+                                        "website")),
                         (product, ticket, isDuplicate, pTicket, created) ->
                                 this.createNote(access, cTicketRequest, created),
                         (product, ticket, isDuplicate, pTicket, created, noteCreated) -> this.activityService

@@ -57,7 +57,7 @@ public class InAppNotificationService extends AbstractTemplateService {
     }
 
     public void sendInApp(List<NotificationUser> users, CoreNotification notification, String appCode,
-                          Map<String, Object> payload) {
+                          String notificationCategory, Map<String, Object> payload) {
 
         String language = this.getLanguage(notification, payload);
 
@@ -67,15 +67,19 @@ public class InAppNotificationService extends AbstractTemplateService {
         if (template == null || template.isEmpty())
             return;
 
+        String category = notificationCategory != null && !notificationCategory.isEmpty() ? notificationCategory : "Default";
+
         List<NotificationInappRecord> records = users.stream().map(e -> {
             NotificationInappRecord rec = this.dslContext.newRecord(NotificationInapp.NOTIFICATION_INAPP);
             rec.setUserId(ULong.valueOf(e.getId()));
             rec.setAppCode(appCode);
             rec.setNotificationName(notification.getName());
             rec.setNotificationType(notification.getNotificationType().name());
+            rec.setNotificationCategory(category);
             rec.setTitle(template.get("title"));
             rec.setMessage(template.get("description"));
             rec.setMimeUrl(template.get("image"));
+            rec.setUrl(template.get("url"));
             return rec;
         }).map(nr -> {
             return this.dslContext.insertInto(NotificationInapp.NOTIFICATION_INAPP).set(nr).returning().fetchOne();
@@ -148,7 +152,7 @@ public class InAppNotificationService extends AbstractTemplateService {
         return count;
     }
 
-    public Page<NotificationInApp> readNotifications(String appCode, String type, Pageable pageable) {
+    public Page<NotificationInApp> readNotifications(String appCode, String type, String category, Pageable pageable) {
 
         ContextUser cUser = SecurityContextUtil.getUsersContextUser();
 
@@ -163,6 +167,10 @@ public class InAppNotificationService extends AbstractTemplateService {
 
         if (!StringUtil.safeIsBlank(type)) {
             condition = condition.and(NotificationInapp.NOTIFICATION_INAPP.NOTIFICATION_TYPE.eq(type));
+        }
+
+        if (!StringUtil.safeIsBlank(category)) {
+            condition = condition.and(NotificationInapp.NOTIFICATION_INAPP.NOTIFICATION_CATEGORY.eq(category));
         }
 
         List<NotificationInApp> records = this.dslContext.selectFrom(NotificationInapp.NOTIFICATION_INAPP)
