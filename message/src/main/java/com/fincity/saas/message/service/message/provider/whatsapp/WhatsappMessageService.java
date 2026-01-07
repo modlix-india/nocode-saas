@@ -180,7 +180,7 @@ public class WhatsappMessageService
                                 whatsappMessageRequest.getFileDetail())));
     }
 
-    private Mono<Message> sendMessageInternal(
+    Mono<Message> sendMessageInternal(
             MessageAccess access,
             Connection connection,
             Identity whatsappPhoneNumberId,

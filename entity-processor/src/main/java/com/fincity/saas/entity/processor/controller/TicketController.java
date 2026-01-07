@@ -6,6 +6,7 @@ import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.product.ProductComm;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketPartnerRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketReassignRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
@@ -74,6 +75,16 @@ public class TicketController
             @RequestBody TicketPartnerRequest ticketPartnerRequest) {
         return this.service
                 .createForPartnerImportDCRM(appCode, clientCode, ticketPartnerRequest)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal" + PATH_ID)
+    public Mono<ResponseEntity<Ticket>> getTicketInternal(
+            @RequestParam("appCode") String appCode,
+            @RequestParam("clientCode") String clientCode,
+            @PathVariable(PATH_VARIABLE_ID) Identity identity) {
+        return this.service
+                .readByIdentity(ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null), identity)
                 .map(ResponseEntity::ok);
     }
 }
