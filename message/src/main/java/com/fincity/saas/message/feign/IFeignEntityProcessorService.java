@@ -1,6 +1,7 @@
 package com.fincity.saas.message.feign;
 
 import com.fincity.saas.message.oserver.entity.processor.model.Product;
+import com.fincity.saas.message.oserver.entity.processor.model.Ticket;
 import java.math.BigInteger;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
 public interface IFeignEntityProcessorService {
 
     String PRODUCT_PATH = "api/entity/processor/products/internal";
+    String TICKET_PATH = "api/entity/processor/tickets/internal";
 
     @GetMapping(PRODUCT_PATH + "/{id}")
     Mono<Product> getProductInternal(
@@ -21,4 +23,8 @@ public interface IFeignEntityProcessorService {
     @GetMapping(PRODUCT_PATH)
     Mono<List<Product>> getProductsInternal(
             @RequestParam String appCode, @RequestParam String clientCode, List<BigInteger> identity);
+
+    @GetMapping(TICKET_PATH + "/{id}")
+    Mono<Ticket> getTicketInternal(
+            @RequestParam String appCode, @RequestParam String clientCode, @PathVariable("id") BigInteger id);
 }
