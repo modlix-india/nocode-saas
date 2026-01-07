@@ -283,6 +283,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
 
+    public Mono<Partner> updateManager(Identity partnerId, ULong managerId) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> super.readByIdentity(access, partnerId),
+                        (access, partner) -> super.updateInternal(access, partner.setManagerId(managerId)),
+                        (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
+    }
+
     private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
         return this.cacheService
                 .cacheValueOrGet(

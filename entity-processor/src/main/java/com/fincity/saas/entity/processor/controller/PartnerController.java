@@ -10,6 +10,7 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.PartnerService;
 import java.util.Map;
+import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -81,5 +82,12 @@ public class PartnerController
         return this.service
                 .readPartnerTeammates(partnerId, query, request.getQueryParams())
                 .map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/manager/{managerId}")
+    public Mono<ResponseEntity<Partner>> updateManager(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity,
+            @PathVariable("managerId") ULong managerId) {
+        return this.service.updateManager(identity, managerId).map(ResponseEntity::ok);
     }
 }
