@@ -1,9 +1,7 @@
 package com.modlix.saas.notification.service;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
 import com.modlix.saas.commons2.mq.notifications.NotificationQueObject;
@@ -35,7 +33,8 @@ public class NotificationSendService {
 
     private final EmailService emailService;
 
-    public NotificationSendService(IFeignSecurityService securityService, IFeignCoreService coreService, EmailService emailService, InAppNotificationService inAppService) {
+    public NotificationSendService(IFeignSecurityService securityService, IFeignCoreService coreService,
+            EmailService emailService, InAppNotificationService inAppService) {
 
         this.securityService = securityService;
         this.coreService = coreService;
@@ -45,31 +44,34 @@ public class NotificationSendService {
 
     public void sendNotification(NotificationQueObject qob) {
 
-        NotificationConnectionDetails connection = this.coreService.getNotificationConnection(qob.getConnectionName(), qob.getAppCode(), qob.getClientCode(), qob.getUrlClientCode());
+        NotificationConnectionDetails connection = this.coreService.getNotificationConnection(qob.getConnectionName(),
+                qob.getAppCode(), qob.getClientCode(), qob.getUrlClientCode());
 
         if (connection == null) {
             logger.error("Notification connection not found: {}", qob.getConnectionName());
             return;
         }
 
-        CoreNotification notification = this.coreService.getNotification(qob.getNotificationName(), qob.getAppCode(), qob.getClientCode(), qob.getUrlClientCode());
+        CoreNotification notification = this.coreService.getNotification(qob.getNotificationName(), qob.getAppCode(),
+                qob.getClientCode(), qob.getUrlClientCode());
 
         if (notification == null) {
             logger.error("Notification not found: {}", qob.getNotificationName());
             return;
         }
 
-        boolean isEmail = connection.getMail() != null && notification.getChannelTemplates().containsKey(NOTIFICATION_CHANNEL_EMAIL);
-        boolean isInApp = connection.isInApp() && notification.getChannelTemplates().containsKey(NOTIFICATION_CHANNEL_IN_APP);
+        boolean isEmail = connection.getMail() != null
+                && notification.getChannelTemplates().containsKey(NOTIFICATION_CHANNEL_EMAIL);
+        boolean isInApp = connection.isInApp()
+                && notification.getChannelTemplates().containsKey(NOTIFICATION_CHANNEL_IN_APP);
 
         if (!isEmail && !isInApp) {
-            logger.error("Notification channel and templates are not found: {}", qob);
+            logger.error("Notification channel and templates are not found: {}, {}, {}", qob, connection, notification);
             return;
         }
 
         List<NotificationUser> users;
         UsersListRequest request = new UsersListRequest();
-
 
         if (qob.getTargetType().equals(USER_ID)) {
             request.setUserIds(List.of(qob.getTargetId().longValue()));
@@ -92,8 +94,10 @@ public class NotificationSendService {
             }
         }
 
-        if (!isInApp) return;
+        if (!isInApp)
+            return;
 
-        this.inAppService.sendInApp(users, notification, qob.getAppCode(), qob.getNotificationCategory(), qob.getPayload());
+        this.inAppService.sendInApp(users, notification, qob.getAppCode(), qob.getNotificationCategory(),
+                qob.getPayload());
     }
 }
