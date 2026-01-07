@@ -8,11 +8,13 @@ import com.modlix.saas.notification.enums.NotificationType;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
 @NoArgsConstructor
+@ToString
 public class CoreNotification implements Serializable {
 
     private NotificationType notificationType = NotificationType.INFO;
@@ -29,7 +31,7 @@ public class CoreNotification implements Serializable {
     @Data
     @Accessors(chain = true)
     @NoArgsConstructor
-    public static class NotificationTemplate implements Serializable{
+    public static class NotificationTemplate implements Serializable {
 
         @Serial
         private static final long serialVersionUID = 1054865111921742820L;
