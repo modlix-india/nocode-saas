@@ -237,6 +237,13 @@ public class WhatsappPhoneNumberService
                 .switchIfEmpty(this.getByAccountId(access, whatsappBusinessAccountId));
     }
 
+    public Mono<WhatsappPhoneNumber> getByProductId(MessageAccess access, ULong productId) {
+        return this.cacheService.cacheValueOrGet(
+                this.getCacheName(),
+                () -> this.dao.getByProductId(access, productId),
+                super.getCacheKey(access.getAppCode(), access.getClientCode(), productId));
+    }
+
     private Mono<Tuple2<WhatsappBusinessAccount, FbPagingData<PhoneNumber>>> getPhoneNumbers(
             String connectionName, MessageAccess access, String... fields) {
         return FlatMapUtil.flatMapMono(
