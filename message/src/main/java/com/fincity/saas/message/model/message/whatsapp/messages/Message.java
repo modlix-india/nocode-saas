@@ -1,35 +1,30 @@
 package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
-
-import lombok.AccessLevel;
 import lombok.Data;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class Message implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -9202268963191141253L;
 
-    @JsonProperty(value = "messaging_product", access = JsonProperty.Access.READ_ONLY)
-    @Setter(AccessLevel.NONE)
-    private String messagingProduct = "whatsapp";
+    @JsonProperty("messaging_product")
+    private final String messagingProduct = "whatsapp"; // NOSONAR
 
-    @JsonProperty(value = "recipient_type", access = JsonProperty.Access.READ_ONLY)
-    @Setter(AccessLevel.NONE)
-    private String recipientType = "individual";
+    @JsonProperty("recipient_type")
+    private final String recipientType = "individual"; // NOSONAR
 
     @JsonProperty("context")
     private Context context;
@@ -73,34 +68,10 @@ public class Message implements Serializable {
     @JsonProperty("location")
     private LocationMessage locationMessage;
 
-    public Message() {
-        this.messagingProduct = "whatsapp";
-        this.recipientType = "individual";
-    }
-
     private Message(String to, MessageType type, Context context) {
         this.to = to;
         this.type = type;
         this.context = context;
-    }
-
-    public Message(Message message) {
-        this.to = message.to;
-        this.type = message.type;
-        this.messagingProduct = message.messagingProduct;
-        this.recipientType = message.recipientType;
-        this.context = message.context;
-        this.textMessage = message.textMessage;
-        this.templateMessage = message.templateMessage;
-        this.interactiveMessage = message.interactiveMessage;
-        this.audioMessage = message.audioMessage;
-        this.documentMessage = message.documentMessage;
-        this.imageMessage = message.imageMessage;
-        this.stickerMessage = message.stickerMessage;
-        this.videoMessage = message.videoMessage;
-        this.reactionMessage = message.reactionMessage;
-        this.locationMessage = message.locationMessage;
-        this.contactMessage = message.contactMessage;
     }
 
     @JsonIgnore
