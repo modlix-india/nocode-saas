@@ -143,15 +143,13 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
                                 access, businessAccount.getId(), ULongUtil.valueOf(ticket.getProductId())),
                         (access, ticket, connection, businessAccount, whatsappPhoneNumber) -> {
                             PhoneNumber ticketPhone = this.createTicketPhoneNumber(ticket);
-                            var updatedMessage = CloneUtil.cloneObject(request.getMessage());
-                            updatedMessage.setTo(ticketPhone.getNumber());
-
                             return this.whatsappMessageService.sendMessageInternal(
                                     access,
                                     connection,
                                     whatsappPhoneNumber.getIdentity(),
                                     WhatsappMessage.ofOutbound(
-                                            updatedMessage,
+                                            CloneUtil.cloneObject(request.getMessage())
+                                                    .setTo(ticketPhone.getNumber()),
                                             PhoneUtil.parse(access.getUser().getPhoneNumber()),
                                             request.getFileDetail()));
                         })
