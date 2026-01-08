@@ -52,6 +52,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -154,6 +155,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::togglePartnerDnc));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdateManager",
+                EntityProcessorArgSpec.identity("partnerId"),
+                ClassSchema.ArgSpec.ofRef("managerId", ULong.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::updateManager));
     }
 
     @Override
@@ -287,8 +298,33 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> super.updateInternal(access, partner.setManagerId(managerId)),
-                        (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
+                        (access, partner) -> {
+                            if (partner.getManagerId().equals(managerId))
+                                return Mono.just(partner);
+
+                            return super.securityService.getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
+                                    .switchIfEmpty(msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                            managerId,
+                                            partner.getClientId()))
+                                    .flatMap(user -> super.securityService.isBeingManagedById(
+                                            user.getClientId(), partner.getClientId().toBigInteger()));
+                        },
+                        (access, partner, isManaged) -> {
+                            if (partner.getManagerId().equals(managerId))
+                                return Mono.just(partner);
+
+                            if (!Boolean.TRUE.equals(isManaged))
+                                return msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                        managerId,
+                                        partner.getClientId());
+
+                            return super.update(access, partner.setManagerId(managerId));
+                        },
+                        (access, partner, isManaged, updated) -> this.evictCache(partner).map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
     }
 
