@@ -27,4 +27,3 @@ public class TicketWhatsappMessageRequest extends BaseMessageRequest {
         return this.ticketId != null && !this.ticketId.isNull() && this.message != null && this.message.getTo() != null;
     }
 }
-

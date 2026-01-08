@@ -30,4 +30,3 @@ public class Ticket implements Serializable {
     private BigInteger campaignId;
     private Boolean dnc;
 }
-
