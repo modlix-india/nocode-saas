@@ -1,28 +1,35 @@
 package com.fincity.saas.message.model.message.whatsapp.messages;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fincity.saas.message.enums.message.provider.whatsapp.cloud.MessageType;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+
+import lombok.AccessLevel;
 import lombok.Data;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Message implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -9202268963191141253L;
 
-    @JsonProperty("messaging_product")
-    private final String messagingProduct = "whatsapp"; // NOSONAR
+    @JsonProperty(value = "messaging_product", access = JsonProperty.Access.READ_ONLY)
+    @Setter(AccessLevel.NONE)
+    private String messagingProduct = "whatsapp";
 
-    @JsonProperty("recipient_type")
-    private final String recipientType = "individual"; // NOSONAR
+    @JsonProperty(value = "recipient_type", access = JsonProperty.Access.READ_ONLY)
+    @Setter(AccessLevel.NONE)
+    private String recipientType = "individual";
 
     @JsonProperty("context")
     private Context context;
@@ -66,7 +73,10 @@ public class Message implements Serializable {
     @JsonProperty("location")
     private LocationMessage locationMessage;
 
-    public Message() {}
+    public Message() {
+        this.messagingProduct = "whatsapp";
+        this.recipientType = "individual";
+    }
 
     private Message(String to, MessageType type, Context context) {
         this.to = to;
@@ -77,6 +87,8 @@ public class Message implements Serializable {
     public Message(Message message) {
         this.to = message.to;
         this.type = message.type;
+        this.messagingProduct = message.messagingProduct;
+        this.recipientType = message.recipientType;
         this.context = message.context;
         this.textMessage = message.textMessage;
         this.templateMessage = message.templateMessage;
@@ -93,12 +105,12 @@ public class Message implements Serializable {
 
     @JsonIgnore
     public String getMediaId() {
-        return switch (this.getType()) {
-            case AUDIO -> this.audioMessage.getId();
-            case DOCUMENT -> this.documentMessage.getId();
-            case IMAGE -> this.imageMessage.getId();
-            case STICKER -> this.stickerMessage.getId();
-            case VIDEO -> this.videoMessage.getId();
+        return switch (this.type) {
+            case AUDIO -> audioMessage != null ? audioMessage.getId() : null;
+            case DOCUMENT -> documentMessage != null ? documentMessage.getId() : null;
+            case IMAGE -> imageMessage != null ? imageMessage.getId() : null;
+            case STICKER -> stickerMessage != null ? stickerMessage.getId() : null;
+            case VIDEO -> videoMessage != null ? videoMessage.getId() : null;
             default -> null;
         };
     }
