@@ -66,6 +66,8 @@ public class Message implements Serializable {
     @JsonProperty("location")
     private LocationMessage locationMessage;
 
+    public Message() {}
+
     private Message(String to, MessageType type, Context context) {
         this.to = to;
         this.type = type;
