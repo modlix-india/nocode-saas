@@ -23,7 +23,8 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
-
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -178,5 +179,21 @@ public class DepartmentService
             departmentFlux = departmentFlux.filter(department -> department.getParentDepartmentId() != null && department.getParentDepartmentId().intValue() != 0).flatMap(department -> this.readInternal(department.getParentDepartmentId()).map(department::setParentDepartment));
 
         return departmentFlux.collectList();
+    }
+
+    public Mono<Department> readById(ULong departmentId, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readInternal(departmentId),
+                department -> this.fillDetails(List.of(department), queryParams).map(List::getFirst));
+    }
+
+    public Mono<List<Department>> readByIds(List<ULong> departmentIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                                .setField("id")
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(departmentIds))
+                        .collectList(),
+                departments -> this.fillDetails(departments, queryParams));
     }
 }
