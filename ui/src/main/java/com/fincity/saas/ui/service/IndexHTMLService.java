@@ -1,6 +1,5 @@
 package com.fincity.saas.ui.service;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,16 +9,9 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.util.MapWithOrderComparator;
@@ -29,8 +21,6 @@ import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
 
-import jakarta.annotation.PostConstruct;
-
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 import reactor.util.function.Tuple2;
@@ -38,8 +28,6 @@ import reactor.util.function.Tuples;
 
 @Service
 public class IndexHTMLService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(IndexHTMLService.class);
 
     private static final String[] LINK_FIELDS = new String[] { "crossorigin", "href", "hreflang", "media",
             "referrerpolicy", "rel", "sizes", "title", "type" };
@@ -115,10 +103,6 @@ public class IndexHTMLService {
             "\t\t}\n" +
             "</style>\n" +
             "<div class=\"_initloaderContainer\"><div class=\"_initloader\"></div></div>";
-    private static final String SSR_HTML_START = "<!--SSR_HTML_START-->";
-    private static final String SSR_HTML_END = "<!--SSR_HTML_END-->";
-    private static final String SSR_STATE_MARKER = "<!--SSR_STATE-->";
-    private static final List<String> SSR_FORWARD_HEADERS = List.of("authorization", "cookie");
 
     @Value("${ui.cdnHostName:}")
     private String cdnHostName;
@@ -132,36 +116,15 @@ public class IndexHTMLService {
     @Value("${ui.cdnResizeOptionsType:none}")
     private String cdnResizeOptionsType;
 
-    @Value("${ui.ssr.baseUrl:}")
-    private String ssrBaseUrl;
-
-    @Value("${ui.ssr.timeoutMillis:3000}")
-    private long ssrTimeoutMillis;
-
     private final ApplicationService appService;
     private final CacheService cacheService;
-    private final WebClient.Builder webClientBuilder;
-    private final ObjectMapper objectMapper;
 
-    private WebClient ssrClient;
-
-    public IndexHTMLService(ApplicationService appService, CacheService cacheService, WebClient.Builder builder,
-            ObjectMapper objectMapper) {
+    public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
         this.appService = appService;
         this.cacheService = cacheService;
-        this.webClientBuilder = builder;
-        this.objectMapper = objectMapper;
     }
 
-    @PostConstruct
-    public void initializeSsrClient() {
-        if (this.ssrBaseUrl == null || this.ssrBaseUrl.isBlank())
-            return;
-        this.ssrClient = this.webClientBuilder.baseUrl(this.ssrBaseUrl)
-                .build();
-    }
-
-    public Mono<ObjectWithUniqueID<String>> getIndexHTML(ServerHttpRequest request, String appCode, String clientCode) {
+    public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
 
         String cacheName = this.appService.getCacheName(appCode + "_" + CACHE_NAME_INDEX, appCode);
 
@@ -177,87 +140,7 @@ public class IndexHTMLService {
                         .contextWrite(Context.of(LogUtil.METHOD_NAME,
                                 "IndexHTMLService.getIndexHTML (without HTML cache)")),
 
-                clientCode)
-                .flatMap(html -> this.decorateWithSSR(html, request));
-    }
-
-    private Mono<ObjectWithUniqueID<String>> decorateWithSSR(ObjectWithUniqueID<String> cachedHtml,
-            ServerHttpRequest request) {
-
-        ObjectWithUniqueID<String> fallback = new ObjectWithUniqueID<>(
-                this.applySsrTemplate(cachedHtml.getObject(), null)).setHeaders(cachedHtml.getHeaders());
-
-        if (this.ssrClient == null)
-            return Mono.just(fallback);
-
-        return this.requestSsrPayload(request)
-                .map(payload -> new ObjectWithUniqueID<>(this.applySsrTemplate(cachedHtml.getObject(), payload))
-                        .setHeaders(cachedHtml.getHeaders()))
-                .timeout(Duration.ofMillis(this.ssrTimeoutMillis))
-                .onErrorResume(ex -> {
-                    LOGGER.error("Unable to fetch SSR fragment", ex);
-                    return Mono.just(fallback);
-                })
-                .switchIfEmpty(Mono.just(fallback));
-    }
-
-    private Mono<SsrRenderPayload> requestSsrPayload(ServerHttpRequest request) {
-        if (this.ssrClient == null)
-            return Mono.empty();
-
-        return this.ssrClient.post()
-                .uri("/ssr/page")
-                .headers(headers -> copyForwardHeaders(request, headers))
-                .bodyValue(Map.of("url", request.getURI().toString()))
-                .retrieve()
-                .bodyToMono(SsrRenderPayload.class);
-    }
-
-    private void copyForwardHeaders(ServerHttpRequest request, HttpHeaders outboundHeaders) {
-        SSR_FORWARD_HEADERS.forEach(header -> {
-            List<String> values = request.getHeaders().get(header);
-            if (values != null && !values.isEmpty())
-                outboundHeaders.put(header, values);
-        });
-    }
-
-    private String applySsrTemplate(String template, SsrRenderPayload payload) {
-        String result = replaceSection(template, SSR_HTML_START, SSR_HTML_END, payload == null ? null : payload.html());
-        if (payload != null && payload.state() != null)
-            result = result.replace(SSR_STATE_MARKER, buildBootstrapScript(payload.state()));
-        else
-            result = result.replace(SSR_STATE_MARKER, "");
-        return result;
-    }
-
-    private String replaceSection(String source, String startMarker, String endMarker, String replacement) {
-        int start = source.indexOf(startMarker);
-        if (start == -1)
-            return source;
-        int end = source.indexOf(endMarker, start + startMarker.length());
-        if (end == -1)
-            return source;
-        String before = source.substring(0, start);
-        String between = source.substring(start + startMarker.length(), end);
-        String after = source.substring(end + endMarker.length());
-        return before + (replacement == null ? between : replacement) + after;
-    }
-
-    private String buildBootstrapScript(Map<String, Object> state) {
-        try {
-            String json = this.objectMapper.writeValueAsString(state);
-            return "<script>window.__APP_BOOTSTRAP__=" + escapeForScript(json) + ";</script>";
-        } catch (JsonProcessingException e) {
-            LOGGER.error("Unable to serialize SSR state", e);
-            return "";
-        }
-    }
-
-    private String escapeForScript(String json) {
-        return json.replace("</", "<\\/")
-                .replace("<", "\\u003C")
-                .replace(">", "\\u003E")
-                .replace("&", "\\u0026");
+                clientCode);
     }
 
     @SuppressWarnings("unchecked")
@@ -330,9 +213,7 @@ public class IndexHTMLService {
         str.append("</head><body>");
         str.append(codeParts.get(2));
         str.append("<div id=\"app\">");
-        str.append(SSR_HTML_START);
         str.append(appProps.getOrDefault("loader", DEFAULT_LOADER));
-        str.append(SSR_HTML_END);
         str.append("</div>");
 
         // Here the preference will be for the style from the style service.
@@ -354,7 +235,6 @@ public class IndexHTMLService {
         str.append("window.domainClientCode='").append(clientCode).append("';");
 
         str.append("</script>");
-        str.append(SSR_STATE_MARKER);
 
         String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
         str.append("<script src=\"").append(jsURLPrefix).append("index.js")
@@ -498,22 +378,4 @@ public class IndexHTMLService {
         return linkSB.append("/> \n")
                 .toString();
     }
-
-	private static final class SsrRenderPayload {
-		private final String html;
-		private final Map<String, Object> state;
-
-		private SsrRenderPayload(String html, Map<String, Object> state) {
-			this.html = html;
-			this.state = state;
-		}
-
-		public String html() {
-			return this.html;
-		}
-
-		public Map<String, Object> state() {
-			return this.state;
-		}
-	}
 }
