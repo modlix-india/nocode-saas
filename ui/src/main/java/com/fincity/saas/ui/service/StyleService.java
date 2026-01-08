@@ -61,7 +61,9 @@ public class StyleService extends AbstractUIOverridableDataService<Style, StyleR
 
                 style -> super.delete(id),
 
-                (style, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_STYLE + "-" + style.getAppCode())
+                (style, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_STYLE + "-" + style.getAppCode()),
+
+                (style, deleted, cacheEvicted) -> this.ssrCacheEvictionService.evictByAppCode(style.getAppCode())
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleService.delete"));
     }
 }

@@ -1,5 +1,7 @@
 package com.fincity.saas.ui.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.mongo.repository.IOverridableDataRepository;
@@ -15,6 +17,9 @@ public abstract class AbstractUIOverridableDataService<D extends AbstractOverrid
 
     private static final String ABSTRACT_UI_OVERRIDABLE_DATA_SERVICE = "AbstractUIOverridableDataService (";
 
+    @Autowired
+    protected SSRCacheEvictionService ssrCacheEvictionService;
+
     protected AbstractUIOverridableDataService(Class<D> pojoClass) {
         super(pojoClass);
     }
@@ -26,7 +31,8 @@ public abstract class AbstractUIOverridableDataService<D extends AbstractOverrid
                         .evictAllFunction(EngineService.CACHE_NAME_APPLICATION + "-" + entity.getAppCode()))
                 .flatMap(this.cacheService
                         .evictAllFunction(
-                                EngineService.CACHE_NAME_PAGE + "-" + entity.getAppCode()));
+                                EngineService.CACHE_NAME_PAGE + "-" + entity.getAppCode()))
+                .flatMap(this.ssrCacheEvictionService.evictByAppCodeFunction(entity.getAppCode()));
     }
 
     @Override
@@ -43,7 +49,9 @@ public abstract class AbstractUIOverridableDataService<D extends AbstractOverrid
                 (e, deleted, pageCache) -> this.cacheService
                         .evictAll(EngineService.CACHE_NAME_PAGE + "-" + e.getAppCode()),
 
-                (e, deleted, pageCache, appCache) -> Mono.just(deleted))
+                (e, deleted, pageCache, appCache) -> this.ssrCacheEvictionService.evictByAppCode(e.getAppCode()),
+
+                (e, deleted, pageCache, appCache, ssrEvicted) -> Mono.just(deleted))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME,
                         ABSTRACT_UI_OVERRIDABLE_DATA_SERVICE + this.getObjectName() + "Service).delete(" + id + ")"));
     }

@@ -95,7 +95,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                         .evictAll(this.getCacheName(e.getAppCode() + "_" + CACHE_NAME_PROPERTIES, e.getAppCode())),
                 (x, y, z) -> cacheService
                         .evictAll(EngineService.CACHE_NAME_APPLICATION + "-" + e.getAppCode()),
-                (x, y, z, a) -> Mono.just(e));
+                (x, y, z, a) -> this.ssrCacheEvictionService.evictByAppCode(e.getAppCode()),
+                (x, y, z, a, ssrEvicted) -> Mono.just(e));
     }
 
     private Mono<Boolean> evictAll(String appCode) {
@@ -108,7 +109,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 (x, y) -> cacheService
                         .evictAll(this.getCacheName(appCode + "_" + CACHE_NAME_PROPERTIES, appCode)),
                 (x, y, z) -> cacheService
-                        .evictAll(EngineService.CACHE_NAME_APPLICATION + "-" + appCode));
+                        .evictAll(EngineService.CACHE_NAME_APPLICATION + "-" + appCode),
+                (x, y, z, a) -> this.ssrCacheEvictionService.evictByAppCode(appCode));
     }
 
     @Override
