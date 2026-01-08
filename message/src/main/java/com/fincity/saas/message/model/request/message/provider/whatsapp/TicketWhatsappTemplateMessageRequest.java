@@ -22,8 +22,9 @@ public class TicketWhatsappTemplateMessageRequest extends BaseMessageRequest {
     private TemplateMessage templateMessage;
 
     public boolean isValid() {
-        return this.ticketId != null && !this.ticketId.isNull() && this.templateMessage != null
+        return this.ticketId != null
+                && !this.ticketId.isNull()
+                && this.templateMessage != null
                 && this.templateMessage.getName() != null;
     }
 }
-

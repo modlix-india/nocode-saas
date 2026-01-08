@@ -29,7 +29,8 @@ public class TicketWhatsappMessageController {
     @PostMapping("/send/template")
     public Mono<ResponseEntity<Message>> sendTemplateMessageByTicketId(
             @RequestBody TicketWhatsappTemplateMessageRequest request) {
-        return this.ticketWhatsappMessageService.sendTemplateMessageByTicketId(request).map(ResponseEntity::ok);
+        return this.ticketWhatsappMessageService
+                .sendTemplateMessageByTicketId(request)
+                .map(ResponseEntity::ok);
     }
 }
-
