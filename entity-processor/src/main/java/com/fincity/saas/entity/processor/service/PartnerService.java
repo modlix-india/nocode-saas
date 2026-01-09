@@ -298,38 +298,40 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> Mono.just(partner.getManagerId().equals(managerId)),
-                        (access, partner, isSameManager) -> {
-                            if (Boolean.TRUE.equals(isSameManager))
-                                return Mono.just(true);
+                        (access, partner) -> Mono.just(!partner.getManagerId().equals(managerId)),
+                        (access, partner, needsUpdate) -> {
+                            if (Boolean.FALSE.equals(needsUpdate))
+                                return Mono.just(false);
 
                             return this.checkManagerValidity(partner, managerId);
                         },
-                        (access, partner, isSameManager, isValid) -> {
-                            if (Boolean.TRUE.equals(isSameManager))
-                                return Mono.just(partner);
+                        (access, partner, needsUpdate, isValid) -> {
+                            if (Boolean.TRUE.equals(isValid))
+                                return super.update(access, partner.setManagerId(managerId));
 
-                            return super.update(access, partner.setManagerId(managerId));
+                            return Mono.just(partner);
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
     }
 
     private Mono<Boolean> checkManagerValidity(Partner partner, ULong managerId) {
 
-        return super.securityService.getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
-                .switchIfEmpty(msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
-                        managerId,
-                        partner.getClientId()))
-                .flatMap(user -> super.securityService.isBeingManagedById(
-                        user.getClientId(), partner.getClientId().toBigInteger()))
-                .flatMap(BooleanUtil::safeValueOfWithEmpty)
-                .switchIfEmpty(msgService.throwMessage(
-                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
-                        managerId,
-                        partner.getClientId()));
+        return FlatMapUtil.flatMapMono(
+                        () -> super.securityService.getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
+                                .switchIfEmpty(msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                        managerId,
+                                        partner.getClientId())),
+                        user -> super.securityService.isBeingManagedById(
+                                user.getClientId(), partner.getClientId().toBigInteger()),
+                        (user, isManaged) -> BooleanUtil.safeValueOfWithEmpty(isManaged)
+                                .switchIfEmpty(msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                        managerId,
+                                        partner.getClientId())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.checkManagerValidity"));
     }
 
     private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
