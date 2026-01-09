@@ -13,7 +13,7 @@ import org.jooq.types.ULong;
 public class PartnerManagerUpdateRequest implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 6293847102938475610L;
+    private static final long serialVersionUID = 7180995156487914804L;
 
     private ULong managerId;
 }
