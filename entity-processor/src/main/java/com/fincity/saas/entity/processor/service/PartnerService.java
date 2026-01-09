@@ -298,12 +298,18 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> {
-                            if (partner.getManagerId().equals(managerId))
+                        (access, partner) -> Mono.just(partner.getManagerId().equals(managerId)),
+                        (access, partner, isSameManager) -> {
+                            if (Boolean.TRUE.equals(isSameManager))
+                                return Mono.just(true);
+
+                            return this.checkManagerValidity(partner, managerId);
+                        },
+                        (access, partner, isSameManager, isValid) -> {
+                            if (Boolean.TRUE.equals(isSameManager))
                                 return Mono.just(partner);
 
-                            return this.checkManagerValidity(partner, managerId)
-                                    .flatMap(valid -> super.update(access, partner.setManagerId(managerId)));
+                            return super.update(access, partner.setManagerId(managerId));
                         })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
     }
@@ -318,7 +324,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                         partner.getClientId()))
                 .flatMap(user -> super.securityService.isBeingManagedById(
                         user.getClientId(), partner.getClientId().toBigInteger()))
-                .filter(Boolean.TRUE::equals)
+                .flatMap(BooleanUtil::safeValueOfWithEmpty)
                 .switchIfEmpty(msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
