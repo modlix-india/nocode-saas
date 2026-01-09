@@ -21,10 +21,10 @@ public class Message implements Serializable {
     private static final long serialVersionUID = -9202268963191141253L;
 
     @JsonProperty("messaging_product")
-    private final String messagingProduct = "whatsapp"; // NOSONAR
+    private String messagingProduct = "whatsapp"; // NOSONAR
 
     @JsonProperty("recipient_type")
-    private final String recipientType = "individual"; // NOSONAR
+    private String recipientType = "individual"; // NOSONAR
 
     @JsonProperty("context")
     private Context context;
