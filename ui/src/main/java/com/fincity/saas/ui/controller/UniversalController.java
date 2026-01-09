@@ -110,7 +110,7 @@ public class UniversalController {
             ServerHttpRequest request) {
 
         var pageMono = Mono
-                .defer(() -> indexHTMLService.getIndexHTML(request, appCode, clientCode)
+                .defer(() -> indexHTMLService.getIndexHTML(appCode, clientCode)
                         .flatMap(e -> ResponseEntityUtils
                                 .makeResponseEntity(e, eTag, cacheAge, MimeTypeUtils.TEXT_HTML_VALUE)));
 

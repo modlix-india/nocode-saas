@@ -8,10 +8,12 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Message implements Serializable {
 
@@ -72,31 +74,14 @@ public class Message implements Serializable {
         this.context = context;
     }
 
-    public Message(Message message) {
-        this.to = message.to;
-        this.type = message.type;
-        this.context = message.context;
-        this.textMessage = message.textMessage;
-        this.templateMessage = message.templateMessage;
-        this.interactiveMessage = message.interactiveMessage;
-        this.audioMessage = message.audioMessage;
-        this.documentMessage = message.documentMessage;
-        this.imageMessage = message.imageMessage;
-        this.stickerMessage = message.stickerMessage;
-        this.videoMessage = message.videoMessage;
-        this.reactionMessage = message.reactionMessage;
-        this.locationMessage = message.locationMessage;
-        this.contactMessage = message.contactMessage;
-    }
-
     @JsonIgnore
     public String getMediaId() {
-        return switch (this.getType()) {
-            case AUDIO -> this.audioMessage.getId();
-            case DOCUMENT -> this.documentMessage.getId();
-            case IMAGE -> this.imageMessage.getId();
-            case STICKER -> this.stickerMessage.getId();
-            case VIDEO -> this.videoMessage.getId();
+        return switch (this.type) {
+            case AUDIO -> audioMessage != null ? audioMessage.getId() : null;
+            case DOCUMENT -> documentMessage != null ? documentMessage.getId() : null;
+            case IMAGE -> imageMessage != null ? imageMessage.getId() : null;
+            case STICKER -> stickerMessage != null ? stickerMessage.getId() : null;
+            case VIDEO -> videoMessage != null ? videoMessage.getId() : null;
             default -> null;
         };
     }
