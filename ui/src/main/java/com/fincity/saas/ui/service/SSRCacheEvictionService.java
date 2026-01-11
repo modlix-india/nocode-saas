@@ -112,22 +112,17 @@ public class SSRCacheEvictionService {
             return Mono.just(false);
         }
 
+        LOGGER.info("Publishing SSR cache invalidation: appCode={}, clientCode={}, pageName={}, evictAll={}",
+                appCode, clientCode, pageName, evictAll);
+
         return this.redisTemplate.convertAndSend(SSR_CACHE_INVALIDATION_CHANNEL, messageJson)
                 .map(subscriberCount -> {
-                    if (evictAll) {
-                        LOGGER.debug("SSR cache invalidation published: evictAll=true, subscribers={}", subscriberCount);
-                    } else {
-                        LOGGER.debug("SSR cache invalidation published: appCode={}, clientCode={}, pageName={}, subscribers={}",
-                                appCode, clientCode, pageName, subscriberCount);
-                    }
+                    LOGGER.info("SSR cache invalidation published: appCode={}, clientCode={}, pageName={}, subscribers={}",
+                            appCode, clientCode, pageName, subscriberCount);
                     return true;
                 })
                 .onErrorResume(ex -> {
-                    if (evictAll) {
-                        LOGGER.warn("SSR cache eviction failed for evictAll: {}", ex.getMessage());
-                    } else {
-                        LOGGER.warn("SSR cache eviction failed for appCode={}: {}", appCode, ex.getMessage());
-                    }
+                    LOGGER.error("SSR cache eviction failed for appCode={}: {}", appCode, ex.getMessage(), ex);
                     return Mono.just(false);
                 });
     }
