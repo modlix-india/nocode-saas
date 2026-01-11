@@ -35,7 +35,9 @@ public class StyleThemeService extends AbstractUIOverridableDataService<StyleThe
 
                 thm -> super.delete(id),
 
-                (thm, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_THEME + "-" + thm.getAppCode())
+                (thm, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_THEME + "-" + thm.getAppCode()),
+
+                (thm, deleted, cacheEvicted) -> this.ssrCacheEvictionService.evictByAppCode(thm.getAppCode())
         ).contextWrite(Context.of(LogUtil.METHOD_NAME, "StyleThemeService.delete"));
     }
 

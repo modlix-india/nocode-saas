@@ -154,7 +154,9 @@ public class PageService extends AbstractUIOverridableDataService<Page, PageRepo
 
                 page -> super.delete(id),
 
-                (page, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_PAGE + "-" + page.getAppCode()))
+                (page, deleted) -> this.cacheService.evictAll(EngineService.CACHE_NAME_PAGE + "-" + page.getAppCode()),
+
+                (page, deleted, cacheEvicted) -> this.ssrCacheEvictionService.evictByAppCode(page.getAppCode()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PageService.delete"));
     }
 }
