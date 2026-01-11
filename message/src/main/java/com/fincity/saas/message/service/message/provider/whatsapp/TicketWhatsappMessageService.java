@@ -3,32 +3,27 @@ package com.fincity.saas.message.service.message.provider.whatsapp;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
-import com.fincity.saas.commons.util.CloneUtil;
-import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.dto.message.Message;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappBusinessAccount;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappMessage;
 import com.fincity.saas.message.dto.message.provider.whatsapp.WhatsappPhoneNumber;
 import com.fincity.saas.message.feign.IFeignEntityProcessorService;
-import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.model.common.MessageAccess;
 import com.fincity.saas.message.model.common.PhoneNumber;
-import com.fincity.saas.message.model.message.whatsapp.messages.Message.MessageBuilder;
-import com.fincity.saas.message.model.message.whatsapp.messages.TemplateMessage;
 import com.fincity.saas.message.model.request.message.provider.whatsapp.TicketWhatsappMessageRequest;
-import com.fincity.saas.message.model.request.message.provider.whatsapp.TicketWhatsappTemplateMessageRequest;
+import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.entity.processor.model.Ticket;
 import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.base.IMessageAccessService;
 import com.fincity.saas.message.service.message.MessageConnectionService;
 import com.fincity.saas.message.util.PhoneUtil;
 import java.math.BigInteger;
+import lombok.Setter;
 import org.jooq.types.ULong;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
-import lombok.Setter;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -60,7 +55,7 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
         this.msgService = msgService;
     }
 
-	@Override
+    @Override
     public MessageResourceService getMsgService() {
         return this.msgService;
     }
@@ -94,9 +89,7 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
 
     private PhoneNumber createTicketPhoneNumber(Ticket ticket) {
         return PhoneNumber.of(
-                ticket.getDialCode() != null
-                        ? ticket.getDialCode()
-                        : PhoneUtil.getDefaultCallingCode(),
+                ticket.getDialCode() != null ? ticket.getDialCode() : PhoneUtil.getDefaultCallingCode(),
                 ticket.getPhoneNumber());
     }
 
@@ -115,7 +108,8 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
             MessageAccess access, ULong businessAccountId, ULong productId) {
         return this.whatsappPhoneNumberService
                 .getByProductId(access, productId)
-                .filter(phoneNumber -> phoneNumber.getWhatsappBusinessAccountId().equals(businessAccountId))
+                .filter(phoneNumber ->
+                        phoneNumber.getWhatsappBusinessAccountId().equals(businessAccountId))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         MessageResourceService.IDENTITY_WRONG,
@@ -128,8 +122,7 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
         if (request.isConnectionNull())
             return this.throwMissingParam(com.fincity.saas.message.model.base.BaseMessageRequest.Fields.connectionName);
 
-        if (!request.isValid())
-            return this.throwMissingParam(TicketWhatsappMessageRequest.Fields.message);
+        if (!request.isValid()) return this.throwMissingParam(TicketWhatsappMessageRequest.Fields.message);
 
         if (request.getMessage().getType().isMediaFile()
                 && (request.getFileDetail() == null || request.getFileDetail().isEmpty()))
@@ -137,57 +130,17 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
 
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
-                        access -> this.getAndValidateTicket(access, request.getTicketId().getId()),
+                        access -> this.getAndValidateTicket(
+                                access, request.getTicketId().getId()),
                         (access, ticket) -> this.messageConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
                         (access, ticket, connection) -> this.getWhatsappBusinessAccount(access, connection),
                         (access, ticket, connection, businessAccount) -> this.getWhatsappPhoneNumberByProduct(
-                                        access, businessAccount.getId(), ULongUtil.valueOf(ticket.getProductId())),
+                                access, businessAccount.getId(), ULongUtil.valueOf(ticket.getProductId())),
                         (access, ticket, connection, businessAccount, whatsappPhoneNumber) -> {
-                            PhoneNumber ticketPhone = this.createTicketPhoneNumber(ticket);
-                            var updatedMessage = CloneUtil.cloneObject(request.getMessage());
-                            updatedMessage.setTo(ticketPhone.getNumber());
-
-                            return this.whatsappMessageService.sendMessageInternal(
-                                    access,
-                                    connection,
-                                    whatsappPhoneNumber.getIdentity(),
-                                    WhatsappMessage.ofOutbound(
-                                            updatedMessage,
-                                            PhoneUtil.parse(access.getUser().getPhoneNumber()),
-                                            request.getFileDetail()));
-                        })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappMessageService.sendMessageByTicketId"));
-    }
-
-    public Mono<Message> sendTemplateMessageByTicketId(TicketWhatsappTemplateMessageRequest request) {
-
-        if (request.isConnectionNull())
-            return this.throwMissingParam(com.fincity.saas.message.model.base.BaseMessageRequest.Fields.connectionName);
-
-        if (!request.isValid())
-            return this.throwMissingParam(TicketWhatsappTemplateMessageRequest.Fields.templateMessage);
-
-        return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> this.getAndValidateTicket(access, request.getTicketId().getId()),
-                        (access, ticket) -> this.messageConnectionService.getCoreDocument(
-                                access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        (access, ticket, connection) -> this.getWhatsappBusinessAccount(access, connection),
-                        (access, ticket, connection, businessAccount) -> this.getWhatsappPhoneNumberByProduct(
-                                        access, businessAccount.getId(), ULongUtil.valueOf(ticket.getProductId())),
-                        (access, ticket, connection, businessAccount, whatsappPhoneNumber) -> {
-                            PhoneNumber ticketPhone = this.createTicketPhoneNumber(ticket);
-
-                            TemplateMessage templateMessage = new TemplateMessage()
-                                    .setName(request.getTemplateMessage().getName())
-                                    .setLanguage(request.getTemplateMessage().getLanguage())
-                                    .setComponents(request.getTemplateMessage().getComponents());
-
-                            var message = MessageBuilder.builder()
-                                    .setTo(ticketPhone.getNumber())
-                                    .buildTemplateMessage(templateMessage);
-
+                            var ticketPhone = this.createTicketPhoneNumber(ticket);
+                            var message = request.getMessage();
+                            message.setTo(ticketPhone.getNumber());
                             return this.whatsappMessageService.sendMessageInternal(
                                     access,
                                     connection,
@@ -195,10 +148,8 @@ public class TicketWhatsappMessageService implements IMessageAccessService {
                                     WhatsappMessage.ofOutbound(
                                             message,
                                             PhoneUtil.parse(access.getUser().getPhoneNumber()),
-                                            null));
+                                            request.getFileDetail()));
                         })
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "TicketWhatsappMessageService.sendTemplateMessageByTicketId"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketWhatsappMessageService.sendMessageByTicketId"));
     }
 }
-

@@ -1,6 +1,7 @@
 package com.fincity.saas.ui.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,6 +12,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.ui.service.IndexHTMLService;
 import com.fincity.saas.ui.service.JSService;
+import com.fincity.saas.ui.service.SSRCacheEvictionService;
 
 import reactor.core.publisher.Mono;
 
@@ -18,18 +20,31 @@ import reactor.core.publisher.Mono;
 @RequestMapping("api/ui/")
 public class UICacheController extends AbstractCacheController {
 
-	@GetMapping("/newdeployment")
-	public Mono<ResponseEntity<Integer>> newDeployment() {
+    protected SSRCacheEvictionService ssrCacheEvictionService;
 
-		return FlatMapUtil.flatMapMono(
+    public UICacheController(SSRCacheEvictionService ssrCacheEvictionService) {
+        this.ssrCacheEvictionService = ssrCacheEvictionService;
+    }
 
-				() -> SecurityContextUtil.getUsersContextAuthentication()
-						.filter(ContextAuthentication::isAuthenticated),
+    @DeleteMapping("internal/cache")
+    public Mono<ResponseEntity<Boolean>> resetCache() {
+        return Mono.zip(this.service.evictAllCaches(), this.ssrCacheEvictionService.evictAll())
+                .map(tuple -> tuple.getT1() && tuple.getT2())
+                .map(ResponseEntity::ok);
+    }
 
-				isAuthenticatedUser -> Mono.zip(this.service.evictAll(JSService.CACHE_NAME_JS),
-						this.service.evictAll(JSService.CACHE_NAME_JS_MAP),
-						this.service.evictAll(IndexHTMLService.CACHE_NAME_INDEX)).map(e -> ResponseEntity.ok(1)))
-				.defaultIfEmpty(ResponseEntity.badRequest().build());
+    @GetMapping("/newdeployment")
+    public Mono<ResponseEntity<Integer>> newDeployment() {
 
-	}
+        return FlatMapUtil.flatMapMono(
+
+                () -> SecurityContextUtil.getUsersContextAuthentication()
+                        .filter(ContextAuthentication::isAuthenticated),
+
+                isAuthenticatedUser -> Mono.zip(this.service.evictAll(JSService.CACHE_NAME_JS),
+                        this.service.evictAll(JSService.CACHE_NAME_JS_MAP),
+                        this.service.evictAll(IndexHTMLService.CACHE_NAME_INDEX)).map(e -> ResponseEntity.ok(1)))
+                .defaultIfEmpty(ResponseEntity.badRequest().build());
+
+    }
 }
