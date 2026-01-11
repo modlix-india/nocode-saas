@@ -38,13 +38,23 @@ public class SSRCacheEvictionService {
     }
 
     /**
+     * Evict all SSR cache entries across all apps.
+     * This broadcasts a special message to invalidate the entire SSR cache.
+     *
+     * @return Mono<Boolean> indicating success
+     */
+    public Mono<Boolean> evictAll() {
+        return this.publishInvalidation(null, null, null, true);
+    }
+
+    /**
      * Evict all SSR cache entries for a specific app.
      *
      * @param appCode The application code
      * @return Mono<Boolean> indicating success
      */
     public Mono<Boolean> evictByAppCode(String appCode) {
-        return this.publishInvalidation(appCode, null, null);
+        return this.publishInvalidation(appCode, null, null, false);
     }
 
     /**
@@ -55,7 +65,7 @@ public class SSRCacheEvictionService {
      * @return Mono<Boolean> indicating success
      */
     public Mono<Boolean> evictByAppAndClient(String appCode, String clientCode) {
-        return this.publishInvalidation(appCode, clientCode, null);
+        return this.publishInvalidation(appCode, clientCode, null, false);
     }
 
     /**
@@ -67,21 +77,25 @@ public class SSRCacheEvictionService {
      * @return Mono<Boolean> indicating success
      */
     public Mono<Boolean> evictByPage(String appCode, String clientCode, String pageName) {
-        return this.publishInvalidation(appCode, clientCode, pageName);
+        return this.publishInvalidation(appCode, clientCode, pageName, false);
     }
 
     /**
      * Publish cache invalidation message to Redis Pub/Sub channel.
      * All SSR instances subscribed to this channel will receive and process the message.
      */
-    private Mono<Boolean> publishInvalidation(String appCode, String clientCode, String pageName) {
-        if (appCode == null || appCode.isBlank()) {
+    private Mono<Boolean> publishInvalidation(String appCode, String clientCode, String pageName, boolean evictAll) {
+        if (!evictAll && (appCode == null || appCode.isBlank())) {
             LOGGER.warn("SSR cache eviction skipped: appCode is required");
             return Mono.just(false);
         }
 
         Map<String, Object> message = new HashMap<>();
-        message.put("appCode", appCode);
+        if (evictAll) {
+            message.put("evictAll", true);
+        } else {
+            message.put("appCode", appCode);
+        }
         if (clientCode != null && !clientCode.isBlank()) {
             message.put("clientCode", clientCode);
         }
@@ -100,12 +114,20 @@ public class SSRCacheEvictionService {
 
         return this.redisTemplate.convertAndSend(SSR_CACHE_INVALIDATION_CHANNEL, messageJson)
                 .map(subscriberCount -> {
-                    LOGGER.debug("SSR cache invalidation published: appCode={}, clientCode={}, pageName={}, subscribers={}",
-                            appCode, clientCode, pageName, subscriberCount);
+                    if (evictAll) {
+                        LOGGER.debug("SSR cache invalidation published: evictAll=true, subscribers={}", subscriberCount);
+                    } else {
+                        LOGGER.debug("SSR cache invalidation published: appCode={}, clientCode={}, pageName={}, subscribers={}",
+                                appCode, clientCode, pageName, subscriberCount);
+                    }
                     return true;
                 })
                 .onErrorResume(ex -> {
-                    LOGGER.warn("SSR cache eviction failed for appCode={}: {}", appCode, ex.getMessage());
+                    if (evictAll) {
+                        LOGGER.warn("SSR cache eviction failed for evictAll: {}", ex.getMessage());
+                    } else {
+                        LOGGER.warn("SSR cache eviction failed for appCode={}: {}", appCode, ex.getMessage());
+                    }
                     return Mono.just(false);
                 });
     }
