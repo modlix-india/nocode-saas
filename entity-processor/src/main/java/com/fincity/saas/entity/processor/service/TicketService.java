@@ -368,8 +368,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 ProcessorAccess.of(cTicketRequest.getAppCode(), cTicketRequest.getClientCode(), true, null, null);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.campaignService.readByCampaignId(
-                                        access, cTicketRequest.getCampaignDetails().getCampaignId())
+                        () -> this.campaignService
+                                .readByCampaignId(
+                                        access,
+                                        cTicketRequest.getCampaignDetails().getCampaignId())
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                         ProcessorMessageResourceService.IDENTITY_WRONG,

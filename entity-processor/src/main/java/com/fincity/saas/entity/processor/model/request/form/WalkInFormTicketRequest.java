@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.model.request.form;
 
 import com.fincity.saas.entity.processor.model.base.BaseRequest;
 import com.fincity.saas.entity.processor.model.common.Email;
+import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import java.io.Serial;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class WalkInFormTicketRequest extends BaseRequest<WalkInFormTicketRequest
     @Serial
     private static final long serialVersionUID = 5455857302595973770L;
 
+    private Identity ticket;
     private ULong userId;
     private PhoneNumber phoneNumber;
     private Email email;
