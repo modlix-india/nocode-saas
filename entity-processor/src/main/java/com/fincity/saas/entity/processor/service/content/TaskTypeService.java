@@ -50,7 +50,7 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("TaskType", TaskType.class, gson));
+        this.functions.addAll(super.getCommonFunctions("EntityProcessor.TaskType", TaskType.class, classSchema, gson));
     }
 
     @Override

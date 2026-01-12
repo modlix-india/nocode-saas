@@ -118,7 +118,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Ticket", Ticket.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Ticket.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,

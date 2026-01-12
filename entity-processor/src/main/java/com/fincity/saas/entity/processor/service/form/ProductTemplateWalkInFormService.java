@@ -3,7 +3,6 @@ package com.fincity.saas.entity.processor.service.form;
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
-import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -14,9 +13,7 @@ import com.fincity.saas.entity.processor.enums.AssignmentType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductTemplateWalkInFormsRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.model.request.form.WalkInFormRequest;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
-import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -60,29 +57,9 @@ public class ProductTemplateWalkInFormService
     @PostConstruct
     private void init() {
 
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductTemplateWalkInForm.class, classSchema, gson));
         this.functions.addAll(
-                super.getCommonFunctions("ProductTemplateWalkInForm", ProductTemplateWalkInForm.class, gson));
-
-        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTemplateWalkInForm.class) + "."
-                + ProductTemplateWalkInForm.class.getSimpleName();
-
-        this.functions.add(AbstractServiceFunction.createServiceFunction(
-                NAMESPACE,
-                "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
-                "created",
-                Schema.ofRef(dtoSchemaRef),
-                gson,
-                self::createRequest));
-
-        this.functions.add(AbstractServiceFunction.createServiceFunction(
-                NAMESPACE,
-                "GetWalkInForm",
-                EntityProcessorArgSpec.identity("productId"),
-                "result",
-                Schema.ofRef(dtoSchemaRef),
-                gson,
-                self::getWalkInForm));
+                super.getWalkInFormFunctions(NAMESPACE, ProductTemplateWalkInForm.class, classSchema, gson, self));
     }
 
     @Override

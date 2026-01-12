@@ -23,7 +23,6 @@ import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.model.request.form.WalkInFormRequest;
 import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
 import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
@@ -82,28 +81,9 @@ public class ProductWalkInFormService
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("ProductWalkInForm", ProductWalkInForm.class, gson));
-
-        String dtoSchemaRef = classSchema.getNamespaceForClass(ProductWalkInForm.class) + "."
-                + ProductWalkInForm.class.getSimpleName();
-
-        this.functions.add(AbstractServiceFunction.createServiceFunction(
-                NAMESPACE,
-                "CreateRequest",
-                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
-                "created",
-                Schema.ofRef(dtoSchemaRef),
-                gson,
-                self::createRequest));
-
-        this.functions.add(AbstractServiceFunction.createServiceFunction(
-                NAMESPACE,
-                "GetWalkInForm",
-                EntityProcessorArgSpec.identity("productId"),
-                "result",
-                Schema.ofRef(dtoSchemaRef),
-                gson,
-                self::getWalkInForm));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductWalkInForm.class, classSchema, gson));
+        this.functions.addAll(
+                super.getWalkInFormFunctions(NAMESPACE, ProductWalkInForm.class, classSchema, gson, self));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
