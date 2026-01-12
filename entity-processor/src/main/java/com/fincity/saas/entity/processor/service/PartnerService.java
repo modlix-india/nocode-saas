@@ -298,9 +298,9 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> this.canUpdateManager(partner, managerId),
-                        (access, partner, canUpdate) -> BooleanUtil.safeValueOfWithEmpty(canUpdate),
-                        (access, partner, canUpdate, valid) -> super.update(access, partner.setManagerId(managerId)))
+                        (access, partner) -> this.canUpdateManager(partner, managerId)
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        (access, partner, valid) -> super.update(access, partner.setManagerId(managerId)))
                 .switchIfEmpty(this.readByIdentity(partnerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
     }
