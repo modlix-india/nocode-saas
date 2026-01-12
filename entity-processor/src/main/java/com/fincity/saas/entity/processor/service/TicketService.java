@@ -779,9 +779,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ULong productId,
             PhoneNumber ticketPhone,
             Email ticketMail) {
-        return this.dao
-                .readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+        return this.dao.readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
     }
 
     private Mono<List<Ticket>> getTickets(
@@ -790,14 +788,18 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ULong productId,
             PhoneNumber ticketPhone,
             Email ticketMail) {
-        return this.dao
-                .readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+        return this.dao.readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
     }
 
     public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
         return this.getTicket(null, access, productId, ticketPhone, ticketMail)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+    }
+
+    public Mono<List<Ticket>> getTickets(
+            ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
+        return this.getTickets(null, access, productId, ticketPhone, ticketMail)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTickets"));
     }
 
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
