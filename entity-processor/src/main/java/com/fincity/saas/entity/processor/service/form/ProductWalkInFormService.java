@@ -106,6 +106,67 @@ public class ProductWalkInFormService
                 Schema.ofRef(dtoSchemaRef),
                 gson,
                 self::getWalkInForm));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInFromUsers",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                "result",
+                Schema.ofArray(
+                        "result",
+                        Schema.ofRef(classSchema.getNamespaceForClass(IdAndValue.class) + "."
+                                + IdAndValue.class.getSimpleName())),
+                gson,
+                self::getWalkInFromUsers));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInTicket",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                ClassSchema.ArgSpec.ofRef("phoneNumber", PhoneNumber.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Ticket"),
+                gson,
+                self::getWalkInTicket));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInProduct",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(Product.class) + "." + Product.class.getSimpleName()),
+                gson,
+                self::getWalkInProduct));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateWalkInTicket",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                ClassSchema.ArgSpec.ofRef("ticketRequest", WalkInFormTicketRequest.class, classSchema),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(ProcessorResponse.class) + "."
+                        + ProcessorResponse.class.getSimpleName()),
+                gson,
+                self::createWalkInTicket));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInFormResponse",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(WalkInFormResponse.class) + "."
+                        + WalkInFormResponse.class.getSimpleName()),
+                gson,
+                self::getWalkInFormResponse));
     }
 
     @Autowired

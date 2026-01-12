@@ -279,6 +279,18 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 false);
     }
 
+    public Flux<PerDateCount> getTicketPerClientIdStageSourceDateCount(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketDateCountByGroupAndJoinWithULong(
+                access,
+                ticketBucketFilter,
+                ENTITY_PROCESSOR_TICKETS.CLIENT_ID,
+                ENTITY_PROCESSOR_TICKETS.STAGE,
+                ENTITY_PROCESSOR_TICKETS.CREATED_AT,
+                NO_STAGE,
+                true);
+    }
+
     private Flux<PerDateCount> getTicketDateCountByGroupAndJoin(
             ProcessorAccess access,
             TicketBucketFilter ticketBucketFilter,
@@ -306,6 +318,41 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                     return Flux.from(query.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, castedDateField))
                             .map(rec -> this.mapToPerDateCount(rec, groupField, castedDateField, defaultValue));
+                });
+    }
+
+    private Flux<PerDateCount> getTicketDateCountByGroupAndJoinWithULong(
+            ProcessorAccess access,
+            TicketBucketFilter ticketBucketFilter,
+            Field<ULong> groupField,
+            Field<ULong> joinField,
+            Field<LocalDateTime> dateField,
+            String defaultValue,
+            boolean requiresNonNull) {
+
+        Field<LocalDate> castedDateField = DSL.cast(dateField, SQLDataType.LOCALDATE);
+        Field<String> groupFieldAsString = DSL.cast(groupField, SQLDataType.VARCHAR);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(
+                                    ENTITY_PROCESSOR_STAGES.NAME,
+                                    groupFieldAsString,
+                                    castedDateField,
+                                    DSL.count(this.idField))
+                            .from(this.table)
+                            .leftJoin(ENTITY_PROCESSOR_STAGES)
+                            .on(joinField.eq(ENTITY_PROCESSOR_STAGES.ID))
+                            .where(conditions);
+
+                    if (requiresNonNull) query = query.and(groupField.isNotNull());
+
+                    return Flux.from(query.groupBy(groupFieldAsString, ENTITY_PROCESSOR_STAGES.NAME, castedDateField))
+                            .map(rec -> this.mapToPerDateCount(rec, groupFieldAsString, castedDateField, defaultValue));
                 });
     }
 
