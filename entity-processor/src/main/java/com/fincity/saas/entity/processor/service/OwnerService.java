@@ -55,7 +55,7 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Owner", Owner.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Owner.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,

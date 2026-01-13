@@ -66,7 +66,8 @@ public class ProductTicketRuRuleService
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("ProductTicketRuRule", ProductTicketRuRule.class, gson));
+        this.functions.addAll(super.getCommonFunctions(
+                "EntityProcessor.ProductTicketRuRule", ProductTicketRuRule.class, classSchema, gson));
     }
 
     @Autowired

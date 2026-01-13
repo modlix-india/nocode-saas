@@ -12,6 +12,8 @@ import com.fincity.saas.entity.processor.dto.rule.BaseUserDistributionDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -232,5 +234,10 @@ public abstract class BaseUserDistributionService<
             Map<ULong, Set<ULong>> roleMap,
             Map<ULong, Set<ULong>> profileMap,
             Map<ULong, Set<ULong>> desigMap,
-            Map<ULong, Set<ULong>> deptMap) {}
+            Map<ULong, Set<ULong>> deptMap)
+            implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 7644987612523651920L;
+    }
 }

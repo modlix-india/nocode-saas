@@ -80,7 +80,7 @@ public class ProductTicketCRuleService
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("ProductTicketCRule", ProductTicketCRule.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductTicketCRule.class, classSchema, gson));
 
         String dtoSchemaRef = classSchema.getNamespaceForClass(ProductTicketCRule.class) + "."
                 + ProductTicketCRule.class.getSimpleName();
