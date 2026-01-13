@@ -40,10 +40,12 @@ import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jooq.types.ULong;
@@ -459,11 +461,38 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         String partnerEntityKey = this.getEntityKey();
 
-        partners.forEach(partner -> {
-            Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-            if (clientMap != null) clientMap.put(partnerEntityKey, partner.toMap());
-        });
-        return Mono.just(clientMapById.values());
+        List<BigInteger> managerIds = partners.stream()
+                .map(Partner::getManagerId)
+                .filter(Objects::nonNull)
+                .map(ULong::toBigInteger)
+                .distinct()
+                .toList();
+
+        return FlatMapUtil.flatMapMono(
+                () -> {
+                    if (managerIds.isEmpty()) return Mono.just(Map.<BigInteger, User>of());
+
+                    return super.securityService
+                            .getUsersInternal(managerIds, new LinkedMultiValueMap<>())
+                            .map(users -> users.stream()
+                                    .collect(Collectors.toMap(User::getId, Function.identity())));
+                },
+                managerMap -> {
+                    partners.forEach(partner -> {
+                        Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
+                        if (clientMap != null) {
+                            Map<String, Object> partnerMap = partner.toMap();
+                            if (partner.getManagerId() != null) {
+                                User manager = managerMap.get(partner.getManagerId().toBigInteger());
+                                if (manager != null) {
+                                    partnerMap.put("manager", manager);
+                                }
+                            }
+                            clientMap.put(partnerEntityKey, partnerMap);
+                        }
+                    });
+                    return Mono.just(clientMapById.values());
+                });
     }
 
     private Mono<Collection<Map<String, Object>>> fillPartnerTicketDetails(
