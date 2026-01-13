@@ -52,6 +52,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -154,6 +155,16 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 Schema.ofRef("EntityProcessor.DTO.Partner"),
                 gson,
                 self::togglePartnerDnc));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "UpdateManager",
+                EntityProcessorArgSpec.identity("partnerId"),
+                ClassSchema.ArgSpec.ofRef("managerId", ULong.class, classSchema),
+                "result",
+                Schema.ofRef("EntityProcessor.DTO.Partner"),
+                gson,
+                self::updateManager));
     }
 
     @Override
@@ -281,6 +292,44 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                                 .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
                                 .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
+    }
+
+    public Mono<Partner> updateManager(Identity partnerId, ULong managerId) {
+        return FlatMapUtil.flatMapMono(
+                        this::hasAccess,
+                        access -> super.readByIdentity(access, partnerId),
+                        (access, partner) -> this.canUpdateManager(partner, managerId)
+                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        (access, partner, valid) -> super.update(access, partner.setManagerId(managerId)))
+                .switchIfEmpty(this.readByIdentity(partnerId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
+    }
+
+    private Mono<Boolean> canUpdateManager(Partner partner, ULong managerId) {
+
+        if (partner.getManagerId().equals(managerId))
+            return Mono.just(false);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> super.securityService.getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
+                                .switchIfEmpty(msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                        managerId,
+                                        partner.getClientId())),
+                        user -> super.securityService.isBeingManagedById(
+                                user.getClientId(), partner.getClientId().toBigInteger()),
+                        (user, isManaged) -> {
+                            if (!Boolean.TRUE.equals(isManaged))
+                                return msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                        managerId,
+                                        partner.getClientId());
+
+                            return Mono.just(true);
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.canUpdateManager"));
     }
 
     private Mono<Partner> getPartnerByClientId(ProcessorAccess access, ULong clientId) {
