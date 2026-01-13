@@ -75,6 +75,20 @@ public class WalkInFormController {
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
     }
 
+    @GetMapping(PATH_ID + "/tickets")
+    public Mono<ResponseEntity<List<Ticket>>> getWalkInTickets(
+            @RequestHeader("appCode") String appCode,
+            @RequestHeader("clientCode") String clientCode,
+            @PathVariable(PATH_VARIABLE_ID) final Identity productId,
+            @RequestParam(name = "phoneNumber") PhoneNumber phoneNumber) {
+
+        return this.productWalkInFormService
+                .getWalkInTickets(appCode, clientCode, productId, phoneNumber)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(
+                        Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
+    }
+
     @GetMapping("/users")
     public Mono<ResponseEntity<List<IdAndValue<BigInteger, String>>>> getWalkInFromUsers(
             @RequestHeader("appCode") String appCode, @RequestHeader("clientCode") String clientCode) {
