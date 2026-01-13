@@ -63,7 +63,7 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Task", Task.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Task.class, classSchema, gson));
 
         String taskSchemaRef = classSchema.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
 

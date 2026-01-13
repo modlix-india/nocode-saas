@@ -103,7 +103,7 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("Partner", Partner.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Partner.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
