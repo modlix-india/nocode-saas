@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
@@ -17,12 +18,14 @@ import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -184,6 +187,37 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         sFilter -> sFilter.getFieldData().getProducts(),
                         sFilter -> sFilter.getFieldData().getStages())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProjectStatusCount"));
+    }
+
+    public Mono<Page<StatusEntityCount>> getTicketPerProjectStageCountForLoggedInClient(
+            Pageable pageable, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(super::hasAccess, access -> {
+                    if (!access.isHasBpAccess())
+                        return super.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
+
+                    if (access.getUserInherit() == null
+                            || access.getUserInherit().getLoggedInClientId() == null)
+                        return super.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.MISSING_PARAMETERS,
+                                "Logged in client information not available");
+
+                    ULong loggedInClientId = access.getUserInherit().getLoggedInClientId();
+                    TicketBucketFilter filteredFilter = filter.filterClientIds(List.of(loggedInClientId));
+
+                    return this.getTicketCountByGroupAndJoin(
+                            pageable,
+                            Boolean.TRUE,
+                            filteredFilter,
+                            acc -> f -> this.resolveProducts(acc, f),
+                            this.dao::getTicketPerProjectStageCount,
+                            sFilter -> sFilter.getFieldData().getProducts(),
+                            sFilter -> sFilter.getFieldData().getStages());
+                })
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProjectStageCountForLoggedInClient"));
     }
 
     private Mono<Page<StatusEntityCount>> getTicketCountByGroupAndJoin(

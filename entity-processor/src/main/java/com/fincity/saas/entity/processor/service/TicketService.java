@@ -14,6 +14,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -65,10 +66,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String TICKET_CACHE = "ticket";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
-
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-
     private final OwnerService ownerService;
     private final ProductService productService;
     private final StageService stageService;
@@ -84,9 +85,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Autowired
     @Lazy
     private TicketService self;
-
-    private static final ClassSchema classSchema =
-            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -302,8 +300,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return this.dao
                 .getAllOwnerTickets(owner.getId())
                 .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner))
-                .transform(tickets -> super.updateAll(access, tickets))
-                .flatMap(updatedTicket -> this.evictCache(updatedTicket).thenReturn(updatedTicket))
+                .flatMap(tickets -> super.updateInternal(access, tickets))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
@@ -323,6 +320,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
+    @ReactiveTime
     public Mono<Ticket> createRequest(TicketRequest ticketRequest) {
 
         if (!ticketRequest.hasSourceInfo())
@@ -806,8 +804,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return this.dao
                 .getAllClientTicketsByDnc(clientId, !dnc)
                 .map(ticket -> ticket.setDnc(dnc))
-                .transform(tickets -> super.updateAll(access, tickets))
-                .flatMap(uTicket -> super.evictCache(uTicket).thenReturn(uTicket))
+                .flatMap(tickets -> super.updateInternal(access, tickets))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 

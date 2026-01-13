@@ -235,6 +235,18 @@ public class ProductWalkInFormService
                 });
     }
 
+    public Mono<Ticket> getWalkInTicket(
+            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.resolveProduct(access, productId)
+                .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTicket"));
+    }
+
     public Mono<List<Ticket>> getWalkInTickets(
             String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
 
