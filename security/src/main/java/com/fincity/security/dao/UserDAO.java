@@ -35,6 +35,7 @@ import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dto.User;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.SecurityApp;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
@@ -365,10 +366,11 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
     }
 
     public Mono<List<User>> getUsersBy(String userName, ULong userId, String clientCode, String appCode,
-            AuthenticationIdentifierType authenticationIdentifierType, SecurityUserStatusCode... userStatusCodes) {
+            AuthenticationIdentifierType authenticationIdentifierType, SecurityClientStatusCode clientStatusCode,
+            SecurityUserStatusCode... userStatusCodes) {
 
         SelectConditionStep<Record> query = this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode,
-                authenticationIdentifierType, userStatusCodes, SECURITY_USER.fields());
+                authenticationIdentifierType, clientStatusCode, userStatusCodes, SECURITY_USER.fields());
 
         SelectLimitPercentStep<Record> limitQuery = query.limit(2);
 
@@ -381,6 +383,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
     private SelectConditionStep<Record> getAllUsersPerAppQuery(String userName, ULong userId, String clientCode,
             String appCode, AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityClientStatusCode clientStatusCode,
             SecurityUserStatusCode[] userStatusCodes, Field<?>... fields) {
 
         List<Condition> conditions = new ArrayList<>();
@@ -412,12 +415,22 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
         SelectJoinStep<Record> query = this.dslContext.select(fields).from(SECURITY_USER);
 
         if (appCode != null) {
-            query = query.leftJoin(SECURITY_APP)
+            query = query
+                    .leftJoin(SECURITY_APP)
                     .on(SECURITY_APP.APP_CODE.eq(appCode))
                     .leftJoin(SECURITY_APP_ACCESS)
                     .on(SECURITY_APP_ACCESS.CLIENT_ID
                             .eq(SECURITY_USER.CLIENT_ID)
                             .and(SECURITY_APP_ACCESS.APP_ID.eq(SECURITY_APP.ID)));
+        }
+
+        if (clientStatusCode != null) {
+            SecurityClient tAsUc = SECURITY_CLIENT.as("uc");
+
+            query = query.leftJoin(tAsUc)
+                    .on(tAsUc.ID.eq(SECURITY_USER.CLIENT_ID));
+
+            conditions.add(tAsUc.STATUS_CODE.eq(clientStatusCode));
         }
 
         return query.leftJoin(SECURITY_CLIENT)
@@ -432,7 +445,7 @@ public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, U
 
         return Flux
                 .from(this.getAllUsersPerAppQuery(userName, userId, clientCode, appCode, identifierType,
-                        userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
+                        null, userStatusCodes, SECURITY_USER.ID, SECURITY_USER.CLIENT_ID))
                 .collectMap(e -> e.getValue(SECURITY_USER.ID), e -> e.getValue(SECURITY_USER.CLIENT_ID));
     }
 

@@ -19,7 +19,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> implements Serializable {
+public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
 
     @Serial
     private static final long serialVersionUID = 2989665207529993037L;

@@ -68,7 +68,7 @@ public class ProductTemplateService
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("ProductTemplate", ProductTemplate.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductTemplate.class, classSchema, gson));
 
         String dtoSchemaRef =
                 classSchema.getNamespaceForClass(ProductTemplate.class) + "." + ProductTemplate.class.getSimpleName();
