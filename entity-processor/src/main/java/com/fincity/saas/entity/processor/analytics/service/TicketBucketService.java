@@ -204,13 +204,10 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 ProcessorMessageResourceService.MISSING_PARAMETERS,
                                 "Logged in client information not available");
 
-                    ULong loggedInClientId = access.getUserInherit().getLoggedInClientId();
-                    TicketBucketFilter filteredFilter = filter.filterClientIds(List.of(loggedInClientId));
-
                     return this.getTicketCountByGroupAndJoin(
                             pageable,
                             Boolean.TRUE,
-                            filteredFilter,
+		                    filter,
                             acc -> f -> this.resolveProducts(acc, f),
                             this.dao::getTicketPerProjectStageCount,
                             sFilter -> sFilter.getFieldData().getProducts(),
