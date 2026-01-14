@@ -119,4 +119,15 @@ public class TicketBucketController
                 .getTicketPerProjectStatusCount(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
     }
+
+    @PostMapping("/stage-counts/products/clients/me")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerProjectStageCountForLoggedInClient(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerProjectStageCountForLoggedInClient(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
 }

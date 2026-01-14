@@ -9,7 +9,6 @@ import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import org.jooq.UpdatableRecord;
 import org.springframework.http.HttpStatus;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProcessorService<
@@ -53,9 +52,5 @@ public abstract class BaseProcessorService<
                 this.getEntityPrefix(access.getAppCode()),
                 existing.getId(),
                 this.getEntityPrefix(access.getAppCode()));
-    }
-
-    protected Flux<D> updateAll(ProcessorAccess access, Flux<D> entities) {
-        return entities.flatMap(entity -> super.update(access, entity));
     }
 }

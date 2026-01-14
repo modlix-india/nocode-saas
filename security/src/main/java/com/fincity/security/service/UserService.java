@@ -1,7 +1,5 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
-
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -61,7 +59,9 @@ import com.fincity.security.dto.TokenObject;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -177,6 +177,23 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 clientCode,
                 appCode,
                 authenticationIdentifierType,
+                null,
+                this.getNonDeletedUserStatusCodes());
+    }
+
+    public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNActiveClient(
+            String userName,
+            ULong userId,
+            String clientCode,
+            String appCode,
+            AuthenticationIdentifierType authenticationIdentifierType) {
+        return this.findUserNClient(
+                userName,
+                userId,
+                clientCode,
+                appCode,
+                authenticationIdentifierType,
+                SecurityClientStatusCode.ACTIVE,
                 this.getNonDeletedUserStatusCodes());
     }
 
@@ -186,6 +203,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
             String clientCode,
             String appCode,
             AuthenticationIdentifierType authenticationIdentifierType,
+            SecurityClientStatusCode clientStatusCode,
             SecurityUserStatusCode... userStatusCodes) {
 
         return FlatMapUtil.flatMapMono(
@@ -196,6 +214,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 clientCode,
                                 appCode,
                                 authenticationIdentifierType,
+                                clientStatusCode,
                                 userStatusCodes)
                         .flatMap(users -> Mono.justOrEmpty(users.size() != 1 ? null : users.getFirst()))
                         .flatMap(user -> this.setAllAuthorities(appCode, user)),
