@@ -298,8 +298,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         return FlatMapUtil.flatMapMono(
                         this::hasAccess,
                         access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> this.canUpdateManager(partner, managerId)
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                        (access, partner) ->
+                                this.canUpdateManager(partner, managerId).flatMap(BooleanUtil::safeValueOfWithEmpty),
                         (access, partner, valid) -> super.update(access, partner.setManagerId(managerId)))
                 .switchIfEmpty(this.readByIdentity(partnerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
@@ -307,11 +307,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private Mono<Boolean> canUpdateManager(Partner partner, ULong managerId) {
 
-        if (partner.getManagerId().equals(managerId))
-            return Mono.just(false);
+        if (partner.getManagerId().equals(managerId)) return Mono.just(false);
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.securityService.getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
+                        () -> super.securityService
+                                .getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
                                 .switchIfEmpty(msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                         ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
