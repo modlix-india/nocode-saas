@@ -287,7 +287,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                     return this.getTicketCountByGroupAndJoin(
                             pageable,
                             Boolean.TRUE,
-                            filter,
+		                    filter,
                             acc -> f -> this.resolveProducts(acc, f),
                             this.dao::getTicketPerProjectStageCount,
                             sFilter -> sFilter.getFieldData().getProducts(),
