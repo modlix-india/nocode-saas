@@ -275,7 +275,7 @@ public class AuthenticationService implements IAuthenticationService {
             return this.authError(SecurityMessageResourceService.UNKNOWN_ERROR);
         }
 
-        Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNClient(
+        Mono<Tuple3<Client, Client, User>> userClientMono = this.userService.findNonDeletedUserNActiveClient(
                 authRequest.getUserName(),
                 authRequest.getUserId(),
                 clientCode,
