@@ -1,6 +1,8 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,7 +16,10 @@ import lombok.Getter;
 import org.springframework.util.Assert;
 
 @Getter
-public final class DatePair implements Comparable<DatePair> {
+public final class DatePair implements Comparable<DatePair>, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 4325130667466547521L;
 
     private final LocalDate first;
     private final LocalDate second;

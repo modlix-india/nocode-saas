@@ -286,10 +286,29 @@ public class ProductWalkInFormService
                                 ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
                                 : this.createNewTicket(
                                         access, resolvedProduct, ticket, walkInFormResponse, ticketRequest),
-                        (resolvedProduct, walkInFormResponse, ticket, created) -> this.activityService
-                                .acWalkIn(access, created.getT1(), ticketRequest.getComment())
+                        (resolvedProduct, walkInFormResponse, ticket, created) -> this.createProcessorAccessForUser(
+                                access, created.getT1().getAssignedUserId()),
+                        (resolvedProduct, walkInFormResponse, ticket, created, userAccess) -> this.activityService
+                                .acWalkIn(userAccess, created.getT1(), ticketRequest.getComment())
                                 .thenReturn(created.getT2()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
+    }
+
+    private Mono<ProcessorAccess> createProcessorAccessForUser(ProcessorAccess baseAccess, ULong userId) {
+        if (userId == null) return Mono.just(baseAccess);
+
+        return super.securityService
+                .getUserInternal(userId.toBigInteger(), null)
+                .map(user -> ProcessorAccess.of(
+                                baseAccess.getAppCode(),
+                                baseAccess.getClientCode(),
+                                baseAccess.isHasAccessFlag(),
+                                null,
+                                null)
+                        .setUserId(userId)
+                        .setUserInfo(user))
+                .switchIfEmpty(Mono.just(baseAccess))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createProcessorAccessForUser"));
     }
 
     private Mono<Ticket> validateAndGetTicket(
@@ -310,13 +329,22 @@ public class ProductWalkInFormService
                     ProcessorMessageResourceService.IDENTITY_MISSING,
                     "Owner User");
 
-        if (ticketRequest.getTicket() != null && !ticketRequest.getTicket().isNull())
-            return this.fetchTicketByIdentity(access, walkInFormResponse, ticketRequest);
+        if (ticketRequest.getTicketId() == null || ticketRequest.getTicketId().isNull()) {
+            return FlatMapUtil.flatMapMono(
+                            () -> this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest),
+                            users -> this.ticketService.getTickets(
+                                    access, resolvedProduct.getT1(), ticketRequest.getPhoneNumber(), null),
+                            (users, tickets) -> {
+                                if (!tickets.isEmpty())
+                                    return msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.TICKET_ID_NOT_SELECTED);
+                                return Mono.just(Ticket.of(ticketRequest));
+                            })
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
+        }
 
-        return this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest)
-                .flatMap(users -> this.ticketService
-                        .getTicket(access, resolvedProduct.getT1(), ticketRequest.getPhoneNumber(), null)
-                        .switchIfEmpty(Mono.just(Ticket.of(ticketRequest))))
+        return this.fetchTicketByIdentity(access, walkInFormResponse, ticketRequest)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
     }
 
@@ -324,12 +352,12 @@ public class ProductWalkInFormService
             ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
 
         return this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest)
-                .flatMap(users -> this.ticketService.readByIdentity(access, ticketRequest.getTicket()))
+                .flatMap(users -> this.ticketService.readByIdentityInternal(ticketRequest.getTicketId()))
                 .switchIfEmpty(msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.ticketService.getEntityName(),
-                        ticketRequest.getTicket().getId()))
+                        ticketRequest.getTicketId().getId()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.fetchTicketByIdentity"));
     }
 

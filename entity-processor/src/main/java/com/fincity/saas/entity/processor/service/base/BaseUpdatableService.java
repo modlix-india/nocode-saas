@@ -354,6 +354,10 @@ public abstract class BaseUpdatableService<
                         code));
     }
 
+    private Mono<D> readByCodeInternal(String code) {
+        return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(code), code);
+    }
+
     private Mono<D> readByCodeInternal(ProcessorAccess access, String code) {
         return this.cacheService.cacheValueOrGet(
                 this.getCacheName(),
@@ -363,6 +367,15 @@ public abstract class BaseUpdatableService<
 
     public Mono<D> readByIdentity(Identity identity) {
         return this.hasAccess().flatMap(access -> this.readByIdentity(access, identity));
+    }
+
+    public Mono<D> readByIdentityInternal(Identity identity) {
+
+        if (identity == null || identity.isNull()) return this.identityMissingError();
+
+        return identity.isId()
+                ? this.readByIdInternal(identity.getULongId())
+                : this.readByCodeInternal(identity.getCode());
     }
 
     public Mono<D> readByIdentity(ProcessorAccess access, Identity identity) {
