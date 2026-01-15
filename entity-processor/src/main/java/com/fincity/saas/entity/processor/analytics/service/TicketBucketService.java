@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
@@ -19,6 +20,7 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTick
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -86,6 +88,84 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 sFilter.isIncludeNone()))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStageSourceDateCount"));
+    }
+
+    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedBy(TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapFlux(
+                        () -> super.hasAccess().flux(),
+                        access -> resolveStages(access, filter).flux(),
+                        (access, sFilter) -> Mono.zip(
+                                        this.dao
+                                                .getTicketCountPerStageAndDate(access, sFilter)
+                                                .collectList(),
+                                        this.dao
+                                                .getUniqueCreatedByCountPerStageAndDate(access, sFilter)
+                                                .collectList())
+                                .flux(),
+                        (access, sFilter, countsTuple) -> {
+                            List<PerDateCount> perStageCount = countsTuple.getT1();
+                            List<PerDateCount> uniqueCreatedByPerStage = countsTuple.getT2();
+
+                            List<PerDateCount> mergedList = new ArrayList<>(perStageCount);
+
+                            for (PerDateCount pdc : uniqueCreatedByPerStage) {
+                                mergedList.add(new PerDateCount()
+                                        .setGroupedValue(null)
+                                        .setMapValue("#" + pdc.getMapValue())
+                                        .setDate(pdc.getDate())
+                                        .setCount(pdc.getCount()));
+                            }
+
+                            return ReportUtil.toDateStatusCountsAggregatedTotal(
+                                    DatePair.of(filter.getStartDate(), filter.getEndDate()),
+                                    filter.getTimePeriod(),
+                                    mergedList,
+                                    sFilter.getFieldData().getStages(),
+                                    sFilter.isIncludeZero(),
+                                    sFilter.isIncludePercentage());
+                        })
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedBy"));
+    }
+
+    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId(
+            TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapFlux(
+                        () -> super.hasAccess().flux(),
+                        access -> resolveStages(access, filter).flux(),
+                        (access, sFilter) -> Mono.zip(
+                                        this.dao
+                                                .getTicketCountPerStageAndDateWithClientId(access, sFilter)
+                                                .collectList(),
+                                        this.dao
+                                                .getUniqueCreatedByCountPerStageAndDateWithClientId(access, sFilter)
+                                                .collectList())
+                                .flux(),
+                        (access, sFilter, countsTuple) -> {
+                            List<PerDateCount> perStageCount = countsTuple.getT1();
+                            List<PerDateCount> uniqueCreatedByPerStage = countsTuple.getT2();
+
+                            List<PerDateCount> mergedList = new ArrayList<>(perStageCount);
+
+                            for (PerDateCount pdc : uniqueCreatedByPerStage) {
+                                mergedList.add(new PerDateCount()
+                                        .setGroupedValue(null)
+                                        .setMapValue("#" + pdc.getMapValue())
+                                        .setDate(pdc.getDate())
+                                        .setCount(pdc.getCount()));
+                            }
+
+                            return ReportUtil.toDateStatusCountsAggregatedTotal(
+                                    DatePair.of(filter.getStartDate(), filter.getEndDate()),
+                                    filter.getTimePeriod(),
+                                    mergedList,
+                                    sFilter.getFieldData().getStages(),
+                                    sFilter.isIncludeZero(),
+                                    sFilter.isIncludePercentage());
+                        })
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME,
+                        "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId"));
     }
 
     public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
