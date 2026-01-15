@@ -44,7 +44,7 @@ public class ReportUtil {
                     (StatusNameCount status) -> TOTAL.equalsIgnoreCase(status.getName()) ? 0 : 1)
             .thenComparing(statusNameComparator);
 
-    public static Flux<DateStatusCount> toDateStatusCounts(
+    public static Flux<DateStatusCount> toDateStatusCounts( // NOSONAR
             DatePair totalDatePair,
             TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
@@ -57,12 +57,7 @@ public class ReportUtil {
         if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
-
-        for (PerDateCount pdc : perDateCountList) {
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
-            if (datePair != null) datePairMap.get(datePair).add(pdc);
-        }
+                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
 
         if (requiredValueList == null)
             requiredValueList = perDateCountList.stream()
@@ -110,6 +105,102 @@ public class ReportUtil {
                             });
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
+    }
+
+    public static Flux<DateStatusCount> toDateStatusCountsAggregatedTotal(
+            DatePair totalDatePair,
+            TimePeriod timePeriod,
+            List<PerDateCount> perDateCountList,
+            List<IdAndValue<ULong, String>> requiredValueList,
+            boolean includeZero,
+            boolean includePercentage) {
+
+        if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
+                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
+
+        if (requiredValueList == null)
+            requiredValueList = perDateCountList.stream()
+                    .map(perDateCount -> IdAndValue.of(ULong.MIN, perDateCount.getMapValue()))
+                    .filter(idValue ->
+                            idValue.getValue() == null || !idValue.getValue().startsWith("#"))
+                    .distinct()
+                    .toList();
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perDateCountList, requiredValueList, includePercentage);
+
+        List<IdAndValue<String, CountPercentage>> uniqueInitialValues = initialValues.stream()
+                .map(v -> {
+                    CountPercentage count =
+                            includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent();
+                    return IdAndValue.of("#" + v.getId(), count).setCompareId(Boolean.FALSE);
+                })
+                .collect(Collectors.toCollection(LinkedList::new));
+
+        return Flux.fromIterable(datePairMap.entrySet())
+                .filter(entry -> includeZero || !entry.getValue().isEmpty())
+                .publishOn(Schedulers.boundedElastic())
+                .map(entry -> buildAggregatedTotalDateStatusCount(
+                        entry, initialValues, uniqueInitialValues, includePercentage))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCountsAggregatedTotal"));
+    }
+
+    private static NavigableMap<DatePair, List<PerDateCount>> buildDatePairMap(
+            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList) {
+
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
+                totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
+
+        for (PerDateCount pdc : perDateCountList) {
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
+            if (datePair != null) datePairMap.get(datePair).add(pdc);
+        }
+
+        return datePairMap;
+    }
+
+    private static DateStatusCount buildAggregatedTotalDateStatusCount(
+            Map.Entry<DatePair, List<PerDateCount>> entry,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            List<IdAndValue<String, CountPercentage>> uniqueInitialValues,
+            boolean includePercentage) {
+
+        Map<String, Long> regularTotalMap = new LinkedHashMap<>();
+        Map<String, Long> uniqueTotalMap = new LinkedHashMap<>();
+
+        initialValues.forEach(v -> regularTotalMap.put(v.getId(), 0L));
+        uniqueInitialValues.forEach(v -> uniqueTotalMap.put(v.getId(), 0L));
+
+        for (PerDateCount pdc : entry.getValue()) {
+            String mapValue = pdc.getMapValue();
+            if (mapValue != null && mapValue.startsWith("#")) {
+                uniqueTotalMap.merge(mapValue, pdc.getCount(), Long::sum);
+            } else {
+                regularTotalMap.merge(mapValue, pdc.getCount(), Long::sum);
+            }
+        }
+
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> regularTotalValueCounts =
+                getTotalValueCounts(regularTotalMap, initialValues, includePercentage);
+
+        StatusNameCount totalStatus = StatusNameCount.of(
+                TOTAL, CountPercentage.withCount(regularTotalValueCounts.getT1()), regularTotalValueCounts.getT2());
+
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> uniqueTotalValueCounts =
+                getTotalValueCounts(uniqueTotalMap, uniqueInitialValues, includePercentage);
+
+        StatusNameCount uniqueTotalStatus = StatusNameCount.of(
+                "#" + TOTAL, CountPercentage.withCount(uniqueTotalValueCounts.getT1()), uniqueTotalValueCounts.getT2());
+
+        List<StatusNameCount> statusCounts = new LinkedList<>();
+        statusCounts.add(totalStatus);
+        statusCounts.add(uniqueTotalStatus);
+
+        if (includePercentage) addPercentage(statusCounts, true);
+
+        return new DateStatusCount().setDatePair(entry.getKey()).setStatusCount(statusCounts);
     }
 
     private static <T extends BaseStatusCount<T>> List<T> addPercentage(List<T> statusCountList, boolean includeTotal) {
@@ -226,6 +317,7 @@ public class ReportUtil {
 
         return perValueCountList.stream()
                 .map(PerCount::getMapValue)
+                .filter(mapValue -> mapValue == null || !mapValue.startsWith("#"))
                 .distinct()
                 .map(mapValue -> IdAndValue.of(mapValue, count).setCompareId(Boolean.FALSE))
                 .collect(Collectors.toCollection(LinkedList::new));

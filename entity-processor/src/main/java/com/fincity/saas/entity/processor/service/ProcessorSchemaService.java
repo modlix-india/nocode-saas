@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -50,7 +51,8 @@ public class ProcessorSchemaService implements ApplicationListener<ContextRefres
 
         for (String beanName : beanNames) {
             Object bean = applicationContext.getBean(beanName);
-            Class<?> beanClass = bean.getClass();
+            // Use AopUtils to get the actual target class, not the proxy class
+            Class<?> beanClass = AopUtils.getTargetClass(bean);
 
             // Only process beans that:
             // 1. Are not ProcessorMessageResourceService or ProcessorFunctionService or
