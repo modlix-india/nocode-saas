@@ -73,6 +73,13 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private static final String FETCH_LEADS = "fetchLeads";
 
+    private static final SetValuedMap<Class<? extends RelationResolver>, String> PARTNER_RESOLVER_MAP =
+            new HashSetValuedHashMap<>();
+
+    static {
+        PARTNER_RESOLVER_MAP.put(UserFieldResolver.class, Partner.Fields.managerId);
+    }
+
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
     private final Gson gson;
@@ -475,13 +482,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
         List<Map<String, Object>> partnerMaps =
                 partners.stream().map(Partner::toMap).toList();
 
-        SetValuedMap<Class<? extends RelationResolver>, String> resolverMap = new HashSetValuedHashMap<>();
-        resolverMap.put(UserFieldResolver.class, Partner.Fields.managerId);
         MultiValueMap<String, String> enrichmentParams = new LinkedMultiValueMap<>();
         enrichmentParams.add("eager", "true");
 
         return FlatMapUtil.flatMapMono(
-                () -> this.recordEnrichmentService.enrich(partnerMaps, resolverMap, enrichmentParams),
+                () -> this.recordEnrichmentService.enrich(partnerMaps, PARTNER_RESOLVER_MAP, enrichmentParams),
                 enrichedPartners -> {
                     enrichedPartners.forEach(partnerMap -> {
                         ULong clientId = ULongUtil.valueOf(partnerMap.get(Partner.Fields.clientId));
