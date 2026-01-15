@@ -20,7 +20,7 @@ public class WalkInFormTicketRequest extends BaseRequest<WalkInFormTicketRequest
     @Serial
     private static final long serialVersionUID = 5455857302595973770L;
 
-    private Identity ticket;
+    private Identity ticketId;
     private ULong userId;
     private PhoneNumber phoneNumber;
     private Email email;

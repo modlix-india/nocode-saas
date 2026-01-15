@@ -1,10 +1,13 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
+import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
@@ -44,7 +47,7 @@ public class ReportUtil {
                     (StatusNameCount status) -> TOTAL.equalsIgnoreCase(status.getName()) ? 0 : 1)
             .thenComparing(statusNameComparator);
 
-    public static Flux<DateStatusCount> toDateStatusCounts(
+    public static Flux<DateStatusCount> toDateStatusCounts( // NOSONAR
             DatePair totalDatePair,
             TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
@@ -57,12 +60,7 @@ public class ReportUtil {
         if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
-
-        for (PerDateCount pdc : perDateCountList) {
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
-            if (datePair != null) datePairMap.get(datePair).add(pdc);
-        }
+                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
 
         if (requiredValueList == null)
             requiredValueList = perDateCountList.stream()
@@ -110,6 +108,102 @@ public class ReportUtil {
                             });
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
+    }
+
+    public static Flux<DateStatusCount> toDateStatusCountsAggregatedTotal(
+            DatePair totalDatePair,
+            TimePeriod timePeriod,
+            List<PerDateCount> perDateCountList,
+            List<IdAndValue<ULong, String>> requiredValueList,
+            boolean includeZero,
+            boolean includePercentage) {
+
+        if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
+                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
+
+        if (requiredValueList == null)
+            requiredValueList = perDateCountList.stream()
+                    .map(perDateCount -> IdAndValue.of(ULong.MIN, perDateCount.getMapValue()))
+                    .filter(idValue ->
+                            idValue.getValue() == null || !idValue.getValue().startsWith("#"))
+                    .distinct()
+                    .toList();
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perDateCountList, requiredValueList, includePercentage);
+
+        List<IdAndValue<String, CountPercentage>> uniqueInitialValues = initialValues.stream()
+                .map(v -> {
+                    CountPercentage count =
+                            includePercentage ? CountPercentage.zero() : CountPercentage.zeroNoPercent();
+                    return IdAndValue.of("#" + v.getId(), count).setCompareId(Boolean.FALSE);
+                })
+                .collect(Collectors.toCollection(LinkedList::new));
+
+        return Flux.fromIterable(datePairMap.entrySet())
+                .filter(entry -> includeZero || !entry.getValue().isEmpty())
+                .publishOn(Schedulers.boundedElastic())
+                .map(entry -> buildAggregatedTotalDateStatusCount(
+                        entry, initialValues, uniqueInitialValues, includePercentage))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCountsAggregatedTotal"));
+    }
+
+    private static NavigableMap<DatePair, List<PerDateCount>> buildDatePairMap(
+            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList) {
+
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
+                totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
+
+        for (PerDateCount pdc : perDateCountList) {
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
+            if (datePair != null) datePairMap.get(datePair).add(pdc);
+        }
+
+        return datePairMap;
+    }
+
+    private static DateStatusCount buildAggregatedTotalDateStatusCount(
+            Map.Entry<DatePair, List<PerDateCount>> entry,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            List<IdAndValue<String, CountPercentage>> uniqueInitialValues,
+            boolean includePercentage) {
+
+        Map<String, Long> regularTotalMap = new LinkedHashMap<>();
+        Map<String, Long> uniqueTotalMap = new LinkedHashMap<>();
+
+        initialValues.forEach(v -> regularTotalMap.put(v.getId(), 0L));
+        uniqueInitialValues.forEach(v -> uniqueTotalMap.put(v.getId(), 0L));
+
+        for (PerDateCount pdc : entry.getValue()) {
+            String mapValue = pdc.getMapValue();
+            if (mapValue != null && mapValue.startsWith("#")) {
+                uniqueTotalMap.merge(mapValue, pdc.getCount(), Long::sum);
+            } else {
+                regularTotalMap.merge(mapValue, pdc.getCount(), Long::sum);
+            }
+        }
+
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> regularTotalValueCounts =
+                getTotalValueCounts(regularTotalMap, initialValues, includePercentage);
+
+        StatusNameCount totalStatus = StatusNameCount.of(
+                TOTAL, CountPercentage.withCount(regularTotalValueCounts.getT1()), regularTotalValueCounts.getT2());
+
+        Tuple2<Long, List<IdAndValue<String, CountPercentage>>> uniqueTotalValueCounts =
+                getTotalValueCounts(uniqueTotalMap, uniqueInitialValues, includePercentage);
+
+        StatusNameCount uniqueTotalStatus = StatusNameCount.of(
+                "#" + TOTAL, CountPercentage.withCount(uniqueTotalValueCounts.getT1()), uniqueTotalValueCounts.getT2());
+
+        List<StatusNameCount> statusCounts = new LinkedList<>();
+        statusCounts.add(totalStatus);
+        statusCounts.add(uniqueTotalStatus);
+
+        if (includePercentage) addPercentage(statusCounts, true);
+
+        return new DateStatusCount().setDatePair(entry.getKey()).setStatusCount(statusCounts);
     }
 
     private static <T extends BaseStatusCount<T>> List<T> addPercentage(List<T> statusCountList, boolean includeTotal) {
@@ -226,6 +320,7 @@ public class ReportUtil {
 
         return perValueCountList.stream()
                 .map(PerCount::getMapValue)
+                .filter(mapValue -> mapValue == null || !mapValue.startsWith("#"))
                 .distinct()
                 .map(mapValue -> IdAndValue.of(mapValue, count).setCompareId(Boolean.FALSE))
                 .collect(Collectors.toCollection(LinkedList::new));
@@ -378,5 +473,106 @@ public class ReportUtil {
         }
 
         return Tuples.of(totalCount, valueCounts);
+    }
+
+    public static Flux<EntityStatusCount> toEntityStageCounts(
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> innerEntityList,
+            List<IdAndValue<ULong, String>> requiredValueList,
+            List<IdAndValue<ULong, String>> outerEntityList,
+            boolean includeZero,
+            boolean includePercentage) {
+
+        if (perValueCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        if (requiredValueList == null)
+            requiredValueList = perValueCountList.stream()
+                    .map(perValueCount -> IdAndValue.of(ULong.MIN, perValueCount.getMapValue()))
+                    .filter(idValue ->
+                            idValue.getValue() == null || !idValue.getValue().startsWith("#"))
+                    .distinct()
+                    .toList();
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perValueCountList, requiredValueList, includePercentage);
+
+        Map<ULong, String> innerEntityMap = IdAndValue.toMap(innerEntityList);
+        Map<ULong, String> outerEntityMap = IdAndValue.toMap(outerEntityList);
+
+        Map<String, Map<ULong, Map<String, Long>>> grouped = perValueCountList.stream()
+                .collect(Collectors.groupingBy(
+                        PerValueCount::getGroupedValue,
+                        LinkedHashMap::new,
+                        Collectors.groupingBy(
+                                PerValueCount::getGroupedId,
+                                LinkedHashMap::new,
+                                Collectors.groupingBy(
+                                        PerValueCount::getMapValue, Collectors.summingLong(PerValueCount::getCount)))));
+
+        return Flux.fromIterable(grouped.entrySet())
+                .filter(entry -> includeZero || !entry.getValue().isEmpty())
+                .publishOn(Schedulers.boundedElastic())
+                .map(entry -> buildAggregatedTotalEntityStatusCount(
+                        entry, initialValues, innerEntityMap, outerEntityMap, includePercentage, includeZero))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityStageCounts"));
+    }
+
+    private static EntityStatusCount buildAggregatedTotalEntityStatusCount(
+            Map.Entry<String, Map<ULong, Map<String, Long>>> entry,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            Map<ULong, String> innerEntityMap,
+            Map<ULong, String> outerEntityMap,
+            boolean includePercentage,
+            boolean includeZero) {
+
+        String outerEntityIdStr = entry.getKey();
+        ULong outerEntityId = ULongUtil.valueOf(outerEntityIdStr);
+        String outerEntityName = outerEntityMap.getOrDefault(outerEntityId, outerEntityIdStr);
+
+        Map<ULong, Map<String, Long>> innerEntityData = entry.getValue();
+
+        if (includeZero) {
+            innerEntityMap.keySet().forEach(innerEntityId -> {
+                innerEntityData.computeIfAbsent(innerEntityId, k -> new LinkedHashMap<>());
+            });
+        }
+
+        List<StatusEntityCount> statusCounts = innerEntityData.entrySet().stream()
+                .map(innerEntityEntry -> {
+                    ULong innerEntityId = innerEntityEntry.getKey();
+                    String innerEntityName = innerEntityMap.getOrDefault(innerEntityId, "Unknown");
+                    Map<String, Long> stageCounts = innerEntityEntry.getValue();
+
+                    if (includeZero) {
+                        initialValues.forEach(initial -> {
+                            stageCounts.putIfAbsent(initial.getId(), 0L);
+                        });
+                    }
+
+                    List<IdAndValue<String, CountPercentage>> perCount = initialValues.stream()
+                            .map(initial -> {
+                                Long count = stageCounts.getOrDefault(initial.getId(), 0L);
+                                CountPercentage cp = includePercentage
+                                        ? CountPercentage.of(count, 0.0)
+                                        : CountPercentage.withCount(count);
+                                return IdAndValue.of(initial.getId(), cp);
+                            })
+                            .collect(Collectors.toCollection(LinkedList::new));
+
+                    long totalCount = stageCounts.values().stream()
+                            .mapToLong(Long::longValue)
+                            .sum();
+                    CountPercentage totalCountPercentage = includePercentage
+                            ? CountPercentage.of(totalCount, 0.0)
+                            : CountPercentage.withCount(totalCount);
+
+                    return StatusEntityCount.of(innerEntityId, innerEntityName, totalCountPercentage, perCount);
+                })
+                .collect(Collectors.toCollection(LinkedList::new));
+
+        return new EntityStatusCount()
+                .setId(outerEntityId)
+                .setName(outerEntityName)
+                .setStatusCount(statusCounts);
     }
 }
