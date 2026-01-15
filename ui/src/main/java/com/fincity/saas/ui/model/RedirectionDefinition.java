@@ -29,6 +29,14 @@ public class RedirectionDefinition implements Serializable, IDifferentiable<Redi
 	private LocalDateTime validFrom;
 	private LocalDateTime validUntil;
 
+	public RedirectionDefinition(RedirectionDefinition redirectionDefinition) {
+		this.redirectionType = redirectionDefinition.redirectionType;
+		this.targetHttpMethod = redirectionDefinition.targetHttpMethod;
+		this.targetUrl = redirectionDefinition.targetUrl;
+		this.validFrom = redirectionDefinition.validFrom;
+		this.validUntil = redirectionDefinition.validUntil;
+	}
+
 	@Override
 	public Mono<RedirectionDefinition> extractDifference(RedirectionDefinition inc) {
 
