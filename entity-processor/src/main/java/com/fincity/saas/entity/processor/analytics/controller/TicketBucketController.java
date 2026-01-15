@@ -65,6 +65,24 @@ public class TicketBucketController
                 .map(ResponseEntity::ok);
     }
 
+    @PostMapping("/stage-counts/created-bys/unique")
+    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedBy(
+            @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service.getTicketPerCreatedByStageTotalWithUniqueCreatedBy(effectiveFilter);
+    }
+
+    @PostMapping("/stage-counts/created-bys/unique/client-id")
+    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId(
+            @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service.getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId(effectiveFilter);
+    }
+
     @PostMapping("/status-counts/created-bys")
     public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerCreatedByStatusCount(
             Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
@@ -117,6 +135,17 @@ public class TicketBucketController
 
         return this.service
                 .getTicketPerProjectStatusCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/stage-counts/products/clients/me")
+    public Mono<ResponseEntity<Page<StatusEntityCount>>> getTicketPerProjectStageCountForLoggedInClient(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerProjectStageCountForLoggedInClient(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
     }
 }

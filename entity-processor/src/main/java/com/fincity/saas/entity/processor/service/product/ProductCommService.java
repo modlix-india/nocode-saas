@@ -65,7 +65,7 @@ public class ProductCommService
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("ProductComm", ProductComm.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductComm.class, classSchema, gson));
 
         String dtoSchemaRef =
                 classSchema.getNamespaceForClass(ProductComm.class) + "." + ProductComm.class.getSimpleName();

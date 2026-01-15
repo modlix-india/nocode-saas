@@ -14,6 +14,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.commons.util.aspect.ReactiveTime;
 import com.fincity.saas.entity.processor.dao.TicketDAO;
 import com.fincity.saas.entity.processor.dto.Owner;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -65,10 +66,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     private static final String TICKET_CACHE = "ticket";
     private static final String AUTOMATIC_REASSIGNMENT = "Automatic Reassignment for Stage update.";
     private static final String NAMESPACE = "EntityProcessor.Ticket";
-
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-
     private final OwnerService ownerService;
     private final ProductService productService;
     private final StageService stageService;
@@ -84,9 +85,6 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @Autowired
     @Lazy
     private TicketService self;
-
-    private static final ClassSchema classSchema =
-            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     public TicketService(
             @Lazy OwnerService ownerService,
@@ -118,7 +116,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Ticket", Ticket.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Ticket.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
@@ -302,8 +300,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
         return this.dao
                 .getAllOwnerTickets(owner.getId())
                 .flatMap(ticket -> this.updateTicketFromOwner(ticket, owner))
-                .transform(tickets -> super.updateAll(access, tickets))
-                .flatMap(updatedTicket -> this.evictCache(updatedTicket).thenReturn(updatedTicket))
+                .flatMap(tickets -> super.updateInternal(access, tickets))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateOwnerTickets"));
     }
 
@@ -323,6 +320,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updatableEntity"));
     }
 
+    @ReactiveTime
     public Mono<Ticket> createRequest(TicketRequest ticketRequest) {
 
         if (!ticketRequest.hasSourceInfo())
@@ -368,8 +366,10 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 ProcessorAccess.of(cTicketRequest.getAppCode(), cTicketRequest.getClientCode(), true, null, null);
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.campaignService.readByCampaignId(
-                                        access, cTicketRequest.getCampaignDetails().getCampaignId())
+                        () -> this.campaignService
+                                .readByCampaignId(
+                                        access,
+                                        cTicketRequest.getCampaignDetails().getCampaignId())
                                 .switchIfEmpty(this.msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                         ProcessorMessageResourceService.IDENTITY_WRONG,
@@ -777,9 +777,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ULong productId,
             PhoneNumber ticketPhone,
             Email ticketMail) {
-        return this.dao
-                .readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+        return this.dao.readTicketByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
     }
 
     private Mono<List<Ticket>> getTickets(
@@ -788,9 +786,7 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
             ULong productId,
             PhoneNumber ticketPhone,
             Email ticketMail) {
-        return this.dao
-                .readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
+        return this.dao.readTicketsByNumberAndEmail(condition, access, productId, ticketPhone, ticketMail);
     }
 
     public Mono<Ticket> getTicket(ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
@@ -798,12 +794,17 @@ public class TicketService extends BaseProcessorService<EntityProcessorTicketsRe
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTicket"));
     }
 
+    public Mono<List<Ticket>> getTickets(
+            ProcessorAccess access, ULong productId, PhoneNumber ticketPhone, Email ticketMail) {
+        return this.getTickets(null, access, productId, ticketPhone, ticketMail)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.getTickets"));
+    }
+
     public Flux<Ticket> updateTicketDncByClientId(ProcessorAccess access, ULong clientId, Boolean dnc) {
         return this.dao
                 .getAllClientTicketsByDnc(clientId, !dnc)
                 .map(ticket -> ticket.setDnc(dnc))
-                .transform(tickets -> super.updateAll(access, tickets))
-                .flatMap(uTicket -> super.evictCache(uTicket).thenReturn(uTicket))
+                .flatMap(tickets -> super.updateInternal(access, tickets))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketService.updateTicketDncByClientId"));
     }
 

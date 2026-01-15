@@ -66,7 +66,7 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Stage", Stage.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Stage.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,

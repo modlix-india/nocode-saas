@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.dto.Partner;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.PartnerManagerUpdateRequest;
 import com.fincity.saas.entity.processor.model.request.PartnerRequest;
 import com.fincity.saas.entity.processor.service.PartnerService;
 import java.util.Map;
@@ -81,5 +82,11 @@ public class PartnerController
         return this.service
                 .readPartnerTeammates(partnerId, query, request.getQueryParams())
                 .map(ResponseEntity::ok);
+    }
+
+    @PatchMapping(REQ_PATH_ID + "/managers")
+    public Mono<ResponseEntity<Partner>> updateManager(
+            @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody PartnerManagerUpdateRequest request) {
+        return this.service.updateManager(identity, request.getManagerId()).map(ResponseEntity::ok);
     }
 }

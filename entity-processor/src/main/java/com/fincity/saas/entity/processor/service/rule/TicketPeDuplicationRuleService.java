@@ -62,7 +62,7 @@ public class TicketPeDuplicationRuleService
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("TicketPeDuplicationRule", TicketPeDuplicationRule.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, TicketPeDuplicationRule.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
