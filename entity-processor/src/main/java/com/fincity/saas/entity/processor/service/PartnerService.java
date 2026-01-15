@@ -477,9 +477,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         SetValuedMap<Class<? extends RelationResolver>, String> resolverMap = new HashSetValuedHashMap<>();
         resolverMap.put(UserFieldResolver.class, Partner.Fields.managerId);
+        MultiValueMap<String, String> enrichmentParams = new LinkedMultiValueMap<>();
+        enrichmentParams.add("eager", "true");
 
         return FlatMapUtil.flatMapMono(
-                () -> this.recordEnrichmentService.enrich(partnerMaps, resolverMap),
+                () -> this.recordEnrichmentService.enrich(partnerMaps, resolverMap, enrichmentParams),
                 enrichedPartners -> {
                     enrichedPartners.forEach(partnerMap -> {
                         ULong clientId = ULongUtil.valueOf(partnerMap.get(Partner.Fields.clientId));
