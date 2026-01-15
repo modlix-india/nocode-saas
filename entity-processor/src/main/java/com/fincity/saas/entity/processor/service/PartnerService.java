@@ -28,6 +28,9 @@ import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
@@ -40,14 +43,14 @@ import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.google.gson.Gson;
 import jakarta.annotation.PostConstruct;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.commons.collections4.SetValuedMap;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -81,6 +84,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private TicketBucketService ticketBucketService;
 
+    private RecordEnrichmentService recordEnrichmentService;
+
     @Autowired
     @Lazy
     private PartnerService self;
@@ -99,6 +104,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Autowired
     private void setTicketBucketService(TicketBucketService ticketBucketService) {
         this.ticketBucketService = ticketBucketService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
+        this.recordEnrichmentService = recordEnrichmentService;
     }
 
     @PostConstruct
@@ -461,33 +472,19 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         String partnerEntityKey = this.getEntityKey();
 
-        List<BigInteger> managerIds = partners.stream()
-                .map(Partner::getManagerId)
-                .filter(Objects::nonNull)
-                .map(ULong::toBigInteger)
-                .distinct()
-                .toList();
+        List<Map<String, Object>> partnerMaps =
+                partners.stream().map(Partner::toMap).toList();
+
+        SetValuedMap<Class<? extends RelationResolver>, String> resolverMap = new HashSetValuedHashMap<>();
+        resolverMap.put(UserFieldResolver.class, Partner.Fields.managerId);
 
         return FlatMapUtil.flatMapMono(
-                () -> {
-                    if (managerIds.isEmpty()) return Mono.just(Map.<BigInteger, User>of());
-
-                    return super.securityService
-                            .getUsersInternal(managerIds, new LinkedMultiValueMap<>())
-                            .map(users -> users.stream()
-                                    .collect(Collectors.toMap(User::getId, Function.identity())));
-                },
-                managerMap -> {
-                    partners.forEach(partner -> {
-                        Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
+                () -> this.recordEnrichmentService.enrich(partnerMaps, resolverMap),
+                enrichedPartners -> {
+                    enrichedPartners.forEach(partnerMap -> {
+                        ULong clientId = ULongUtil.valueOf(partnerMap.get(Partner.Fields.clientId));
+                        Map<String, Object> clientMap = clientMapById.get(clientId);
                         if (clientMap != null) {
-                            Map<String, Object> partnerMap = partner.toMap();
-                            if (partner.getManagerId() != null) {
-                                User manager = managerMap.get(partner.getManagerId().toBigInteger());
-                                if (manager != null) {
-                                    partnerMap.put("manager", manager);
-                                }
-                            }
                             clientMap.put(partnerEntityKey, partnerMap);
                         }
                     });
