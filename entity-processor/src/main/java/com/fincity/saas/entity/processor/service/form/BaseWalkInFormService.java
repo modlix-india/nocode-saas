@@ -1,7 +1,11 @@
 package com.fincity.saas.entity.processor.service.form;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.form.BaseWalkInFromDAO;
 import com.fincity.saas.entity.processor.dto.form.BaseWalkInFormDto;
@@ -13,6 +17,10 @@ import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -149,5 +157,31 @@ public abstract class BaseWalkInFormService<
                 this.getCacheName(),
                 () -> this.dao.getByProductId(access, productId),
                 super.getCacheKey(access.getAppCode(), access.getClientCode(), productId));
+    }
+
+    protected <T extends BaseWalkInFormService<R, D, O>> List<ReactiveFunction> getWalkInFormFunctions(
+            String namespace, Class<D> dtoClass, ClassSchema classSchema, Gson gson, T self) {
+        List<ReactiveFunction> functions = new ArrayList<>();
+        String dtoSchemaRef = classSchema.getNamespaceForClass(dtoClass) + "." + dtoClass.getSimpleName();
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                namespace,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("walkInFormRequest", WalkInFormRequest.class, classSchema),
+                "created",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::createRequest));
+
+        functions.add(AbstractServiceFunction.createServiceFunction(
+                namespace,
+                "GetWalkInForm",
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(dtoSchemaRef),
+                gson,
+                self::getWalkInForm));
+
+        return functions;
     }
 }

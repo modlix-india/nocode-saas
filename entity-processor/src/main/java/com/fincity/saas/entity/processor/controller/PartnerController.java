@@ -86,8 +86,7 @@ public class PartnerController
 
     @PatchMapping(REQ_PATH_ID + "/managers")
     public Mono<ResponseEntity<Partner>> updateManager(
-            @PathVariable(PATH_VARIABLE_ID) Identity identity,
-            @RequestBody PartnerManagerUpdateRequest request) {
+            @PathVariable(PATH_VARIABLE_ID) Identity identity, @RequestBody PartnerManagerUpdateRequest request) {
         return this.service.updateManager(identity, request.getManagerId()).map(ResponseEntity::ok);
     }
 }

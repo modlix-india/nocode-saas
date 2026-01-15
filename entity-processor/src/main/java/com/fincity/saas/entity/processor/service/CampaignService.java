@@ -53,7 +53,7 @@ public class CampaignService extends BaseUpdatableService<EntityProcessorCampaig
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Campaign", Campaign.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Campaign.class, classSchema, gson));
 
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,

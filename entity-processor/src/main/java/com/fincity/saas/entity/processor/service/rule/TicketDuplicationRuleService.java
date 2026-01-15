@@ -71,7 +71,8 @@ public class TicketDuplicationRuleService
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("TicketDuplicationRule", TicketDuplicationRule.class, gson));
+        this.functions.addAll(super.getCommonFunctions(
+                "EntityProcessor.TicketDuplicationRule", TicketDuplicationRule.class, classSchema, gson));
     }
 
     @Override

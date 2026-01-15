@@ -51,7 +51,7 @@ public class NoteService extends BaseContentService<EntityProcessorNotesRecord, 
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Note", Note.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Note.class, classSchema, gson));
 
         String noteSchemaRef = classSchema.getNamespaceForClass(Note.class) + "." + Note.class.getSimpleName();
         ClassSchema.ArgSpec<NoteRequest> noteRequest =

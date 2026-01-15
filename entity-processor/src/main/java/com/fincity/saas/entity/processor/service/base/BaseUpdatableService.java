@@ -454,17 +454,17 @@ public abstract class BaseUpdatableService<
                 this.getEntityName());
     }
 
-    protected List<ReactiveFunction> getCommonFunctions(String entityName, Class<D> dtoClass, Gson gson) {
+    protected List<ReactiveFunction> getCommonFunctions(
+            String namespace, Class<D> dtoClass, ClassSchema classSchema, Gson gson) {
         List<ReactiveFunction> functions = new ArrayList<>();
-        String dtoNamespace = ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor())
-                .getNamespaceForClass(dtoClass);
+        String dtoNamespace = classSchema.getNamespaceForClass(dtoClass);
         String dtoName = dtoClass.getSimpleName();
         String dtoSchemaRef = dtoNamespace + "." + dtoName;
         String pageSchemaRef = "Commons.Page";
         Schema mapSchema = Schema.ofObject("Map");
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "Create",
                 ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
                 "created",
@@ -473,7 +473,7 @@ public abstract class BaseUpdatableService<
                 this::create));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadByIdentity",
                 EntityProcessorArgSpec.identity(),
                 "result",
@@ -482,7 +482,7 @@ public abstract class BaseUpdatableService<
                 this::readByIdentity));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadEagerByIdentity",
                 EntityProcessorArgSpec.identity(),
                 ClassSchema.ArgSpec.fields(),
@@ -493,7 +493,7 @@ public abstract class BaseUpdatableService<
                 this::readEager));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "UpdateByIdentity",
                 EntityProcessorArgSpec.identity(),
                 ClassSchema.ArgSpec.of("entity", Schema.ofRef(dtoSchemaRef), dtoClass),
@@ -503,7 +503,7 @@ public abstract class BaseUpdatableService<
                 this::updateByIdentity));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "DeleteIdentity",
                 EntityProcessorArgSpec.identity(),
                 "deleted",
@@ -512,7 +512,7 @@ public abstract class BaseUpdatableService<
                 this::deleteIdentity));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadPageFilter",
                 ClassSchema.ArgSpec.pageable(),
                 "result",
@@ -521,7 +521,7 @@ public abstract class BaseUpdatableService<
                 p -> this.readPageFilter(p == null ? PageRequest.of(0, 10) : p, null)));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadPageFilterQuery",
                 ClassSchema.ArgSpec.query(),
                 "result",
@@ -533,7 +533,7 @@ public abstract class BaseUpdatableService<
                 }));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadPageFilterEager",
                 ClassSchema.ArgSpec.pageable(),
                 ClassSchema.ArgSpec.condition(),
@@ -546,7 +546,7 @@ public abstract class BaseUpdatableService<
                         pageable == null ? PageRequest.of(0, 10) : pageable, condition, fields, queryParams)));
 
         functions.add(AbstractServiceFunction.createServiceFunction(
-                "EntityProcessor." + entityName,
+                namespace,
                 "ReadPageFilterEagerQuery",
                 ClassSchema.ArgSpec.query(),
                 ClassSchema.ArgSpec.queryParams(),

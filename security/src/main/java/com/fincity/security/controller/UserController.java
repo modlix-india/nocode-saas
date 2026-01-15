@@ -36,6 +36,7 @@ import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
 import com.fincity.security.dto.UserInvite;
 import com.fincity.security.dto.UserRequest;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
 import com.fincity.security.model.AuthenticationRequest;
 import com.fincity.security.model.RegistrationResponse;
@@ -102,7 +103,11 @@ public class UserController
             @RequestParam(value = "appLevel", required = false, defaultValue = "true") Boolean appLevel,
             ServerHttpRequest request) {
 
-        return this.service.findUserClients(authRequest, appLevel, request).map(ResponseEntity::ok);
+        return this.service.findUserClients(authRequest, appLevel, request)
+                .flatMapIterable(e -> e)
+                .filter(e -> e.getClient() != null && SecurityClientStatusCode.ACTIVE == e.getClient().getStatusCode())
+                .collectList()
+                .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/makeUserActive")
@@ -196,7 +201,8 @@ public class UserController
     public Mono<ResponseEntity<List<User>>> getClientUsersInternal(
             @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
 
-        return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams).map(ResponseEntity::ok);
+        return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/exists")
@@ -299,8 +305,7 @@ public class UserController
 
         return this.service
                 .readPageFilterInternal(pageable, query.getCondition())
-                .flatMap(page ->
-                        this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
+                .flatMap(page -> this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
                 .map(ResponseEntity::ok);
     }
 

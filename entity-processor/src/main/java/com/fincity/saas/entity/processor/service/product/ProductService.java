@@ -70,7 +70,7 @@ public class ProductService extends BaseProcessorService<EntityProcessorProducts
     @PostConstruct
     private void init() {
 
-        this.functions.addAll(super.getCommonFunctions("Product", Product.class, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Product.class, classSchema, gson));
 
         String productSchemaRef = classSchema.getNamespaceForClass(Product.class) + "." + Product.class.getSimpleName();
 

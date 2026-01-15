@@ -18,8 +18,8 @@ files:
       url: jdbc:mysql://localhost:3306/files
   resources:
     endpoint: https://ae81e53db5aca470c4e4073aa03498cd.r2.cloudflarestorage.com
-    accessKeyId: 2229a18802734bc30a8419a2e622187c
-    secretAccessKey: xxxxx
+    accessKeyId: xxxx
+    secretAccessKey: xxxx
     bucketPrefix: local
 
 multi:
@@ -45,11 +45,6 @@ ui:
   cdnReplacePlus: true
   # Don't forget to add slash in the end.
   jsURL: https://cdn-local.modlix.com/js/dist/
-  # htmlCacheUrl: http://localhost:6101/html/
-  htmlCacheEnv: OTHER
-  ssr:
-    baseUrl: ${UI_SSR_BASEURL:}
-    timeoutMillis: ${UI_SSR_TIMEOUT:3000}
   # Apple App Store Connect API Configuration
   apple:
     apiKeyId: ${APPLE_API_KEY_ID:}
@@ -104,8 +99,21 @@ entity-collector:
 ai:
   security:
     url: http://localhost:8080
+  files:
+    url: http://localhost:8080
+  llm:
+    provider: anthropic
   secrets:
-    anthropicAPIKey: xxxxx
+    openaiAPIKey: xxxxxx
+    anthropicAPIKey: xxxxxx
+  db:
+    url: jdbc:mysql://localhost:3306/ai?serverTimezone=UTC
+    username: root
+    password: Kiran@123
+    flyway:
+      url: jdbc:mysql://localhost:3306/ai
+  redis:
+    url: redis://default:Kiran%40123@localhost:6379
 
 spring:
   flyway:
@@ -116,6 +124,16 @@ redis:
   codec: object
   cache:
     prefix: cmn
+
+ssr:
+  redis:
+    url: redis://default:Kiran%40123@localhost:6379
+  gateway:
+    url: http://localhost:8080
+  cache:
+    ttlSeconds: 1800
+  cdn:
+    hostName: cdn-local.modlix.com
 
 logging:
   level:
