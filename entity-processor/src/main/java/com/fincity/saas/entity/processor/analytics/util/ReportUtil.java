@@ -1,10 +1,13 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
+import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
@@ -470,5 +473,106 @@ public class ReportUtil {
         }
 
         return Tuples.of(totalCount, valueCounts);
+    }
+
+    public static Flux<EntityStatusCount> toEntityStageCounts(
+            List<PerValueCount> perValueCountList,
+            List<IdAndValue<ULong, String>> innerEntityList,
+            List<IdAndValue<ULong, String>> requiredValueList,
+            List<IdAndValue<ULong, String>> outerEntityList,
+            boolean includeZero,
+            boolean includePercentage) {
+
+        if (perValueCountList.isEmpty() && !includeZero) return Flux.empty();
+
+        if (requiredValueList == null)
+            requiredValueList = perValueCountList.stream()
+                    .map(perValueCount -> IdAndValue.of(ULong.MIN, perValueCount.getMapValue()))
+                    .filter(idValue ->
+                            idValue.getValue() == null || !idValue.getValue().startsWith("#"))
+                    .distinct()
+                    .toList();
+
+        List<IdAndValue<String, CountPercentage>> initialValues =
+                buildInitialValues(perValueCountList, requiredValueList, includePercentage);
+
+        Map<ULong, String> innerEntityMap = IdAndValue.toMap(innerEntityList);
+        Map<ULong, String> outerEntityMap = IdAndValue.toMap(outerEntityList);
+
+        Map<String, Map<ULong, Map<String, Long>>> grouped = perValueCountList.stream()
+                .collect(Collectors.groupingBy(
+                        PerValueCount::getGroupedValue,
+                        LinkedHashMap::new,
+                        Collectors.groupingBy(
+                                PerValueCount::getGroupedId,
+                                LinkedHashMap::new,
+                                Collectors.groupingBy(
+                                        PerValueCount::getMapValue, Collectors.summingLong(PerValueCount::getCount)))));
+
+        return Flux.fromIterable(grouped.entrySet())
+                .filter(entry -> includeZero || !entry.getValue().isEmpty())
+                .publishOn(Schedulers.boundedElastic())
+                .map(entry -> buildAggregatedTotalEntityStatusCount(
+                        entry, initialValues, innerEntityMap, outerEntityMap, includePercentage, includeZero))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityStageCounts"));
+    }
+
+    private static EntityStatusCount buildAggregatedTotalEntityStatusCount(
+            Map.Entry<String, Map<ULong, Map<String, Long>>> entry,
+            List<IdAndValue<String, CountPercentage>> initialValues,
+            Map<ULong, String> innerEntityMap,
+            Map<ULong, String> outerEntityMap,
+            boolean includePercentage,
+            boolean includeZero) {
+
+        String outerEntityIdStr = entry.getKey();
+        ULong outerEntityId = ULongUtil.valueOf(outerEntityIdStr);
+        String outerEntityName = outerEntityMap.getOrDefault(outerEntityId, outerEntityIdStr);
+
+        Map<ULong, Map<String, Long>> innerEntityData = entry.getValue();
+
+        if (includeZero) {
+            innerEntityMap.keySet().forEach(innerEntityId -> {
+                innerEntityData.computeIfAbsent(innerEntityId, k -> new LinkedHashMap<>());
+            });
+        }
+
+        List<StatusEntityCount> statusCounts = innerEntityData.entrySet().stream()
+                .map(innerEntityEntry -> {
+                    ULong innerEntityId = innerEntityEntry.getKey();
+                    String innerEntityName = innerEntityMap.getOrDefault(innerEntityId, "Unknown");
+                    Map<String, Long> stageCounts = innerEntityEntry.getValue();
+
+                    if (includeZero) {
+                        initialValues.forEach(initial -> {
+                            stageCounts.putIfAbsent(initial.getId(), 0L);
+                        });
+                    }
+
+                    List<IdAndValue<String, CountPercentage>> perCount = initialValues.stream()
+                            .map(initial -> {
+                                Long count = stageCounts.getOrDefault(initial.getId(), 0L);
+                                CountPercentage cp = includePercentage
+                                        ? CountPercentage.of(count, 0.0)
+                                        : CountPercentage.withCount(count);
+                                return IdAndValue.of(initial.getId(), cp);
+                            })
+                            .collect(Collectors.toCollection(LinkedList::new));
+
+                    long totalCount = stageCounts.values().stream()
+                            .mapToLong(Long::longValue)
+                            .sum();
+                    CountPercentage totalCountPercentage = includePercentage
+                            ? CountPercentage.of(totalCount, 0.0)
+                            : CountPercentage.withCount(totalCount);
+
+                    return StatusEntityCount.of(innerEntityId, innerEntityName, totalCountPercentage, perCount);
+                })
+                .collect(Collectors.toCollection(LinkedList::new));
+
+        return new EntityStatusCount()
+                .setId(outerEntityId)
+                .setName(outerEntityName)
+                .setStatusCount(statusCounts);
     }
 }

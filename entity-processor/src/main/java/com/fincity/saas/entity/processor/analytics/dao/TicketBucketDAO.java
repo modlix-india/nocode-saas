@@ -257,6 +257,36 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 });
     }
 
+    private Flux<PerValueCount> getTicketCountByGroupAndJoinWithClientId(
+            ProcessorAccess access,
+            TicketBucketFilter ticketBucketFilter,
+            Field<ULong> groupField,
+            Field<ULong> joinField,
+            String defaultValue,
+            boolean requiresNonNull) {
+
+        Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(groupField, ENTITY_PROCESSOR_STAGES.NAME, clientIdAsString, DSL.count(this.idField))
+                            .from(this.table)
+                            .leftJoin(ENTITY_PROCESSOR_STAGES)
+                            .on(joinField.eq(ENTITY_PROCESSOR_STAGES.ID))
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+
+                    if (requiresNonNull) query = query.and(groupField.isNotNull());
+
+                    return Flux.from(query.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, clientIdAsString))
+                            .map(rec -> this.mapToPerValueCount(rec, groupField, defaultValue)
+                                    .setGroupedValue(rec.get(clientIdAsString)));
+                });
+    }
+
     private PerValueCount mapToPerValueCount(Record rec, Field<ULong> groupField, String defaultValue) {
         String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
         if (stageName == null) stageName = defaultValue;
@@ -482,5 +512,16 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 NO_STAGE,
                 Boolean.TRUE,
                 Boolean.TRUE);
+    }
+
+    public Flux<PerValueCount> getTicketCountPerProductStageAndClientId(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketCountByGroupAndJoinWithClientId(
+                access,
+                ticketBucketFilter,
+                ENTITY_PROCESSOR_TICKETS.PRODUCT_ID,
+                ENTITY_PROCESSOR_TICKETS.STAGE,
+                NO_STAGE,
+                false);
     }
 }
