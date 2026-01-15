@@ -326,8 +326,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acWalkIn(ProcessorAccess access, Ticket ticket, String comment) {
-        return this.createActivityInternal(
-                        access, ActivityAction.WALK_IN, null, comment, Map.of(Activity.Fields.ticketId, ticket.getId()))
+        Map<String, Object> context = new HashMap<>();
+        context.put(Activity.Fields.ticketId, ticket.getId());
+	    context.put("user", IdAndValue.of(access.getUserId(), access.getUserName()));
+        return this.createActivityInternal(access, ActivityAction.WALK_IN, null, comment, context)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acWalkIn"));
     }
 
@@ -643,18 +645,30 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     private Mono<Void> acReassignSystem(
             ProcessorAccess access, ULong ticketId, String comment, ULong oldUser, ULong newUser) {
-        return this.createActivityInternal(
-                        access,
-                        ActivityAction.REASSIGN_SYSTEM,
-                        null,
-                        comment,
-                        Map.of(
-                                Activity.Fields.ticketId,
-                                ticketId,
-                                ActivityAction.getOldName(Ticket.Fields.assignedUserId),
-                                oldUser,
-                                Ticket.Fields.assignedUserId,
-                                newUser))
+        return FlatMapUtil.flatMapMono(
+                        () -> Mono.zip(
+                                oldUser != null
+                                        ? super.securityService
+                                                .getUserInternal(oldUser.toBigInteger(), null)
+                                                .map(this::getUserIdAndValue)
+                                        : Mono.just(IdAndValue.of(oldUser, "")),
+                                newUser != null
+                                        ? super.securityService
+                                                .getUserInternal(newUser.toBigInteger(), null)
+                                                .map(this::getUserIdAndValue)
+                                        : Mono.just(IdAndValue.of(newUser, ""))),
+                        users -> this.createActivityInternal(
+                                access,
+                                ActivityAction.REASSIGN_SYSTEM,
+                                null,
+                                comment,
+                                Map.of(
+                                        Activity.Fields.ticketId,
+                                        ticketId,
+                                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                                        users.getT1(),
+                                        Ticket.Fields.assignedUserId,
+                                        users.getT2())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassignSystem"));
     }
 

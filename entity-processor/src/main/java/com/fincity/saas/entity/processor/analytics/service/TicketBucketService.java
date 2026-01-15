@@ -5,6 +5,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
@@ -168,6 +169,30 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId"));
     }
 
+    public Flux<EntityStatusCount> getTicketPerProductStageAndClientIdCount(TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapFlux(
+                        () -> super.hasAccess().flux(),
+                        access -> resolveProducts(access, filter).flux(),
+                        (access, productFilter) ->
+                                resolveStages(access, productFilter).flux(),
+                        (access, productFilter, stageFilter) ->
+                                super.resolveClients(access, stageFilter).flux(),
+                        (access, productFilter, stageFilter, clientFilter) -> this.dao
+                                .getTicketCountPerProductStageAndClientId(access, stageFilter)
+                                .collectList()
+                                .flux(),
+                        (access, productFilter, stageFilter, clientFilter, perValueCountList) ->
+                                ReportUtil.toEntityStageCounts(
+                                        perValueCountList,
+                                        productFilter.getFieldData().getProducts(),
+                                        stageFilter.getFieldData().getStages(),
+                                        clientFilter.getBaseFieldData().getClients(),
+                                        stageFilter.isIncludeZero(),
+                                        stageFilter.isIncludePercentage()))
+                .contextWrite(Context.of(
+                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductStageAndClientIdCount"));
+    }
+
     public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
             Pageable pageable, TicketBucketFilter filter) {
         return this.getTicketCountByGroupAndJoin(
@@ -287,7 +312,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                     return this.getTicketCountByGroupAndJoin(
                             pageable,
                             Boolean.TRUE,
-		                    filter,
+                            filter,
                             acc -> f -> this.resolveProducts(acc, f),
                             this.dao::getTicketPerProjectStageCount,
                             sFilter -> sFilter.getFieldData().getProducts(),
