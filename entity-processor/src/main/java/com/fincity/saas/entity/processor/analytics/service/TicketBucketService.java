@@ -169,26 +169,28 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId"));
     }
 
-    public Flux<EntityStatusCount> getTicketPerProductStageAndClientIdCount(TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapFlux(
-                        () -> super.hasAccess().flux(),
-                        access -> resolveProducts(access, filter).flux(),
-                        (access, productFilter) ->
-                                resolveStages(access, productFilter).flux(),
-                        (access, productFilter, stageFilter) ->
-                                super.resolveClients(access, stageFilter).flux(),
+    public Mono<Page<EntityStatusCount>> getTicketPerProductStageAndClientIdCount(
+            Pageable pageable, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> resolveProducts(access, filter),
+				        this::resolveStages,
+                        (access, productFilter, stageFilter) -> super.resolveClients(access, stageFilter),
                         (access, productFilter, stageFilter, clientFilter) -> this.dao
                                 .getTicketCountPerProductStageAndClientId(access, stageFilter)
-                                .collectList()
-                                .flux(),
+                                .collectList(),
                         (access, productFilter, stageFilter, clientFilter, perValueCountList) ->
                                 ReportUtil.toEntityStageCounts(
-                                        perValueCountList,
-                                        productFilter.getFieldData().getProducts(),
-                                        stageFilter.getFieldData().getStages(),
-                                        clientFilter.getBaseFieldData().getClients(),
-                                        stageFilter.isIncludeZero(),
-                                        stageFilter.isIncludePercentage()))
+                                                perValueCountList,
+                                                productFilter.getFieldData().getProducts(),
+                                                stageFilter.getFieldData().getStages(),
+                                                clientFilter.getBaseFieldData().getClients(),
+                                                stageFilter.isIncludeZero(),
+                                                stageFilter.isIncludePercentage())
+                                        .collectList(),
+                        (access, productFilter, stageFilter, clientFilter, perValueCountList, entityStatusCounts) ->
+                                ReactivePaginationUtil.toPage(entityStatusCounts, pageable))
+                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductStageAndClientIdCount"));
     }

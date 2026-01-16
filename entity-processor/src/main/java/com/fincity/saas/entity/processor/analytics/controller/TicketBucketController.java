@@ -151,11 +151,13 @@ public class TicketBucketController
     }
 
     @PostMapping({"/clients/products/stages", "/stage-counts/products/clients"})
-    public Flux<EntityStatusCount> getTicketPerProductStageAndClientIdCount(
-            @RequestBody(required = false) TicketBucketFilter filter) {
+    public Mono<ResponseEntity<Page<EntityStatusCount>>> getTicketPerProductStageAndClientIdCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
         TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
-        return this.service.getTicketPerProductStageAndClientIdCount(effectiveFilter);
+        return this.service
+                .getTicketPerProductStageAndClientIdCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
     }
 }

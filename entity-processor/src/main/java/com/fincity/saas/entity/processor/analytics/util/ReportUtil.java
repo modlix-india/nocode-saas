@@ -570,9 +570,6 @@ public class ReportUtil {
                 })
                 .collect(Collectors.toCollection(LinkedList::new));
 
-        return new EntityStatusCount()
-                .setId(outerEntityId)
-                .setName(outerEntityName)
-                .setStatusCount(statusCounts);
+        return new EntityStatusCount(outerEntityId, outerEntityName, statusCounts, includePercentage);
     }
 }

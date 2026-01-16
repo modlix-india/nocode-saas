@@ -20,5 +20,24 @@ public class EntityStatusCount implements Serializable {
 
     private String name;
 
+    private CountPercentage totalCount;
+
     private List<StatusEntityCount> statusCount;
+
+    public EntityStatusCount(ULong id, String name, List<StatusEntityCount> statusCount, boolean includePercentage) {
+        this.id = id;
+        this.name = name;
+        this.statusCount = statusCount;
+
+        long totalCountValue = statusCount.stream()
+                .mapToLong(statusEntityCount -> statusEntityCount.getTotalCount() != null
+                                && statusEntityCount.getTotalCount().getCount() != null
+                        ? statusEntityCount.getTotalCount().getCount().longValue()
+                        : 0L)
+                .sum();
+
+        this.totalCount = includePercentage
+                ? CountPercentage.of(totalCountValue, 0.0)
+                : CountPercentage.withCount(totalCountValue);
+    }
 }
