@@ -282,15 +282,26 @@ public class ProductWalkInFormService
                         resolvedProduct -> this.getWalkInFormResponseInternal(access, resolvedProduct),
                         (resolvedProduct, walkInFormResponse) ->
                                 this.validateAndGetTicket(access, resolvedProduct, walkInFormResponse, ticketRequest),
-                        (resolvedProduct, walkInFormResponse, ticket) -> ticket.getId() != null
-                                ? this.updateExistingTicket(access, ticket, walkInFormResponse, ticketRequest)
-                                : this.createNewTicket(
-                                        access, resolvedProduct, ticket, walkInFormResponse, ticketRequest),
-                        (resolvedProduct, walkInFormResponse, ticket, created) -> this.createProcessorAccessForUser(
-                                access, created.getT1().getAssignedUserId()),
-                        (resolvedProduct, walkInFormResponse, ticket, created, userAccess) -> this.activityService
-                                .acWalkIn(userAccess, created.getT1(), ticketRequest.getComment())
-                                .thenReturn(created.getT2()))
+                        (resolvedProduct, walkInFormResponse, ticket) -> {
+
+                            if (ticket.getId() != null)
+                                return FlatMapUtil.flatMapMono(
+                                        () -> this.createProcessorAccessForUser(access, ticket.getAssignedUserId()),
+                                        uAccess -> this.updateExistingTicket(
+                                                uAccess, ticket, walkInFormResponse, ticketRequest),
+                                        (uAccess, updated) -> this.activityService
+                                                .acWalkIn(uAccess, updated.getT1(), ticketRequest.getComment())
+                                                .thenReturn(updated.getT2()));
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.createNewTicket(
+                                            access, resolvedProduct, ticket, walkInFormResponse, ticketRequest),
+                                    created -> this.createProcessorAccessForUser(
+                                            access, created.getT1().getAssignedUserId()),
+                                    (created, uAccess) -> this.activityService
+                                            .acWalkIn(uAccess, created.getT1(), ticketRequest.getComment())
+                                            .thenReturn(created.getT2()));
+                        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
     }
 
