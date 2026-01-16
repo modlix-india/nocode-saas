@@ -180,9 +180,17 @@ public interface IFeignSecurityService {
     Mono<List<User>> getUsersInternal(
             @RequestParam List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> params);
 
+    @PostMapping(value = "${security.feign.getUsersInternalBatch:/api/security/users/internal/batch}")
+    Mono<List<User>> getUsersInternalBatch(
+            @RequestBody List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> params);
+
     @GetMapping(value = "${security.feign.getUserInternal:/api/security/users/internal/clients}")
     Mono<List<User>> getClientUserInternal(
             @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
+
+    @PostMapping(value = "${security.feign.getClientUserInternalBatch:/api/security/users/internal/clients/batch}")
+    Mono<List<User>> getClientUserInternalBatch(
+            @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal/{id}}")
     Mono<Client> getClientInternal(
@@ -191,6 +199,10 @@ public interface IFeignSecurityService {
     @GetMapping(value = "${security.feign.getClientInternal:/api/security/clients/internal}")
     Mono<List<Client>> getClientInternal(
             @RequestParam List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
+
+    @PostMapping(value = "${security.feign.getClientInternalBatch:/api/security/clients/internal/batch}")
+    Mono<List<Client>> getClientInternalBatch(
+            @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.getDesignationInternal:/api/security/designations/internal/{id}}")
     Mono<Designation> getDesignationInternal(
