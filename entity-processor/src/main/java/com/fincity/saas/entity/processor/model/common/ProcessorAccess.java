@@ -88,6 +88,16 @@ public final class ProcessorAccess implements Serializable {
         return this;
     }
 
+    public ULong getUserId() {
+        if (this.userId != null) {
+            return this.userId;
+        }
+        if (this.user != null && this.user.getId() != null) {
+            return ULongUtil.valueOf(this.user.getId());
+        }
+        return ULongUtil.valueOf(BigInteger.ZERO);
+    }
+
     public String getUserName() {
         if (this.user != null && !BigInteger.ZERO.equals(this.user.getId())) {
             String contextName = NameUtil.assembleFullName(
