@@ -94,6 +94,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String PLAN_CONFLICT_PLAN_ALREADY_EXISTS = "plan_conflict_plan_already_exists";
     public static final String PLAN_DEFAULT_PLAN_MUST_HAVE_ONE_APP = "plan_default_plan_must_have_one_app";
     public static final String PLAN_CYCLE_NOT_FOUND = "plan_cycle_not_found";
+    public static final String CLIENT_MANAGER_ALREADY_EXISTS = "client_manager_already_exists";
 
     public SecurityMessageResourceService() {
 
