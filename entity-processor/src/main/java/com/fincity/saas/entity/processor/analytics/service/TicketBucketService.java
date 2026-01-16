@@ -174,7 +174,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> resolveProducts(access, filter),
-                        (access, productFilter) -> resolveStages(access, productFilter),
+				        this::resolveStages,
                         (access, productFilter, stageFilter) -> super.resolveClients(access, stageFilter),
                         (access, productFilter, stageFilter, clientFilter) -> this.dao
                                 .getTicketCountPerProductStageAndClientId(access, stageFilter)

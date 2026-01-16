@@ -570,19 +570,6 @@ public class ReportUtil {
                 })
                 .collect(Collectors.toCollection(LinkedList::new));
 
-        // Calculate total count for all statusCounts
-        long totalCountValue = statusCounts.stream()
-                .mapToLong(statusEntityCount ->
-                        statusEntityCount.getTotalCount().getCount().longValue())
-                .sum();
-        CountPercentage totalCountPercentage = includePercentage
-                ? CountPercentage.of(totalCountValue, 0.0)
-                : CountPercentage.withCount(totalCountValue);
-
-        return new EntityStatusCount()
-                .setId(outerEntityId)
-                .setName(outerEntityName)
-                .setTotalCount(totalCountPercentage)
-                .setStatusCount(statusCounts);
+        return new EntityStatusCount(outerEntityId, outerEntityName, statusCounts, includePercentage);
     }
 }
