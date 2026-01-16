@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.jooq.types.ULong;
-import org.springframework.aop.framework.AopContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
@@ -202,7 +201,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
 
         return FlatMapUtil.flatMapMono(
 
-                () -> ((PlanService) AopContext.currentProxy()).read(entity.getId()),
+                () -> this.read(entity.getId()),
 
                 existing -> {
                     existing.setName(entity.getName());

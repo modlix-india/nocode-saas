@@ -85,23 +85,6 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
         return SecurityContextUtil.getUsersContextUser().map(ContextUser::getId).map(ULong::valueOf);
     }
 
-    private Mono<IdAndValue<ULong, String>> getLoggedInUser() {
-        return SecurityContextUtil.getUsersContextUser()
-                .map(user -> IdAndValue.of(
-                        ULongUtil.valueOf(user.getId()),
-                        NameUtil.assembleFullName(user.getFirstName(), user.getMiddleName(), user.getLastName())));
-    }
-
-    private Mono<IdAndValue<ULong, String>> getActorName(ULong actorId) {
-
-        if (actorId == null || actorId.longValue() <= 0) return this.getLoggedInUser();
-
-        return this.securityService
-                .getUserInternal(actorId.toBigInteger(), null)
-                .map(this::getUserIdAndValue)
-                .switchIfEmpty(this.getLoggedInUser());
-    }
-
     @Override
     public Mono<Activity> create(Activity activity) {
         return super.hasAccess()
@@ -149,39 +132,32 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     private Mono<Void> createActivityInternal(
             ProcessorAccess access,
             ActivityAction action,
-            LocalDateTime createOn,
+            LocalDateTime createdOn,
             String comment,
             Map<String, Object> context) {
+
         if (!context.containsKey(Activity.Fields.ticketId)) return Mono.empty();
+
         ULong ticketId = ULongUtil.valueOf(context.get(Activity.Fields.ticketId));
         if (ticketId == null || ticketId.longValue() <= 0) return Mono.empty();
 
         Map<String, Object> mutableContext = new HashMap<>(context);
+        mutableContext.put("entity", EntitySeries.TICKET.getPrefix(access.getAppCode()));
 
-        return FlatMapUtil.flatMapMono(
-                        () -> {
-                            mutableContext.put("entity", EntitySeries.TICKET.getPrefix(access.getAppCode()));
-                            return Mono.just(mutableContext);
-                        },
-                        uContext -> this.getActorName(
-                                ULongUtil.valueOf(uContext.getOrDefault(Activity.Fields.actorId, null))),
-                        (uContext, actor) -> {
-                            LocalDateTime activityDate = createOn != null ? createOn : LocalDateTime.now();
+        if (!mutableContext.containsKey("user"))
+            mutableContext.put("user", IdAndValue.of(access.getUserId(), access.getUserName()));
 
-                            if (!mutableContext.containsKey("user")) mutableContext.put("user", actor);
-                            if (!mutableContext.containsKey("dateTime")) mutableContext.put("dateTime", activityDate);
-                            String message = action.formatMessage(mutableContext);
+        LocalDateTime activityDate = createdOn != null ? createdOn : LocalDateTime.now();
 
-                            Activity activity = Activity.of(
-                                            ticketId,
-                                            action,
-                                            ActivityObject.ofTicket(ticketId, comment, mutableContext))
-                                    .setActivityDate(activityDate)
-                                    .setDescription(message)
-                                    .setActorId(actor.getId());
-                            this.updateActivityIds(activity, mutableContext, action.isDelete());
-                            return this.createInternal(access, activity).then();
-                        })
+        if (!mutableContext.containsKey("dateTime")) mutableContext.put("dateTime", activityDate);
+
+        Activity activity = Activity.of(ticketId, action, ActivityObject.ofTicket(ticketId, comment, mutableContext))
+                .setActivityDate(activityDate)
+                .setDescription(action.formatMessage(mutableContext))
+                .setActorId(access.getUserId());
+        this.updateActivityIds(activity, mutableContext, action.isDelete());
+
+        return this.createInternal(access, activity)
                 .then()
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.createActivityInternal"));
     }
@@ -326,8 +302,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     public Mono<Void> acWalkIn(ProcessorAccess access, Ticket ticket, String comment) {
-        return this.createActivityInternal(
-                        access, ActivityAction.WALK_IN, null, comment, Map.of(Activity.Fields.ticketId, ticket.getId()))
+        Map<String, Object> context = new HashMap<>();
+        context.put(Activity.Fields.ticketId, ticket.getId());
+        context.put("user", IdAndValue.of(access.getUserId(), access.getUserName()));
+        return this.createActivityInternal(access, ActivityAction.WALK_IN, null, comment, context)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acWalkIn"));
     }
 
@@ -643,18 +621,30 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     private Mono<Void> acReassignSystem(
             ProcessorAccess access, ULong ticketId, String comment, ULong oldUser, ULong newUser) {
-        return this.createActivityInternal(
-                        access,
-                        ActivityAction.REASSIGN_SYSTEM,
-                        null,
-                        comment,
-                        Map.of(
-                                Activity.Fields.ticketId,
-                                ticketId,
-                                ActivityAction.getOldName(Ticket.Fields.assignedUserId),
-                                oldUser,
-                                Ticket.Fields.assignedUserId,
-                                newUser))
+        return FlatMapUtil.flatMapMono(
+                        () -> Mono.zip(
+                                oldUser != null
+                                        ? super.securityService
+                                                .getUserInternal(oldUser.toBigInteger(), null)
+                                                .map(this::getUserIdAndValue)
+                                        : Mono.just(IdAndValue.of(oldUser, "")),
+                                newUser != null
+                                        ? super.securityService
+                                                .getUserInternal(newUser.toBigInteger(), null)
+                                                .map(this::getUserIdAndValue)
+                                        : Mono.just(IdAndValue.of(newUser, ""))),
+                        users -> this.createActivityInternal(
+                                access,
+                                ActivityAction.REASSIGN_SYSTEM,
+                                null,
+                                comment,
+                                Map.of(
+                                        Activity.Fields.ticketId,
+                                        ticketId,
+                                        ActivityAction.getOldName(Ticket.Fields.assignedUserId),
+                                        users.getT1(),
+                                        Ticket.Fields.assignedUserId,
+                                        users.getT2())))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acReassignSystem"));
     }
 
