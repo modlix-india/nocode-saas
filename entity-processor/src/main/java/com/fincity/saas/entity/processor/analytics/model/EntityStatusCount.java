@@ -20,5 +20,7 @@ public class EntityStatusCount implements Serializable {
 
     private String name;
 
+    private CountPercentage totalCount;
+
     private List<StatusEntityCount> statusCount;
 }
