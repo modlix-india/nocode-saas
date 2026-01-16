@@ -72,7 +72,7 @@ public abstract class BaseAnalyticsService<
         if (createdBysIds.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientUserInternal(createdBysIds, null),
+                () -> securityService.getClientUserInternalBatch(createdBysIds, null),
                 userList -> Mono.just(filter.filterCreatedByIds(userList.stream()
                                 .map(User::getId)
                                 .map(ULongUtil::valueOf)
@@ -98,7 +98,7 @@ public abstract class BaseAnalyticsService<
         if (assignedUsersIds.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getUsersInternal(assignedUsersIds, null),
+                () -> securityService.getUsersInternalBatch(assignedUsersIds, null),
                 userList -> Mono.just(
                         filter.filterAssignedUserIds(access.getUserInherit().getSubOrg())
                                 .setAssignedUsers(userList.stream()
@@ -121,7 +121,7 @@ public abstract class BaseAnalyticsService<
         if (clientIds.isEmpty()) return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                () -> securityService.getClientInternal(clientIds, null),
+                () -> securityService.getClientInternalBatch(clientIds, null),
                 clientList -> Mono.just(filter.filterClientIds(
                                 access.getUserInherit().getManagingClientIds())
                         .setClients(clientList.stream()

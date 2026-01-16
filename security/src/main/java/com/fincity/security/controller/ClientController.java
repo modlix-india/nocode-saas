@@ -1,6 +1,8 @@
 package com.fincity.security.controller;
 
+import java.math.BigInteger;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -191,6 +193,15 @@ public class ClientController
     public Mono<ResponseEntity<List<Client>>> getClientsInternal(
             @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
         return this.service.readByIds(clientIds, queryParams).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/batch")
+    public Mono<ResponseEntity<List<Client>>> getClientsInternalBatch(
+            @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        List<ULong> uLongClientIds = clientIds.stream()
+                .map(ULong::valueOf)
+                .toList();
+        return this.service.readByIds(uLongClientIds, queryParams).map(ResponseEntity::ok);
     }
 
     @Override
