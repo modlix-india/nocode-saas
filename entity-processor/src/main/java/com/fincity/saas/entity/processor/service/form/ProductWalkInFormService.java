@@ -283,10 +283,9 @@ public class ProductWalkInFormService
                         (resolvedProduct, walkInFormResponse) ->
                                 this.validateAndGetTicket(access, resolvedProduct, walkInFormResponse, ticketRequest),
                         (resolvedProduct, walkInFormResponse, ticket) -> {
-
                             if (ticket.getId() != null)
                                 return FlatMapUtil.flatMapMono(
-                                        () -> this.createProcessorAccessForUser(access, ticket.getAssignedUserId()),
+                                        () -> this.createProcessorAccessForUser(access, ticketRequest.getUserId()),
                                         uAccess -> this.updateExistingTicket(
                                                 uAccess, ticket, walkInFormResponse, ticketRequest),
                                         (uAccess, updated) -> this.activityService
