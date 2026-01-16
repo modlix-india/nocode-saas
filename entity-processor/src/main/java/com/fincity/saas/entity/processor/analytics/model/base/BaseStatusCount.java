@@ -1,7 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model.base;
 
 import com.fincity.saas.commons.util.IClassConvertor;
-import com.fincity.saas.entity.processor.analytics.model.CountPercentage;
+import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serializable;
 import java.util.List;

@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serial;
 import java.util.List;

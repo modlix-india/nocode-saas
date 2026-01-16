@@ -10,10 +10,10 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
-import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
-import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
+import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
+import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
@@ -516,12 +516,46 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
     public Flux<PerValueCount> getTicketCountPerProductStageAndClientId(
             ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
-        return this.getTicketCountByGroupAndJoinWithClientId(
-                access,
-                ticketBucketFilter,
-                ENTITY_PROCESSOR_TICKETS.PRODUCT_ID,
-                ENTITY_PROCESSOR_TICKETS.STAGE,
-                NO_STAGE,
-                false);
+        Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, clientIdAsString, DSL.count(this.idField))
+                            .from(this.table)
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+
+                    return Flux.from(query.groupBy(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID, clientIdAsString))
+                            .map(rec -> new PerValueCount()
+                                    .setGroupedId(rec.get(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID))
+                                    .setGroupedValue(rec.get(clientIdAsString))
+                                    .setCount(rec.get(DSL.count(this.idField)).longValue()));
+                });
+    }
+
+    public Flux<PerDateCount> getTicketCountPerClientIdAndDate(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
+        Field<LocalDate> castedDateField = DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE);
+
+        return FlatMapUtil.flatMapFlux(
+                () -> this.createTicketBucketConditions(access, ticketBucketFilter)
+                        .flux(),
+                abstractCondition -> super.filter(abstractCondition).flux(),
+                (abstractCondition, conditions) -> {
+                    SelectConditionStep<?> query = this.dslContext
+                            .select(clientIdAsString, castedDateField, DSL.count(this.idField))
+                            .from(this.table)
+                            .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
+
+                    return Flux.from(query.groupBy(clientIdAsString, castedDateField))
+                            .map(rec -> new PerDateCount()
+                                    .setDate(rec.get(castedDateField))
+                                    .setGroupedValue(rec.get(clientIdAsString))
+                                    .setCount(rec.get(DSL.count(this.idField)).longValue()));
+                });
     }
 }
