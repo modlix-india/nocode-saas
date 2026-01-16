@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.analytics.model;
+package com.fincity.saas.entity.processor.analytics.model.common;
 
 import com.fincity.saas.entity.processor.analytics.util.NumberUtil;
 import java.io.Serial;
