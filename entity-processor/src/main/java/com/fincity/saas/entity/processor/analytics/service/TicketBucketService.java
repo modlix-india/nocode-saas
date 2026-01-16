@@ -195,28 +195,25 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductStageAndClientIdCount"));
     }
 
-    public Mono<Page<EntityDateCount>> getTicketPerClientIdAndDateCount(
-            Pageable pageable, TicketBucketFilter filter) {
+    public Mono<Page<EntityDateCount>> getTicketPerClientIdAndDateCount(Pageable pageable, TicketBucketFilter filter) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
                         access -> super.resolveClients(access, filter),
                         (access, clientFilter) -> this.dao
                                 .getTicketCountPerClientIdAndDate(access, clientFilter)
                                 .collectList(),
-                        (access, clientFilter, perDateCountList) ->
-                                ReportUtil.toEntityDateCounts(
-                                                DatePair.of(filter.getStartDate(), filter.getEndDate()),
-                                                filter.getTimePeriod(),
-                                                perDateCountList,
-                                                clientFilter.getBaseFieldData().getClients(),
-                                                clientFilter.isIncludeZero(),
-                                                clientFilter.isIncludePercentage())
-                                        .collectList(),
+                        (access, clientFilter, perDateCountList) -> ReportUtil.toEntityDateCounts(
+                                        DatePair.of(filter.getStartDate(), filter.getEndDate()),
+                                        filter.getTimePeriod(),
+                                        perDateCountList,
+                                        clientFilter.getBaseFieldData().getClients(),
+                                        clientFilter.isIncludeZero(),
+                                        clientFilter.isIncludePercentage())
+                                .collectList(),
                         (access, clientFilter, perDateCountList, entityDateCounts) ->
                                 ReactivePaginationUtil.toPage(entityDateCounts, pageable))
                 .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
-                .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdAndDateCount"));
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdAndDateCount"));
     }
 
     public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(
