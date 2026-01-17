@@ -16,16 +16,9 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements Serializable, IClassConvertor {
 
-    private CountPercentage totalCount;
-
     private List<IdAndValue<String, CountPercentage>> perCount;
 
     public abstract String getName();
-
-    public T setTotalCount(CountPercentage totalCount) {
-        this.totalCount = totalCount;
-        return (T) this;
-    }
 
     public T setPerCount(List<IdAndValue<String, CountPercentage>> perCount) {
         this.perCount = perCount;
