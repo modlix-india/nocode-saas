@@ -41,7 +41,7 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     public static <V> DatePair findContainingDate(LocalDate dateToFind, NavigableMap<DatePair, V> datePairMap) {
 
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateToFind, dateToFind));
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateToFind, LocalDate.MAX));
 
         if (entry != null && entry.getKey().contains(dateToFind)) return entry.getKey();
 

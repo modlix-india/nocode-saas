@@ -20,7 +20,7 @@ public class DateCount extends BaseCount<DateCount> {
 
     private DatePair datePair;
 
-    public static DateCount of(DatePair datePair, CountPercentage totalCount) {
-        return new DateCount().setDatePair(datePair).setTotalCount(totalCount);
+    public static DateCount of(DatePair datePair, CountPercentage count) {
+        return new DateCount().setDatePair(datePair).setCount(count);
     }
 }
