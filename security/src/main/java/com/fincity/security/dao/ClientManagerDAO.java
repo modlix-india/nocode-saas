@@ -22,4 +22,13 @@ public class ClientManagerDAO extends AbstractDAO<SecurityClientManagerRecord, U
                         .and(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId))))
                 .map(e -> e.into(this.pojoClass));
     }
+
+    public Mono<Boolean> hasAnyOtherClientAssociations(ULong managerId, ULong excludeId) {
+        return Mono.from(this.dslContext.selectCount()
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)
+                        .and(SECURITY_CLIENT_MANAGER.ID.ne(excludeId))))
+                .map(rec -> rec.value1() > 0)
+                .defaultIfEmpty(false);
+    }
 }
