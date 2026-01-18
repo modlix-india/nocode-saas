@@ -38,7 +38,7 @@ public class DesignationDAO extends AbstractUpdatableClientCheckDAO<SecurityDesi
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_DESIGNATION.CLIENT_ID;
     }
 

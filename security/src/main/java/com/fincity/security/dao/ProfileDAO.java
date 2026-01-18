@@ -69,7 +69,7 @@ public class ProfileDAO extends AbstractUpdatableClientCheckDAO<SecurityProfileR
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_PROFILE.CLIENT_ID;
     }
 

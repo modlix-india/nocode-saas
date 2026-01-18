@@ -20,7 +20,7 @@ public class PaymentGatewayDAO extends AbstractUpdatableClientCheckDAO<SecurityP
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_PAYMENT_GATEWAY.CLIENT_ID;
     }
 

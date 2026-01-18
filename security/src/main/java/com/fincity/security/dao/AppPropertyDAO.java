@@ -18,7 +18,7 @@ public class AppPropertyDAO extends AbstractUpdatableClientCheckDAO<SecurityAppP
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SecurityAppProperty.SECURITY_APP_PROPERTY.CLIENT_ID;
     }
 

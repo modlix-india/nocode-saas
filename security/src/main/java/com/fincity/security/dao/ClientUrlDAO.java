@@ -22,14 +22,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-public class UpdatableClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClientUrlRecord, ULong, ClientUrl> {
+public class ClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClientUrlRecord, ULong, ClientUrl> {
 
-    public UpdatableClientUrlDAO() {
+    public ClientUrlDAO() {
         super(ClientUrl.class, SECURITY_CLIENT_URL, SECURITY_CLIENT_URL.ID);
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_CLIENT_URL.CLIENT_ID;
     }
 

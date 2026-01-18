@@ -20,7 +20,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.policy.AbstractUpdatablePolicyDao;
+import com.fincity.security.dao.policy.AbstractPolicyDao;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.service.AppService;
 import com.fincity.security.service.ClientHierarchyService;
@@ -34,7 +34,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Service
-public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractUpdatablePolicyDao<R, D>>
+public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>>
         extends AbstractJOOQUpdatableDataService<R, ULong, D, O> {
 
     protected static final ULong DEFAULT_POLICY_ID = ULong.MIN;

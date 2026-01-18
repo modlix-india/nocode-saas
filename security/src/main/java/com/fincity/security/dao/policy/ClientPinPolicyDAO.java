@@ -14,9 +14,9 @@ import com.fincity.security.jooq.tables.records.SecurityClientPinPolicyRecord;
 import reactor.core.publisher.Flux;
 
 @Component
-public class UpdatableClientPinPolicyDAO extends AbstractUpdatablePolicyDao<SecurityClientPinPolicyRecord, ClientPinPolicy> {
+public class ClientPinPolicyDAO extends AbstractPolicyDao<SecurityClientPinPolicyRecord, ClientPinPolicy> {
 
-	public UpdatableClientPinPolicyDAO() {
+	public ClientPinPolicyDAO() {
 		super(ClientPinPolicy.class, SECURITY_CLIENT_PIN_POLICY, SECURITY_CLIENT_PIN_POLICY.ID);
 	}
 

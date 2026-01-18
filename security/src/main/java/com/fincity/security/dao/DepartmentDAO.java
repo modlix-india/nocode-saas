@@ -34,7 +34,7 @@ public class DepartmentDAO extends AbstractUpdatableClientCheckDAO<SecurityDepar
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_DEPARTMENT.CLIENT_ID;
     }
 

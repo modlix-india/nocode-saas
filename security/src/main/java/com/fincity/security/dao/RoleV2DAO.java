@@ -40,7 +40,7 @@ public class RoleV2DAO extends AbstractUpdatableClientCheckDAO<SecurityV2RoleRec
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID;
     }
 

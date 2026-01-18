@@ -14,10 +14,10 @@ import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyReco
 import reactor.core.publisher.Flux;
 
 @Component
-public class UpdatableClientPasswordPolicyDAO
-		extends AbstractUpdatablePolicyDao<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy> {
+public class ClientPasswordPolicyDAO
+		extends AbstractPolicyDao<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy> {
 
-	public UpdatableClientPasswordPolicyDAO() {
+	public ClientPasswordPolicyDAO() {
 		super(ClientPasswordPolicy.class, SECURITY_CLIENT_PASSWORD_POLICY, SECURITY_CLIENT_PASSWORD_POLICY.ID);
 	}
 

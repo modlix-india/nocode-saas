@@ -26,7 +26,7 @@ import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.UpdatableClientUrlDAO;
+import com.fincity.security.dao.ClientUrlDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.records.SecurityClientUrlRecord;
@@ -37,7 +37,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ClientUrlService
-        extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, UpdatableClientUrlDAO> {
+        extends AbstractJOOQUpdatableDataService<SecurityClientUrlRecord, ULong, ClientUrl, ClientUrlDAO> {
 
     private static final String URL_PATTERN = "urlPattern";
 

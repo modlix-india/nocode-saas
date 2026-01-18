@@ -7,7 +7,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.security.dao.policy.AbstractUpdatablePolicyDao;
+import com.fincity.security.dao.policy.AbstractPolicyDao;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.service.policy.AbstractPolicyService;
 
@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
-public class AbstractPolicyController<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractUpdatablePolicyDao<R, D>, S extends AbstractPolicyService<R, D, O>>
+public class AbstractPolicyController<R extends UpdatableRecord<R>, D extends AbstractPolicy, O extends AbstractPolicyDao<R, D>, S extends AbstractPolicyService<R, D, O>>
 		extends AbstractJOOQUpdatableDataController<R, ULong, D, O, S> {
 
 	@GetMapping("/codes/policy")

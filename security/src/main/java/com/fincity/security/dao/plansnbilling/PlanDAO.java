@@ -38,7 +38,7 @@ public class PlanDAO extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord,
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_PLAN.CLIENT_ID;
     }
 

@@ -78,7 +78,7 @@ public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord,
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SECURITY_USER.CLIENT_ID;
     }
 

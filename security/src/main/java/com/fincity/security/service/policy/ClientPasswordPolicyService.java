@@ -15,7 +15,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.policy.UpdatableClientPasswordPolicyDAO;
+import com.fincity.security.dao.policy.ClientPasswordPolicyDAO;
 import com.fincity.security.dto.PastPassword;
 import com.fincity.security.dto.policy.ClientPasswordPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPasswordPolicyRecord;
@@ -27,7 +27,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ClientPasswordPolicyService
-        extends AbstractPolicyService<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy, UpdatableClientPasswordPolicyDAO>
+        extends AbstractPolicyService<SecurityClientPasswordPolicyRecord, ClientPasswordPolicy, ClientPasswordPolicyDAO>
         implements IPolicyService<ClientPasswordPolicy> {
 
     private static final String CLIENT_PASSWORD_POLICY = "client password policy";

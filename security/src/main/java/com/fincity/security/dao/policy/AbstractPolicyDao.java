@@ -10,10 +10,10 @@ import com.fincity.security.dto.policy.AbstractPolicy;
 
 import reactor.core.publisher.Mono;
 
-public abstract class AbstractUpdatablePolicyDao<R extends UpdatableRecord<R>, D extends AbstractPolicy>
+public abstract class AbstractPolicyDao<R extends UpdatableRecord<R>, D extends AbstractPolicy>
 		extends AbstractUpdatableClientCheckDAO<R, ULong, D> {
 
-	protected AbstractUpdatablePolicyDao(Class<D> pojoClass, Table<R> table, Field<ULong> idField) {
+	protected AbstractPolicyDao(Class<D> pojoClass, Table<R> table, Field<ULong> idField) {
 		super(pojoClass, table, idField);
 	}
 

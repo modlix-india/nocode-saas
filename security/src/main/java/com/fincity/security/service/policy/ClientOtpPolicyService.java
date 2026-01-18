@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.service.CacheService;
-import com.fincity.security.dao.policy.UpdatableClientOtpPolicyDAO;
+import com.fincity.security.dao.policy.ClientOtpPolicyDAO;
 import com.fincity.security.dto.policy.ClientOtpPolicy;
 import com.fincity.security.jooq.enums.SecurityClientOtpPolicyTargetType;
 import com.fincity.security.jooq.tables.records.SecurityClientOtpPolicyRecord;
@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ClientOtpPolicyService
-		extends AbstractPolicyService<SecurityClientOtpPolicyRecord, ClientOtpPolicy, UpdatableClientOtpPolicyDAO>
+		extends AbstractPolicyService<SecurityClientOtpPolicyRecord, ClientOtpPolicy, ClientOtpPolicyDAO>
 		implements IPolicyService<ClientOtpPolicy> {
 
 	private static final String CLIENT_OTP_POLICY = "client_otp_policy";
