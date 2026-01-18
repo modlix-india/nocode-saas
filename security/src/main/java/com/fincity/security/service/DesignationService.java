@@ -20,7 +20,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.DesignationDAOUpdatable;
+import com.fincity.security.dao.DesignationDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.Designation;
@@ -36,7 +36,7 @@ import reactor.util.function.Tuple2;
 
 @Service
 public class DesignationService
-        extends AbstractJOOQUpdatableDataService<SecurityDesignationRecord, ULong, Designation, DesignationDAOUpdatable> {
+        extends AbstractJOOQUpdatableDataService<SecurityDesignationRecord, ULong, Designation, DesignationDAO> {
 
     private static final String DESIGNATION = "Designation";
     private static final String FETCH_PARENT_DESIGNATION = "fetchParentDesignation";

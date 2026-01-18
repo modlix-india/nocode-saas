@@ -23,7 +23,7 @@ import com.fincity.saas.commons.mq.events.EventQueObject;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.plansnbilling.InvoiceDAO;
 import com.fincity.security.dao.plansnbilling.PlanCycleDAO;
-import com.fincity.security.dao.plansnbilling.PlanDAOUpdatable;
+import com.fincity.security.dao.plansnbilling.PlanDAO;
 import com.fincity.security.dto.invoicesnpayments.Invoice;
 import com.fincity.security.dto.invoicesnpayments.InvoiceItem;
 import com.fincity.security.dto.plansnbilling.ClientPlan;
@@ -46,7 +46,7 @@ import reactor.util.context.Context;
 public class InvoiceService
         extends AbstractSecurityUpdatableDataService<SecurityInvoiceRecord, ULong, Invoice, InvoiceDAO> {
 
-    private final PlanDAOUpdatable planDAO;
+    private final PlanDAO planDAO;
     private final PlanCycleDAO planCycleDAO;
     private final ClientService clientService;
     private final AppService appService;
@@ -57,7 +57,7 @@ public class InvoiceService
 
     private static final Logger logger = LoggerFactory.getLogger(InvoiceService.class);
 
-    public InvoiceService(PlanCycleDAO planCycleDAO, PlanDAOUpdatable planDAO,
+    public InvoiceService(PlanCycleDAO planCycleDAO, PlanDAO planDAO,
             ClientService clientService, SecurityMessageResourceService messageResourceService,
             EventCreationService eventCreationService, AppService appService, ClientUrlService clientUrlService) {
         this.planCycleDAO = planCycleDAO;

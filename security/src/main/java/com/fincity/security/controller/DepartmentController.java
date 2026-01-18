@@ -2,7 +2,7 @@ package com.fincity.security.controller;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.security.dao.DepartmentDAOUpdatable;
+import com.fincity.security.dao.DepartmentDAO;
 import com.fincity.security.dto.Department;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
 import com.fincity.security.service.DepartmentService;
@@ -27,7 +27,7 @@ import java.util.List;
 @RestController
 @RequestMapping("api/security/departments")
 public class DepartmentController
-        extends AbstractJOOQUpdatableDataController<SecurityDepartmentRecord, ULong, Department, DepartmentDAOUpdatable, DepartmentService> {
+        extends AbstractJOOQUpdatableDataController<SecurityDepartmentRecord, ULong, Department, DepartmentDAO, DepartmentService> {
 
     @GetMapping()
     @Override

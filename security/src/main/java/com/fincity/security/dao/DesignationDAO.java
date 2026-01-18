@@ -31,9 +31,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class DesignationDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityDesignationRecord, ULong, Designation> {
+public class DesignationDAO extends AbstractUpdatableClientCheckDAO<SecurityDesignationRecord, ULong, Designation> {
 
-    protected DesignationDAOUpdatable() {
+    protected DesignationDAO() {
         super(Designation.class, SECURITY_DESIGNATION, SECURITY_DESIGNATION.ID);
     }
 

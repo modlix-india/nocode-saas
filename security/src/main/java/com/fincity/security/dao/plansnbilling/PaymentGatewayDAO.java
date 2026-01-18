@@ -13,9 +13,9 @@ import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
 import reactor.core.publisher.Mono;
 
 @Component
-public class PaymentGatewayDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityPaymentGatewayRecord, ULong, PaymentGateway> {
+public class PaymentGatewayDAO extends AbstractUpdatableClientCheckDAO<SecurityPaymentGatewayRecord, ULong, PaymentGateway> {
 
-    public PaymentGatewayDAOUpdatable() {
+    public PaymentGatewayDAO() {
         super(PaymentGateway.class, SECURITY_PAYMENT_GATEWAY, SECURITY_PAYMENT_GATEWAY.ID);
     }
 

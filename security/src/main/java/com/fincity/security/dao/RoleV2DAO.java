@@ -33,9 +33,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
-public class RoleV2DAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityV2RoleRecord, ULong, RoleV2> {
+public class RoleV2DAO extends AbstractUpdatableClientCheckDAO<SecurityV2RoleRecord, ULong, RoleV2> {
 
-    public RoleV2DAOUpdatable() {
+    public RoleV2DAO() {
         super(RoleV2.class, SecurityV2Role.SECURITY_V2_ROLE, SecurityV2Role.SECURITY_V2_ROLE.ID);
     }
 

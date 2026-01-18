@@ -66,12 +66,12 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class UserDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
+public class UserDAO extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     private final PasswordEncoder encoder;
     private final ClientDAO clientDAO;
 
-    protected UserDAOUpdatable(PasswordEncoder encoder, ClientDAO clientDao) {
+    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao) {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
         this.encoder = encoder;
         this.clientDAO = clientDao;

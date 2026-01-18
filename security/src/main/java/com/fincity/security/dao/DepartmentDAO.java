@@ -27,9 +27,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class DepartmentDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityDepartmentRecord, ULong, Department> {
+public class DepartmentDAO extends AbstractUpdatableClientCheckDAO<SecurityDepartmentRecord, ULong, Department> {
 
-    protected DepartmentDAOUpdatable() {
+    protected DepartmentDAO() {
         super(Department.class, SECURITY_DEPARTMENT, SECURITY_DEPARTMENT.ID);
     }
 

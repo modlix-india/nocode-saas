@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.security.dao.plansnbilling.PaymentGatewayDAOUpdatable;
+import com.fincity.security.dao.plansnbilling.PaymentGatewayDAO;
 import com.fincity.security.dto.invoicesnpayments.PaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/payment-gateways")
 public class PaymentGatewayController extends AbstractJOOQUpdatableDataController<SecurityPaymentGatewayRecord, ULong,
-        PaymentGateway, PaymentGatewayDAOUpdatable, PaymentGatewayService> {
+        PaymentGateway, PaymentGatewayDAO, PaymentGatewayService> {
 
     public PaymentGatewayController(PaymentGatewayService service) {
         this.service = service;

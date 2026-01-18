@@ -62,9 +62,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class ProfileDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityProfileRecord, ULong, Profile> {
+public class ProfileDAO extends AbstractUpdatableClientCheckDAO<SecurityProfileRecord, ULong, Profile> {
 
-    public ProfileDAOUpdatable() {
+    public ProfileDAO() {
         super(Profile.class, SECURITY_PROFILE, SECURITY_PROFILE.ID);
     }
 

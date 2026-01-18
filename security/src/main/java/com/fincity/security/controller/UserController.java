@@ -31,7 +31,7 @@ import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
 import com.fincity.saas.commons.security.model.UsersListRequest;
 import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.security.dao.UserDAOUpdatable;
+import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserClient;
@@ -54,7 +54,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/users")
 public class UserController
-        extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAOUpdatable, UserService> {
+        extends AbstractJOOQUpdatableDataController<SecurityUserRecord, ULong, User, UserDAO, UserService> {
 
     private final UserInviteService inviteService;
     private final UserSubOrganizationService userSubOrgService;

@@ -10,9 +10,9 @@ import com.fincity.security.jooq.tables.SecurityAppProperty;
 import com.fincity.security.jooq.tables.records.SecurityAppPropertyRecord;
 
 @Service
-public class AppPropertyDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityAppPropertyRecord, ULong, AppProperty> {
+public class AppPropertyDAO extends AbstractUpdatableClientCheckDAO<SecurityAppPropertyRecord, ULong, AppProperty> {
 
-    protected AppPropertyDAOUpdatable() {
+    protected AppPropertyDAO() {
         super(AppProperty.class, SecurityAppProperty.SECURITY_APP_PROPERTY,
                 SecurityAppProperty.SECURITY_APP_PROPERTY.ID);
     }

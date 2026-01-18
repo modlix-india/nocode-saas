@@ -31,9 +31,9 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class PlanDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
+public class PlanDAO extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
 
-    public PlanDAOUpdatable() {
+    public PlanDAO() {
         super(Plan.class, SECURITY_PLAN, SECURITY_PLAN.ID);
     }
 

@@ -16,10 +16,10 @@ import com.fincity.security.jooq.tables.records.SecurityAppRegIntegrationRecord;
 import reactor.core.publisher.Mono;
 
 @Service
-public class AppRegistrationIntegrationDAOUpdatable
+public class AppRegistrationIntegrationDAO
                 extends AbstractUpdatableClientCheckDAO<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration> {
 
-        protected AppRegistrationIntegrationDAOUpdatable() {
+        protected AppRegistrationIntegrationDAO() {
                 super(AppRegistrationIntegration.class, SECURITY_APP_REG_INTEGRATION,
                                 SECURITY_APP_REG_INTEGRATION.ID);
         }

@@ -24,7 +24,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.UserDAOUpdatable;
+import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserInviteDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.dto.UserInvite;
@@ -45,13 +45,13 @@ public class UserInviteService
 
     private final SecurityMessageResourceService msgService;
     private final ClientService clientService;
-    private final UserDAOUpdatable userDao;
+    private final UserDAO userDao;
     private final AuthenticationService authenticationService;
     private final SoxLogService soxLogService;
     private final ProfileService profileService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
-                             AuthenticationService authenticationService, UserDAOUpdatable userDao, SoxLogService soxLogService,
+                             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
                              ProfileService profileService) {
 
         this.msgService = msgService;

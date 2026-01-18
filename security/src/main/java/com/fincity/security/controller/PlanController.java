@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.security.dao.plansnbilling.PlanDAOUpdatable;
+import com.fincity.security.dao.plansnbilling.PlanDAO;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.dto.plansnbilling.PlanLimit;
 import com.fincity.security.jooq.tables.records.SecurityPlanRecord;
@@ -25,7 +25,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("api/security/plans")
 public class PlanController
-        extends AbstractJOOQUpdatableDataController<SecurityPlanRecord, ULong, Plan, PlanDAOUpdatable, PlanService> {
+        extends AbstractJOOQUpdatableDataController<SecurityPlanRecord, ULong, Plan, PlanDAO, PlanService> {
 
     public PlanController(PlanService service) {
         this.service = service;

@@ -26,7 +26,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.UserDAOUpdatable;
+import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -38,7 +38,7 @@ import reactor.util.function.Tuples;
 
 @Service
 public class UserSubOrganizationService
-        extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAOUpdatable> {
+        extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
 
     private static final String USER_SUB_ORG = "userSubOrg";
 

@@ -8,7 +8,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.UserDAOUpdatable;
+import com.fincity.security.dao.UserDAO;
 import com.fincity.security.dao.UserRequestDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
@@ -36,13 +36,13 @@ public class UserRequestService
 
     private final SecurityMessageResourceService msgService;
     private final ClientService clientService;
-    private final UserDAOUpdatable userDao;
+    private final UserDAO userDao;
     private final ProfileService profileService;
     private final AppService appService;
 
     @Autowired
     public UserRequestService(SecurityMessageResourceService msgService, ClientService clientService,
-            UserDAOUpdatable userDao,
+            UserDAO userDao,
             ProfileService profileService, AppService appService) {
 
         this.msgService = msgService;

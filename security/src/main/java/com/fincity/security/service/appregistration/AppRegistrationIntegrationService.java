@@ -27,7 +27,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.AppRegistrationIntegrationDAOUpdatable;
+import com.fincity.security.dao.AppRegistrationIntegrationDAO;
 import com.fincity.security.dto.AppRegistrationIntegration;
 import com.fincity.security.dto.AppRegistrationIntegrationToken;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
@@ -41,7 +41,7 @@ import reactor.util.context.Context;
 @Service
 public class AppRegistrationIntegrationService
         extends AbstractJOOQUpdatableDataService<
-                SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration, AppRegistrationIntegrationDAOUpdatable> {
+                SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration, AppRegistrationIntegrationDAO> {
 
     private static final String REDIRECT_URI = "redirect_uri";
     private static final String CLIENT_ID = "client_id";

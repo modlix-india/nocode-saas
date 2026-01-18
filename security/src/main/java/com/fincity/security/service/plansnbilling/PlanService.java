@@ -22,7 +22,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.security.dao.plansnbilling.PlanCycleDAO;
-import com.fincity.security.dao.plansnbilling.PlanDAOUpdatable;
+import com.fincity.security.dao.plansnbilling.PlanDAO;
 import com.fincity.security.dao.plansnbilling.PlanLimitDAO;
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.Client;
@@ -39,7 +39,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRecord, ULong, Plan, PlanDAOUpdatable> {
+public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRecord, ULong, Plan, PlanDAO> {
 
     private static final String CACHE_NAME_REGISTRATION_PLANS = "registrationPlans";
     private static final String CACHE_NAME_PLAN_ID = "planId";
