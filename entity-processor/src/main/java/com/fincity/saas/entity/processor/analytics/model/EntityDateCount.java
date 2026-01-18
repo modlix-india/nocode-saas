@@ -35,9 +35,9 @@ public class EntityDateCount implements Serializable {
                 .toList();
 
         long totalCountValue = this.dateCounts.stream()
-                .mapToLong(dateCount -> dateCount.getTotalCount() != null
-                                && dateCount.getTotalCount().getCount() != null
-                        ? dateCount.getTotalCount().getCount().longValue()
+                .mapToLong(dateCount -> dateCount.getCount() != null
+                                && dateCount.getCount().getCount() != null
+                        ? dateCount.getCount().getCount().longValue()
                         : 0L)
                 .sum();
 

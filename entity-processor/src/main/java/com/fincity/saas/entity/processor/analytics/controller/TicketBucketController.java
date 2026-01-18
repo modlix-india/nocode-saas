@@ -67,15 +67,6 @@ public class TicketBucketController
                 .map(ResponseEntity::ok);
     }
 
-    @PostMapping({"/created-bys/stages/totals/dates", "/stage-counts/created-bys/unique"})
-    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedBy(
-            @RequestBody(required = false) TicketBucketFilter filter) {
-
-        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
-
-        return this.service.getTicketPerCreatedByStageTotalWithUniqueCreatedBy(effectiveFilter);
-    }
-
     @PostMapping({"/created-bys/stages/totals/dates/client-id", "/stage-counts/created-bys/unique/client-id"})
     public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId(
             @RequestBody(required = false) TicketBucketFilter filter) {
