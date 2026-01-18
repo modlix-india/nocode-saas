@@ -7,6 +7,8 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.jooq.tables.records.SecurityProfileRoleRecord;
 import org.jooq.*;
@@ -60,9 +62,9 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class ProfileDAO extends AbstractClientCheckDAO<SecurityProfileRecord, ULong, Profile> {
+public class ProfileDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityProfileRecord, ULong, Profile> {
 
-    public ProfileDAO() {
+    public ProfileDAOUpdatable() {
         super(Profile.class, SECURITY_PROFILE, SECURITY_PROFILE.ID);
     }
 

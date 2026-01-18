@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.Designation;
@@ -30,14 +31,14 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class DesignationDAO extends AbstractClientCheckDAO<SecurityDesignationRecord, ULong, Designation> {
+public class DesignationDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityDesignationRecord, ULong, Designation> {
 
-    protected DesignationDAO() {
+    protected DesignationDAOUpdatable() {
         super(Designation.class, SECURITY_DESIGNATION, SECURITY_DESIGNATION.ID);
     }
 
     @Override
-    protected Field<ULong> getClientIDField() {
+    public Field<ULong> getClientIDField() {
         return SECURITY_DESIGNATION.CLIENT_ID;
     }
 

@@ -10,14 +10,14 @@ import com.fincity.security.dto.policy.ClientOtpPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientOtpPolicyRecord;
 
 @Component
-public class ClientOtpPolicyDAO extends AbstractPolicyDao<SecurityClientOtpPolicyRecord, ClientOtpPolicy> {
+public class UpdatableClientOtpPolicyDAO extends AbstractUpdatablePolicyDao<SecurityClientOtpPolicyRecord, ClientOtpPolicy> {
 
-	public ClientOtpPolicyDAO() {
+	public UpdatableClientOtpPolicyDAO() {
 		super(ClientOtpPolicy.class, SECURITY_CLIENT_OTP_POLICY, SECURITY_CLIENT_OTP_POLICY.ID);
 	}
 
 	@Override
-	protected Field<ULong> getClientIDField() {
+	public Field<ULong> getClientIDField() {
 		return SECURITY_CLIENT_OTP_POLICY.CLIENT_ID;
 	}
 

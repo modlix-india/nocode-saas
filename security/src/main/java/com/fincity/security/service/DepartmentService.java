@@ -18,7 +18,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.DepartmentDAO;
+import com.fincity.security.dao.DepartmentDAOUpdatable;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
@@ -33,7 +33,7 @@ import reactor.util.function.Tuple2;
 
 @Service
 public class DepartmentService
-        extends AbstractJOOQUpdatableDataService<SecurityDepartmentRecord, ULong, Department, DepartmentDAO> {
+        extends AbstractJOOQUpdatableDataService<SecurityDepartmentRecord, ULong, Department, DepartmentDAOUpdatable> {
 
     private static final String DEPARTMENT = "Department";
     private static final String FETCH_PARENT_DEPARTMENT = "fetchParentDepartment";

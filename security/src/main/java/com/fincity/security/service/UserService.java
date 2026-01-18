@@ -50,7 +50,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
-import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dao.UserDAOUpdatable;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
@@ -81,7 +81,7 @@ import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 @Service
-public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAO> {
+public class UserService extends AbstractSecurityUpdatableDataService<SecurityUserRecord, ULong, User, UserDAOUpdatable> {
 
     private static final String FETCH_PROFILES = "fetchProfiles";
     private static final String FETCH_CLIENT = "fetchClients";

@@ -12,6 +12,7 @@ import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.ClientUrl;
 import com.fincity.security.jooq.tables.SecurityClient;
 import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
@@ -21,14 +22,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-public class ClientUrlDAO extends AbstractClientCheckDAO<SecurityClientUrlRecord, ULong, ClientUrl> {
+public class UpdatableClientUrlDAO extends AbstractUpdatableClientCheckDAO<SecurityClientUrlRecord, ULong, ClientUrl> {
 
-    public ClientUrlDAO() {
+    public UpdatableClientUrlDAO() {
         super(ClientUrl.class, SECURITY_CLIENT_URL, SECURITY_CLIENT_URL.ID);
     }
 
     @Override
-    protected Field<ULong> getClientIDField() {
+    public Field<ULong> getClientIDField() {
         return SECURITY_CLIENT_URL.CLIENT_ID;
     }
 

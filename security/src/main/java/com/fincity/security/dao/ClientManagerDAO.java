@@ -1,8 +1,9 @@
 package com.fincity.security.dao;
 
-import com.fincity.saas.commons.jooq.dao.AbstractDAO;
+import com.fincity.security.dao.clientcheck.AbstractClientCheckDAO;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
+import org.jooq.Field;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -10,10 +11,15 @@ import reactor.core.publisher.Mono;
 import static com.fincity.security.jooq.tables.SecurityClientManager.SECURITY_CLIENT_MANAGER;
 
 @Component
-public class ClientManagerDAO extends AbstractDAO<SecurityClientManagerRecord, ULong, ClientManager> {
+public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManagerRecord, ULong, ClientManager> {
 
     public ClientManagerDAO() {
         super(ClientManager.class, SECURITY_CLIENT_MANAGER, SECURITY_CLIENT_MANAGER.ID);
+    }
+
+    @Override
+    protected Field<ULong> getClientIDField() {
+        return SECURITY_CLIENT_MANAGER.CLIENT_ID;
     }
 
     public Mono<ClientManager> readByClientIdAndManagerId(ULong clientId, ULong managerId) {

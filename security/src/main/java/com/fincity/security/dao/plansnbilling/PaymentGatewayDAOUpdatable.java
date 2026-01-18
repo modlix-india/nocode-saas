@@ -4,7 +4,7 @@ import org.jooq.Field;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
 
-import com.fincity.security.dao.AbstractClientCheckDAO;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.invoicesnpayments.PaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import static com.fincity.security.jooq.tables.SecurityPaymentGateway.SECURITY_PAYMENT_GATEWAY;
@@ -13,14 +13,14 @@ import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
 import reactor.core.publisher.Mono;
 
 @Component
-public class PaymentGatewayDAO extends AbstractClientCheckDAO<SecurityPaymentGatewayRecord, ULong, PaymentGateway> {
+public class PaymentGatewayDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityPaymentGatewayRecord, ULong, PaymentGateway> {
 
-    public PaymentGatewayDAO() {
+    public PaymentGatewayDAOUpdatable() {
         super(PaymentGateway.class, SECURITY_PAYMENT_GATEWAY, SECURITY_PAYMENT_GATEWAY.ID);
     }
 
     @Override
-    protected Field<ULong> getClientIDField() {
+    public Field<ULong> getClientIDField() {
         return SECURITY_PAYMENT_GATEWAY.CLIENT_ID;
     }
 

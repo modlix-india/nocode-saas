@@ -2,15 +2,11 @@ package com.fincity.security.controller;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
 import com.fincity.saas.commons.util.ConditionUtil;
-import com.fincity.security.dao.DepartmentDAO;
-import com.fincity.security.dao.RoleV2DAO;
+import com.fincity.security.dao.DepartmentDAOUpdatable;
 import com.fincity.security.dto.Department;
-import com.fincity.security.dto.RoleV2;
 import com.fincity.security.jooq.tables.records.SecurityDepartmentRecord;
-import com.fincity.security.jooq.tables.records.SecurityV2RoleRecord;
 import com.fincity.security.service.DepartmentService;
-import com.fincity.security.service.ProfileService;
-import com.fincity.security.service.RoleV2Service;
+
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,12 +23,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.util.MultiValueMap;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("api/security/departments")
 public class DepartmentController
-        extends AbstractJOOQUpdatableDataController<SecurityDepartmentRecord, ULong, Department, DepartmentDAO, DepartmentService> {
+        extends AbstractJOOQUpdatableDataController<SecurityDepartmentRecord, ULong, Department, DepartmentDAOUpdatable, DepartmentService> {
 
     @GetMapping()
     @Override

@@ -34,6 +34,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
@@ -65,19 +66,19 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class UserDAO extends AbstractClientCheckDAO<SecurityUserRecord, ULong, User> {
+public class UserDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityUserRecord, ULong, User> {
 
     private final PasswordEncoder encoder;
     private final ClientDAO clientDAO;
 
-    protected UserDAO(PasswordEncoder encoder, ClientDAO clientDao) {
+    protected UserDAOUpdatable(PasswordEncoder encoder, ClientDAO clientDao) {
         super(User.class, SECURITY_USER, SECURITY_USER.ID);
         this.encoder = encoder;
         this.clientDAO = clientDao;
     }
 
     @Override
-    protected Field<ULong> getClientIDField() {
+    public Field<ULong> getClientIDField() {
         return SECURITY_USER.CLIENT_ID;
     }
 

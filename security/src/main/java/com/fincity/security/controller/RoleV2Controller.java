@@ -1,7 +1,7 @@
 package com.fincity.security.controller;
 
 import com.fincity.security.service.ProfileService;
-import jakarta.ws.rs.PathParam;
+
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
-import com.fincity.security.dao.RoleV2DAO;
+import com.fincity.security.dao.RoleV2DAOUpdatable;
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.jooq.tables.records.SecurityV2RoleRecord;
 import com.fincity.security.service.RoleV2Service;
@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("api/security/rolev2")
 public class RoleV2Controller
-        extends AbstractJOOQUpdatableDataController<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO, RoleV2Service> {
+        extends AbstractJOOQUpdatableDataController<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAOUpdatable, RoleV2Service> {
 
     private final ProfileService profileService;
 

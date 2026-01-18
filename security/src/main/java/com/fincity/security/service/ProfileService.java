@@ -27,7 +27,7 @@ import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.ProfileDAO;
+import com.fincity.security.dao.ProfileDAOUpdatable;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityProfileRecord;
@@ -40,7 +40,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ProfileService
-        extends AbstractSecurityUpdatableDataService<SecurityProfileRecord, ULong, Profile, ProfileDAO>
+        extends AbstractSecurityUpdatableDataService<SecurityProfileRecord, ULong, Profile, ProfileDAOUpdatable>
         implements IAppRegistrationHelperService {
 
     private static final String PROFILE = "Profile";

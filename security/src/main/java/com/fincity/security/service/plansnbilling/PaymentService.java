@@ -17,7 +17,7 @@ import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.plansnbilling.InvoiceDAO;
 import com.fincity.security.dao.plansnbilling.PaymentDAO;
-import com.fincity.security.dao.plansnbilling.PaymentGatewayDAO;
+import com.fincity.security.dao.plansnbilling.PaymentGatewayDAOUpdatable;
 import com.fincity.security.dto.invoicesnpayments.Payment;
 import com.fincity.security.jooq.enums.SecurityInvoiceInvoiceStatus;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
@@ -34,15 +34,15 @@ import reactor.util.context.Context;
 public class PaymentService
         extends AbstractJOOQUpdatableDataService<SecurityPaymentRecord, ULong, Payment, PaymentDAO> {
 
-    private final PaymentGatewayDAO paymentGatewayDAO;
+    private final PaymentGatewayDAOUpdatable paymentGatewayDAO;
     private final InvoiceDAO invoiceDAO;
     private final ClientService clientService;
     private final SecurityMessageResourceService messageResourceService;
     private final List<IPaymentGatewayIntegration> paymentGatewayIntegrations;
 
-    public PaymentService(PaymentDAO dao, PaymentGatewayDAO paymentGatewayDAO, InvoiceDAO invoiceDAO,
-            ClientService clientService, SecurityMessageResourceService messageResourceService,
-            List<IPaymentGatewayIntegration> paymentGatewayIntegrations) {
+    public PaymentService(PaymentDAO dao, PaymentGatewayDAOUpdatable paymentGatewayDAO, InvoiceDAO invoiceDAO,
+                          ClientService clientService, SecurityMessageResourceService messageResourceService,
+                          List<IPaymentGatewayIntegration> paymentGatewayIntegrations) {
         this.dao = dao;
         this.paymentGatewayDAO = paymentGatewayDAO;
         this.invoiceDAO = invoiceDAO;

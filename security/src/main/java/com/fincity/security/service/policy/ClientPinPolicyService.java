@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.policy.ClientPinPolicyDAO;
+import com.fincity.security.dao.policy.UpdatableClientPinPolicyDAO;
 import com.fincity.security.dto.PastPin;
 import com.fincity.security.dto.policy.ClientPinPolicy;
 import com.fincity.security.jooq.tables.records.SecurityClientPinPolicyRecord;
@@ -20,7 +20,7 @@ import reactor.util.context.Context;
 
 @Service
 public class ClientPinPolicyService
-		extends AbstractPolicyService<SecurityClientPinPolicyRecord, ClientPinPolicy, ClientPinPolicyDAO>
+		extends AbstractPolicyService<SecurityClientPinPolicyRecord, ClientPinPolicy, UpdatableClientPinPolicyDAO>
 		implements IPolicyService<ClientPinPolicy> {
 
 	private static final String CLIENT_PIN_POLICY = "client_pin_policy";

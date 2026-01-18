@@ -23,7 +23,7 @@ import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.RoleV2DAO;
+import com.fincity.security.dao.RoleV2DAOUpdatable;
 import com.fincity.security.dto.RoleV2;
 import com.fincity.security.enums.AppRegistrationObjectType;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
@@ -36,7 +36,7 @@ import reactor.util.context.Context;
 
 @Service
 public class RoleV2Service
-        extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAO>
+        extends AbstractSecurityUpdatableDataService<SecurityV2RoleRecord, ULong, RoleV2, RoleV2DAOUpdatable>
         implements IAppRegistrationHelperService {
 
     private static final String ROLE = "Role";

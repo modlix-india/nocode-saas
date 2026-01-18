@@ -18,6 +18,7 @@ public class SecurityMessageResourceService extends AbstractMessageService {
     public static final String PARAMS_NOT_FOUND = "params_not_found";
     public static final String FORBIDDEN_CREATE = "forbidden_create";
     public static final String FORBIDDEN_UPDATE = "forbidden_update";
+    public static final String FORBIDDEN_DELETE = "forbidden_delete";
     public static final String FORBIDDEN_PERMISSION = "forbidden_permission";
     public static final String OBJECT_NOT_UPDATABLE = "object_not_updatable";
     public static final String USER_IDENTIFICATION_NOT_FOUND = "user_identification_not_found";

@@ -13,7 +13,7 @@ import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.plansnbilling.PaymentGatewayDAO;
+import com.fincity.security.dao.plansnbilling.PaymentGatewayDAOUpdatable;
 import com.fincity.security.dto.invoicesnpayments.PaymentGateway;
 import com.fincity.security.jooq.enums.SecurityPaymentGatewayPaymentGateway;
 import com.fincity.security.jooq.tables.records.SecurityPaymentGatewayRecord;
@@ -26,13 +26,13 @@ import reactor.util.context.Context;
 @Service
 public class PaymentGatewayService
         extends
-        AbstractJOOQUpdatableDataService<SecurityPaymentGatewayRecord, ULong, PaymentGateway, PaymentGatewayDAO> {
+        AbstractJOOQUpdatableDataService<SecurityPaymentGatewayRecord, ULong, PaymentGateway, PaymentGatewayDAOUpdatable> {
 
     private final ClientService clientService;
     private final SecurityMessageResourceService messageResourceService;
 
-    public PaymentGatewayService(PaymentGatewayDAO dao, ClientService clientService,
-            SecurityMessageResourceService messageResourceService) {
+    public PaymentGatewayService(PaymentGatewayDAOUpdatable dao, ClientService clientService,
+                                 SecurityMessageResourceService messageResourceService) {
         this.dao = dao;
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;

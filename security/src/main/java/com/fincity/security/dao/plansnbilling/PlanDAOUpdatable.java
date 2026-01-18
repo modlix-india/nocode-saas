@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.ByteUtil;
 import com.fincity.saas.commons.util.LogUtil;
-import com.fincity.security.dao.AbstractClientCheckDAO;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.plansnbilling.ClientPlan;
 import com.fincity.security.dto.plansnbilling.Plan;
 import com.fincity.security.jooq.enums.SecurityPlanStatus;
@@ -31,14 +31,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Component
-public class PlanDAO extends AbstractClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
+public class PlanDAOUpdatable extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord, ULong, Plan> {
 
-    public PlanDAO() {
+    public PlanDAOUpdatable() {
         super(Plan.class, SECURITY_PLAN, SECURITY_PLAN.ID);
     }
 
     @Override
-    protected Field<ULong> getClientIDField() {
+    public Field<ULong> getClientIDField() {
         return SECURITY_PLAN.CLIENT_ID;
     }
 
