@@ -169,21 +169,9 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         return this.taskTypeService
                 .readById(access, entity.getTaskTypeId())
-                .flatMap(taskType -> {
-                    if (entity.getContentEntitySeries() == null) {
-                        entity.setContentEntitySeries(taskType.getContentEntitySeries());
-                        return Mono.just(entity);
-                    }
-
-                    if (!entity.getContentEntitySeries().equals(taskType.getContentEntitySeries()))
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.CONTENT_ENTITY_SERIES_MISMATCH,
-                                entity.getContentEntitySeries(),
-                                taskType.getContentEntitySeries(),
-                                taskType.getName());
-
-                    return Mono.just(entity);
+                .map(taskType -> {
+                    entity.setContentEntitySeries(taskType.getContentEntitySeries());
+                    return entity;
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkEntity"));
     }

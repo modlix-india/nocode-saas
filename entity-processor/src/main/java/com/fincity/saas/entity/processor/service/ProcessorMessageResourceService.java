@@ -65,7 +65,6 @@ public class ProcessorMessageResourceService extends AbstractMessageService {
     public static final String DUPLICATE_SOURCE_SUBSOURCE_RULE = "duplicate_source_subsource_rule";
     public static final String TICKET_CREATION_FAILED = "ticket_creation_failed";
     public static final String TICKET_ID_NOT_SELECTED = "ticket_id_not_selected";
-    public static final String CONTENT_ENTITY_SERIES_MISMATCH = "content_entity_series_mismatch";
     public static final String TASK_TYPE_MISSING = "task_type_missing";
 
     protected ProcessorMessageResourceService() {
