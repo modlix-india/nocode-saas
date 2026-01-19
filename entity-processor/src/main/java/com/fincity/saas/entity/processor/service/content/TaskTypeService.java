@@ -4,6 +4,7 @@ import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
 import com.fincity.saas.commons.functions.ClassSchema;
 import com.fincity.saas.commons.functions.IRepositoryProvider;
 import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
@@ -24,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -33,12 +33,12 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
         implements IRepositoryProvider {
 
     private static final String TASK_TYPE_CACHE = "taskType";
+    private static final String NAMESPACE = "EntityProcessor.TaskType";
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private final List<ReactiveFunction> functions = new ArrayList<>();
     private final Gson gson;
-
-    private static final ClassSchema classSchema =
-            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     @Autowired
     @Lazy
@@ -50,7 +50,19 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
 
     @PostConstruct
     private void init() {
-        this.functions.addAll(super.getCommonFunctions("EntityProcessor.TaskType", TaskType.class, classSchema, gson));
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, TaskType.class, classSchema, gson));
+
+        String taskTypeSchemaRef =
+                classSchema.getNamespaceForClass(TaskType.class) + "." + TaskType.class.getSimpleName();
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("taskTypeRequest", TaskTypeRequest.class, classSchema),
+                "created",
+                Schema.ofRef(taskTypeSchemaRef),
+                gson,
+                self::createRequest));
     }
 
     @Override
@@ -65,7 +77,20 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
 
     @Override
     protected Mono<TaskType> checkEntity(TaskType entity, ProcessorAccess access) {
-        return super.checkExistsByName(access, entity);
+        return this.dao
+                .existsByNameAndContentEntitySeries(
+                        access.getAppCode(),
+                        access.getClientCode(),
+                        entity.getId(),
+                        entity.getName(),
+                        entity.getContentEntitySeries())
+                .flatMap(exists -> Boolean.TRUE.equals(exists)
+                        ? msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
+                                entity.getName(),
+                                this.getEntityName())
+                        : Mono.just(entity));
     }
 
     @Override
@@ -80,38 +105,9 @@ public class TaskTypeService extends BaseUpdatableService<EntityProcessorTaskTyp
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create"));
     }
 
-    public Flux<TaskType> createRequests(List<TaskTypeRequest> taskTypeRequests) {
-
-        if (taskTypeRequests == null || taskTypeRequests.isEmpty()) return Flux.empty();
-
-        return super.hasAccess()
-                .flatMapMany(access -> {
-                    String[] names = taskTypeRequests.stream()
-                            .map(TaskTypeRequest::getName)
-                            .toArray(String[]::new);
-
-                    return this.existsByName(access.getAppCode(), access.getClientCode(), names)
-                            .flatMapMany(exists -> Boolean.TRUE.equals(exists)
-                                    ? this.msgService.throwMessage(
-                                            msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-                                            ProcessorMessageResourceService.DUPLICATE_NAME_FOR_ENTITY,
-                                            String.join(", ", names),
-                                            this.getEntityName())
-                                    : Flux.fromIterable(taskTypeRequests)
-                                            .flatMap(req -> super.createInternal(access, TaskType.of(req))));
-                })
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[List<TaskTypeRequest>]"));
-    }
-
     public Mono<TaskType> createRequest(TaskTypeRequest taskTypeRequest) {
         return super.create(TaskType.of(taskTypeRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.create[TaskTypeRequest]"));
-    }
-
-    private Mono<Boolean> existsByName(String appCode, String clientCode, String... names) {
-        return this.dao
-                .existsByName(appCode, clientCode, names)
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskTypeService.existsByName"));
     }
 
     @Override
