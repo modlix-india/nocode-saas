@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -35,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -102,6 +104,13 @@ public class EntityProcessorTaskTypes extends TableImpl<EntityProcessorTaskTypes
      * Description for the Task Type.
      */
     public final TableField<EntityProcessorTaskTypesRecord, String> DESCRIPTION = createField(DSL.name("DESCRIPTION"), SQLDataType.CLOB, this, "Description for the Task Type.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_task_types.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this task type is applicable
+     */
+    public final TableField<EntityProcessorTaskTypesRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this task type is applicable", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
 
     /**
      * The column

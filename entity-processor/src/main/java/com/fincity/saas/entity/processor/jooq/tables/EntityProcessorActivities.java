@@ -149,9 +149,8 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
-     * Activity Action categories for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "Activity Action categories for this Activity.", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
 
     /**
      * The column

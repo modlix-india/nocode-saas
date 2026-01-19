@@ -57,7 +57,7 @@ public class ReportUtil {
      * Date based reports
      * ----------------------------------------------------------------------- */
 
-    public static Flux<DateStatusCount> toDateStatusCounts(
+    public static Flux<DateStatusCount> toDateStatusCounts( // NOSONAR
             DatePair totalDatePair,
             TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
