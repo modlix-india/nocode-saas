@@ -249,9 +249,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         return abstractCondition
                                 .removeConditionWithField(Ticket.Fields.stage)
                                 .defaultIfEmpty(abstractCondition)
-                                .flatMap(totalCondition -> Mono.zip(
-                                        super.filter(abstractCondition),
-                                        super.filter(totalCondition)))
+                                .flatMap(totalCondition ->
+                                        Mono.zip(super.filter(abstractCondition), super.filter(totalCondition)))
                                 .flux();
                     }
                     return super.filter(abstractCondition)
@@ -347,9 +346,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         return abstractCondition
                                 .removeConditionWithField(Ticket.Fields.stage)
                                 .defaultIfEmpty(abstractCondition)
-                                .flatMap(totalCondition -> Mono.zip(
-                                        super.filter(abstractCondition),
-                                        super.filter(totalCondition)))
+                                .flatMap(totalCondition ->
+                                        Mono.zip(super.filter(abstractCondition), super.filter(totalCondition)))
                                 .flux();
                     }
                     return super.filter(abstractCondition)
@@ -362,7 +360,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                     if (ticketBucketFilter.isIncludeTotal()) {
                         SelectConditionStep<?> filteredQuery = this.dslContext
-                                .select(ENTITY_PROCESSOR_STAGES.NAME, groupField, castedDateField, DSL.count(this.idField))
+                                .select(
+                                        ENTITY_PROCESSOR_STAGES.NAME,
+                                        groupField,
+                                        castedDateField,
+                                        DSL.count(this.idField))
                                 .from(this.table)
                                 .leftJoin(ENTITY_PROCESSOR_STAGES)
                                 .on(joinField.eq(ENTITY_PROCESSOR_STAGES.ID))
@@ -370,7 +372,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                         if (requiresNonNull) filteredQuery = filteredQuery.and(groupField.isNotNull());
 
-                        Select<?> groupedFilteredQuery = filteredQuery.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, castedDateField);
+                        Select<?> groupedFilteredQuery =
+                                filteredQuery.groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, castedDateField);
 
                         SelectConditionStep<?> totalQuery = this.dslContext
                                 .select(
@@ -418,20 +421,20 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 .setCount(rec.get(DSL.count(this.idField)).longValue());
     }
 
-	public Flux<PerDateCount> getTicketCountPerStageAndDateWithClientId(
-			ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
-		return this.getTicketDateCountByStageOnly(
-				access,
-				ticketBucketFilter,
-				ENTITY_PROCESSOR_TICKETS.STAGE,
-				ENTITY_PROCESSOR_TICKETS.CREATED_AT,
-				DSL.count(this.idField),
-				NO_STAGE,
-				Boolean.FALSE,
-				Boolean.TRUE);
-	}
+    public Flux<PerDateCount> getTicketCountPerStageAndDateWithClientId(
+            ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
+        return this.getTicketDateCountByStageOnly(
+                access,
+                ticketBucketFilter,
+                ENTITY_PROCESSOR_TICKETS.STAGE,
+                ENTITY_PROCESSOR_TICKETS.CREATED_AT,
+                DSL.count(this.idField),
+                NO_STAGE,
+                Boolean.FALSE,
+                Boolean.TRUE);
+    }
 
-	private Flux<PerDateCount> getTicketDateCountByStageOnly(
+    private Flux<PerDateCount> getTicketDateCountByStageOnly(
             ProcessorAccess access,
             TicketBucketFilter ticketBucketFilter,
             Field<ULong> joinField,
@@ -451,9 +454,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         return abstractCondition
                                 .removeConditionWithField(Ticket.Fields.stage)
                                 .defaultIfEmpty(abstractCondition)
-                                .flatMap(totalCondition -> Mono.zip(
-                                        super.filter(abstractCondition),
-                                        super.filter(totalCondition)))
+                                .flatMap(totalCondition ->
+                                        Mono.zip(super.filter(abstractCondition), super.filter(totalCondition)))
                                 .flux();
                     }
                     return super.filter(abstractCondition)
@@ -480,13 +482,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                             filteredQuery = filteredQuery.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull());
                         }
 
-                        Select<?> groupedFilteredQuery = filteredQuery.groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME);
+                        Select<?> groupedFilteredQuery =
+                                filteredQuery.groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME);
 
                         SelectConditionStep<?> totalQuery = this.dslContext
-                                .select(
-                                        DSL.val(TOTAL).as(ENTITY_PROCESSOR_STAGES.NAME),
-                                        castedDateField,
-                                        countField)
+                                .select(DSL.val(TOTAL).as(ENTITY_PROCESSOR_STAGES.NAME), castedDateField, countField)
                                 .from(this.table)
                                 .where(totalConditions);
 
@@ -502,17 +502,16 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                         Select<?> unionQuery = ((Select<Record>) groupedFilteredQuery).union(groupedTotalQuery);
 
-                        return Flux.from(unionQuery)
-                                .map(rec -> {
-                                    String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                                    if (stageName == null) stageName = defaultValue;
+                        return Flux.from(unionQuery).map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = defaultValue;
 
-                                    return new PerDateCount()
-                                            .setDate(rec.get(castedDateField))
-                                            .setMapValue(stageName)
-                                            .setGroupedValue(null)
-                                            .setCount(rec.get(countField).longValue());
-                                });
+                            return new PerDateCount()
+                                    .setDate(rec.get(castedDateField))
+                                    .setMapValue(stageName)
+                                    .setGroupedValue(null)
+                                    .setCount(rec.get(countField).longValue());
+                        });
                     }
 
                     SelectConditionStep<?> query = this.dslContext
@@ -556,9 +555,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         return abstractCondition
                                 .removeConditionWithField(Ticket.Fields.stage)
                                 .defaultIfEmpty(abstractCondition)
-                                .flatMap(totalCondition -> Mono.zip(
-                                        super.filter(abstractCondition),
-                                        super.filter(totalCondition)))
+                                .flatMap(totalCondition ->
+                                        Mono.zip(super.filter(abstractCondition), super.filter(totalCondition)))
                                 .flux();
                     }
                     return super.filter(abstractCondition)
@@ -571,13 +569,17 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                     if (ticketBucketFilter.isIncludeTotal()) {
                         SelectConditionStep<?> filteredQuery = this.dslContext
-                                .select(ENTITY_PROCESSOR_STAGES.NAME, castedDateField, DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
+                                .select(
+                                        ENTITY_PROCESSOR_STAGES.NAME,
+                                        castedDateField,
+                                        DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
                                 .from(this.table)
                                 .leftJoin(ENTITY_PROCESSOR_STAGES)
                                 .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
                                 .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
 
-                        Select<?> groupedFilteredQuery = filteredQuery.groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME);
+                        Select<?> groupedFilteredQuery =
+                                filteredQuery.groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME);
 
                         SelectConditionStep<?> totalQuery = this.dslContext
                                 .select(
@@ -591,22 +593,25 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
                         Select<?> unionQuery = ((Select<Record>) groupedFilteredQuery).union(groupedTotalQuery);
 
-                        return Flux.from(unionQuery)
-                                .map(rec -> {
-                                    String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
-                                    if (stageName == null) stageName = NO_STAGE;
-                                    String mapValue = TOTAL.equalsIgnoreCase(stageName) ? TOTAL : stageName;
+                        return Flux.from(unionQuery).map(rec -> {
+                            String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
+                            if (stageName == null) stageName = NO_STAGE;
+                            String mapValue = TOTAL.equalsIgnoreCase(stageName) ? TOTAL : stageName;
 
-                                    return new PerDateCount()
-                                            .setDate(rec.get(castedDateField))
-                                            .setMapValue(mapValue)
-                                            .setGroupedValue(null)
-                                            .setCount(rec.get(DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID)).longValue());
-                                });
+                            return new PerDateCount()
+                                    .setDate(rec.get(castedDateField))
+                                    .setMapValue(mapValue)
+                                    .setGroupedValue(null)
+                                    .setCount(rec.get(DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
+                                            .longValue());
+                        });
                     }
 
                     SelectConditionStep<?> query = this.dslContext
-                            .select(ENTITY_PROCESSOR_STAGES.NAME, castedDateField, DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
+                            .select(
+                                    ENTITY_PROCESSOR_STAGES.NAME,
+                                    castedDateField,
+                                    DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
                             .from(this.table)
                             .leftJoin(ENTITY_PROCESSOR_STAGES)
                             .on(ENTITY_PROCESSOR_TICKETS.STAGE.eq(ENTITY_PROCESSOR_STAGES.ID))
@@ -621,7 +626,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                                         .setDate(rec.get(castedDateField))
                                         .setMapValue(stageName)
                                         .setGroupedValue(null)
-                                        .setCount(rec.get(DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID)).longValue());
+                                        .setCount(rec.get(DSL.countDistinct(ENTITY_PROCESSOR_TICKETS.CLIENT_ID))
+                                                .longValue());
                             });
                 });
     }
