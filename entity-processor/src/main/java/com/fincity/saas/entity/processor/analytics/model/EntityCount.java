@@ -22,7 +22,7 @@ public class EntityCount extends BaseCount<EntityCount> {
 
     private String name;
 
-    public static EntityCount of(ULong entityId, String entityName, CountPercentage totalCount) {
-        return new EntityCount().setId(entityId).setName(entityName).setTotalCount(totalCount);
+    public static EntityCount of(ULong entityId, String entityName, CountPercentage count) {
+        return new EntityCount().setId(entityId).setName(entityName).setCount(count);
     }
 }
