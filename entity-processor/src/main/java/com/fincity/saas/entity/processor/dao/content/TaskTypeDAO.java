@@ -24,22 +24,6 @@ public class TaskTypeDAO extends BaseUpdatableDAO<EntityProcessorTaskTypesRecord
         super(TaskType.class, ENTITY_PROCESSOR_TASK_TYPES, ENTITY_PROCESSOR_TASK_TYPES.ID);
     }
 
-    public Mono<Boolean> existsByName(String appCode, String clientCode, String... taskTypeNames) {
-
-        if (taskTypeNames == null || taskTypeNames.length == 0) return Mono.just(Boolean.FALSE);
-
-        List<Condition> baseConditions = new ArrayList<>();
-        baseConditions.add(super.appCodeField.eq(appCode));
-        baseConditions.add(super.clientCodeField.eq(clientCode));
-
-        baseConditions.add(super.nameField.in(
-                Arrays.stream(taskTypeNames).filter(Objects::nonNull).toArray(String[]::new)));
-
-        return Mono.from(this.dslContext.selectOne().from(this.table).where(DSL.and(baseConditions)))
-                .map(rec -> Boolean.TRUE)
-                .defaultIfEmpty(Boolean.FALSE);
-    }
-
     public Mono<Boolean> existsByNameAndContentEntitySeries(
             String appCode, String clientCode, ULong id, String name, ContentEntitySeries contentEntitySeries) {
 

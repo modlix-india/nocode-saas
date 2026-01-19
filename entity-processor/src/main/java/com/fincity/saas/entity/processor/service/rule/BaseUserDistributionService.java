@@ -62,14 +62,13 @@ public abstract class BaseUserDistributionService<
         return super.getCacheKey(access.getAppCode(), access.getClientCode(), USER_DISTRIBUTION_MAPS);
     }
 
-    public String getUserCacheKey(ProcessorAccess access, Object... keys) {
+    public String getUserCacheKey(ProcessorAccess access) {
         return super.getCacheKey(
                 access.getAppCode(),
                 access.getClientCode(),
                 access.getUserId(),
                 access.getUser().getDesignationId(),
-                HashUtil.sha256Hash(access.getUser().getAuthorities()),
-                keys);
+                HashUtil.sha256Hash(access.getUser().getAuthorities()));
     }
 
     private Mono<Boolean> evictRuleCache(D entity) {
