@@ -158,7 +158,7 @@ public class UniversalController {
     }
 
     @GetMapping(value = "/sso/{token}", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-    public Mono<String> ssoRedirection(@PathVariable String token,
+    public Mono<ResponseEntity<String>> ssoRedirection(@PathVariable String token,
             @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
             @RequestHeader(required = false) String clientCode,
             @RequestHeader(required = false) String appCode,
@@ -178,7 +178,10 @@ public class UniversalController {
                             + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
                             + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
                     String redirectionScript = "window.location.href = '" + redirectUrl + "';";
-                    return START + storeTokenScript + redirectionScript + END;
+                    String htmlContent = START + storeTokenScript + redirectionScript + END;
+                    return ResponseEntity.ok()
+                            .header("Content-Security-Policy", "frame-ancestors *")
+                            .body(htmlContent);
                 });
     }
 }

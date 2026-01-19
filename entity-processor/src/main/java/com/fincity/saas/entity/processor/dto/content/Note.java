@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dto.content;
 
 import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
@@ -31,6 +32,7 @@ public class Note extends BaseContentDto<Note> {
 
     public Note(Note note) {
         super(note);
+        this.attachmentFileDetail = CloneUtil.cloneObject(note.attachmentFileDetail);
     }
 
     public static Note of(NoteRequest noteRequest) {
