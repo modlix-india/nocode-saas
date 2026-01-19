@@ -356,7 +356,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT/WARM/COLD
+     * Deal Tag - HOT / WARM / COLD
      */
     public EntityProcessorTicketsRecord setTag(EntityProcessorTicketsTag value) {
         set(18, value);
@@ -365,7 +365,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Getter for <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT/WARM/COLD
+     * Deal Tag - HOT / WARM / COLD
      */
     public EntityProcessorTicketsTag getTag() {
         return (EntityProcessorTicketsTag) get(18);
