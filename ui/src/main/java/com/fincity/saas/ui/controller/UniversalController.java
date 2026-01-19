@@ -1,8 +1,11 @@
 package com.fincity.saas.ui.controller;
 
+import java.time.Duration;
 import java.time.ZoneOffset;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.MimeTypeUtils;
@@ -158,12 +161,13 @@ public class UniversalController {
     }
 
     @GetMapping(value = "/sso/{token}", produces = MimeTypeUtils.TEXT_HTML_VALUE)
-    public Mono<String> ssoRedirection(@PathVariable String token,
+    public Mono<ResponseEntity<String>> ssoRedirection(@PathVariable String token,
             @RequestHeader(value = "X-Forwarded-Host", required = false) String forwardedHost,
             @RequestHeader(required = false) String clientCode,
             @RequestHeader(required = false) String appCode,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
+            @RequestHeader(defaultValue = "false") boolean cookie,
             ServerHttpRequest request) {
 
         String addr = ipAddress;
@@ -173,12 +177,27 @@ public class UniversalController {
 
         return this.securityService.authenticateWithOneTimeToken(token, forwardedHost, clientCode, appCode, addr)
                 .map(ca -> {
-                    String storeTokenScript = "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
+                    String storeTokenScript = "var designMode = window.self !== window.top;" +
+                            "window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthToken', '\""
                             + ca.getAccessToken()
                             + "\"');window.localStorage.setItem((designMode ? 'designMode_' : '')+'AuthTokenExpiry', '"
                             + ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC) + "');";
                     String redirectionScript = "window.location.href = '" + redirectUrl + "';";
-                    return START + storeTokenScript + redirectionScript + END;
+                    String htmlContent = START + storeTokenScript + redirectionScript + END;
+                    ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
+                            .header("Content-Security-Policy", "frame-ancestors *");
+
+                    if (cookie) {
+                        ResponseCookie responseCookie = ResponseCookie
+                                .from("AuthToken", ca.getAccessToken())
+                                .path("/")
+                                .maxAge(Duration.ofSeconds(
+                                        ca.getAccessTokenExpiryAt().toEpochSecond(ZoneOffset.UTC)))
+                                .build();
+                        responseBuilder.header(HttpHeaders.SET_COOKIE, responseCookie.toString());
+                    }
+
+                    return responseBuilder.body(htmlContent);
                 });
     }
 }

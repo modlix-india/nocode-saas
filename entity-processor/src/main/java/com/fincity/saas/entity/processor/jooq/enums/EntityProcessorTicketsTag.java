@@ -10,7 +10,7 @@ import org.jooq.Schema;
 
 
 /**
- * Deal Tag - HOT/WARM/COLD
+ * Deal Tag - HOT / WARM / COLD
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public enum EntityProcessorTicketsTag implements EnumType {

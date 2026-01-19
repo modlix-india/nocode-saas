@@ -31,4 +31,19 @@ public class FileDetail implements Serializable {
     private Long lastModifiedTime;
     private String type;
     private String fileName;
+
+    public FileDetail() {}
+
+    public FileDetail(FileDetail fileDetail) {
+        this.id = fileDetail.id;
+        this.name = fileDetail.name;
+        this.isDirectory = fileDetail.isDirectory;
+        this.size = fileDetail.size;
+        this.filePath = fileDetail.filePath;
+        this.url = fileDetail.url;
+        this.createdDate = fileDetail.createdDate;
+        this.lastModifiedTime = fileDetail.lastModifiedTime;
+        this.type = fileDetail.type;
+        this.fileName = fileDetail.fileName;
+    }
 }

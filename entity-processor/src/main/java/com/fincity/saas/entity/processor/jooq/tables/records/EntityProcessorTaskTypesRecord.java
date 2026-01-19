@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes;
 
 import java.time.LocalDateTime;
@@ -135,11 +136,30 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_task_types.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this task type is applicable
+     */
+    public EntityProcessorTaskTypesRecord setContentEntitySeries(ContentEntitySeries value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_task_types.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this task type is applicable
+     */
+    public ContentEntitySeries getContentEntitySeries() {
+        return (ContentEntitySeries) get(6);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_task_types.TEMP_ACTIVE</code>.
      * Temporary active flag for this task type.
      */
     public EntityProcessorTaskTypesRecord setTempActive(Boolean value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -149,7 +169,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * Temporary active flag for this task type.
      */
     public Boolean getTempActive() {
-        return (Boolean) get(6);
+        return (Boolean) get(7);
     }
 
     /**
@@ -158,7 +178,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * to check if this task type is active or not.
      */
     public EntityProcessorTaskTypesRecord setIsActive(Boolean value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -168,7 +188,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * to check if this task type is active or not.
      */
     public Boolean getIsActive() {
-        return (Boolean) get(7);
+        return (Boolean) get(8);
     }
 
     /**
@@ -177,7 +197,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * of the user who created this row.
      */
     public EntityProcessorTaskTypesRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -187,7 +207,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -196,7 +216,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * Time when this row is created.
      */
     public EntityProcessorTaskTypesRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -206,7 +226,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -215,7 +235,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * of the user who updated this row.
      */
     public EntityProcessorTaskTypesRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -225,7 +245,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -234,7 +254,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * Time when this row is updated.
      */
     public EntityProcessorTaskTypesRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -244,7 +264,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -270,7 +290,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
     /**
      * Create a detached, initialised EntityProcessorTaskTypesRecord
      */
-    public EntityProcessorTaskTypesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTaskTypesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ContentEntitySeries contentEntitySeries, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTaskTypes.ENTITY_PROCESSOR_TASK_TYPES);
 
         setId(id);
@@ -279,6 +299,7 @@ public class EntityProcessorTaskTypesRecord extends UpdatableRecordImpl<EntityPr
         setCode(code);
         setName(name);
         setDescription(description);
+        setContentEntitySeries(contentEntitySeries);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);
