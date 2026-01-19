@@ -21,11 +21,7 @@ public class StatusNameCount extends BaseStatusCount<StatusNameCount> {
 
     private String name;
 
-    public static StatusNameCount of(
-            String entityName, CountPercentage totalCount, List<IdAndValue<String, CountPercentage>> perCount) {
-        return new StatusNameCount()
-                .setName(entityName)
-                .setTotalCount(totalCount)
-                .setPerCount(perCount);
+    public static StatusNameCount of(String entityName, List<IdAndValue<String, CountPercentage>> perCount) {
+        return new StatusNameCount().setName(entityName).setPerCount(perCount);
     }
 }

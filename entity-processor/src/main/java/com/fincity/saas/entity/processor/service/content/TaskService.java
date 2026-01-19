@@ -38,13 +38,10 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
     private static final String TASK_CACHE = "task";
     private static final String NAMESPACE = "EntityProcessor.Task";
-
-    private final List<ReactiveFunction> functions = new ArrayList<>();
-    private final Gson gson;
-
     private static final ClassSchema classSchema =
             ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
-
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
     private TaskTypeService taskTypeService;
 
     @Autowired
@@ -161,6 +158,22 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         return Mono.just(Task.of(taskRequest))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.createContent"));
+    }
+
+    @Override
+    protected Mono<Task> checkEntity(Task entity, ProcessorAccess access) {
+        if (entity.getTaskTypeId() == null)
+            return this.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.TASK_TYPE_MISSING);
+
+        return this.taskTypeService
+                .readById(access, entity.getTaskTypeId())
+                .map(taskType -> {
+                    entity.setContentEntitySeries(taskType.getContentEntitySeries());
+                    return entity;
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkEntity"));
     }
 
     @Override

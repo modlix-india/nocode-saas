@@ -48,10 +48,10 @@ public class ClassSchema {
         registerPrimitive(float.class, Schema.ofFloat("float"));
         registerPrimitive(Boolean.class, Schema.ofBoolean("Boolean"));
         registerPrimitive(boolean.class, Schema.ofBoolean("boolean"));
-        registerPrimitive(LocalDateTime.class, Schema.ofRef("System.Date.Timestamp"));
-        registerPrimitive(LocalDate.class, Schema.ofRef("System.Date.Timestamp"));
         registerPrimitive(JsonObject.class, Schema.ofObject("JsonObject"));
         registerPrimitive(BigInteger.class, Schema.ofInteger("BigInteger"));
+		registerPrimitive(LocalDate.class, Schema.ofInteger("LocalDate"));
+		registerPrimitive(LocalDateTime.class, Schema.ofInteger("LocalDateTime"));
 
         Schema abstractConditionSchema = new Schema()
                 .setName("AbstractCondition")

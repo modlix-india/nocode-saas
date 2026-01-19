@@ -35,10 +35,10 @@ public class EntityEntityCount implements Serializable {
                 .toList();
 
         long totalCountValue = this.entityCounts.stream()
-                .mapToLong(entityCount -> entityCount.getTotalCount() != null
-                                && entityCount.getTotalCount().getCount() != null
-                        ? entityCount.getTotalCount().getCount().longValue()
-                        : 0L)
+                .mapToLong(entityCount ->
+                        entityCount.getCount() != null && entityCount.getCount().getCount() != null
+                                ? entityCount.getCount().getCount().longValue()
+                                : 0L)
                 .sum();
 
         this.totalCount = includePercentage
