@@ -25,14 +25,7 @@ public class StatusEntityCount extends BaseStatusCount<StatusEntityCount> {
     private String name;
 
     public static StatusEntityCount of(
-            ULong entityId,
-            String entityName,
-            CountPercentage totalCount,
-            List<IdAndValue<String, CountPercentage>> perCount) {
-        return new StatusEntityCount()
-                .setId(entityId)
-                .setName(entityName)
-                .setTotalCount(totalCount)
-                .setPerCount(perCount);
+            ULong entityId, String entityName, List<IdAndValue<String, CountPercentage>> perCount) {
+        return new StatusEntityCount().setId(entityId).setName(entityName).setPerCount(perCount);
     }
 }

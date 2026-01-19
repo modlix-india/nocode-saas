@@ -14,10 +14,10 @@ import lombok.experimental.Accessors;
 @ToString(callSuper = true)
 public abstract class BaseCount<T extends BaseCount<T>> implements Serializable, IClassConvertor {
 
-    private CountPercentage totalCount;
+    private CountPercentage count;
 
-    public T setTotalCount(CountPercentage totalCount) {
-        this.totalCount = totalCount;
+    public T setCount(CountPercentage count) {
+        this.count = count;
         return (T) this;
     }
 }
