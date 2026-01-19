@@ -4,7 +4,10 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
+import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
+import com.fincity.saas.entity.processor.util.NameUtil;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -24,6 +27,9 @@ public final class ProcessorAccess implements Serializable {
     private String appCode;
     private String clientCode;
     private ULong userId;
+    private String firstName;
+    private String lastName;
+    private String middleName;
 
     private boolean hasAccessFlag;
     private ContextUser user;
@@ -71,6 +77,41 @@ public final class ProcessorAccess implements Serializable {
 
     public String getEffectiveClientCode() {
         return isOutsideUser() ? this.getUserInherit().getManagedClientCode() : this.getClientCode();
+    }
+
+    public ProcessorAccess setUserInfo(User user) {
+        if (user != null) {
+            this.setFirstName(user.getFirstName());
+            this.setLastName(user.getLastName());
+            this.setMiddleName(user.getMiddleName());
+        }
+        return this;
+    }
+
+    public ULong getUserId() {
+        if (this.userId != null) {
+            return this.userId;
+        }
+        if (this.user != null && this.user.getId() != null) {
+            return ULongUtil.valueOf(this.user.getId());
+        }
+        return ULongUtil.valueOf(BigInteger.ZERO);
+    }
+
+    public String getUserName() {
+        if (this.user != null && !BigInteger.ZERO.equals(this.user.getId())) {
+            String contextName = NameUtil.assembleFullName(
+                    this.user.getFirstName(), this.user.getMiddleName(), this.user.getLastName());
+
+            if (!StringUtil.safeIsBlank(contextName)) return contextName;
+        }
+
+        return getFallbackName();
+    }
+
+    private String getFallbackName() {
+        String fullName = NameUtil.assembleFullName(this.firstName, this.middleName, this.lastName);
+        return StringUtil.safeIsBlank(fullName) ? "Anonymous" : fullName;
     }
 
     @Data
