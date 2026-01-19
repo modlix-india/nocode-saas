@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serial;
 import java.util.List;
@@ -24,14 +25,7 @@ public class StatusEntityCount extends BaseStatusCount<StatusEntityCount> {
     private String name;
 
     public static StatusEntityCount of(
-            ULong entityId,
-            String entityName,
-            CountPercentage totalCount,
-            List<IdAndValue<String, CountPercentage>> perCount) {
-        return new StatusEntityCount()
-                .setId(entityId)
-                .setName(entityName)
-                .setTotalCount(totalCount)
-                .setPerCount(perCount);
+            ULong entityId, String entityName, List<IdAndValue<String, CountPercentage>> perCount) {
+        return new StatusEntityCount().setId(entityId).setName(entityName).setPerCount(perCount);
     }
 }

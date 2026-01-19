@@ -2,9 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model.base;
 
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
-import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.io.Serializable;
-import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -14,14 +12,12 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @ToString(callSuper = true)
-public abstract class BaseStatusCount<T extends BaseStatusCount<T>> implements Serializable, IClassConvertor {
+public abstract class BaseCount<T extends BaseCount<T>> implements Serializable, IClassConvertor {
 
-    private List<IdAndValue<String, CountPercentage>> perCount;
+    private CountPercentage count;
 
-    public abstract String getName();
-
-    public T setPerCount(List<IdAndValue<String, CountPercentage>> perCount) {
-        this.perCount = perCount;
+    public T setCount(CountPercentage count) {
+        this.count = count;
         return (T) this;
     }
 }

@@ -5,11 +5,12 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
-import com.fincity.saas.entity.processor.analytics.model.EntityStatusCount;
-import com.fincity.saas.entity.processor.analytics.model.PerDateCount;
-import com.fincity.saas.entity.processor.analytics.model.PerValueCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
+import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
+import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.service.base.BaseAnalyticsService;
 import com.fincity.saas.entity.processor.analytics.util.DatePair;
 import com.fincity.saas.entity.processor.analytics.util.ReactivePaginationUtil;
@@ -91,44 +92,6 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStageSourceDateCount"));
     }
 
-    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedBy(TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapFlux(
-                        () -> super.hasAccess().flux(),
-                        access -> resolveStages(access, filter).flux(),
-                        (access, sFilter) -> Mono.zip(
-                                        this.dao
-                                                .getTicketCountPerStageAndDate(access, sFilter)
-                                                .collectList(),
-                                        this.dao
-                                                .getUniqueCreatedByCountPerStageAndDate(access, sFilter)
-                                                .collectList())
-                                .flux(),
-                        (access, sFilter, countsTuple) -> {
-                            List<PerDateCount> perStageCount = countsTuple.getT1();
-                            List<PerDateCount> uniqueCreatedByPerStage = countsTuple.getT2();
-
-                            List<PerDateCount> mergedList = new ArrayList<>(perStageCount);
-
-                            for (PerDateCount pdc : uniqueCreatedByPerStage) {
-                                mergedList.add(new PerDateCount()
-                                        .setGroupedValue(null)
-                                        .setMapValue("#" + pdc.getMapValue())
-                                        .setDate(pdc.getDate())
-                                        .setCount(pdc.getCount()));
-                            }
-
-                            return ReportUtil.toDateStatusCountsAggregatedTotal(
-                                    DatePair.of(filter.getStartDate(), filter.getEndDate()),
-                                    filter.getTimePeriod(),
-                                    mergedList,
-                                    sFilter.getFieldData().getStages(),
-                                    sFilter.isIncludeZero(),
-                                    sFilter.isIncludePercentage());
-                        })
-                .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedBy"));
-    }
-
     public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId(
             TicketBucketFilter filter) {
         return FlatMapUtil.flatMapFlux(
@@ -162,35 +125,58 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                     mergedList,
                                     sFilter.getFieldData().getStages(),
                                     sFilter.isIncludeZero(),
-                                    sFilter.isIncludePercentage());
+                                    sFilter.isIncludePercentage(),
+                                    sFilter.isIncludeTotal());
                         })
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME,
                         "TicketBucketService.getTicketPerCreatedByStageTotalWithUniqueCreatedByWithClientId"));
     }
 
-    public Flux<EntityStatusCount> getTicketPerProductStageAndClientIdCount(TicketBucketFilter filter) {
-        return FlatMapUtil.flatMapFlux(
-                        () -> super.hasAccess().flux(),
-                        access -> resolveProducts(access, filter).flux(),
-                        (access, productFilter) ->
-                                resolveStages(access, productFilter).flux(),
-                        (access, productFilter, stageFilter) ->
-                                super.resolveClients(access, stageFilter).flux(),
+    public Mono<Page<EntityEntityCount>> getTicketPerProductStageAndClientIdCount(
+            Pageable pageable, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> resolveProducts(access, filter),
+                        this::resolveStages,
+                        (access, productFilter, stageFilter) -> super.resolveClients(access, stageFilter),
                         (access, productFilter, stageFilter, clientFilter) -> this.dao
                                 .getTicketCountPerProductStageAndClientId(access, stageFilter)
-                                .collectList()
-                                .flux(),
+                                .collectList(),
                         (access, productFilter, stageFilter, clientFilter, perValueCountList) ->
                                 ReportUtil.toEntityStageCounts(
-                                        perValueCountList,
-                                        productFilter.getFieldData().getProducts(),
-                                        stageFilter.getFieldData().getStages(),
-                                        clientFilter.getBaseFieldData().getClients(),
-                                        stageFilter.isIncludeZero(),
-                                        stageFilter.isIncludePercentage()))
+                                                perValueCountList,
+                                                clientFilter.getFieldData().getProducts(),
+                                                clientFilter.getBaseFieldData().getClients(),
+                                                clientFilter.isIncludeZero(),
+                                                clientFilter.isIncludePercentage())
+                                        .collectList(),
+                        (access, productFilter, stageFilter, clientFilter, perValueCountList, entityStatusCounts) ->
+                                ReactivePaginationUtil.toPage(entityStatusCounts, pageable))
+                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerProductStageAndClientIdCount"));
+    }
+
+    public Mono<Page<EntityDateCount>> getTicketPerClientIdAndDateCount(Pageable pageable, TicketBucketFilter filter) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.resolveClients(access, filter),
+                        (access, clientFilter) -> this.dao
+                                .getTicketCountPerClientIdAndDate(access, clientFilter)
+                                .collectList(),
+                        (access, clientFilter, perDateCountList) -> ReportUtil.toEntityDateCounts(
+                                        DatePair.of(filter.getStartDate(), filter.getEndDate()),
+                                        filter.getTimePeriod(),
+                                        perDateCountList,
+                                        clientFilter.getBaseFieldData().getClients(),
+                                        clientFilter.isIncludeZero(),
+                                        clientFilter.isIncludePercentage())
+                                .collectList(),
+                        (access, clientFilter, perDateCountList, entityDateCounts) ->
+                                ReactivePaginationUtil.toPage(entityDateCounts, pageable))
+                .switchIfEmpty(ReactivePaginationUtil.toPage(List.of(), pageable))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerClientIdAndDateCount"));
     }
 
     public Mono<Page<StatusEntityCount>> getTicketPerAssignedUserStatusCount(

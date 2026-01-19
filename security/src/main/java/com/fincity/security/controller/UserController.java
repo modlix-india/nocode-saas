@@ -1,5 +1,6 @@
 package com.fincity.security.controller;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
@@ -197,11 +198,30 @@ public class UserController
         return this.service.readByIds(userIds, queryParams).map(ResponseEntity::ok);
     }
 
+    @PostMapping("/internal/batch")
+    public Mono<ResponseEntity<List<User>>> getUsersInternalBatch(
+            @RequestBody List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        List<ULong> uLongUserIds = userIds.stream()
+                .map(ULong::valueOf)
+                .toList();
+        return this.service.readByIds(uLongUserIds, queryParams).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/clients")
     public Mono<ResponseEntity<List<User>>> getClientUsersInternal(
             @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
 
         return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/clients/batch")
+    public Mono<ResponseEntity<List<User>>> getClientUsersInternalBatch(
+            @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        List<ULong> uLongClientIds = clientIds.stream()
+                .map(ULong::valueOf)
+                .toList();
+        return this.service.readByClientIds(uLongClientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams)
                 .map(ResponseEntity::ok);
     }
 

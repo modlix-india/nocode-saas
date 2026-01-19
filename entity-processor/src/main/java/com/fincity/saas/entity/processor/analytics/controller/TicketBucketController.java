@@ -3,7 +3,8 @@ package com.fincity.saas.entity.processor.analytics.controller;
 import com.fincity.saas.entity.processor.analytics.controller.base.BaseAnalyticsController;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
-import com.fincity.saas.entity.processor.analytics.model.EntityStatusCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
+import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
@@ -64,15 +65,6 @@ public class TicketBucketController
         return this.service
                 .getTicketPerCreatedByStageCount(pageable, effectiveFilter)
                 .map(ResponseEntity::ok);
-    }
-
-    @PostMapping({"/created-bys/stages/totals/dates", "/stage-counts/created-bys/unique"})
-    public Flux<DateStatusCount> getTicketPerCreatedByStageTotalWithUniqueCreatedBy(
-            @RequestBody(required = false) TicketBucketFilter filter) {
-
-        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
-
-        return this.service.getTicketPerCreatedByStageTotalWithUniqueCreatedBy(effectiveFilter);
     }
 
     @PostMapping({"/created-bys/stages/totals/dates/client-id", "/stage-counts/created-bys/unique/client-id"})
@@ -150,12 +142,25 @@ public class TicketBucketController
                 .map(ResponseEntity::ok);
     }
 
-    @PostMapping({"/clients/products/stages", "/stage-counts/products/clients"})
-    public Flux<EntityStatusCount> getTicketPerProductStageAndClientIdCount(
-            @RequestBody(required = false) TicketBucketFilter filter) {
+    @PostMapping({"/clients/products", "/stage-counts/products/clients"})
+    public Mono<ResponseEntity<Page<EntityEntityCount>>> getTicketPerProductStageAndClientIdCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
 
         TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
 
-        return this.service.getTicketPerProductStageAndClientIdCount(effectiveFilter);
+        return this.service
+                .getTicketPerProductStageAndClientIdCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping({"/clients/dates", "/date-counts/clients"})
+    public Mono<ResponseEntity<Page<EntityDateCount>>> getTicketPerClientIdAndDateCount(
+            Pageable pageable, @RequestBody(required = false) TicketBucketFilter filter) {
+
+        TicketBucketFilter effectiveFilter = (filter == null) ? new TicketBucketFilter() : filter;
+
+        return this.service
+                .getTicketPerClientIdAndDateCount(pageable, effectiveFilter)
+                .map(ResponseEntity::ok);
     }
 }
