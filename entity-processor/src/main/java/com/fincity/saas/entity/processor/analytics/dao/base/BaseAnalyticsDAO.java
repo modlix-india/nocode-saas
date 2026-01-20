@@ -10,8 +10,6 @@ import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -176,19 +174,19 @@ public abstract class BaseAnalyticsDAO<R extends UpdatableRecord<R>, D extends A
             return Mono.just(new FilterCondition()
                     .setField(fieldMappings.get(BaseFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.BETWEEN)
-                    .setValue(startDate.with(LocalTime.MIDNIGHT).toEpochSecond(ZoneOffset.UTC))
-                    .setToValue(endDate.with(LocalTime.MAX).toEpochSecond(ZoneOffset.UTC)));
+                    .setValue(startDate)
+                    .setToValue(endDate));
 
         if (startDate != null)
             return Mono.just(new FilterCondition()
                     .setField(fieldMappings.get(BaseFilter.Fields.startDate))
                     .setOperator(FilterConditionOperator.GREATER_THAN_EQUAL)
-                    .setValue(startDate.with(LocalTime.MIDNIGHT).toEpochSecond(ZoneOffset.UTC)));
+                    .setValue(startDate));
 
         return Mono.just(new FilterCondition()
                 .setField(fieldMappings.get(BaseFilter.Fields.endDate))
                 .setOperator(FilterConditionOperator.LESS_THAN_EQUAL)
-                .setValue(endDate.with(LocalTime.MAX).toEpochSecond(ZoneOffset.UTC)));
+                .setValue(endDate));
     }
 
     protected <T> Mono<AbstractCondition> makeIn(String mappedField, List<T> values) {

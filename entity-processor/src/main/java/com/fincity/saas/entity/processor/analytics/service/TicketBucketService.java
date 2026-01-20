@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
@@ -99,10 +100,12 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         access -> resolveStages(access, filter).flux(),
                         (access, sFilter) -> Mono.zip(
                                         this.dao
-                                                .getTicketCountPerStageAndDateWithClientId(access, sFilter)
+                                                .getTicketCountPerStageAndDateWithClientId(
+                                                        access, sFilter, TimePeriod.DAYS)
                                                 .collectList(),
                                         this.dao
-                                                .getUniqueCreatedByCountPerStageAndDateWithClientId(access, sFilter)
+                                                .getUniqueCreatedByCountPerStageAndDateWithClientId(
+                                                        access, sFilter, TimePeriod.DAYS)
                                                 .collectList())
                                 .flux(),
                         (access, sFilter, countsTuple) -> {
