@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.jooq.dao;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -70,10 +71,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         this.table = table;
         this.idField = idField;
         this.logger = LoggerFactory.getLogger(this.getClass());
-    }
-
-    public Mono<Page<D>> readPage(Pageable pageable) {
-        return this.getSelectJointStep().flatMap(tup -> this.list(pageable, tup));
     }
 
     @SuppressWarnings("unchecked")
@@ -201,10 +198,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 .map(c -> condition.isNegate() ? c.not() : c);
     }
 
-    protected Condition filterConditionFilter(FilterCondition fc) {
-        return this.filterConditionFilter(fc, null);
-    }
-
     @SuppressWarnings({ "unchecked", "rawtypes" })
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
@@ -324,16 +317,15 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
+			if (value instanceof LocalDateTime || value instanceof LocalDate)
+				return value;
+
             return value.equals("now")
                     ? LocalDateTime.now()
                     : LocalDateTime.ofEpochSecond(Long.parseLong(value.toString()), 0, ZoneOffset.UTC);
         }
 
         return value;
-    }
-
-    protected Mono<Condition> complexConditionFilter(ComplexCondition cc) {
-        return this.complexConditionFilter(cc, null);
     }
 
     protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
@@ -355,9 +347,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 .flatMap(e -> Mono.from(e.where(idField.eq(id))))
                 .switchIfEmpty(Mono.defer(() -> messageResourceService
                         .getMessage(OBJECT_NOT_FOUND, this.pojoClass.getSimpleName(), id)
-                        .handle((msg, sink) -> {
-                            sink.error(new GenericException(HttpStatus.NOT_FOUND, msg));
-                        })));
+                        .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.NOT_FOUND, msg)))));
     }
 
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
