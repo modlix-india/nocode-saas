@@ -433,7 +433,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             boolean requiresCreatedByNotNull,
             Boolean requiresClientIdNotNull) {
 
-        Field<LocalDate> castedDateField = this.toDateBucketField(timePeriod, dateField);
+        Field<LocalDate> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField);
+        Field<LocalDate> selectedBucketDateField = this.toBucketDisplayDateField(timePeriod, dateField);
 
         return FlatMapUtil.flatMapFlux(
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
@@ -448,44 +449,44 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                             ? this.unionAsRecord(
                                     this.buildStageOnlyDateCountSelect(
                                                     joinField,
-                                                    castedDateField,
+                                                    selectedBucketDateField,
                                                     countField,
                                                     conditions,
                                                     requiresCreatedByNotNull,
                                                     requiresClientIdNotNull)
-                                            .groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME),
+                                            .groupBy(groupByBucketField, ENTITY_PROCESSOR_STAGES.NAME),
                                     this.buildTotalOnlyStageDateCountSelect(
-                                                    castedDateField,
+                                                    selectedBucketDateField,
                                                     countField,
                                                     totalConditions,
                                                     requiresCreatedByNotNull,
                                                     requiresClientIdNotNull)
-                                            .groupBy(castedDateField))
+                                            .groupBy(groupByBucketField))
                             : this.buildStageOnlyDateCountSelect(
                                             joinField,
-                                            castedDateField,
+                                            selectedBucketDateField,
                                             countField,
                                             conditions,
                                             requiresCreatedByNotNull,
                                             requiresClientIdNotNull)
-                                    .groupBy(castedDateField, ENTITY_PROCESSOR_STAGES.NAME);
+                                    .groupBy(groupByBucketField, ENTITY_PROCESSOR_STAGES.NAME);
 
                     return Flux.from(select)
-                            .map(rec ->
-                                    this.mapToPerStageOnlyDateCount(rec, castedDateField, countField, defaultValue));
+                            .map(rec -> this.mapToPerStageOnlyDateCount(
+                                    rec, selectedBucketDateField, countField, defaultValue));
                 });
     }
 
     private SelectConditionStep<?> buildStageOnlyDateCountSelect(
             Field<ULong> joinField,
-            Field<LocalDate> castedDateField,
+            Field<LocalDate> selectedBucketDateField,
             Field<? extends Number> countField,
             Condition conditions,
             boolean requiresCreatedByNotNull,
             Boolean requiresClientIdNotNull) {
 
         SelectConditionStep<?> query = this.dslContext
-                .select(ENTITY_PROCESSOR_STAGES.NAME, castedDateField, countField)
+                .select(ENTITY_PROCESSOR_STAGES.NAME, selectedBucketDateField, countField)
                 .from(this.table)
                 .leftJoin(ENTITY_PROCESSOR_STAGES)
                 .on(joinField.eq(ENTITY_PROCESSOR_STAGES.ID))
@@ -495,14 +496,14 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     }
 
     private SelectConditionStep<?> buildTotalOnlyStageDateCountSelect(
-            Field<LocalDate> castedDateField,
+            Field<LocalDate> selectedBucketDateField,
             Field<? extends Number> countField,
             Condition conditions,
             boolean requiresCreatedByNotNull,
             Boolean requiresClientIdNotNull) {
 
         SelectConditionStep<?> query = this.dslContext
-                .select(DSL.val(TOTAL).as(ENTITY_PROCESSOR_STAGES.NAME), castedDateField, countField)
+                .select(DSL.val(TOTAL).as(ENTITY_PROCESSOR_STAGES.NAME), selectedBucketDateField, countField)
                 .from(this.table)
                 .where(conditions);
 
@@ -550,7 +551,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 Boolean.TRUE);
     }
 
-    private Field<LocalDate> toDateBucketField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
+    private Field<LocalDate> toDateBucketGroupKeyField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
 
         if (timePeriod == null) return DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
 
@@ -570,6 +571,18 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 DSL.field(
                         "str_to_date(date_format({0}, '%Y-01-01'), '%Y-%m-%d')", SQLDataType.LOCALDATE, dateTimeField);
             default -> DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
+        };
+    }
+
+    private Field<LocalDate> toBucketDisplayDateField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
+
+        Field<LocalDate> dateField = DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
+
+        if (timePeriod == null) return dateField;
+
+        return switch (timePeriod) {
+            case WEEKS, MONTHS, QUARTERS, YEARS -> DSL.min(dateField).as("bucketDate");
+            default -> dateField;
         };
     }
 
