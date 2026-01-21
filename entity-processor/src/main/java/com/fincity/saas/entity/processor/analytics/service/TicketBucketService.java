@@ -105,7 +105,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                                 .collectList(),
                                         this.dao
                                                 .getUniqueCreatedByCountPerStageAndDateWithClientId(
-                                                        access, sFilter, TimePeriod.DAYS)
+                                                        access, sFilter, sFilter.getTimePeriod())
                                                 .collectList())
                                 .flux(),
                         (access, sFilter, countsTuple) -> {
