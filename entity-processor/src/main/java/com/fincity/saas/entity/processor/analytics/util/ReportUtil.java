@@ -175,11 +175,7 @@ public class ReportUtil {
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
                 buildDatePairMap(totalDatePair, timePeriod, regularDateCountList);
 
-        if (includeTotal && !totalEntries.isEmpty()) {
-            for (List<PerDateCount> list : datePairMap.values()) {
-                list.addAll(totalEntries);
-            }
-        }
+        if (includeTotal && !totalEntries.isEmpty()) datePairMap.values().forEach(list -> list.addAll(totalEntries));
 
         requiredValueList = resolveRequiredValuesIfMissing(requiredValueList, perDateCountList, true);
 
@@ -588,11 +584,10 @@ public class ReportUtil {
         List<IdAndValue<String, CountPercentage>> result = new ArrayList<>(aggregated.size());
 
         Long totalValue = aggregated.get(TOTAL);
-        if (totalValue != null) {
-            CountPercentage totalCp =
-                    includePercentage ? CountPercentage.of(totalValue, total) : CountPercentage.withCount(totalValue);
-            result.add(IdAndValue.of(TOTAL, totalCp));
-        }
+        if (totalValue != null)
+            result.add(IdAndValue.of(
+                    TOTAL,
+                    includePercentage ? CountPercentage.of(totalValue, total) : CountPercentage.withCount(totalValue)));
 
         aggregated.entrySet().stream()
                 .filter(e -> !TOTAL.equalsIgnoreCase(e.getKey()))
