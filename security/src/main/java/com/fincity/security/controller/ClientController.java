@@ -2,7 +2,6 @@ package com.fincity.security.controller;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
@@ -51,14 +50,14 @@ public class ClientController
 
     @GetMapping("/internal/isBeingManaged")
     public Mono<ResponseEntity<Boolean>> isBeingManaged(@RequestParam String managingClientCode,
-                                                        @RequestParam String clientCode) {
+            @RequestParam String clientCode) {
 
         return this.service.isBeingManagedBy(managingClientCode, clientCode).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/isBeingManagedById")
     public Mono<ResponseEntity<Boolean>> isBeingManagedById(@RequestParam ULong managingClientId,
-                                                            @RequestParam ULong clientId) {
+            @RequestParam ULong clientId) {
 
         return this.service.isBeingManagedBy(managingClientId, clientId).map(ResponseEntity::ok);
     }
@@ -77,9 +76,16 @@ public class ClientController
 
     @GetMapping("/internal/isUserBeingManaged")
     public Mono<ResponseEntity<Boolean>> isUserBeingManaged(@RequestParam ULong userId,
-                                                            @RequestParam String clientCode) {
+            @RequestParam String clientCode) {
 
         return this.service.isUserBeingManaged(clientCode, userId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/isUserPartOfHierarchy")
+    public Mono<ResponseEntity<Boolean>> isUserPartOfHierarchy(@RequestParam ULong userId,
+            @RequestParam String clientCode) {
+
+        return this.service.isUserPartOfHierarchy(clientCode, userId).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/managedClient")
@@ -105,7 +111,7 @@ public class ClientController
 
     @GetMapping("/internal/getClientNAppCode")
     public Mono<ResponseEntity<Tuple2<String, String>>> getClientNAppCode(@RequestParam String scheme,
-                                                                          @RequestParam String host, @RequestParam String port) {
+            @RequestParam String host, @RequestParam String port) {
         return this.service.getClientPattern(scheme, host, port).map(e -> Tuples.of(e.getClientCode(), e.getAppCode()))
                 .defaultIfEmpty(Tuples.of("SYSTEM", "nothing")).map(ResponseEntity::ok);
     }
@@ -138,20 +144,20 @@ public class ClientController
 
     @PostMapping("/register")
     public Mono<ResponseEntity<RegistrationResponse>> register(ServerHttpRequest request,
-                                                               ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
+            ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
         return this.clientRegistrationService.register(registrationRequest, request, response).map(ResponseEntity::ok);
     }
 
     @PostMapping("/socialRegister")
     public Mono<ResponseEntity<RegistrationResponse>> socialRegister(ServerHttpRequest request,
-                                                                     ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
+            ServerHttpResponse response, @RequestBody ClientRegistrationRequest registrationRequest) {
         return this.clientRegistrationService.registerWSocial(request, response, registrationRequest)
                 .map(ResponseEntity::ok);
     }
 
     @PostMapping("/socialRegister/evoke")
     public Mono<ResponseEntity<String>> evokeSocialRegister(ServerHttpRequest request,
-                                                            @RequestParam SecurityAppRegIntegrationPlatform platform) {
+            @RequestParam SecurityAppRegIntegrationPlatform platform) {
         return this.clientRegistrationService.evokeRegisterWSocial(platform, request).map(ResponseEntity::ok);
     }
 
@@ -163,7 +169,7 @@ public class ClientController
 
     @GetMapping("/register/events")
     public Mono<ResponseEntity<Boolean>> evokeRegistrationEvents(ServerHttpRequest request, ServerHttpResponse response,
-                                                                 @RequestBody ClientRegistrationRequest registrationRequest) {
+            @RequestBody ClientRegistrationRequest registrationRequest) {
         return this.clientRegistrationService.evokeRegistrationEvents(registrationRequest, request, response)
                 .map(ResponseEntity::ok);
     }
@@ -237,8 +243,7 @@ public class ClientController
 
         return this.service
                 .readPageFilterInternal(pageable, query.getCondition())
-                .flatMap(page ->
-                        this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
+                .flatMap(page -> this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
                 .switchIfEmpty(Mono.just(Page.empty()))
                 .map(ResponseEntity::ok);
     }
