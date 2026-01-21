@@ -156,6 +156,14 @@ public class ClientService
         return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
     }
 
+    public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
+        return this.userService.readInternal(userId).map(User::getClientId).flatMap(this::readInternal)
+                .map(Client::getCode)
+                .flatMap(uClientCode -> Mono.zip(this.clientHierarchyService.isBeingManagedBy(uClientCode, clientCode),
+                        this.clientHierarchyService.isBeingManagedBy(clientCode, uClientCode)))
+                .map(tup -> tup.getT1() || tup.getT2());
+    }
+
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
         return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
     }
