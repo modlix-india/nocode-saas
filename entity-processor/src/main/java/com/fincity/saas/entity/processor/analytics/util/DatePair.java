@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.DayOfWeek;
@@ -11,100 +12,116 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Supplier;
-
-import org.springframework.util.Assert;
-
-import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
-
 import lombok.Getter;
+import org.springframework.util.Assert;
 
 @Getter
 public final class DatePair implements Comparable<DatePair>, Serializable {
 
-	@Serial
-	private static final long serialVersionUID = 4325130667466547523L;
+    @Serial
+    private static final long serialVersionUID = 4325130667466547523L;
 
-	private final LocalDateTime first;
-	private final LocalDateTime second;
+    private final LocalDateTime first;
+    private final LocalDateTime second;
 
-	private DatePair(LocalDateTime first, LocalDateTime second) {
-		Assert.notNull(first, "First must not be null");
-		Assert.notNull(second, "Second must not be null");
-		Assert.isTrue(!second.isBefore(first), "Second must not be before first");
-		this.first = first;
-		this.second = second;
-	}
+    private DatePair(LocalDateTime first, LocalDateTime second) {
+        Assert.notNull(first, "First must not be null");
+        Assert.notNull(second, "Second must not be null");
+        Assert.isTrue(!second.isBefore(first), "Second must not be before first");
+        this.first = first;
+        this.second = second;
+    }
 
-	public static DatePair of(LocalDateTime first, LocalDateTime second) {
-		return new DatePair(first, second);
-	}
+    public static DatePair of(LocalDateTime first, LocalDateTime second) {
+        return new DatePair(first, second);
+    }
 
-	public static <V> DatePair findContainingDate(LocalDate date, NavigableMap<DatePair, V> datePairMap) {
-		LocalDateTime dateTime = date.atStartOfDay();
-		Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, LocalDateTime.MAX));
-		return (entry != null && entry.getKey().containsDate(date)) ? entry.getKey() : null;
-	}
+    public static <V> DatePair findContainingDate(LocalDate date, NavigableMap<DatePair, V> datePairMap) {
+        LocalDateTime dateTime = date.atStartOfDay();
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, LocalDateTime.MAX));
+        return (entry != null && entry.getKey().containsDate(date)) ? entry.getKey() : null;
+    }
 
-	private static LocalDateTime getPeriodEnd(LocalDateTime dateTime, TimePeriod timePeriod) {
+    private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
+        return switch (timePeriod) {
+            case DAYS -> date.plusDays(1).atStartOfDay();
+            case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atStartOfDay();
+            case MONTHS -> {
+                LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfMonth());
+                yield lastDay.isAfter(date)
+                        ? lastDay.atStartOfDay()
+                        : date.plusMonths(1)
+                                .with(TemporalAdjusters.lastDayOfMonth())
+                                .atStartOfDay();
+            }
+            case QUARTERS -> {
+                LocalDate quarterEnd =
+                        date.plusMonths(2 - ((date.getMonthValue() - 1) % 3)).with(TemporalAdjusters.lastDayOfMonth());
+                yield quarterEnd.isAfter(date)
+                        ? quarterEnd.atStartOfDay()
+                        : date.plusMonths(3)
+                                .plusMonths(2 - ((date.plusMonths(3).getMonthValue() - 1) % 3))
+                                .with(TemporalAdjusters.lastDayOfMonth())
+                                .atStartOfDay();
+            }
+            case YEARS -> {
+                LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfYear());
+                yield lastDay.isAfter(date)
+                        ? lastDay.atStartOfDay()
+                        : date.plusYears(1)
+                                .with(TemporalAdjusters.lastDayOfYear())
+                                .atStartOfDay();
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + timePeriod);
+        };
+    }
 
-		LocalDate date = dateTime.toLocalDate();
+    public boolean containsDate(LocalDate date) {
+        LocalDate firstDate = first.toLocalDate();
+        LocalDate secondDate = second.toLocalDate();
+        return (date.isAfter(firstDate) || date.isEqual(firstDate))
+                && (date.isBefore(secondDate) || date.isEqual(secondDate));
+    }
 
-		return switch (timePeriod) {
-			case WEEKS -> date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atStartOfDay();
-			case MONTHS -> date.with(TemporalAdjusters.lastDayOfMonth()).atStartOfDay();
-			case QUARTERS -> date.plusMonths(2 - ((date.getMonthValue() - 1) % 3))
-					.with(TemporalAdjusters.lastDayOfMonth()).atStartOfDay();
-			case YEARS -> date.with(TemporalAdjusters.lastDayOfYear()).atStartOfDay();
-			default -> throw new IllegalStateException("Unexpected value: " + timePeriod);
-		};
-	}
+    public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
+        Assert.notNull(timePeriod, "Time period must not be null");
 
-	public boolean containsDate(LocalDate date) {
-		LocalDate firstDate = first.toLocalDate();
-		LocalDate secondDate = second.toLocalDate();
-		return (date.isAfter(firstDate) || date.isEqual(firstDate))
-				&& (date.isBefore(secondDate) || date.isEqual(secondDate));
-	}
+        NavigableMap<DatePair, V> valueMap = new TreeMap<>();
+        LocalDateTime current = this.first;
 
-	public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
-		Assert.notNull(timePeriod, "Time period must not be null");
+        while (current.isBefore(this.second)) {
+            LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
+            LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-		NavigableMap<DatePair, V> valueMap = new TreeMap<>();
-		LocalDateTime current = this.first;
+            valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
+            current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
+        }
 
-		while (current.isBefore(this.second)) {
-			LocalDateTime periodEnd = getPeriodEnd(current, timePeriod);
-			LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
+        return valueMap;
+    }
 
-			valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
-			current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
-		}
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DatePair other = (DatePair) o;
+        return first.equals(other.first) && second.equals(other.second);
+    }
 
-		return valueMap;
-	}
+    @Override
+    public int hashCode() {
+        return Objects.hash(first, second);
+    }
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		DatePair other = (DatePair) o;
-		return first.equals(other.first) && second.equals(other.second);
-	}
+    @Override
+    public String toString() {
+        return String.format("[%s, %s]", first, second);
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(first, second);
-	}
-
-	@Override
-	public String toString() {
-		return String.format("[%s, %s]", first, second);
-	}
-
-	@Override
-	public int compareTo(DatePair other) {
-		if (other == null) return 1;
-		int cmp = first.compareTo(other.first);
-		return cmp != 0 ? cmp : second.compareTo(other.second);
-	}
+    @Override
+    public int compareTo(DatePair other) {
+        if (other == null) return 1;
+        int cmp = first.compareTo(other.first);
+        return cmp != 0 ? cmp : second.compareTo(other.second);
+    }
 }
