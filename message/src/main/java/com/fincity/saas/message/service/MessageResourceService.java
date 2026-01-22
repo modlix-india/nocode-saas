@@ -32,6 +32,8 @@ public class MessageResourceService extends AbstractMessageService {
     public static final String MISSING_CALL_PARAMETERS = "missing_call_parameters";
     public static final String MISSING_MESSAGE_PARAMETERS = "missing_message_parameters";
     public static final String MISSING_CONNECTION_DETAILS = "missing_connection_details";
+    public static final String DUPLICATE_CALL_SID = "duplicate_call_sid";
+    public static final String CALL_NOT_FOUND = "call_not_found";
 
     public static final String VERSION_MISMATCH = "version_mismatch";
     public static final String FORBIDDEN_APP_ACCESS = "forbidden_app_access";
