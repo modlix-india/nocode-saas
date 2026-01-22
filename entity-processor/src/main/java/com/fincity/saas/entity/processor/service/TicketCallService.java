@@ -73,7 +73,8 @@ public class TicketCallService implements IRepositoryProvider {
 
         logger.info("Received incoming Exotel call request - appCode: {}, clientCode: {}", appCode, clientCode);
 
-        return this.incomingExotelCall(appCode, clientCode, request.getQueryParams().toSingleValueMap())
+        return this.incomingExotelCall(
+                        appCode, clientCode, request.getQueryParams().toSingleValueMap())
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "TicketCallService.incomingExotelCall[ServerHttpRequest]"));
     }
@@ -142,9 +143,7 @@ public class TicketCallService implements IRepositoryProvider {
                                     productComm.getConnectionName(),
                                     ticket.getAssignedUserId());
                             return messageService.connectCall(
-                                    appCode,
-                                    clientCode,
-                                    (IncomingCallRequest) new IncomingCallRequest()
+                                    appCode, clientCode, (IncomingCallRequest) new IncomingCallRequest()
                                             .setProviderIncomingRequest(providerIncomingRequest)
                                             .setConnectionName(productComm.getConnectionName())
                                             .setUserId(ticket.getAssignedUserId()));
