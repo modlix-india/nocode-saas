@@ -55,7 +55,7 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 		LocalDate date = start.toLocalDate();
 		return switch (timePeriod) {
 			case DAYS -> date.plusDays(1).atStartOfDay();
-			case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atStartOfDay();
+			case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.MONDAY)).atStartOfDay();
 			case MONTHS -> date.with(TemporalAdjusters.firstDayOfNextMonth()).atStartOfDay();
 			case QUARTERS -> date.plusMonths(3 - ((date.getMonthValue() - 1) % 3))
 					.withDayOfMonth(1).atStartOfDay();
