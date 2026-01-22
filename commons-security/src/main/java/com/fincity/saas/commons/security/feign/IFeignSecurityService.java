@@ -4,7 +4,6 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.security.model.Designation;
 import org.springframework.data.domain.Page;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,12 +18,14 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.dto.Client;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.security.model.Department;
+import com.fincity.saas.commons.security.model.Designation;
 import com.fincity.saas.commons.security.model.EntityProcessorUser;
 import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.model.Profile;
 import com.fincity.saas.commons.security.model.User;
 import com.fincity.saas.commons.security.model.UsersListRequest;
-import com.fincity.saas.commons.security.model.Profile;
-import com.fincity.saas.commons.security.model.Department;
+
 import reactivefeign.spring.config.ReactiveFeignClient;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
@@ -57,6 +58,9 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
     Mono<Boolean> isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
+
+    @GetMapping("${security.feign.isUserPartOfHierarchy:/api/security/clients/internal/isUserPartOfHierarchy}")
+    Mono<Boolean> isUserPartOfHierarchy(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
     Mono<List<BigInteger>> getClientHierarchy(@RequestParam BigInteger clientId);
@@ -243,7 +247,7 @@ public interface IFeignSecurityService {
 
     @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/{userId}/processor}")
     Mono<EntityProcessorUser> getUserForEntityProcessor(@PathVariable BigInteger userId,
-                                                        @RequestBody UsersListRequest request);
+            @RequestBody UsersListRequest request);
 
     @GetMapping(value = "${security.feign.getAppStatus:/api/security/applications/internal/appStatus/{appCode}}")
     Mono<String> getAppStatus(@PathVariable String appCode);
