@@ -1,6 +1,5 @@
 package com.fincity.saas.entity.processor.analytics.util;
 
-import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.DayOfWeek;
@@ -12,8 +11,12 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Supplier;
-import lombok.Getter;
+
 import org.springframework.util.Assert;
+
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
+
+import lombok.Getter;
 
 @Getter
 public final class DatePair implements Comparable<DatePair>, Serializable {
@@ -36,42 +39,31 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 		return new DatePair(first, second);
 	}
 
-	public static DatePair ofDates(LocalDate first, LocalDate second) {
-		return new DatePair(first.atStartOfDay(), second.plusDays(1).atStartOfDay());
-	}
-
-	public static <V> DatePair findContaining(LocalDateTime dateTime, NavigableMap<DatePair, V> datePairMap) {
-		Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, LocalDateTime.MAX));
-		return (entry != null && entry.getKey().contains(dateTime)) ? entry.getKey() : null;
-	}
-
 	public static <V> DatePair findContainingDate(LocalDate date, NavigableMap<DatePair, V> datePairMap) {
 		LocalDateTime dateTime = date.atStartOfDay();
 		Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, LocalDateTime.MAX));
 		return (entry != null && entry.getKey().containsDate(date)) ? entry.getKey() : null;
 	}
 
-	private static LocalDateTime getNextPeriodStart(LocalDateTime start, TimePeriod timePeriod) {
-		LocalDate date = start.toLocalDate();
+	private static LocalDateTime getPeriodEnd(LocalDateTime dateTime, TimePeriod timePeriod) {
+
+		LocalDate date = dateTime.toLocalDate();
+
 		return switch (timePeriod) {
-			case DAYS -> date.plusDays(1).atStartOfDay();
-			case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.MONDAY)).atStartOfDay();
-			case MONTHS -> date.with(TemporalAdjusters.firstDayOfNextMonth()).atStartOfDay();
-			case QUARTERS -> date.plusMonths(3 - ((date.getMonthValue() - 1) % 3))
-					.withDayOfMonth(1).atStartOfDay();
-			case YEARS -> date.with(TemporalAdjusters.firstDayOfNextYear()).atStartOfDay();
+			case WEEKS -> date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atStartOfDay();
+			case MONTHS -> date.with(TemporalAdjusters.lastDayOfMonth()).atStartOfDay();
+			case QUARTERS -> date.plusMonths(2 - ((date.getMonthValue() - 1) % 3))
+					.with(TemporalAdjusters.lastDayOfMonth()).atStartOfDay();
+			case YEARS -> date.with(TemporalAdjusters.lastDayOfYear()).atStartOfDay();
 			default -> throw new IllegalStateException("Unexpected value: " + timePeriod);
 		};
-	}
-
-	public boolean contains(LocalDateTime dateTime) {
-		return !dateTime.isBefore(first) && dateTime.isBefore(second);
 	}
 
 	public boolean containsDate(LocalDate date) {
 		LocalDate firstDate = first.toLocalDate();
 		LocalDate secondDate = second.toLocalDate();
-		return !date.isBefore(firstDate) && date.isBefore(secondDate);
+		return (date.isAfter(firstDate) || date.isEqual(firstDate))
+				&& (date.isBefore(secondDate) || date.isEqual(secondDate));
 	}
 
 	public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
@@ -81,11 +73,11 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 		LocalDateTime current = this.first;
 
 		while (current.isBefore(this.second)) {
-			LocalDateTime periodEnd = getNextPeriodStart(current, timePeriod);
+			LocalDateTime periodEnd = getPeriodEnd(current, timePeriod);
 			LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
 			valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
-			current = periodEnd;
+			current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
 		}
 
 		return valueMap;
@@ -106,7 +98,7 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
 	@Override
 	public String toString() {
-		return String.format("[%s, %s)", first, second);
+		return String.format("[%s, %s]", first, second);
 	}
 
 	@Override
