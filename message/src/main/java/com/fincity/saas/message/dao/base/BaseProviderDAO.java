@@ -35,4 +35,16 @@ public abstract class BaseProviderDAO<R extends UpdatableRecord<R>, D extends Ba
                                         .and(uniqueProviderField.eq(id)))
                         .map(e -> e.into(this.pojoClass)));
     }
+
+    public Mono<Boolean> existsByUniqueField(MessageAccess access, String id) {
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.messageAccessCondition(null, access), this::filter, (pCondition, jCondition) -> Mono.from(
+                                this.dslContext
+                                        .selectCount()
+                                        .from(this.table)
+                                        .where(jCondition)
+                                        .and(uniqueProviderField.eq(id)))
+                        .map(count -> count.value1() > 0));
+    }
 }
