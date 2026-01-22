@@ -19,97 +19,109 @@ import org.springframework.util.Assert;
 public final class DatePair implements Comparable<DatePair>, Serializable {
 
     @Serial
-    private static final long serialVersionUID = 4325130667466547521L;
+    private static final long serialVersionUID = 4325130667466547523L;
 
-    private final LocalDate first;
-    private final LocalDate second;
+    private final LocalDateTime first;
+    private final LocalDateTime second;
 
-    private DatePair(LocalDate first, LocalDate second) {
+    private DatePair(LocalDateTime first, LocalDateTime second) {
         Assert.notNull(first, "First must not be null");
         Assert.notNull(second, "Second must not be null");
+        Assert.isTrue(!second.isBefore(first), "Second must not be before first");
         this.first = first;
         this.second = second;
     }
 
-    public static DatePair of(LocalDate first, LocalDate second) {
+    public static DatePair of(LocalDateTime first, LocalDateTime second) {
         return new DatePair(first, second);
     }
 
-    public static DatePair of(LocalDateTime first, LocalDateTime second) {
-        return new DatePair(first.toLocalDate(), second.toLocalDate());
+    public static <V> DatePair findContainingDate(LocalDate date, NavigableMap<DatePair, V> datePairMap) {
+        LocalDateTime dateTime = date.atStartOfDay();
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, LocalDateTime.MAX));
+        return (entry != null && entry.getKey().containsDate(date)) ? entry.getKey() : null;
     }
 
-    public static <V> DatePair findContainingDate(LocalDate dateToFind, NavigableMap<DatePair, V> datePairMap) {
-
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateToFind, LocalDate.MAX));
-
-        if (entry != null && entry.getKey().contains(dateToFind)) return entry.getKey();
-
-        return null;
-    }
-
-    private static LocalDate getEndDate(LocalDate startDate, TimePeriod timePeriod) {
+    private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
-            case DAYS -> startDate;
-            case WEEKS ->
-                startDate.plus(1, timePeriod.getChronoUnit()).with(TemporalAdjusters.previous(DayOfWeek.SUNDAY));
-            case MONTHS -> startDate.with(TemporalAdjusters.lastDayOfMonth());
-            case QUARTERS -> startDate.plus(2, timePeriod.getChronoUnit()).with(TemporalAdjusters.lastDayOfMonth());
-            case YEARS -> startDate.plus(1, timePeriod.getChronoUnit()).with(TemporalAdjusters.lastDayOfYear());
+            case DAYS -> date.plusDays(1).atStartOfDay();
+            case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atStartOfDay();
+            case MONTHS -> {
+                LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfMonth());
+                yield lastDay.isAfter(date)
+                        ? lastDay.atStartOfDay()
+                        : date.plusMonths(1)
+                                .with(TemporalAdjusters.lastDayOfMonth())
+                                .atStartOfDay();
+            }
+            case QUARTERS -> {
+                LocalDate quarterEnd =
+                        date.plusMonths(2 - ((date.getMonthValue() - 1) % 3)).with(TemporalAdjusters.lastDayOfMonth());
+                yield quarterEnd.isAfter(date)
+                        ? quarterEnd.atStartOfDay()
+                        : date.plusMonths(3)
+                                .plusMonths(2 - ((date.plusMonths(3).getMonthValue() - 1) % 3))
+                                .with(TemporalAdjusters.lastDayOfMonth())
+                                .atStartOfDay();
+            }
+            case YEARS -> {
+                LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfYear());
+                yield lastDay.isAfter(date)
+                        ? lastDay.atStartOfDay()
+                        : date.plusYears(1)
+                                .with(TemporalAdjusters.lastDayOfYear())
+                                .atStartOfDay();
+            }
             default -> throw new IllegalStateException("Unexpected value: " + timePeriod);
         };
+    }
+
+    public boolean containsDate(LocalDate date) {
+        LocalDate firstDate = first.toLocalDate();
+        LocalDate secondDate = second.toLocalDate();
+        return (date.isAfter(firstDate) || date.isEqual(firstDate))
+                && (date.isBefore(secondDate) || date.isEqual(secondDate));
     }
 
     public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
         Assert.notNull(timePeriod, "Time period must not be null");
 
         NavigableMap<DatePair, V> valueMap = new TreeMap<>();
-        LocalDate current = this.first;
+        LocalDateTime current = this.first;
 
-        while (!current.isAfter(this.second)) {
-            LocalDate periodEnd = getEndDate(current, timePeriod);
-            LocalDate actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
+        while (current.isBefore(this.second)) {
+            LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
+            LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
             valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
-
-            current = periodEnd.plusDays(1);
-
-            if (current.equals(periodEnd.plusDays(1)) && current.isAfter(this.second)) break;
+            current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
         }
 
         return valueMap;
     }
 
-    public boolean contains(LocalDate date) {
-        return (date.isEqual(first) || date.isAfter(first)) && (date.isEqual(second) || date.isBefore(second));
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-
         if (o == null || getClass() != o.getClass()) return false;
-
-        DatePair datePair = (DatePair) o;
-
-        return Objects.equals(first, datePair.first) && Objects.equals(second, datePair.second);
+        DatePair other = (DatePair) o;
+        return first.equals(other.first) && second.equals(other.second);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.first, this.second);
+        return Objects.hash(first, second);
     }
 
     @Override
     public String toString() {
-        return String.format("%s->%s", first, second);
+        return String.format("[%s, %s]", first, second);
     }
 
     @Override
     public int compareTo(DatePair other) {
         if (other == null) return 1;
-
-        int firstComparison = this.first.compareTo(other.first);
-        return firstComparison != 0 ? firstComparison : this.second.compareTo(other.second);
+        int cmp = first.compareTo(other.first);
+        return cmp != 0 ? cmp : second.compareTo(other.second);
     }
 }

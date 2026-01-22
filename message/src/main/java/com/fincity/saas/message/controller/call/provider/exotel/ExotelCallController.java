@@ -9,8 +9,6 @@ import com.fincity.saas.message.model.request.call.CallRequest;
 import com.fincity.saas.message.model.request.call.IncomingCallRequest;
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnectAppletResponse;
 import com.fincity.saas.message.service.call.provider.exotel.ExotelCallService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,24 +22,16 @@ import reactor.core.publisher.Mono;
 public class ExotelCallController
         extends BaseUpdatableController<MessageExotelCallsRecord, ExotelCall, ExotelDAO, ExotelCallService> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExotelCallController.class);
-
     @PostMapping("/connect")
     public Mono<ExotelConnectAppletResponse> connectCall(
             @RequestHeader("appCode") String appCode,
             @RequestHeader("clientCode") String clientCode,
             @RequestBody IncomingCallRequest request) {
-        return this.service.connectCall(appCode, clientCode, request).onErrorResume(e -> {
-            logger.error("Error in connectCall: {}", e.getMessage(), e);
-            return Mono.empty();
-        });
+        return this.service.connectCall(appCode, clientCode, request);
     }
 
     @PostMapping("/make")
     public Mono<ResponseEntity<Call>> makeCall(@RequestBody CallRequest request) {
-        return this.service.makeCall(request).map(ResponseEntity::ok).onErrorResume(e -> {
-            logger.error("Error in makeCall: {}", e.getMessage(), e);
-            return Mono.empty();
-        });
+        return this.service.makeCall(request).map(ResponseEntity::ok);
     }
 }

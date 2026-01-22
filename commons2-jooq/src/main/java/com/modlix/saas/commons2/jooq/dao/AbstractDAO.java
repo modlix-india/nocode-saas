@@ -1,6 +1,7 @@
 package com.modlix.saas.commons2.jooq.dao;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -67,10 +68,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         this.table = table;
         this.idField = idField;
         this.logger = LoggerFactory.getLogger(this.getClass());
-    }
-
-    public Page<D> readPage(Pageable pageable) {
-        return this.list(pageable, this.getSelectJointStep());
     }
 
     @SuppressWarnings("unchecked")
@@ -203,10 +200,6 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return condition.isNegate() ? result.not() : result;
     }
 
-    protected Condition filterConditionFilter(FilterCondition fc) {
-        return this.filterConditionFilter(fc, null);
-    }
-
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
@@ -314,16 +307,15 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         if (dt.isDate() || dt.isDateTime() || dt.isTime() || dt.isTimestamp()) {
 
+			if (value instanceof LocalDateTime || value instanceof LocalDate)
+				return value;
+
             return value.equals("now")
                     ? LocalDateTime.now()
                     : LocalDateTime.ofEpochSecond(Long.parseLong(value.toString()), 0, ZoneOffset.UTC);
         }
 
         return value;
-    }
-
-    protected Condition complexConditionFilter(ComplexCondition cc) {
-        return this.complexConditionFilter(cc, null);
     }
 
     protected Condition complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
