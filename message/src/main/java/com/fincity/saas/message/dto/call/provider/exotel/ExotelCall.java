@@ -167,8 +167,6 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
         SetterUtil.setIfPresent(callback.getStatus(), this::setExotelCallStatus);
         SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
         SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
-        SetterUtil.setIfPresent(callback.getFrom(), this::setFrom);
-        SetterUtil.setIfPresent(callback.getTo(), this::setTo);
         if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
         if (callback.getEndTime() != null) this.endTime = parseDate(callback.getEndTime());
         SetterUtil.setIfPresent(callback.getConversationDuration(), this::setConversationDuration);
@@ -186,9 +184,6 @@ public class ExotelCall extends BaseUpdatableDto<ExotelCall> {
         SetterUtil.setIfPresent(callback.getCallStatus(), this::setExotelCallStatus);
         SetterUtil.setIfPresent(callback.getRecordingUrl(), this::setRecordingUrl);
         SetterUtil.setIfPresent(callback.getDirection(), this::setDirection);
-        SetterUtil.setIfPresent(callback.getFrom(), this::setFrom);
-        SetterUtil.setIfPresent(callback.getCallTo(), this::setTo);
-        SetterUtil.setIfPresent(callback.getTo(), this::setCallerId);
 
         if (callback.getStartTime() != null) this.startTime = parseDate(callback.getStartTime());
 
