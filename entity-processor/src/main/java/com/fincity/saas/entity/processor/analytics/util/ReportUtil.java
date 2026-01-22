@@ -148,7 +148,7 @@ public class ReportUtil {
                 .filter(value -> !existingValues.contains(value))
                 .forEach(value -> result.add(new PerDateCount()
                         .setCount(0L)
-                        .setDate(entry.getKey().getFirst())
+                        .setDate(entry.getKey().getFirst().toLocalDate())
                         .setGroupedValue(value)
                         .setMapValue(mapValue)));
 
