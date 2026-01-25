@@ -1,5 +1,7 @@
 package com.fincity.saas.ui.service;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,7 +11,11 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -20,6 +26,10 @@ import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.ui.document.Application;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -28,6 +38,8 @@ import reactor.util.function.Tuples;
 
 @Service
 public class IndexHTMLService {
+
+    private static final Logger logger = LoggerFactory.getLogger(IndexHTMLService.class);
 
     private static final String[] LINK_FIELDS = new String[] { "crossorigin", "href", "hreflang", "media",
             "referrerpolicy", "rel", "sizes", "title", "type" };
@@ -118,10 +130,69 @@ public class IndexHTMLService {
 
     private final ApplicationService appService;
     private final CacheService cacheService;
+    private final ResourceLoader resourceLoader;
+    private final Gson gson = new Gson();
+    private List<String> cachedEntrypointScripts = null;
 
-    public IndexHTMLService(ApplicationService appService, CacheService cacheService) {
+    public IndexHTMLService(ApplicationService appService, CacheService cacheService, ResourceLoader resourceLoader) {
         this.appService = appService;
         this.cacheService = cacheService;
+        this.resourceLoader = resourceLoader;
+        loadAssetManifest();
+    }
+
+    /**
+     * Load the asset manifest from classpath or CDN
+     * The manifest contains the list of webpack chunks to load
+     */
+    private void loadAssetManifest() {
+        try {
+            // Try to load from classpath first (for embedded deployment)
+            Resource resource = resourceLoader.getResource("classpath:manifests/asset-manifest.json");
+
+            if (!resource.exists()) {
+                logger.warn("Asset manifest not found in classpath, will use fallback to legacy bundles");
+                return;
+            }
+
+            try (InputStream is = resource.getInputStream()) {
+                String manifestContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                JsonObject manifest = gson.fromJson(manifestContent, JsonObject.class);
+
+                if (manifest.has("entrypoints")) {
+                    JsonObject entrypoints = manifest.getAsJsonObject("entrypoints");
+                    if (entrypoints.has("index")) {
+                        JsonArray indexArray = entrypoints.getAsJsonArray("index");
+                        cachedEntrypointScripts = new ArrayList<>();
+                        for (JsonElement element : indexArray) {
+                            cachedEntrypointScripts.add(element.getAsString());
+                        }
+                        logger.info("Asset manifest loaded successfully with {} entrypoint scripts",
+                            cachedEntrypointScripts.size());
+                        return;
+                    }
+                }
+
+                logger.warn("Invalid manifest structure, missing entrypoints.index");
+            }
+        } catch (Exception e) {
+            logger.error("Error loading asset manifest: {}", e.getMessage(), e);
+        }
+
+        // Fallback to legacy bundles if manifest loading fails
+        logger.info("Using fallback to legacy bundles (vendors.js, index.js)");
+        cachedEntrypointScripts = List.of("vendors.js", "index.js");
+    }
+
+    /**
+     * Get the list of entrypoint scripts from the manifest
+     * Falls back to legacy bundles if manifest is not available
+     */
+    private List<String> getEntrypointScripts() {
+        if (cachedEntrypointScripts == null) {
+            return List.of("vendors.js", "index.js");
+        }
+        return cachedEntrypointScripts;
     }
 
     public Mono<ObjectWithUniqueID<String>> getIndexHTML(String appCode, String clientCode) {
@@ -237,10 +308,13 @@ public class IndexHTMLService {
         str.append("</script>");
 
         String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
-        str.append("<script src=\"").append(jsURLPrefix).append("index.js")
-                .append("\"></script>");
-        str.append("<script src=\"").append(jsURLPrefix).append("vendors.js")
-                .append("\"></script>");
+
+        // Load entrypoint scripts from manifest (with fallback to legacy bundles)
+        List<String> entrypointScripts = getEntrypointScripts();
+        for (String script : entrypointScripts) {
+            str.append("<script src=\"").append(jsURLPrefix).append(script).append("\"></script>");
+        }
+
         str.append(codeParts.get(3));
         str.append("</body></html>");
 
