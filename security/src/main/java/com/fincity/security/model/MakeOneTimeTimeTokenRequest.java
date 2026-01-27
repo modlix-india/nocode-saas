@@ -6,4 +6,5 @@ import lombok.Data;
 public class MakeOneTimeTimeTokenRequest {
 
     private String callbackUrl;
+    private boolean rememberMe = false;
 }

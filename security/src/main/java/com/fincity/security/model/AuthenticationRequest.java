@@ -26,12 +26,15 @@ public class AuthenticationRequest implements BasePassword<AuthenticationRequest
     private boolean cookie = false;
     private boolean generateOtp = false;
 
+    private boolean ssoToken = false;
+
     @JsonIgnore
     public AuthenticationIdentifierType getComputedIdentifierType() {
-        if (this.identifierType != null) return this.identifierType;
+        if (this.identifierType != null)
+            return this.identifierType;
 
         return this.identifierType = StringUtil.safeIsBlank(this.getUserName()) || this.getUserName()
                 .indexOf('@') == -1 ? AuthenticationIdentifierType.USER_NAME
-                : AuthenticationIdentifierType.EMAIL_ID;
+                        : AuthenticationIdentifierType.EMAIL_ID;
     }
 }
