@@ -1,8 +1,10 @@
 package com.fincity.saas.entity.processor.service;
 
+import static com.fincity.saas.entity.processor.jooq.EntityProcessor.ENTITY_PROCESSOR;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 
+import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
@@ -18,6 +20,7 @@ import org.jooq.SelectField;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -28,14 +31,13 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class TicketStageViewService {
 
-    private static final String VIEW_NAME = "entity_processor_view_ticket_stage_dates";
-    private static final String SCHEMA_NAME = "entity_processor";
+    public static final String VIEW_NAME = "entity_processor_view_ticket_stage_dates";
     private static final ActivityAction STAGE_UPDATE_ACTION = ActivityAction.STAGE_UPDATE;
 
-    private static final String COL_TICKET_ID = "ticket_id";
-    private static final String COL_RAW_NAME = "raw_name";
-    private static final String COL_NORMALIZED_NAME = "normalized_name";
-    private static final String COL_STAGE_NAME = "stage_name";
+    public static final String TICKET_ID = "ticket_id";
+    private static final String RAW_NAME = "raw_name";
+    private static final String NORMALIZED_NAME = "normalized_name";
+    private static final String STAGE_NAME = "stage_name";
     private static final String DATE_SUFFIX = "_date";
 
     private static final String ALIAS_ACTIVITY = "activity";
@@ -46,12 +48,17 @@ public class TicketStageViewService {
 
     @Transactional
     public Mono<Void> rebuildTicketStageDatesView() {
-        return fetchDistinctStages()
+        return this.fetchDistinctStages()
                 .collectList()
                 .flatMap(this::rebuildViewIfStagesExist)
-                .doOnSuccess(unused -> log.info("Successfully rebuilt view: {}.{}", SCHEMA_NAME, VIEW_NAME))
-                .doOnError(error -> log.error("Failed to rebuild view: {}.{}", SCHEMA_NAME, VIEW_NAME, error))
-                .onErrorMap(error -> new ViewRebuildException("Failed to rebuild ticket stage dates view", error));
+                .doOnSuccess(
+                        unused -> log.info("Successfully rebuilt view: {}.{}", ENTITY_PROCESSOR.getName(), VIEW_NAME))
+                .doOnError(error ->
+                        log.error("Failed to rebuild view: {}.{}", ENTITY_PROCESSOR.getName(), VIEW_NAME, error))
+                .onErrorMap(error -> new GenericException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Failed to rebuild ticket stage dates view: " + error.getMessage(),
+                        error));
     }
 
     private Mono<Void> rebuildViewIfStagesExist(List<StageInfo> stages) {
@@ -59,7 +66,7 @@ public class TicketStageViewService {
             log.warn("No stages found with activity; skipping view rebuild.");
             return Mono.empty();
         }
-        return executeViewCreation(stages);
+        return this.executeViewCreation(stages);
     }
 
     private Flux<StageInfo> fetchDistinctStages() {
@@ -67,20 +74,20 @@ public class TicketStageViewService {
         var activityTable = ENTITY_PROCESSOR_ACTIVITIES;
 
         Field<String> lowerCaseStageName = DSL.lower(stageTable.NAME);
-        Field<String> normalizedStageName = normalizeColumnName(lowerCaseStageName);
+        Field<String> normalizedStageName = this.normalizeColumnName(lowerCaseStageName);
 
         Table<?> stageNameSubquery = DSL.select(
-                        lowerCaseStageName.as(COL_RAW_NAME), normalizedStageName.as(COL_NORMALIZED_NAME))
+                        lowerCaseStageName.as(RAW_NAME), normalizedStageName.as(NORMALIZED_NAME))
                 .from(stageTable)
                 .join(activityTable)
                 .on(activityTable.STAGE_ID.eq(stageTable.ID))
                 .where(activityTable.ACTIVITY_ACTION.eq(STAGE_UPDATE_ACTION))
                 .asTable(ALIAS_STAGE_NAME_SUBQUERY);
 
-        Field<String> rawNameField = stageNameSubquery.field(COL_RAW_NAME, String.class);
-        Field<String> normalizedNameField = stageNameSubquery.field(COL_NORMALIZED_NAME, String.class);
+        Field<String> rawNameField = stageNameSubquery.field(RAW_NAME, String.class);
+        Field<String> normalizedNameField = stageNameSubquery.field(NORMALIZED_NAME, String.class);
 
-        var distinctStagesQuery = dsl.select(DSL.min(rawNameField).as(COL_STAGE_NAME), normalizedNameField)
+        var distinctStagesQuery = dsl.select(DSL.min(rawNameField).as(STAGE_NAME), normalizedNameField)
                 .from(stageNameSubquery)
                 .groupBy(normalizedNameField)
                 .orderBy(normalizedNameField);
@@ -89,8 +96,8 @@ public class TicketStageViewService {
     }
 
     private Mono<Void> executeViewCreation(List<StageInfo> stages) {
-        var viewQuery = buildViewQuery(stages);
-        var viewTable = DSL.table(DSL.name(SCHEMA_NAME, VIEW_NAME));
+        Select<?> viewQuery = this.buildViewQuery(stages);
+        Table<Record> viewTable = DSL.table(DSL.name(ENTITY_PROCESSOR.getName(), VIEW_NAME));
 
         return Mono.from(dsl.createOrReplaceView(viewTable).as(viewQuery))
                 .doOnSuccess(result -> log.info("View rebuilt successfully with {} stage columns", stages.size()))
@@ -98,10 +105,10 @@ public class TicketStageViewService {
     }
 
     private Select<? extends Record> buildViewQuery(List<StageInfo> stages) {
-        var activityTable = ENTITY_PROCESSOR_ACTIVITIES.as(ALIAS_ACTIVITY);
-        var stageTable = ENTITY_PROCESSOR_STAGES.as(ALIAS_STAGE);
+        EntityProcessorActivities activityTable = ENTITY_PROCESSOR_ACTIVITIES.as(ALIAS_ACTIVITY);
+        EntityProcessorStages stageTable = ENTITY_PROCESSOR_STAGES.as(ALIAS_STAGE);
 
-        List<SelectField<?>> selectColumns = buildSelectColumns(stages, activityTable, stageTable);
+        List<SelectField<?>> selectColumns = this.buildSelectColumns(stages, activityTable, stageTable);
 
         return DSL.select(selectColumns)
                 .from(activityTable)
@@ -117,7 +124,7 @@ public class TicketStageViewService {
 
         List<SelectField<?>> columns = new ArrayList<>(stages.size() + 1);
 
-        columns.add(activityTable.TICKET_ID.as(COL_TICKET_ID));
+        columns.add(activityTable.TICKET_ID.as(TICKET_ID));
 
         stages.stream()
                 .map(stageInfo -> this.buildStageDateColumn(stageInfo, activityTable, stageTable))
@@ -129,7 +136,7 @@ public class TicketStageViewService {
     private Field<?> buildStageDateColumn(
             StageInfo stageInfo, EntityProcessorActivities activityTable, EntityProcessorStages stageTable) {
 
-        String columnName = sanitizeColumnName(stageInfo.normalizedName()) + DATE_SUFFIX;
+        String columnName = this.sanitizeColumnName(stageInfo.normalizedName()) + DATE_SUFFIX;
 
         Field<?> caseWhenExpression =
                 DSL.when(DSL.lower(stageTable.NAME).eq(stageInfo.stageName()), activityTable.ACTIVITY_DATE);
@@ -148,14 +155,8 @@ public class TicketStageViewService {
     }
 
     private StageInfo mapToStageInfo(Record rec) {
-        return new StageInfo(rec.get(COL_STAGE_NAME, String.class), rec.get(COL_NORMALIZED_NAME, String.class));
+        return new StageInfo(rec.get(STAGE_NAME, String.class), rec.get(NORMALIZED_NAME, String.class));
     }
 
     public record StageInfo(String stageName, String normalizedName) {}
-
-    public static class ViewRebuildException extends RuntimeException {
-        public ViewRebuildException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
 }
