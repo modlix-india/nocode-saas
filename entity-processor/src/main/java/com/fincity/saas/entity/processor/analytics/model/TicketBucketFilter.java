@@ -75,6 +75,18 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
         return this;
     }
 
+    @Override
+    public BaseFilter.ReportOptions toReportOptions() {
+        return new BaseFilter.ReportOptions(
+                com.fincity.saas.entity.processor.model.DatePair.of(this.getStartDate(), this.getEndDate()),
+                this.getTimePeriod(),
+                this.isIncludeZero(),
+                this.isIncludePercentage(),
+                this.isIncludeTotal(),
+                this.includeNone,
+                this.getTimezone());
+    }
+
     @Data
     @Accessors(chain = true)
     @ToString(callSuper = true)
