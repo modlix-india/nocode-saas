@@ -8,6 +8,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
@@ -15,6 +16,8 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -150,18 +153,65 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
+    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
+
+		Field field = super.getField(fieldName, selectJoinStep);
+
+        if (field != null)
+			return field;
+
+		String jooqFieldName = EagerUtil.toJooqField(fieldName);
+
+        if (jooqFieldName.endsWith("DATE"))
+            return DSL.field(DSL.name("entity_processor_view_ticket_stage_dates", jooqFieldName), LocalDateTime.class);
+
+        return null;
+    }
+
+    @Override
     public SelectJoinStep<Record> applyBaseTableJoins(
             SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
-        return query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
-                .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+        SelectJoinStep<Record> base = query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+                .on(this.table
+                        .field("PRODUCT_ID", ULong.class)
+                        .eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        if (queryParams != null && queryParams.containsKey("hasDateField")) {
+            boolean hasDateField = Boolean.parseBoolean(queryParams.getFirst("hasDateField"));
+
+            if (hasDateField) {
+                base = base.leftJoin(DSL.table(
+                                DSL.name(this.table.getSchema().getName(), "entity_processor_view_ticket_stage_dates")))
+                        .on(DSL.field(DSL.name("entity_processor_view_ticket_stage_dates", "ticket_id"), ULong.class)
+                                .eq(this.table.field("ID", ULong.class)));
+            }
+        }
+
+        return base;
     }
 
     @Override
     public SelectJoinStep<Record1<Integer>> applyCountBaseTableJoins(
             SelectJoinStep<Record1<Integer>> query, MultiValueMap<String, String> queryParams) {
-        return super.applyCountBaseTableJoins(query, queryParams)
+        SelectJoinStep<Record1<Integer>> base = super.applyCountBaseTableJoins(query, queryParams)
                 .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
-                .on(ENTITY_PROCESSOR_TICKETS.PRODUCT_ID.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+                .on(this.table
+                        .field("PRODUCT_ID", ULong.class)
+                        .eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+
+        if (queryParams != null && queryParams.containsKey("hasDateField")) {
+            boolean hasDateField = Boolean.parseBoolean(queryParams.getFirst("hasDateField"));
+
+            if (hasDateField) {
+                base = base.leftJoin(DSL.table(
+                                DSL.name(this.table.getSchema().getName(), "entity_processor_view_ticket_stage_dates")))
+                        .on(DSL.field(DSL.name("entity_processor_view_ticket_stage_dates", "ticket_id"), ULong.class)
+                                .eq(this.table.field("ID", ULong.class)));
+            }
+        }
+
+        return base;
     }
 
     @Override
