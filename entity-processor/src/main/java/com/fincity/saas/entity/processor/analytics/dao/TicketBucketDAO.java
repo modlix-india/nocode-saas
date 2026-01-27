@@ -559,12 +559,13 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
     private Field<LocalDateTime> toDateBucketGroupKeyField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
 
-        if (timePeriod == null) return dateTimeField;
+        if (timePeriod == null)
+            return DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
 
         return switch (timePeriod) {
             case WEEKS ->
                 DSL.field(
-                        "date_sub({0}, interval weekday(cast({0} as date)) day)",
+                        "timestamp(date_sub(cast({0} as date), interval weekday(cast({0} as date)) day))",
                         SQLDataType.LOCALDATETIME, dateTimeField);
             case MONTHS ->
                 DSL.field(
@@ -578,7 +579,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 DSL.field(
                         "str_to_date(date_format({0}, '%Y-01-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
                         SQLDataType.LOCALDATETIME, dateTimeField);
-            default -> dateTimeField;
+            default -> DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
         };
     }
 

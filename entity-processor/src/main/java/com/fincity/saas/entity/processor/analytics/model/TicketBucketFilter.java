@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
+import com.fincity.saas.entity.processor.model.DatePair;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.util.FilterUtil;
 import java.io.Serial;
@@ -78,7 +79,7 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
     @Override
     public BaseFilter.ReportOptions toReportOptions() {
         return new BaseFilter.ReportOptions(
-                com.fincity.saas.entity.processor.model.DatePair.of(this.getStartDate(), this.getEndDate()),
+                DatePair.of(this.getStartDate(), this.getEndDate(), this.getTimezone()),
                 this.getTimePeriod(),
                 this.isIncludeZero(),
                 this.isIncludePercentage(),

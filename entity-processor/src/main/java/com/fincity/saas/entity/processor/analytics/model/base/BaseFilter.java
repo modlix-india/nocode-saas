@@ -71,7 +71,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
 
     public ReportOptions toReportOptions() {
         return new ReportOptions(
-                DatePair.of(this.startDate, this.endDate),
+                DatePair.of(this.startDate, this.endDate, this.timezone),
                 this.timePeriod,
                 this.includeZero,
                 this.includePercentage,
@@ -82,7 +82,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
 
     public ReportOptions toReportOptions(Boolean includeNone) {
         return new ReportOptions(
-                DatePair.of(this.startDate, this.endDate),
+                DatePair.of(this.startDate, this.endDate, this.timezone),
                 this.timePeriod,
                 this.includeZero,
                 this.includePercentage,

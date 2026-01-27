@@ -97,9 +97,19 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
             LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-        LocalDateTime dateTimeToUse = convertToTimezone(utcDateTime, timezone);
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTimeToUse, MAX_DATE_TIME));
-        return (entry != null && entry.getKey().contains(dateTimeToUse)) ? entry.getKey() : null;
+        LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
+        return findContainingDate(localDateTime, datePairMap);
+    }
+
+    public static <V> DatePair findContainingDate(LocalDateTime dateTime, NavigableMap<DatePair, V> datePairMap) {
+        if (dateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
+
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, MAX_DATE_TIME));
+        return (entry != null && entry.getKey().contains(dateTime)) ? entry.getKey() : null;
+    }
+
+    public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
+        return convertToTimezone(utcDateTime, timezone);
     }
 
     private static LocalDateTime convertToTimezone(LocalDateTime utcDateTime, String timezone) {
