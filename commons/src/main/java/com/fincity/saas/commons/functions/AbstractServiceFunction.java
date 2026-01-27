@@ -84,7 +84,8 @@ public abstract class AbstractServiceFunction extends AbstractReactiveFunction {
         }
 
         return new FunctionOutput(List.of(
-                EventResult.of(Event.ERROR, Map.of(ERROR_EVENT_NAME, gson.toJsonTree(errorData)))));
+                EventResult.of(Event.ERROR, Map.of(ERROR_EVENT_NAME, gson.toJsonTree(errorData))),
+		        EventResult.outputOf(Map.of())));
     }
 
     private static String getStackTraceAsString(Exception exception) {

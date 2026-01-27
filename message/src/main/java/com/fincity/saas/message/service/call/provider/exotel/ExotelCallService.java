@@ -2,6 +2,7 @@ package com.fincity.saas.message.service.call.provider.exotel;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.message.configuration.call.exotel.ExotelApiConfig;
 import com.fincity.saas.message.dao.call.provider.exotel.ExotelDAO;
@@ -22,6 +23,7 @@ import com.fincity.saas.message.model.response.call.provider.exotel.ExotelConnec
 import com.fincity.saas.message.model.response.call.provider.exotel.ExotelErrorResponse;
 import com.fincity.saas.message.oserver.core.document.Connection;
 import com.fincity.saas.message.oserver.core.enums.ConnectionSubType;
+import com.fincity.saas.message.service.MessageResourceService;
 import com.fincity.saas.message.service.call.provider.AbstractCallProviderService;
 import com.fincity.saas.message.util.PhoneUtil;
 import com.fincity.saas.message.util.SetterUtil;
@@ -57,6 +59,31 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     @Override
     public String getProviderUri() {
         return EXOTEL_PROVIDER_URI;
+    }
+
+    @Override
+    protected Mono<ExotelCall> updatableEntity(ExotelCall entity) {
+        return super.updatableEntity(entity).flatMap(existing -> {
+
+            existing.setParentCallSid(entity.getParentCallSid());
+            existing.setDateCreated(entity.getDateCreated());
+            existing.setDateUpdated(entity.getDateUpdated());
+
+            existing.setExotelCallStatus(entity.getExotelCallStatus());
+            existing.setEndTime(entity.getEndTime());
+            existing.setDuration(entity.getDuration());
+            existing.setPrice(entity.getPrice());
+            existing.setDirection(entity.getDirection());
+            existing.setAnsweredBy(entity.getAnsweredBy());
+            existing.setRecordingUrl(entity.getRecordingUrl());
+            existing.setConversationDuration(entity.getConversationDuration());
+            existing.setLeg1Status(entity.getLeg1Status());
+            existing.setLeg2Status(entity.getLeg2Status());
+            existing.setLegs(entity.getLegs());
+            existing.setExotelCallResponse(entity.getExotelCallResponse());
+
+            return Mono.just(existing);
+        });
     }
 
     @Override
@@ -191,29 +218,47 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     public Mono<ExotelConnectAppletResponse> connectCall(
             String appCode, String clientCode, IncomingCallRequest request) {
 
-        if (request.getUserId() == null) {
-            logger.error("Missing required parameter: UserId");
-            return Mono.empty();
-        }
+        if (request.getUserId() == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CALL_PARAMETERS,
+                    this.getConnectionSubType().getProvider(),
+                    "userId");
 
         Map<String, String> providerRequest = request.getProviderIncomingRequest();
 
-        if (providerRequest == null || providerRequest.isEmpty()) {
-            logger.error("Missing required parameter: provider information");
-            return Mono.empty();
-        }
+        if (providerRequest == null || providerRequest.isEmpty())
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CALL_PARAMETERS,
+                    this.getConnectionSubType().getProvider(),
+                    "providerIncomingRequest");
 
         ExotelConnectAppletRequest exotelRequest = ExotelConnectAppletRequest.of(providerRequest);
+
+        if (exotelRequest.getCallSid() == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CALL_PARAMETERS,
+                    this.getConnectionSubType().getProvider(),
+                    "CallSid");
 
         MessageAccess access = MessageAccess.of(appCode, clientCode, true);
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.callConnectionService.getCoreDocument(
+                        () -> this.existsByUniqueField(access, exotelRequest.getCallSid())
+                                .flatMap(BooleanUtil::safeValueOfFalseWithEmpty)
+                                .switchIfEmpty(super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                        MessageResourceService.DUPLICATE_CALL_SID,
+                                        exotelRequest.getCallSid())),
+                        notExists -> super.callConnectionService.getCoreDocument(
                                 access.getAppCode(), access.getClientCode(), request.getConnectionName()),
-                        connection -> super.getUserIdAndPhone(request.getUserId()),
-                        (connection, user) -> Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
-                                connection.getConnectionDetails().getOrDefault("accountSid", ""))),
-                        (connection, user, exotelCall) -> {
+                        (notExists, connection) -> super.getUserIdAndPhone(request.getUserId()),
+                        (notExists, connection, user) ->
+                                Mono.just(ExotelCall.ofInbound(exotelRequest, user.getValue(), (String)
+                                        connection.getConnectionDetails().getOrDefault("accountSid", ""))),
+                        (notExists, connection, user, exotelCall) -> {
                             Mono<ExotelCall> exotelCreated = this.createInternal(access, user.getId(), exotelCall);
 
                             Mono<Call> callCreated = this.toCall(exotelCall)
@@ -273,14 +318,23 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
         response.setParallelRinging(parallelRinging);
     }
 
-    public Mono<ExotelCall> processCallStatusCallback(ExotelCallStatusCallback callback) {
-        if (callback.getCallSid() == null) {
-            logger.error("CallerSid not provided in Exotel CallBack. Discarding...");
-            return Mono.empty();
-        }
+    public Mono<ExotelCall> processCallStatusCallback(MessageAccess access, ExotelCallStatusCallback callback) {
+
+        if (callback.getCallSid() == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CALL_PARAMETERS,
+                    this.getConnectionSubType().getProvider(),
+                    "CallSid");
+
+        logger.info("Processing call status callback for callSid: {}", callback.getCallSid());
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.findByUniqueField(callback.getCallSid()),
+                        () -> this.findByUniqueField(access, callback.getCallSid())
+                                .switchIfEmpty(super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                        MessageResourceService.CALL_NOT_FOUND,
+                                        callback.getCallSid())),
                         exotelCall -> super.updateInternalWithoutUser(
                                 MessageAccess.of(exotelCall.getAppCode(), exotelCall.getClientCode(), true),
                                 exotelCall.update(callback)),
@@ -288,25 +342,26 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                 .sendCallStatusEvent(
                                         updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
                                 .thenReturn(updated))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processCallStatusCallback"))
-                .switchIfEmpty(Mono.defer(() -> {
-                    logger.error("Exotel CallSid not found. Discarding...");
-                    return Mono.empty();
-                }))
-                .onErrorResume(e -> {
-                    logger.error("Error processing Exotel Call Status callback", e);
-                    return Mono.empty();
-                });
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processCallStatusCallback"));
     }
 
-    public Mono<ExotelCall> processPassThruCallback(ExotelPassThruCallback callback) {
-        if (callback.getCallSid() == null) {
-            logger.error("CallSid not provided in Exotel Passthru Callback. Discarding...");
-            return Mono.empty();
-        }
+    public Mono<ExotelCall> processPassThruCallback(MessageAccess access, ExotelPassThruCallback callback) {
+
+        if (callback.getCallSid() == null)
+            return super.msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    MessageResourceService.MISSING_CALL_PARAMETERS,
+                    this.getConnectionSubType().getProvider(),
+                    "CallSid");
+
+        logger.info("Processing pass-thru callback for callSid: {}", callback.getCallSid());
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.findByUniqueField(callback.getCallSid()),
+                        () -> this.findByUniqueField(access, callback.getCallSid())
+                                .switchIfEmpty(super.msgService.throwMessage(
+                                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                                        MessageResourceService.CALL_NOT_FOUND,
+                                        callback.getCallSid())),
                         exotelCall -> super.updateInternalWithoutUser(
                                 MessageAccess.of(exotelCall.getAppCode(), exotelCall.getClientCode(), true),
                                 exotelCall.update(callback)),
@@ -314,14 +369,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
                                 .sendPassthruCallbackEvent(
                                         updated.getAppCode(), updated.getClientCode(), updated.getUserId(), updated)
                                 .thenReturn(updated))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processPassThruCallback"))
-                .switchIfEmpty(Mono.defer(() -> {
-                    logger.error("Exotel CallSid not found. Discarding...");
-                    return Mono.empty();
-                }))
-                .onErrorResume(e -> {
-                    logger.error("Error processing Exotel Passthru callback", e);
-                    return Mono.empty();
-                });
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ExotelCallService.processPassThruCallback"));
     }
 }
