@@ -167,7 +167,7 @@ public class UniversalController {
             @RequestHeader(required = false) String appCode,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
             @RequestParam(required = false, defaultValue = "/") String redirectUrl,
-            @RequestHeader(defaultValue = "false") boolean cookie,
+            @RequestParam(defaultValue = "false") boolean cookie,
             ServerHttpRequest request) {
 
         String addr = ipAddress;
