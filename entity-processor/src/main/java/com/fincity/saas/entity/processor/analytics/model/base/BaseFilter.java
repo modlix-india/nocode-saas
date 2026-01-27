@@ -2,6 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
+import com.fincity.saas.entity.processor.model.DatePair;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.util.FilterUtil;
 import java.io.Serial;
@@ -33,6 +34,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private TimePeriod timePeriod = TimePeriod.WEEKS;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String timezone;
 
     @JsonIgnore
     private BaseFieldData baseFieldData = new BaseFieldData();
@@ -66,6 +68,37 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
         this.baseFieldData.setClients(clients);
         return (T) this;
     }
+
+    public ReportOptions toReportOptions() {
+        return new ReportOptions(
+                DatePair.of(this.startDate, this.endDate, this.timezone),
+                this.timePeriod,
+                this.includeZero,
+                this.includePercentage,
+                this.includeTotal,
+                null,
+                this.timezone);
+    }
+
+    public ReportOptions toReportOptions(Boolean includeNone) {
+        return new ReportOptions(
+                DatePair.of(this.startDate, this.endDate, this.timezone),
+                this.timePeriod,
+                this.includeZero,
+                this.includePercentage,
+                this.includeTotal,
+                includeNone,
+                this.timezone);
+    }
+
+    public record ReportOptions(
+            DatePair totalDatePair,
+            TimePeriod timePeriod,
+            boolean includeZero,
+            boolean includePercentage,
+            boolean includeTotal,
+            Boolean includeNone,
+            String timezone) {}
 
     @Data
     @Accessors(chain = true)
