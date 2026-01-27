@@ -16,7 +16,6 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -156,12 +155,11 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @SuppressWarnings("rawtypes")
     public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
 
-		Field field = super.getField(fieldName, selectJoinStep);
+        Field field = super.getField(fieldName, selectJoinStep);
 
-        if (field != null)
-			return field;
+        if (field != null) return field;
 
-		String jooqFieldName = EagerUtil.toJooqField(fieldName);
+        String jooqFieldName = EagerUtil.toJooqField(fieldName);
 
         if (jooqFieldName.endsWith("DATE"))
             return DSL.field(DSL.name("entity_processor_view_ticket_stage_dates", jooqFieldName), LocalDateTime.class);

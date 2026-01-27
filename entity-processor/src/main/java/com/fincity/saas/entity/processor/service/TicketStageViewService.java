@@ -3,9 +3,13 @@ package com.fincity.saas.entity.processor.service;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.ENTITY_PROCESSOR_STAGES;
 
+import com.fincity.saas.entity.processor.enums.ActivityAction;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
 import java.util.ArrayList;
 import java.util.List;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -16,13 +20,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.fincity.saas.entity.processor.enums.ActivityAction;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

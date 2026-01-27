@@ -253,7 +253,9 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                         access, productTemplateId, stageRequest.getChildren(), parentStage)
                                 : Mono.just(Tuples.of(parentStage, List.of())))
                 .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()))
-                .flatMap(response -> this.ticketStageViewService.rebuildTicketStageDatesView().thenReturn(response))
+                .flatMap(response -> this.ticketStageViewService
+                        .rebuildTicketStageDatesView()
+                        .thenReturn(response))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.create[StageRequest]"));
     }
 
