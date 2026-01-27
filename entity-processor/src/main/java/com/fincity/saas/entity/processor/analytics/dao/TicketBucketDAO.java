@@ -334,10 +334,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             String defaultValue,
             boolean requiresNonNull) {
 
-        // Use toDateBucketGroupKeyField for grouping based on time period (weeks, months, etc.)
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
         Field<LocalDateTime> dateGroupField = this.toDateBucketGroupKeyField(timePeriod, dateField);
-        // For the value, use MIN() to get the minimum datetime in the group
         Field<LocalDateTime> minDateField = DSL.min(dateField).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
@@ -618,11 +616,9 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     public Flux<PerDateCount> getTicketCountPerClientIdAndDate(
             ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
-        // Use toDateBucketGroupKeyField for grouping based on time period (weeks, months, etc.)
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
         Field<LocalDateTime> dateGroupField =
                 this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT);
-        // For the value, use MIN() to get the minimum datetime in the group
         Field<LocalDateTime> groupByDateField =
                 DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
 
