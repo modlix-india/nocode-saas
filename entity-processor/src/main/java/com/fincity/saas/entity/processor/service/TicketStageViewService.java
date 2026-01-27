@@ -15,8 +15,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
+import org.jooq.Record2;
 import org.jooq.Select;
 import org.jooq.SelectField;
+import org.jooq.SelectSeekStep1;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
@@ -70,8 +72,8 @@ public class TicketStageViewService {
     }
 
     private Flux<StageInfo> fetchDistinctStages() {
-        var stageTable = ENTITY_PROCESSOR_STAGES;
-        var activityTable = ENTITY_PROCESSOR_ACTIVITIES;
+        EntityProcessorStages stageTable = ENTITY_PROCESSOR_STAGES;
+        EntityProcessorActivities activityTable = ENTITY_PROCESSOR_ACTIVITIES;
 
         Field<String> lowerCaseStageName = DSL.lower(stageTable.NAME);
         Field<String> normalizedStageName = this.normalizeColumnName(lowerCaseStageName);
@@ -87,7 +89,8 @@ public class TicketStageViewService {
         Field<String> rawNameField = stageNameSubquery.field(RAW_NAME, String.class);
         Field<String> normalizedNameField = stageNameSubquery.field(NORMALIZED_NAME, String.class);
 
-        var distinctStagesQuery = dsl.select(DSL.min(rawNameField).as(STAGE_NAME), normalizedNameField)
+        SelectSeekStep1<Record2<String, String>, String> distinctStagesQuery = dsl.select(
+                        DSL.min(rawNameField).as(STAGE_NAME), normalizedNameField)
                 .from(stageNameSubquery)
                 .groupBy(normalizedNameField)
                 .orderBy(normalizedNameField);
