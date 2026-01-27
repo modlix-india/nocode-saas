@@ -17,6 +17,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import jakarta.annotation.PostConstruct;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
@@ -131,57 +134,96 @@ public class IndexHTMLService {
     private final ApplicationService appService;
     private final CacheService cacheService;
     private final ResourceLoader resourceLoader;
+    private final WebClient.Builder webClientBuilder;
     private final Gson gson = new Gson();
     private List<String> cachedEntrypointScripts = null;
 
-    public IndexHTMLService(ApplicationService appService, CacheService cacheService, ResourceLoader resourceLoader) {
+    public IndexHTMLService(ApplicationService appService, CacheService cacheService, ResourceLoader resourceLoader,
+                           WebClient.Builder webClientBuilder) {
         this.appService = appService;
         this.cacheService = cacheService;
         this.resourceLoader = resourceLoader;
-        loadAssetManifest();
+        this.webClientBuilder = webClientBuilder;
     }
 
     /**
      * Load the asset manifest from classpath or CDN
      * The manifest contains the list of webpack chunks to load
+     * This is called after dependency injection is complete to ensure @Value fields are initialized
      */
+    @PostConstruct
     private void loadAssetManifest() {
         try {
             // Try to load from classpath first (for embedded deployment)
             Resource resource = resourceLoader.getResource("classpath:manifests/asset-manifest.json");
 
-            if (!resource.exists()) {
-                logger.warn("Asset manifest not found in classpath, will use fallback to legacy bundles");
-                return;
-            }
-
-            try (InputStream is = resource.getInputStream()) {
-                String manifestContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                JsonObject manifest = gson.fromJson(manifestContent, JsonObject.class);
-
-                if (manifest.has("entrypoints")) {
-                    JsonObject entrypoints = manifest.getAsJsonObject("entrypoints");
-                    if (entrypoints.has("index")) {
-                        JsonArray indexArray = entrypoints.getAsJsonArray("index");
-                        cachedEntrypointScripts = new ArrayList<>();
-                        for (JsonElement element : indexArray) {
-                            cachedEntrypointScripts.add(element.getAsString());
-                        }
-                        logger.info("Asset manifest loaded successfully with {} entrypoint scripts",
-                            cachedEntrypointScripts.size());
+            if (resource.exists()) {
+                try (InputStream is = resource.getInputStream()) {
+                    String manifestContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                    if (parseAndCacheManifest(manifestContent, "classpath")) {
                         return;
                     }
                 }
-
-                logger.warn("Invalid manifest structure, missing entrypoints.index");
             }
         } catch (Exception e) {
-            logger.error("Error loading asset manifest: {}", e.getMessage(), e);
+            logger.warn("Error loading asset manifest from classpath: {}", e.getMessage());
         }
 
-        // Fallback to legacy bundles if manifest loading fails
+        // Try to load from CDN if configured
+        if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
+            try {
+                String cdnManifestUrl = "https://" + this.cdnHostName + "/js/dist/asset-manifest.json";
+                logger.info("Attempting to load asset manifest from CDN: {}", cdnManifestUrl);
+
+                String manifestContent = webClientBuilder.build()
+                    .get()
+                    .uri(cdnManifestUrl)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+                if (manifestContent != null && parseAndCacheManifest(manifestContent, "CDN")) {
+                    return;
+                }
+            } catch (Exception e) {
+                logger.warn("Error loading asset manifest from CDN: {}", e.getMessage());
+            }
+        }
+
+        // Fallback to legacy bundles if both classpath and CDN loading fail
         logger.info("Using fallback to legacy bundles (vendors.js, index.js)");
         cachedEntrypointScripts = List.of("vendors.js", "index.js");
+    }
+
+    /**
+     * Parse the asset manifest JSON and cache the entrypoint scripts
+     * @param manifestContent The JSON content of the manifest
+     * @param source The source of the manifest (for logging)
+     * @return true if parsing was successful, false otherwise
+     */
+    private boolean parseAndCacheManifest(String manifestContent, String source) {
+        try {
+            JsonObject manifest = gson.fromJson(manifestContent, JsonObject.class);
+
+            if (manifest.has("entrypoints")) {
+                JsonObject entrypoints = manifest.getAsJsonObject("entrypoints");
+                if (entrypoints.has("index")) {
+                    JsonArray indexArray = entrypoints.getAsJsonArray("index");
+                    cachedEntrypointScripts = new ArrayList<>();
+                    for (JsonElement element : indexArray) {
+                        cachedEntrypointScripts.add(element.getAsString());
+                    }
+                    logger.info("Asset manifest loaded successfully from {} with {} entrypoint scripts",
+                        source, cachedEntrypointScripts.size());
+                    return true;
+                }
+            }
+
+            logger.warn("Invalid manifest structure from {}, missing entrypoints.index", source);
+        } catch (Exception e) {
+            logger.error("Error parsing asset manifest from {}: {}", source, e.getMessage());
+        }
+        return false;
     }
 
     /**
@@ -295,7 +337,7 @@ public class IndexHTMLService {
                 .append("/page/api/ui/style\" />");
         str.append("<script>");
 
-        if (!this.cdnHostName.isBlank()) {
+        if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
             str.append("window.cdnPrefix='").append(this.cdnHostName).append("';");
             str.append("window.cdnStripAPIPrefix='").append(this.cdnStripAPIPrefix).append("';");
             str.append("window.cdnReplacePlus=").append(this.cdnReplacePlus).append(";");
@@ -307,7 +349,9 @@ public class IndexHTMLService {
 
         str.append("</script>");
 
-        String jsURLPrefix = this.cdnHostName.isBlank() ? "/js/dist/" : ("https://" + this.cdnHostName + "/js/dist/");
+        String jsURLPrefix = (this.cdnHostName == null || this.cdnHostName.isBlank())
+            ? "/js/dist/"
+            : ("https://" + this.cdnHostName + "/js/dist/");
 
         // Load entrypoint scripts from manifest (with fallback to legacy bundles)
         List<String> entrypointScripts = getEntrypointScripts();
@@ -408,15 +452,19 @@ public class IndexHTMLService {
 
             String value = e.getValue();
 
-            if (!StringUtil.safeIsBlank(value))
-                value += " " + this.cdnHostName;
-            else
-                value = this.cdnHostName;
+            if (this.cdnHostName != null && !this.cdnHostName.isBlank()) {
+                if (!StringUtil.safeIsBlank(value))
+                    value += " " + this.cdnHostName;
+                else
+                    value = this.cdnHostName;
+            }
 
-            cspString.append(sb)
-                    .append(' ')
-                    .append(value)
-                    .append(';');
+            if (!StringUtil.safeIsBlank(value)) {
+                cspString.append(sb)
+                        .append(' ')
+                        .append(value)
+                        .append(';');
+            }
         }
 
         return cspString.toString();
