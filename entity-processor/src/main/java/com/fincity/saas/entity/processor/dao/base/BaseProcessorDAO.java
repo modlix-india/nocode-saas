@@ -11,14 +11,23 @@ import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.SelectJoinStep;
 import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends BaseProcessorDto<D>>
-        extends BaseUpdatableDAO<R, D> {
+        extends BaseUpdatableDAO<R, D> implements ITimezoneDAO<R, D> {
 
     protected final Field<ULong> userAccessField;
     protected final String jUserAccessField;
@@ -307,5 +316,50 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
         List<AbstractCondition> combinedConditions = new ArrayList<>(conditions);
 
         return ComplexCondition.and(ComplexCondition.or(combinedConditions), hierarchyCondition);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Mono<Page<D>> readPageFilterWithTimezone(Pageable pageable, AbstractCondition condition, String timezone) {
+        return FlatMapUtil.flatMapMono(
+                this::getSelectJointStep,
+                selectJoinStepTuple -> (this).filter(condition, selectJoinStepTuple.getT1(), timezone),
+                (selectJoinStepTuple, jCondition) -> this.list(
+                        pageable,
+                        selectJoinStepTuple
+                                .mapT1(e -> (SelectJoinStep<Record>) e.where(jCondition))
+                                .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(jCondition))));
+    }
+
+    @Override
+    public Flux<D> readAllFilterWithTimezone(AbstractCondition condition, String timezone) {
+        return this.getSelectJointStep().map(Tuple2::getT1).flatMapMany(sjs -> (this)
+                .filter(condition, sjs, timezone)
+                .flatMapMany(cond -> Flux.from(sjs.where(cond)).map(e -> e.into(this.pojoClass))));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams) {
+        return this.getSelectJointStepEager(fields, queryParams).flatMap(tuple -> {
+            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
+            Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+
+            return (this)
+                    .filter(condition, selectJoinStepTuple.getT1(), timezone)
+                    .flatMap(filterCondition -> {
+                        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
+                                selectJoinStepTuple
+                                        .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+                                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
+
+                        return (this).listAsMapWithTimezone(pageable, filteredQueries, relations, queryParams);
+                    });
+        });
     }
 }

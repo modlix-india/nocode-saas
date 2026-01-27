@@ -121,8 +121,12 @@ public abstract class AbstractCallProviderService<
         return null;
     }
 
-    protected Mono<D> findByUniqueField(String id) {
-        return this.dao.findByUniqueField(id);
+    protected Mono<D> findByUniqueField(MessageAccess access, String id) {
+        return this.dao.findByUniqueField(access, id);
+    }
+
+    protected Mono<Boolean> existsByUniqueField(MessageAccess access, String id) {
+        return this.dao.existsByUniqueField(access, id);
     }
 
     protected Mono<String> getCallBackUrl(String appCode, String clientCode) {
