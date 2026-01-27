@@ -56,9 +56,9 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
     protected BaseUpdatableDto() {
         super();
-	    this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
-	    this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
-	    this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
     }
 
     protected BaseUpdatableDto(BaseUpdatableDto<T> baseUpdatableDto) {
