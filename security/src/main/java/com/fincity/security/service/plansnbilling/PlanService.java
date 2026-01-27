@@ -209,8 +209,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     existing.setStatus(entity.getStatus());
                     existing.setFeatures(entity.getFeatures());
                     existing.setAppId(entity.getAppId());
-                    existing.setCycles(entity.getCycles());
-                    existing.setLimits(entity.getLimits());
+                    // DO NOT copy cycles/limits here - they are handled separately in update() method
                     existing.setPlanCode(entity.getPlanCode());
                     existing.setFallBackPlanId(entity.getFallBackPlanId());
                     existing.setForRegistration(entity.isForRegistration());
