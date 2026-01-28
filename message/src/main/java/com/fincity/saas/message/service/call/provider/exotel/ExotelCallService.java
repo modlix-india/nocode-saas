@@ -64,7 +64,6 @@ public class ExotelCallService extends AbstractCallProviderService<MessageExotel
     @Override
     protected Mono<ExotelCall> updatableEntity(ExotelCall entity) {
         return super.updatableEntity(entity).flatMap(existing -> {
-
             existing.setParentCallSid(entity.getParentCallSid());
             existing.setDateCreated(entity.getDateCreated());
             existing.setDateUpdated(entity.getDateUpdated());
