@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
@@ -131,6 +132,20 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * related to this Activity.
      */
     public final TableField<EntityProcessorActivitiesRecord, ULong> NOTE_ID = createField(DSL.name("NOTE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Note related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.STAGE_ID</code>. Stage
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.STATUS_ID</code>.
+     * Status related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> STATUS_ID = createField(DSL.name("STATUS_ID"), SQLDataType.BIGINTUNSIGNED, this, "Status related to this Activity.");
 
     /**
      * The column
@@ -280,7 +295,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES);
     }
 
     @Override
@@ -300,7 +315,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<ForeignKey<EntityProcessorActivitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID);
+        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID, Keys.FK4_ACTIVITIES_STAGE_ID, Keys.FK5_ACTIVITIES_STATUS_ID);
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
@@ -340,6 +355,34 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
             _entityProcessorNotes = new EntityProcessorNotesPath(this, Keys.FK3_ACTIVITIES_NOTE_ID, null);
 
         return _entityProcessorNotes;
+    }
+
+    private transient EntityProcessorStagesPath _fk4ActivitiesStageId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK4_ACTIVITIES_STAGE_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk4ActivitiesStageId() {
+        if (_fk4ActivitiesStageId == null)
+            _fk4ActivitiesStageId = new EntityProcessorStagesPath(this, Keys.FK4_ACTIVITIES_STAGE_ID, null);
+
+        return _fk4ActivitiesStageId;
+    }
+
+    private transient EntityProcessorStagesPath _fk5ActivitiesStatusId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK5_ACTIVITIES_STATUS_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk5ActivitiesStatusId() {
+        if (_fk5ActivitiesStatusId == null)
+            _fk5ActivitiesStatusId = new EntityProcessorStagesPath(this, Keys.FK5_ACTIVITIES_STATUS_ID, null);
+
+        return _fk5ActivitiesStatusId;
     }
 
     @Override
