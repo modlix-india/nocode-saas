@@ -221,7 +221,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         Table<?> viewTable = DSL.table(DSL.name(ENTITY_PROCESSOR.getName(), TicketStageViewService.VIEW_NAME));
 
         return (T) query.leftJoin(viewTable)
-                .on(this.idField.eq(viewTable.field(TicketStageViewService.TICKET_ID, ULong.class)));
+                .on(this.idField.eq(DSL.field(
+                        DSL.name(TicketStageViewService.VIEW_NAME, TicketStageViewService.TICKET_ID), ULong.class)));
     }
 
     @Override
