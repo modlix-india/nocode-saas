@@ -28,6 +28,9 @@ import com.fincity.saas.entity.processor.analytics.service.TicketBucketService;
 import com.fincity.saas.entity.processor.constant.BusinessPartnerConstant;
 import com.fincity.saas.entity.processor.dao.PartnerDAO;
 import com.fincity.saas.entity.processor.dto.Partner;
+import com.fincity.saas.entity.processor.eager.relations.RecordEnrichmentService;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.PartnerVerificationStatus;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorPartnersRecord;
@@ -46,6 +49,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.commons.collections4.SetValuedMap;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -68,6 +73,13 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private static final String FETCH_LEADS = "fetchLeads";
 
+    private static final SetValuedMap<Class<? extends RelationResolver>, String> PARTNER_RESOLVER_MAP =
+            new HashSetValuedHashMap<>();
+
+    static {
+        PARTNER_RESOLVER_MAP.put(UserFieldResolver.class, Partner.Fields.managerId);
+    }
+
     private final List<ReactiveFunction> functions = new ArrayList<>();
 
     private final Gson gson;
@@ -78,6 +90,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private TicketService ticketService;
 
     private TicketBucketService ticketBucketService;
+
+    private RecordEnrichmentService recordEnrichmentService;
 
     @Autowired
     @Lazy
@@ -97,6 +111,12 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Autowired
     private void setTicketBucketService(TicketBucketService ticketBucketService) {
         this.ticketBucketService = ticketBucketService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setRecordEnrichmentService(RecordEnrichmentService recordEnrichmentService) {
+        this.recordEnrichmentService = recordEnrichmentService;
     }
 
     @PostConstruct
@@ -459,11 +479,24 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         String partnerEntityKey = this.getEntityKey();
 
-        partners.forEach(partner -> {
-            Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-            if (clientMap != null) clientMap.put(partnerEntityKey, partner.toMap());
-        });
-        return Mono.just(clientMapById.values());
+        List<Map<String, Object>> partnerMaps =
+                partners.stream().map(Partner::toMap).toList();
+
+        MultiValueMap<String, String> enrichmentParams = new LinkedMultiValueMap<>();
+        enrichmentParams.add("eager", "true");
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.recordEnrichmentService.enrich(partnerMaps, PARTNER_RESOLVER_MAP, enrichmentParams),
+                enrichedPartners -> {
+                    enrichedPartners.forEach(partnerMap -> {
+                        ULong clientId = ULongUtil.valueOf(partnerMap.get(Partner.Fields.clientId));
+                        Map<String, Object> clientMap = clientMapById.get(clientId);
+                        if (clientMap != null) {
+                            clientMap.put(partnerEntityKey, partnerMap);
+                        }
+                    });
+                    return Mono.just(clientMapById.values());
+                });
     }
 
     private Mono<Collection<Map<String, Object>>> fillPartnerTicketDetails(
