@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.Department;
 import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
@@ -26,7 +27,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Component
-public class DepartmentDAO extends AbstractClientCheckDAO<SecurityDepartmentRecord, ULong, Department> {
+public class DepartmentDAO extends AbstractUpdatableClientCheckDAO<SecurityDepartmentRecord, ULong, Department> {
 
     protected DepartmentDAO() {
         super(Department.class, SECURITY_DEPARTMENT, SECURITY_DEPARTMENT.ID);

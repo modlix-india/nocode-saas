@@ -22,7 +22,7 @@ public class ClientPasswordPolicyDAO
 	}
 
 	@Override
-	protected Field<ULong> getClientIDField() {
+	public Field<ULong> getClientIDField() {
 		return SECURITY_CLIENT_PASSWORD_POLICY.CLIENT_ID;
 	}
 

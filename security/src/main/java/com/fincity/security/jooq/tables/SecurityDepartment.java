@@ -195,6 +195,11 @@ public class SecurityDepartment extends TableImpl<SecurityDepartmentRecord> {
     }
 
     @Override
+    public List<UniqueKey<SecurityDepartmentRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_SECURITY_DEPARTMENT_UK1_SECURITY_DEPARTMENT_CLIENT_ID_NAME);
+    }
+
+    @Override
     public List<ForeignKey<SecurityDepartmentRecord, ?>> getReferences() {
         return Arrays.asList(Keys.FK1_DEPARTMENT_CLIENT_ID, Keys.FK2_DEPARTMENT_PARENT_ID);
     }

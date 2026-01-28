@@ -7,6 +7,7 @@ import org.jooq.Record1;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Service;
 
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.AppRegistrationIntegration;
 import com.fincity.security.jooq.enums.SecurityAppRegIntegrationPlatform;
 import com.fincity.security.jooq.tables.SecurityAppRegIntegration;
@@ -16,7 +17,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class AppRegistrationIntegrationDAO
-                extends AbstractClientCheckDAO<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration> {
+                extends AbstractUpdatableClientCheckDAO<SecurityAppRegIntegrationRecord, ULong, AppRegistrationIntegration> {
 
         protected AppRegistrationIntegrationDAO() {
                 super(AppRegistrationIntegration.class, SECURITY_APP_REG_INTEGRATION,
@@ -24,7 +25,7 @@ public class AppRegistrationIntegrationDAO
         }
 
         @Override
-        protected Field<ULong> getClientIDField() {
+        public Field<ULong> getClientIDField() {
                 return SecurityAppRegIntegration.SECURITY_APP_REG_INTEGRATION.CLIENT_ID;
         }
 
