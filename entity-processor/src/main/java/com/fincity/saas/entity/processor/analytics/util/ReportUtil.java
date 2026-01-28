@@ -16,7 +16,7 @@ import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
-import com.fincity.saas.entity.processor.model.DatePair;
+import com.fincity.saas.entity.processor.util.DatePair;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.AbstractMap;
 import java.util.ArrayList;

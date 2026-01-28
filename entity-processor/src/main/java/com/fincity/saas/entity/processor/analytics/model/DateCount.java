@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fincity.saas.entity.processor.analytics.model.base.BaseCount;
 import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
-import com.fincity.saas.entity.processor.model.DatePair;
+import com.fincity.saas.entity.processor.util.DatePair;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

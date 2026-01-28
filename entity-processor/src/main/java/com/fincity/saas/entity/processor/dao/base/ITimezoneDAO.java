@@ -7,7 +7,7 @@ import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.IEagerDAO;
-import com.fincity.saas.entity.processor.model.DatePair;
+import com.fincity.saas.entity.processor.util.DatePair;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;

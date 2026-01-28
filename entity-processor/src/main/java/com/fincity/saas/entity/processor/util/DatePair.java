@@ -1,4 +1,4 @@
-package com.fincity.saas.entity.processor.model;
+package com.fincity.saas.entity.processor.util;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
@@ -183,7 +183,7 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
             LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
             LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-            valueMap.put(DatePair.of(current, actualEnd), valueSupplier.get());
+            valueMap.put(DatePair.of(current, actualEnd, this.timezone), valueSupplier.get());
             current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
         }
 
