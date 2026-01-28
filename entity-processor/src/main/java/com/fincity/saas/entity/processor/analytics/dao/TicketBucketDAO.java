@@ -438,7 +438,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             Boolean requiresClientIdNotNull) {
 
         Field<LocalDateTime> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField);
-        Field<LocalDateTime> selectedBucketDateField = this.toBucketDisplayDateField(timePeriod, dateField);
+        Field<LocalDateTime> selectedBucketDateField = DSL.min(dateField).as("bucketDate");
 
         return FlatMapUtil.flatMapFlux(
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
@@ -571,23 +571,14 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                         SQLDataType.LOCALDATETIME, dateTimeField);
             case QUARTERS ->
                 DSL.field(
-                        "str_to_date(concat(year({0}), '-', lpad(((quarter({0})-1)*3)+1, 2, '0'), '-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
+                        "str_to_date(concat(year({0}), '-', lpad(((quarter({0})-1)*3)+1, 2, '0'), '-01 00:00:00'),"
+                                + " '%Y-%m-%d %H:%i:%s')",
                         SQLDataType.LOCALDATETIME, dateTimeField);
             case YEARS ->
                 DSL.field(
                         "str_to_date(date_format({0}, '%Y-01-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
                         SQLDataType.LOCALDATETIME, dateTimeField);
             default -> DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
-        };
-    }
-
-    private Field<LocalDateTime> toBucketDisplayDateField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
-
-        if (timePeriod == null) return dateTimeField;
-
-        return switch (timePeriod) {
-            case WEEKS, MONTHS, QUARTERS, YEARS -> DSL.min(dateTimeField).as("bucketDate");
-            default -> dateTimeField;
         };
     }
 
