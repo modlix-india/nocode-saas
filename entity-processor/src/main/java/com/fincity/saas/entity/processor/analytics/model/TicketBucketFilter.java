@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
-import com.fincity.saas.entity.processor.model.DatePair;
+import com.fincity.saas.entity.processor.util.DatePair;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import com.fincity.saas.entity.processor.util.FilterUtil;
 import java.io.Serial;
