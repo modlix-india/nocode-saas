@@ -72,4 +72,22 @@ public class ComplexCondition extends AbstractCondition {
                 .setConditions(updatedCond)
                 .setNegate(this.isNegate());
     }
+
+    public HavingCondition findFirstHavingCondition() {
+
+        if (this.conditions == null || this.conditions.isEmpty())
+            return null;
+
+        for (AbstractCondition condition : this.conditions) {
+            if (condition instanceof HavingCondition hc)
+                return hc;
+            if (condition instanceof ComplexCondition cc) {
+                HavingCondition found = cc.findFirstHavingCondition();
+                if (found != null)
+                    return found;
+            }
+        }
+
+        return null;
+    }
 }

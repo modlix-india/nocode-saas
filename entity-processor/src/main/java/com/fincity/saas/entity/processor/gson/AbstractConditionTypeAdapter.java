@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.gson;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -34,6 +35,8 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
                 this.gson.getAdapter(ComplexCondition.class).write(out, cc);
             case FilterCondition fc ->
                 this.gson.getAdapter(FilterCondition.class).write(out, fc);
+            case HavingCondition hc ->
+                this.gson.getAdapter(HavingCondition.class).write(out, hc);
             default -> this.gson.getAdapter(AbstractCondition.class).write(out, value);
         }
     }
@@ -62,6 +65,8 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
 
         if (this.isComplexCondition(jsonObject)) return this.gson.fromJson(jsonObject, ComplexCondition.class);
 
+        if (this.isHavingCondition(jsonObject)) return this.gson.fromJson(jsonObject, HavingCondition.class);
+
         return this.gson.fromJson(jsonObject, FilterCondition.class);
     }
 
@@ -74,6 +79,10 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
         }
 
         return false;
+    }
+
+    private boolean isHavingCondition(JsonObject json) {
+        return json.has("aggregateFunction");
     }
 
     public static class Factory implements TypeAdapterFactory {

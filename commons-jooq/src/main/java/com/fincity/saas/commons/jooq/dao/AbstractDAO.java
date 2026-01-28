@@ -39,6 +39,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
 
 import lombok.Getter;
@@ -198,49 +199,131 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 .map(c -> condition.isNegate() ? c.not() : c);
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
-        // Just 16 beyond the limit.
+    public Mono<Condition> filterHaving(AbstractCondition condition) {
+        return this.filterHaving(condition, null);
+    }
 
-        Field field = this.getField(fc.getField(), selectJoinStep); // NO SONAR
-        // Field has to be a raw type because we are generalizing
+    public Mono<Condition> filterHaving(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
+
+        if (condition == null)
+            return Mono.just(DSL.noCondition());
+
+        HavingCondition havingCondition = switch (condition) {
+		    case HavingCondition hc -> hc;
+		    case ComplexCondition cc -> cc.findFirstHavingCondition();
+		    default -> null;
+	    };
+
+        if (havingCondition == null)
+            return Mono.just(DSL.noCondition());
+
+	    return Mono.just(this.havingConditionFilter(havingCondition, selectJoinStep))
+                .map(c -> condition.isNegate() ? c.not() : c);
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected Condition havingConditionFilter(HavingCondition hc, SelectJoinStep<Record> selectJoinStep) { // NOSONAR
+
+        if (hc.getAggregateFunction() == null || hc.getCondition() == null)
+            return DSL.noCondition();
+
+        FilterCondition fc = hc.getCondition();
+
+        Field baseField = this.getField(fc.getField(), selectJoinStep);
+
+        if (baseField == null)
+            return DSL.noCondition();
+
+        Field aggregateField = switch (hc.getAggregateFunction()) {
+            case MAX -> DSL.max(baseField);
+            case MIN -> DSL.min(baseField);
+            case SUM -> DSL.sum(baseField);
+            case AVG -> DSL.avg(baseField);
+            case COUNT -> DSL.count(baseField);
+        };
+
+        return this.buildConditionForField(
+                aggregateField,
+                fc.getOperator(),
+                fc.isValueField(),
+                fc.isToValueField(),
+                fc.getValue(),
+                fc.getToValue(),
+                fc.getMultiValue(),
+                fc.getField(),
+                selectJoinStep);
+    }
+
+    @SuppressWarnings({ "rawtypes" })
+    protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
+
+        Field field = this.getField(fc.getField(), selectJoinStep);
 
         if (field == null)
             return DSL.noCondition();
 
-        if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
+        return this.buildConditionForField(
+                field,
+                fc.getOperator(),
+                fc.isValueField(),
+                fc.isToValueField(),
+                fc.getValue(),
+                fc.getToValue(),
+                fc.getMultiValue(),
+                fc.getField(),
+                selectJoinStep);
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Condition buildConditionForField( //NOSONAR
+            Field field,
+            FilterConditionOperator operator,
+            boolean isValueField,
+            boolean isToValueField,
+            Object value,
+            Object toValue,
+            List<?> multiValue,
+            String otherFieldName,
+            SelectJoinStep<Record> selectJoinStep) {
+
+	    // Just 16 beyond the limit.
+
+        if (operator == FilterConditionOperator.BETWEEN) {
             return field.between(
-                    fc.isValueField()
-                            ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
-                            : this.fieldValue(field, fc.getValue()))
+                            isValueField
+                                    ? (Field<?>) this.getField(otherFieldName, selectJoinStep)
+                                    : this.fieldValue(field, value))
                     .and(
-                            fc.isToValueField()
-                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
-                                    : this.fieldValue(field, fc.getToValue()));
+                            isToValueField
+                                    ? (Field<?>) this.getField(otherFieldName, selectJoinStep)
+                                    : this.fieldValue(field, toValue));
         }
 
-        if (fc.getOperator() == FilterConditionOperator.EQUALS
-                || fc.getOperator() == FilterConditionOperator.GREATER_THAN
-                || fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL
-                || fc.getOperator() == FilterConditionOperator.LESS_THAN
-                || fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
-            if (fc.isValueField()) {
-                if (fc.getField() == null)
+        if (operator == FilterConditionOperator.EQUALS
+                || operator == FilterConditionOperator.GREATER_THAN
+                || operator == FilterConditionOperator.GREATER_THAN_EQUAL
+                || operator == FilterConditionOperator.LESS_THAN
+                || operator == FilterConditionOperator.LESS_THAN_EQUAL) {
+            if (isValueField) {
+                if (otherFieldName == null)
                     return DSL.noCondition();
-                return switch (fc.getOperator()) {
-                    case EQUALS -> field.eq(this.getField(fc.getField(), selectJoinStep));
-                    case GREATER_THAN -> field.gt(this.getField(fc.getField(), selectJoinStep));
-                    case GREATER_THAN_EQUAL -> field.ge(this.getField(fc.getField(), selectJoinStep));
-                    case LESS_THAN -> field.lt(this.getField(fc.getField(), selectJoinStep));
-                    case LESS_THAN_EQUAL -> field.le(this.getField(fc.getField(), selectJoinStep));
+                Field otherField = this.getField(otherFieldName, selectJoinStep);
+                if (otherField == null)
+                    return DSL.noCondition();
+                return switch (operator) {
+                    case EQUALS -> field.eq(otherField);
+                    case GREATER_THAN -> field.gt(otherField);
+                    case GREATER_THAN_EQUAL -> field.ge(otherField);
+                    case LESS_THAN -> field.lt(otherField);
+                    case LESS_THAN_EQUAL -> field.le(otherField);
                     default -> DSL.noCondition();
                 };
             }
 
-            if (fc.getValue() == null)
+            if (value == null)
                 return DSL.noCondition();
-            Object v = this.fieldValue(field, fc.getValue());
-            return switch (fc.getOperator()) {
+            Object v = this.fieldValue(field, value);
+            return switch (operator) {
                 case EQUALS -> field.eq(this.fieldValue(field, v));
                 case GREATER_THAN -> field.gt(this.fieldValue(field, v));
                 case GREATER_THAN_EQUAL -> field.ge(this.fieldValue(field, v));
@@ -250,13 +333,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
             };
         }
 
-        return switch (fc.getOperator()) {
+        return switch (operator) {
             case IS_FALSE -> field.isFalse();
             case IS_TRUE -> field.isTrue();
             case IS_NULL -> field.isNull();
-            case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-            case LIKE -> field.like(fc.getValue().toString());
-            case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
+            case IN -> field.in(this.multiFieldValue(field, value, multiValue));
+            case LIKE -> field.like(value.toString());
+            case STRING_LOOSE_EQUAL -> field.like("%" + value + "%");
             default -> DSL.noCondition();
         };
     }

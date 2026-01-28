@@ -38,6 +38,7 @@ import com.modlix.saas.commons2.model.condition.ComplexCondition;
 import com.modlix.saas.commons2.model.condition.ComplexConditionOperator;
 import com.modlix.saas.commons2.model.condition.FilterCondition;
 import com.modlix.saas.commons2.model.condition.FilterConditionOperator;
+import com.modlix.saas.commons2.model.condition.HavingCondition;
 import com.modlix.saas.commons2.model.dto.AbstractDTO;
 import com.modlix.saas.commons2.util.Tuples;
 import com.modlix.saas.commons2.util.Tuples.Tuple2;
@@ -200,6 +201,58 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return condition.isNegate() ? result.not() : result;
     }
 
+    public Condition filterHaving(AbstractCondition condition) {
+        return this.filterHaving(condition, null);
+    }
+
+    public Condition filterHaving(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep) {
+
+        if (condition == null) return DSL.noCondition();
+
+        HavingCondition havingCondition = switch (condition) {
+            case HavingCondition hc -> hc;
+            case ComplexCondition cc -> cc.findFirstHavingCondition();
+            default -> null;
+        };
+
+        if (havingCondition == null) return DSL.noCondition();
+
+        return this.havingConditionFilter(havingCondition, selectJoinStep);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    protected Condition havingConditionFilter(HavingCondition hc, SelectJoinStep<Record> selectJoinStep) { // NOSONAR
+
+        if (hc.getAggregateFunction() == null || hc.getCondition() == null)
+            return DSL.noCondition();
+
+        FilterCondition fc = hc.getCondition();
+
+        Field baseField = this.getField(fc.getField(), selectJoinStep);
+
+        if (baseField == null)
+            return DSL.noCondition();
+
+        Field aggregateField = switch (hc.getAggregateFunction()) {
+            case MAX -> DSL.max(baseField);
+            case MIN -> DSL.min(baseField);
+            case SUM -> DSL.sum(baseField);
+            case AVG -> DSL.avg(baseField);
+            case COUNT -> DSL.count(baseField);
+        };
+
+        return this.buildConditionForField(
+                aggregateField,
+                fc.getOperator(),
+                fc.isValueField(),
+                fc.isToValueField(),
+                fc.getValue(),
+                fc.getToValue(),
+                fc.getMultiValue(),
+                fc.getField(),
+                selectJoinStep);
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
@@ -209,37 +262,63 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         if (field == null) return DSL.noCondition();
 
-        if (fc.getOperator() == FilterConditionOperator.BETWEEN) {
+        return this.buildConditionForField(
+                field,
+                fc.getOperator(),
+                fc.isValueField(),
+                fc.isToValueField(),
+                fc.getValue(),
+                fc.getToValue(),
+                fc.getMultiValue(),
+                fc.getField(),
+                selectJoinStep);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Condition buildConditionForField( // NOSONAR
+            Field field,
+            FilterConditionOperator operator,
+            boolean isValueField,
+            boolean isToValueField,
+            Object value,
+            Object toValue,
+            List<?> multiValue,
+            String otherFieldName,
+            SelectJoinStep<Record> selectJoinStep) {
+
+        if (operator == FilterConditionOperator.BETWEEN) {
             return field.between(
-                            fc.isValueField()
-                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
-                                    : this.fieldValue(field, fc.getValue()))
+                            isValueField
+                                    ? (Field<?>) this.getField(otherFieldName, selectJoinStep)
+                                    : this.fieldValue(field, value))
                     .and(
-                            fc.isToValueField()
-                                    ? (Field<?>) this.getField(fc.getField(), selectJoinStep)
-                                    : this.fieldValue(field, fc.getToValue()));
+                            isToValueField
+                                    ? (Field<?>) this.getField(otherFieldName, selectJoinStep)
+                                    : this.fieldValue(field, toValue));
         }
 
-        if (fc.getOperator() == FilterConditionOperator.EQUALS
-                || fc.getOperator() == FilterConditionOperator.GREATER_THAN
-                || fc.getOperator() == FilterConditionOperator.GREATER_THAN_EQUAL
-                || fc.getOperator() == FilterConditionOperator.LESS_THAN
-                || fc.getOperator() == FilterConditionOperator.LESS_THAN_EQUAL) {
-            if (fc.isValueField()) {
-                if (fc.getField() == null) return DSL.noCondition();
-                return switch (fc.getOperator()) {
-                    case EQUALS -> field.eq(this.getField(fc.getField(), selectJoinStep));
-                    case GREATER_THAN -> field.gt(this.getField(fc.getField(), selectJoinStep));
-                    case GREATER_THAN_EQUAL -> field.ge(this.getField(fc.getField(), selectJoinStep));
-                    case LESS_THAN -> field.lt(this.getField(fc.getField(), selectJoinStep));
-                    case LESS_THAN_EQUAL -> field.le(this.getField(fc.getField(), selectJoinStep));
+        if (operator == FilterConditionOperator.EQUALS
+                || operator == FilterConditionOperator.GREATER_THAN
+                || operator == FilterConditionOperator.GREATER_THAN_EQUAL
+                || operator == FilterConditionOperator.LESS_THAN
+                || operator == FilterConditionOperator.LESS_THAN_EQUAL) {
+            if (isValueField) {
+                if (otherFieldName == null) return DSL.noCondition();
+                Field otherField = this.getField(otherFieldName, selectJoinStep);
+                if (otherField == null) return DSL.noCondition();
+                return switch (operator) {
+                    case EQUALS -> field.eq(otherField);
+                    case GREATER_THAN -> field.gt(otherField);
+                    case GREATER_THAN_EQUAL -> field.ge(otherField);
+                    case LESS_THAN -> field.lt(otherField);
+                    case LESS_THAN_EQUAL -> field.le(otherField);
                     default -> DSL.noCondition();
                 };
             }
 
-            if (fc.getValue() == null) return DSL.noCondition();
-            Object v = this.fieldValue(field, fc.getValue());
-            return switch (fc.getOperator()) {
+            if (value == null) return DSL.noCondition();
+            Object v = this.fieldValue(field, value);
+            return switch (operator) {
                 case EQUALS -> field.eq(this.fieldValue(field, v));
                 case GREATER_THAN -> field.gt(this.fieldValue(field, v));
                 case GREATER_THAN_EQUAL -> field.ge(this.fieldValue(field, v));
@@ -249,13 +328,13 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
             };
         }
 
-        return switch (fc.getOperator()) {
+        return switch (operator) {
             case IS_FALSE -> field.isFalse();
             case IS_TRUE -> field.isTrue();
             case IS_NULL -> field.isNull();
-            case IN -> field.in(this.multiFieldValue(field, fc.getValue(), fc.getMultiValue()));
-            case LIKE -> field.like(fc.getValue().toString());
-            case STRING_LOOSE_EQUAL -> field.like("%" + fc.getValue() + "%");
+            case IN -> field.in(this.multiFieldValue(field, value, multiValue));
+            case LIKE -> field.like(value.toString());
+            case STRING_LOOSE_EQUAL -> field.like("%" + value + "%");
             default -> DSL.noCondition();
         };
     }

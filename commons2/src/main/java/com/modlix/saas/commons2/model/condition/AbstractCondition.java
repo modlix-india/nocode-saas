@@ -18,6 +18,10 @@ public abstract class AbstractCondition implements Serializable {
 
     public abstract boolean isEmpty();
 
+	public boolean isNonEmpty() {
+		return !isEmpty();
+	}
+
     public abstract List<FilterCondition> findConditionWithField(String fieldName);
 
     public abstract AbstractCondition removeConditionWithField(String fieldName);
