@@ -255,6 +255,7 @@
                                 <database>
                                     <includes>${database.schema.name}_.*</includes>
                                     <inputSchema>${database.schema.name}</inputSchema>
+                                    <excludes>entity_processor_view_ticket_stage_dates</excludes>
                                     <forcedTypes>
                                         <forcedType>
                                             <name>BOOLEAN</name>

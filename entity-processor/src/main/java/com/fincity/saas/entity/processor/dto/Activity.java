@@ -29,6 +29,8 @@ public class Activity extends BaseDto<Activity> {
     private ULong ticketId;
     private ULong taskId;
     private ULong noteId;
+    private ULong stageId;
+    private ULong statusId;
     private String comment;
     private LocalDateTime activityDate;
     private ActivityAction activityAction;
@@ -41,6 +43,8 @@ public class Activity extends BaseDto<Activity> {
         super();
         this.relationsMap.put(Fields.taskId, EntitySeries.TASK.getTable());
         this.relationsMap.put(Fields.noteId, EntitySeries.NOTE.getTable());
+        this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
+        this.relationsMap.put(Fields.statusId, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.actorId);
     }
 
@@ -49,6 +53,8 @@ public class Activity extends BaseDto<Activity> {
         this.ticketId = activity.ticketId;
         this.taskId = activity.taskId;
         this.noteId = activity.noteId;
+        this.stageId = activity.stageId;
+        this.statusId = activity.statusId;
         this.comment = activity.comment;
         this.activityDate = activity.activityDate;
         this.activityAction = activity.activityAction;

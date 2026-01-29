@@ -26,6 +26,8 @@ public class AuthenticationResponse implements Serializable {
     private String accessToken;
     private LocalDateTime accessTokenExpiryAt;
 
+    private String ssoToken;
+
     public ContextAuthentication makeContextAuthentication() {
 
         return new ContextAuthentication()

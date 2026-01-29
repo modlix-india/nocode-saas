@@ -754,6 +754,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
         this.updateIdFromContext(Activity.Fields.taskId, context, activity::setTaskId);
         this.updateIdFromContext(Activity.Fields.noteId, context, activity::setNoteId);
+        this.updateIdFromContext(Ticket.Fields.stage, context, activity::setStageId);
+        this.updateIdFromContext(Ticket.Fields.status, context, activity::setStatusId);
     }
 
     private void updateIdFromContext(String fieldName, Map<String, Object> context, Consumer<ULong> consumer) {

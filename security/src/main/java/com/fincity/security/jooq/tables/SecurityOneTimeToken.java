@@ -84,6 +84,12 @@ public class SecurityOneTimeToken extends TableImpl<SecurityOneTimeTokenRecord> 
     public final TableField<SecurityOneTimeTokenRecord, String> IP_ADDRESS = createField(DSL.name("IP_ADDRESS"), SQLDataType.VARCHAR(50).nullable(false), this, "User IP from where he logged in");
 
     /**
+     * The column <code>security.security_one_time_token.REMEMBER_ME</code>.
+     * Flag to indicate if token should be permanent
+     */
+    public final TableField<SecurityOneTimeTokenRecord, Byte> REMEMBER_ME = createField(DSL.name("REMEMBER_ME"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to indicate if token should be permanent");
+
+    /**
      * The column <code>security.security_one_time_token.CREATED_AT</code>. Time
      * when this row is created
      */
