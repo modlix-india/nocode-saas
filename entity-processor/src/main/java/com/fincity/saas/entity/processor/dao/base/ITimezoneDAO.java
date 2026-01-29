@@ -78,21 +78,42 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams) {
+        return this.readPageFilterEager(pageable, condition, fields, timezone, queryParams, null);
+    }
+
+    default Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition) {
         return timezone == null || timezone.isBlank()
-                ? ((IEagerDAO<?>) this).readPageFilterEager(pageable, condition, fields, queryParams)
-                : this.readPageFilterEagerWithTimezone(pageable, condition, fields, timezone, queryParams);
+                ? ((IEagerDAO<?>) this).readPageFilterEager(pageable, condition, fields, queryParams, subQueryCondition)
+                : this.readPageFilterEagerWithTimezone(pageable, condition, fields, timezone, queryParams, subQueryCondition);
     }
 
     Mono<Page<D>> readPageFilterWithTimezone(Pageable pageable, AbstractCondition condition, String timezone);
 
     Flux<D> readAllFilterWithTimezone(AbstractCondition condition, String timezone);
 
+    default Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams) {
+        return this.readPageFilterEagerWithTimezone(
+                pageable, condition, fields, timezone, queryParams, null);
+    }
+
     Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(
             Pageable pageable,
             AbstractCondition condition,
             List<String> fields,
             String timezone,
-            MultiValueMap<String, String> queryParams);
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition);
 
     default Mono<Condition> filter(
             AbstractCondition condition, SelectJoinStep<Record> selectJoinStep, String timezone) {

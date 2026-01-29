@@ -20,7 +20,10 @@ public class ComplexCondition extends AbstractCondition {
     private static final long serialVersionUID = -2971120422063853598L;
 
     private ComplexConditionOperator operator;
+    /** WHERE clause conditions only; operator (AND/OR) applies to these. Do not put HavingCondition here. */
     private List<AbstractCondition> conditions;
+    /** HAVING clause; separate from conditions since operator does not apply to it. */
+    private HavingCondition havingCondition;
 
     public static ComplexCondition and(AbstractCondition... conditions) {
         return new ComplexCondition().setConditions(List.of(conditions)).setOperator(ComplexConditionOperator.AND);
@@ -28,6 +31,13 @@ public class ComplexCondition extends AbstractCondition {
 
     public static ComplexCondition and(List<AbstractCondition> conditions) {
         return new ComplexCondition().setConditions(List.copyOf(conditions)).setOperator(ComplexConditionOperator.AND);
+    }
+
+    public static ComplexCondition andWithHaving(List<AbstractCondition> conditions, HavingCondition havingCondition) {
+        return new ComplexCondition()
+                .setConditions(List.copyOf(conditions))
+                .setOperator(ComplexConditionOperator.AND)
+                .setHavingCondition(havingCondition);
     }
 
     public static ComplexCondition or(AbstractCondition... conditions) {
@@ -40,8 +50,9 @@ public class ComplexCondition extends AbstractCondition {
 
     @Override
     public boolean isEmpty() {
-
-        return conditions == null || conditions.isEmpty();
+        boolean conditionsEmpty = conditions == null || conditions.isEmpty();
+        boolean havingEmpty = havingCondition == null || havingCondition.isEmpty();
+        return conditionsEmpty && havingEmpty;
     }
 
     @Override
@@ -49,12 +60,15 @@ public class ComplexCondition extends AbstractCondition {
 
         if (StringUtil.safeIsBlank(fieldName)) return Flux.empty();
 
+        if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
+
         return Flux.fromIterable(this.conditions).flatMap(c -> c.findConditionWithField(fieldName));
     }
 
     @Override
     public Flux<FilterCondition> findConditionWithPrefix(String prefix) {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+        if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
         return Flux.fromIterable(this.conditions).flatMap(c -> c.findConditionWithPrefix(prefix));
     }
@@ -62,6 +76,7 @@ public class ComplexCondition extends AbstractCondition {
     @Override
     public Flux<FilterCondition> findAndTrimPrefix(String prefix) {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+        if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
         return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndTrimPrefix(prefix));
     }
@@ -69,6 +84,7 @@ public class ComplexCondition extends AbstractCondition {
     @Override
     public Flux<FilterCondition> findAndCreatePrefix(String prefix) {
         if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+        if (this.conditions == null || this.conditions.isEmpty()) return Flux.empty();
 
         return Flux.fromIterable(this.conditions).flatMap(c -> c.findAndCreatePrefix(prefix));
     }
@@ -88,25 +104,25 @@ public class ComplexCondition extends AbstractCondition {
                     return Mono.just(new ComplexCondition()
                             .setOperator(this.operator)
                             .setConditions(updatedCond)
+                            .setHavingCondition(this.havingCondition)
                             .setNegate(this.isNegate()));
                 });
     }
 
-    public HavingCondition findFirstHavingCondition() {
+    @Override
+    public Mono<HavingCondition> getHavingCondition() {
+        if (this.havingCondition != null && !this.havingCondition.isEmpty()) return Mono.just(this.havingCondition);
 
-        if (this.conditions == null || this.conditions.isEmpty())
-            return null;
+        return Mono.empty();
+    }
 
-        for (AbstractCondition condition : this.conditions) {
-            if (condition instanceof HavingCondition hc)
-                return hc;
-            if (condition instanceof ComplexCondition cc) {
-                HavingCondition found = cc.findFirstHavingCondition();
-                if (found != null)
-                    return found;
-            }
-        }
+    @Override
+    public Mono<AbstractCondition> removeHavingConditions() {
+        if (this.conditions == null || this.conditions.isEmpty()) return Mono.empty();
 
-        return null;
+        return Mono.just(new ComplexCondition()
+                .setOperator(this.operator)
+                .setConditions(this.conditions)
+                .setNegate(this.isNegate()));
     }
 }

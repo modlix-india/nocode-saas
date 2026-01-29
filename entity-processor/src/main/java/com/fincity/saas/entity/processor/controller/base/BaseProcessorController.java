@@ -97,10 +97,22 @@ public abstract class BaseProcessorController<
 
         return StringUtil.safeIsBlank(timezone)
                 ? this.service
-                        .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
+                        .readPageFilterEager(
+                                pageable,
+                                query.getCondition(),
+                                query.getFields(),
+								null,
+                                queryParams,
+                                query.getSubQueryCondition())
                         .map(ResponseEntity::ok)
                 : this.service
-                        .readPageFilterEager(pageable, query.getCondition(), query.getFields(), timezone, queryParams)
+                        .readPageFilterEager(
+                                pageable,
+                                query.getCondition(),
+                                query.getFields(),
+                                timezone,
+                                queryParams,
+                                query.getSubQueryCondition())
                         .map(ResponseEntity::ok);
     }
 

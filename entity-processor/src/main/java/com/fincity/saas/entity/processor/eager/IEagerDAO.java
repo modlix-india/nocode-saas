@@ -70,13 +70,22 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
         });
     }
 
-    @SuppressWarnings("unchecked")
     default Mono<Page<Map<String, Object>>> readPageFilterEager(
             Pageable pageable,
             AbstractCondition condition,
             List<String> tableFields,
             MultiValueMap<String, String> queryParams) {
-        return this.getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
+        return this.readPageFilterEager(pageable, condition, tableFields, queryParams, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    default Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> tableFields,
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition) {
+        return this.getSelectJointStepEager(tableFields, queryParams, subQueryCondition).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
@@ -104,11 +113,34 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
         return query;
     }
 
+    default Mono<SelectJoinStep<Record>> resolveBaseTableJoins(
+            SelectJoinStep<Record> query,
+            MultiValueMap<String, String> queryParams) {
+        return Mono.just(this.applyBaseTableJoins(query, queryParams));
+    }
+
+    default Mono<SelectJoinStep<Record1<Integer>>> resolveCountBaseTableJoins(
+            SelectJoinStep<Record1<Integer>> query,
+            MultiValueMap<String, String> queryParams) {
+        return Mono.just(this.applyCountBaseTableJoins(query, queryParams));
+    }
+
     default Mono<
                     Tuple2<
                             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
                             Map<String, Tuple2<Table<?>, String>>>>
             getSelectJointStepEager(List<String> tableFields, MultiValueMap<String, String> queryParams) {
+        return this.getSelectJointStepEager(tableFields, queryParams, null);
+    }
+
+    default Mono<
+                    Tuple2<
+                            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
+                            Map<String, Tuple2<Table<?>, String>>>>
+            getSelectJointStepEager(
+                    List<String> tableFields,
+                    MultiValueMap<String, String> queryParams,
+                    AbstractCondition subQueryCondition) {
 
         DSLContext dslContext = this.getDslContext();
         Table<?> mainTable = this.getTable();
@@ -128,34 +160,47 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
         List<Field<?>> fields = this.getEagerFields(baseFields, eager, eagerFields, relations);
 
-        SelectJoinStep<Record> recordQuery =
-                this.applyBaseTableJoins(dslContext.select(fields).from(mainTable), queryParams);
+        Mono<SelectJoinStep<Record>> recordQueryMono =
+                (subQueryCondition != null && !subQueryCondition.isEmpty())
+                        ? this.resolveBaseTableJoins(
+                                dslContext.select(fields).from(mainTable), queryParams)
+                        : Mono.just(this.applyBaseTableJoins(
+                                dslContext.select(fields).from(mainTable), queryParams));
 
-        SelectJoinStep<Record1<Integer>> countQuery =
-                this.applyCountBaseTableJoins(dslContext.select(DSL.count()).from(mainTable), queryParams);
+        Mono<SelectJoinStep<Record1<Integer>>> countQueryMono =
+                (subQueryCondition != null && !subQueryCondition.isEmpty())
+                        ? this.resolveCountBaseTableJoins(
+                                dslContext.select(DSL.count()).from(mainTable), queryParams)
+                        : Mono.just(this.applyCountBaseTableJoins(
+                                dslContext.select(DSL.count()).from(mainTable), queryParams));
 
-        if (Boolean.FALSE.equals(eager) || relations.isEmpty())
-            return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), Map.of()));
+        return Mono.zip(recordQueryMono, countQueryMono).map(tuple -> {
+            SelectJoinStep<Record> recordQuery = tuple.getT1();
+            SelectJoinStep<Record1<Integer>> countQuery = tuple.getT2();
 
-        for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
+            if (Boolean.FALSE.equals(eager) || relations.isEmpty())
+                return Tuples.of(Tuples.of(recordQuery, countQuery), Map.of());
 
-            String relationKey = entry.getKey();
-            Table<?> relatedTable = entry.getValue().getT1();
-            String tableAlias = entry.getValue().getT2();
+            for (Map.Entry<String, Tuple2<Table<?>, String>> entry : relations.entrySet()) {
 
-            Table<?> aliasedTable = relatedTable.as(tableAlias);
+                String relationKey = entry.getKey();
+                Table<?> relatedTable = entry.getValue().getT1();
+                String tableAlias = entry.getValue().getT2();
 
-            Field<ULong> fieldInMainTable = (Field<ULong>) baseFieldMap.get(EagerUtil.toJooqField(relationKey));
-            Field<ULong> idFieldInRelatedTable = aliasedTable.field("ID", ULong.class);
+                Table<?> aliasedTable = relatedTable.as(tableAlias);
 
-            if (fieldInMainTable == null || idFieldInRelatedTable == null) continue;
+                Field<ULong> fieldInMainTable = (Field<ULong>) baseFieldMap.get(EagerUtil.toJooqField(relationKey));
+                Field<ULong> idFieldInRelatedTable = aliasedTable.field("ID", ULong.class);
 
-            Condition joinCondition = fieldInMainTable.eq(idFieldInRelatedTable);
-            recordQuery = recordQuery.leftJoin(aliasedTable).on(joinCondition);
-            countQuery = countQuery.leftJoin(aliasedTable).on(joinCondition);
-        }
+                if (fieldInMainTable == null || idFieldInRelatedTable == null) continue;
 
-        return Mono.just(Tuples.of(Tuples.of(recordQuery, countQuery), relations));
+                Condition joinCondition = fieldInMainTable.eq(idFieldInRelatedTable);
+                recordQuery = recordQuery.leftJoin(aliasedTable).on(joinCondition);
+                countQuery = countQuery.leftJoin(aliasedTable).on(joinCondition);
+            }
+
+            return Tuples.of(Tuples.of(recordQuery, countQuery), relations);
+        });
     }
 
     default Map<String, Object> processRelatedData(

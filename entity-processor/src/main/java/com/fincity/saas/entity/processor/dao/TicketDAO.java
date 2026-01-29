@@ -1,28 +1,27 @@
 package com.fincity.saas.entity.processor.dao;
 
-import static com.fincity.saas.entity.processor.jooq.EntityProcessor.ENTITY_PROCESSOR;
+import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
-import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.Email;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import com.fincity.saas.entity.processor.service.TicketStageViewService;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
@@ -42,8 +41,10 @@ import reactor.util.function.Tuples;
 @Component
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
 
-    private static final String HAS_DATE_FIELD_PARAM = "hasDateField";
+    private static final String SUBQUERY_ALIAS = "activity_tickets";
     private final Field<ULong> productIdField;
+
+    private ActivityDAO activityDAO;
     private ProductTicketRuRuleService productTicketRuRuleService;
     private TicketPeDuplicationRuleService ticketPeDuplicationRuleService;
 
@@ -54,6 +55,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 ENTITY_PROCESSOR_TICKETS.ID,
                 ENTITY_PROCESSOR_TICKETS.ASSIGNED_USER_ID);
         this.productIdField = ENTITY_PROCESSOR_TICKETS.PRODUCT_ID;
+    }
+
+	@Lazy
+    @Autowired
+    public void setActivityDAO(ActivityDAO activityDAO) {
+        this.activityDAO = activityDAO;
     }
 
     @Lazy
@@ -159,38 +166,70 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     @Override
-    @SuppressWarnings("rawtypes")
-    public Field getField(String fieldName, SelectJoinStep<Record> selectJoinStep) {
-
-        Field field = super.getField(fieldName, selectJoinStep);
-
-        if (field != null) return field;
-
-        String jooqFieldName = EagerUtil.toJooqField(fieldName);
-
-        if (jooqFieldName.endsWith("DATE"))
-            return DSL.field(DSL.name(TicketStageViewService.VIEW_NAME, jooqFieldName), LocalDateTime.class);
-
-        return null;
-    }
-
-    @Override
     public SelectJoinStep<Record> applyBaseTableJoins(
             SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
-        SelectJoinStep<Record> base = query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
+        return query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                 .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
-
-        return this.maybeJoinStageDateView(base, queryParams);
     }
 
     @Override
     public SelectJoinStep<Record1<Integer>> applyCountBaseTableJoins(
             SelectJoinStep<Record1<Integer>> query, MultiValueMap<String, String> queryParams) {
-        SelectJoinStep<Record1<Integer>> base = super.applyCountBaseTableJoins(query, queryParams)
+        return super.applyCountBaseTableJoins(query, queryParams)
                 .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                 .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
+    }
 
-        return this.maybeJoinStageDateView(base, queryParams);
+    @Override
+    public Mono<
+                    Tuple2<
+                            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>,
+                            Map<String, Tuple2<Table<?>, String>>>>
+            getSelectJointStepEager(
+                    List<String> tableFields,
+                    MultiValueMap<String, String> queryParams,
+                    AbstractCondition subQueryCondition) {
+        if (subQueryCondition == null || subQueryCondition.isEmpty())
+            return super.getSelectJointStepEager(tableFields, queryParams, null);
+
+        return this.buildActivitiesSubqueryTable(subQueryCondition)
+                .flatMap(subqueryTable -> super.getSelectJointStepEager(tableFields, queryParams, null)
+                        .map(tuple -> {
+                            SelectJoinStep<Record> recordQuery = tuple.getT1().getT1();
+                            SelectJoinStep<Record1<Integer>> countQuery =
+                                    tuple.getT1().getT2();
+                            recordQuery = recordQuery
+                                    .join(subqueryTable)
+                                    .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)));
+                            countQuery = countQuery
+                                    .join(subqueryTable)
+                                    .on(this.idField.eq(subqueryTable.field(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)));
+                            return Tuples.of(Tuples.of(recordQuery, countQuery), tuple.getT2());
+                        }));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<Table<Record>> buildActivitiesSubqueryTable(AbstractCondition subQueryCondition) {
+
+        SelectJoinStep<Record> activityJoinStep = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+                dslContext.select(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID).from(ENTITY_PROCESSOR_ACTIVITIES);
+
+        Mono<Condition> whereCondMono = subQueryCondition
+                .removeHavingConditions()
+                .filter(AbstractCondition::isNonEmpty)
+                .flatMap(cond -> this.activityDAO.filter(cond, activityJoinStep))
+                .defaultIfEmpty(DSL.noCondition());
+
+        Mono<Condition> havingCondMono = subQueryCondition
+                .getHavingCondition()
+                .flatMap(cond -> this.activityDAO.filterHaving(cond, activityJoinStep))
+                .defaultIfEmpty(DSL.noCondition());
+
+        return Mono.zip(whereCondMono, havingCondMono).map(tuple -> activityJoinStep
+                .where(tuple.getT1())
+                .groupBy(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)
+                .having(tuple.getT2())
+                .asTable(SUBQUERY_ALIAS));
     }
 
     @Override
@@ -207,22 +246,6 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                         .from(table)
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))));
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T extends SelectJoinStep<?>> T maybeJoinStageDateView(T query, MultiValueMap<String, String> queryParams) {
-
-        if (queryParams == null || !queryParams.containsKey(HAS_DATE_FIELD_PARAM)) return query;
-
-        Boolean hasDateField = BooleanUtil.parse(queryParams.getFirst(HAS_DATE_FIELD_PARAM));
-
-        if (hasDateField == null || !hasDateField) return query;
-
-        Table<?> viewTable = DSL.table(DSL.name(ENTITY_PROCESSOR.getName(), TicketStageViewService.VIEW_NAME));
-
-        return (T) query.leftJoin(viewTable)
-                .on(this.idField.eq(DSL.field(
-                        DSL.name(TicketStageViewService.VIEW_NAME, TicketStageViewService.TICKET_ID), ULong.class)));
     }
 
     @Override

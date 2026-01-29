@@ -345,8 +345,9 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             AbstractCondition condition,
             List<String> fields,
             String timezone,
-            MultiValueMap<String, String> queryParams) {
-        return this.getSelectJointStepEager(fields, queryParams).flatMap(tuple -> {
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition) {
+        return this.getSelectJointStepEager(fields, queryParams, subQueryCondition).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 

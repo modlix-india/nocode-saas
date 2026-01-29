@@ -208,17 +208,16 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         if (condition == null)
             return Mono.just(DSL.noCondition());
 
-        HavingCondition havingCondition = switch (condition) {
-		    case HavingCondition hc -> hc;
-		    case ComplexCondition cc -> cc.findFirstHavingCondition();
-		    default -> null;
-	    };
+        Mono<HavingCondition> havingConditionMono = switch (condition) {
+            case HavingCondition hc -> Mono.just(hc);
+            case ComplexCondition cc -> cc.getHavingCondition();
+            default -> Mono.empty();
+        };
 
-        if (havingCondition == null)
-            return Mono.just(DSL.noCondition());
-
-	    return Mono.just(this.havingConditionFilter(havingCondition, selectJoinStep))
-                .map(c -> condition.isNegate() ? c.not() : c);
+        return havingConditionMono
+                .flatMap(havingCondition -> Mono.just(this.havingConditionFilter(havingCondition, selectJoinStep)))
+                .map(c -> condition.isNegate() ? c.not() : c)
+                .switchIfEmpty(Mono.just(DSL.noCondition()).map(c -> condition.isNegate() ? c.not() : c));
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })

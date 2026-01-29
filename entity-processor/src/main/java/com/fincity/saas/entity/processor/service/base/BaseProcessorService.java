@@ -73,11 +73,22 @@ public abstract class BaseProcessorService<
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams) {
+        return this.readPageFilterEager(pageable, condition, fields, timezone, queryParams, null);
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition) {
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.dao.processorAccessCondition(condition, access),
                 (access, pCondition) ->
-                        this.dao.readPageFilterEager(pageable, pCondition, fields, timezone, queryParams));
+                        this.dao.readPageFilterEager(
+                                pageable, pCondition, fields, timezone, queryParams, subQueryCondition));
     }
 }

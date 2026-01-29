@@ -32,4 +32,10 @@ public abstract class AbstractCondition implements Serializable {
     public abstract Flux<FilterCondition> findAndCreatePrefix(String prefix);
 
     public abstract Mono<AbstractCondition> removeConditionWithField(String fieldName);
+
+    public Mono<HavingCondition> getHavingCondition() {
+        return Mono.empty();
+    }
+
+    public abstract Mono<AbstractCondition> removeHavingConditions();
 }

@@ -24,6 +24,7 @@ public class Query implements Serializable {
     public static final Sort DEFAULT_SORT = Sort.by(Order.desc("updatedAt"));
 
     private AbstractCondition condition;
+    private AbstractCondition subQueryCondition;
     private int size = 10;
     private int page = 0;
     private Sort sort = DEFAULT_SORT;
