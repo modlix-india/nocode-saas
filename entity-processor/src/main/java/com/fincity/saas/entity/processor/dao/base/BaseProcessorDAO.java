@@ -347,20 +347,23 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             String timezone,
             MultiValueMap<String, String> queryParams,
             AbstractCondition subQueryCondition) {
-        return this.getSelectJointStepEager(fields, queryParams, subQueryCondition).flatMap(tuple -> {
-            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
-            Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+        return this.getSelectJointStepEager(fields, queryParams, subQueryCondition)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
-            return (this)
-                    .filter(condition, selectJoinStepTuple.getT1(), timezone)
-                    .flatMap(filterCondition -> {
-                        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
-                                selectJoinStepTuple
-                                        .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-                                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
+                    return (this)
+                            .filter(condition, selectJoinStepTuple.getT1(), timezone)
+                            .flatMap(filterCondition -> {
+                                Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
+                                        selectJoinStepTuple
+                                                .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+                                                .mapT2(e ->
+                                                        (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                        return (this).listAsMapWithTimezone(pageable, filteredQueries, relations, queryParams);
-                    });
-        });
+                                return (this).listAsMapWithTimezone(pageable, filteredQueries, relations, queryParams);
+                            });
+                });
     }
 }

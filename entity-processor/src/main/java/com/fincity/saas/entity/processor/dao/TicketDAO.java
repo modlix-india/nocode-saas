@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -57,7 +56,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         this.productIdField = ENTITY_PROCESSOR_TICKETS.PRODUCT_ID;
     }
 
-	@Lazy
+    @Lazy
     @Autowired
     public void setActivityDAO(ActivityDAO activityDAO) {
         this.activityDAO = activityDAO;

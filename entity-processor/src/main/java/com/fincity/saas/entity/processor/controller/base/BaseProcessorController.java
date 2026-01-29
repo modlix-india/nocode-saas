@@ -101,7 +101,7 @@ public abstract class BaseProcessorController<
                                 pageable,
                                 query.getCondition(),
                                 query.getFields(),
-								null,
+                                null,
                                 queryParams,
                                 query.getSubQueryCondition())
                         .map(ResponseEntity::ok)

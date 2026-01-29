@@ -87,8 +87,7 @@ public abstract class BaseProcessorService<
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.dao.processorAccessCondition(condition, access),
-                (access, pCondition) ->
-                        this.dao.readPageFilterEager(
-                                pageable, pCondition, fields, timezone, queryParams, subQueryCondition));
+                (access, pCondition) -> this.dao.readPageFilterEager(
+                        pageable, pCondition, fields, timezone, queryParams, subQueryCondition));
     }
 }

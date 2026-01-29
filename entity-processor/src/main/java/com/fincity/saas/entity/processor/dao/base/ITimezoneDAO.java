@@ -90,7 +90,8 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             AbstractCondition subQueryCondition) {
         return timezone == null || timezone.isBlank()
                 ? ((IEagerDAO<?>) this).readPageFilterEager(pageable, condition, fields, queryParams, subQueryCondition)
-                : this.readPageFilterEagerWithTimezone(pageable, condition, fields, timezone, queryParams, subQueryCondition);
+                : this.readPageFilterEagerWithTimezone(
+                        pageable, condition, fields, timezone, queryParams, subQueryCondition);
     }
 
     Mono<Page<D>> readPageFilterWithTimezone(Pageable pageable, AbstractCondition condition, String timezone);
@@ -103,8 +104,7 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams) {
-        return this.readPageFilterEagerWithTimezone(
-                pageable, condition, fields, timezone, queryParams, null);
+        return this.readPageFilterEagerWithTimezone(pageable, condition, fields, timezone, queryParams, null);
     }
 
     Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(

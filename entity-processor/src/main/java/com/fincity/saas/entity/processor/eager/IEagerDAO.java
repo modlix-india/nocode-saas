@@ -85,18 +85,21 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             List<String> tableFields,
             MultiValueMap<String, String> queryParams,
             AbstractCondition subQueryCondition) {
-        return this.getSelectJointStepEager(tableFields, queryParams, subQueryCondition).flatMap(tuple -> {
-            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
-            Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+        return this.getSelectJointStepEager(tableFields, queryParams, subQueryCondition)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
 
-            return this.filter(condition, selectJoinStepTuple.getT1()).flatMap(filterCondition -> {
-                Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries = selectJoinStepTuple
-                        .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
+                    return this.filter(condition, selectJoinStepTuple.getT1()).flatMap(filterCondition -> {
+                        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
+                                selectJoinStepTuple
+                                        .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+                                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
 
-                return this.listAsMap(pageable, filteredQueries, relations, queryParams);
-            });
-        });
+                        return this.listAsMap(pageable, filteredQueries, relations, queryParams);
+                    });
+                });
     }
 
     default List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
@@ -114,14 +117,12 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
     }
 
     default Mono<SelectJoinStep<Record>> resolveBaseTableJoins(
-            SelectJoinStep<Record> query,
-            MultiValueMap<String, String> queryParams) {
+            SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
         return Mono.just(this.applyBaseTableJoins(query, queryParams));
     }
 
     default Mono<SelectJoinStep<Record1<Integer>>> resolveCountBaseTableJoins(
-            SelectJoinStep<Record1<Integer>> query,
-            MultiValueMap<String, String> queryParams) {
+            SelectJoinStep<Record1<Integer>> query, MultiValueMap<String, String> queryParams) {
         return Mono.just(this.applyCountBaseTableJoins(query, queryParams));
     }
 
@@ -160,19 +161,15 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
         List<Field<?>> fields = this.getEagerFields(baseFields, eager, eagerFields, relations);
 
-        Mono<SelectJoinStep<Record>> recordQueryMono =
-                (subQueryCondition != null && !subQueryCondition.isEmpty())
-                        ? this.resolveBaseTableJoins(
-                                dslContext.select(fields).from(mainTable), queryParams)
-                        : Mono.just(this.applyBaseTableJoins(
-                                dslContext.select(fields).from(mainTable), queryParams));
+        Mono<SelectJoinStep<Record>> recordQueryMono = (subQueryCondition != null && !subQueryCondition.isEmpty())
+                ? this.resolveBaseTableJoins(dslContext.select(fields).from(mainTable), queryParams)
+                : Mono.just(this.applyBaseTableJoins(dslContext.select(fields).from(mainTable), queryParams));
 
-        Mono<SelectJoinStep<Record1<Integer>>> countQueryMono =
-                (subQueryCondition != null && !subQueryCondition.isEmpty())
-                        ? this.resolveCountBaseTableJoins(
-                                dslContext.select(DSL.count()).from(mainTable), queryParams)
-                        : Mono.just(this.applyCountBaseTableJoins(
-                                dslContext.select(DSL.count()).from(mainTable), queryParams));
+        Mono<SelectJoinStep<Record1<Integer>>> countQueryMono = (subQueryCondition != null
+                        && !subQueryCondition.isEmpty())
+                ? this.resolveCountBaseTableJoins(dslContext.select(DSL.count()).from(mainTable), queryParams)
+                : Mono.just(this.applyCountBaseTableJoins(
+                        dslContext.select(DSL.count()).from(mainTable), queryParams));
 
         return Mono.zip(recordQueryMono, countQueryMono).map(tuple -> {
             SelectJoinStep<Record> recordQuery = tuple.getT1();
