@@ -39,4 +39,24 @@ public class ActivityObject implements Serializable {
     public static ActivityObject ofTicket(ULong id) {
         return new ActivityObject().setEntitySeries(EntitySeries.TICKET).setId(id);
     }
+
+    public static ActivityObject ofOwner(ULong id, String comment, Map<String, Object> data) {
+        return new ActivityObject()
+                .setEntitySeries(EntitySeries.OWNER)
+                .setId(id)
+                .setComment(comment)
+                .setData(data);
+    }
+
+    public static ActivityObject ofOwner(ULong id) {
+        return new ActivityObject().setEntitySeries(EntitySeries.OWNER).setId(id);
+    }
+
+    public static ActivityObject ofUser(ULong id, String comment, Map<String, Object> data) {
+        return new ActivityObject()
+                .setEntitySeries(EntitySeries.XXX)
+                .setId(id)
+                .setComment(comment)
+                .setData(data);
+    }
 }
