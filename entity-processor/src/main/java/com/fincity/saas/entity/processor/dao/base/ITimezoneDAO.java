@@ -89,7 +89,8 @@ public interface ITimezoneDAO<R extends UpdatableRecord<R>, D extends BaseProces
             MultiValueMap<String, String> queryParams,
             Map<String, AbstractCondition> subQueryConditions) {
         return timezone == null || timezone.isBlank()
-                ? ((IEagerDAO<?>) this).readPageFilterEager(pageable, condition, fields, queryParams, subQueryConditions)
+                ? ((IEagerDAO<?>) this)
+                        .readPageFilterEager(pageable, condition, fields, queryParams, subQueryConditions)
                 : this.readPageFilterEagerWithTimezone(
                         pageable, condition, fields, timezone, queryParams, subQueryConditions);
     }

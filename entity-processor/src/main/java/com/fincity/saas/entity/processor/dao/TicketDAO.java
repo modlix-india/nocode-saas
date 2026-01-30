@@ -21,10 +21,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
+import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
@@ -216,30 +218,49 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @SuppressWarnings("unchecked")
     private Mono<Table<Record>> buildActivitiesSubqueryTable(AbstractCondition subQueryCondition) {
 
-        SelectJoinStep<Record> activityJoinStep = (SelectJoinStep<Record>) (SelectJoinStep<?>)
+        SelectJoinStep<Record> baseQuery = (SelectJoinStep<Record>) (SelectJoinStep<?>)
                 dslContext.select(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID).from(ENTITY_PROCESSOR_ACTIVITIES);
 
-        AbstractCondition whereCondition = subQueryCondition.hasGroupCondition()
-                ? subQueryCondition.getWhereCondition()
-                : (subQueryCondition instanceof HavingCondition ? null : subQueryCondition);
+        boolean hasGroupCondition = subQueryCondition.hasGroupCondition();
+        boolean isHavingCondition = subQueryCondition instanceof HavingCondition;
 
-        Mono<Condition> whereCondMono = (whereCondition != null && whereCondition.isNonEmpty())
-                ? this.activityDAO.filter(whereCondition, activityJoinStep)
-                : Mono.just(DSL.noCondition());
+        AbstractCondition whereCondition;
+        AbstractCondition havingCondition;
 
-        AbstractCondition havingCondition = subQueryCondition.hasGroupCondition()
-                ? subQueryCondition.getGroupCondition()
-                : (subQueryCondition instanceof HavingCondition ? subQueryCondition : null);
+        if (hasGroupCondition) {
+            whereCondition = subQueryCondition.getWhereCondition();
+            havingCondition = subQueryCondition.getGroupCondition();
+        } else if (isHavingCondition) {
+            whereCondition = null;
+            havingCondition = subQueryCondition;
+        } else {
+            whereCondition = subQueryCondition;
+            havingCondition = null;
+        }
 
-        Mono<Condition> havingCondMono = (havingCondition != null && havingCondition.isNonEmpty())
-                ? this.activityDAO.filterHaving(havingCondition, activityJoinStep)
-                : Mono.just(DSL.noCondition());
+        Mono<Condition> whereCondMono = whereCondition == null || !whereCondition.isNonEmpty()
+                ? Mono.just(DSL.noCondition())
+                : this.activityDAO.filter(whereCondition, baseQuery);
 
-        return Mono.zip(whereCondMono, havingCondMono).map(tuple -> activityJoinStep
-                .where(tuple.getT1())
-                .groupBy(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)
-                .having(tuple.getT2())
-                .asTable(SUBQUERY_ALIAS));
+        Mono<Optional<Condition>> havingCondMono = havingCondition == null || !havingCondition.isNonEmpty()
+                ? Mono.just(Optional.empty())
+                : this.activityDAO.filterHaving(havingCondition, baseQuery).map(Optional::of);
+
+        return Mono.zip(whereCondMono, havingCondMono).map(tuple -> {
+            Condition whereCond = tuple.getT1();
+            Optional<Condition> havingCondOpt = tuple.getT2();
+
+            SelectConditionStep<Record> conditionStep = baseQuery.where(whereCond);
+
+            return havingCondOpt
+                    .map(condition -> conditionStep
+                            .groupBy(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)
+                            .having(condition)
+                            .asTable(SUBQUERY_ALIAS))
+                    .orElseGet(() -> conditionStep
+                            .groupBy(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID)
+                            .asTable(SUBQUERY_ALIAS));
+        });
     }
 
     @Override
