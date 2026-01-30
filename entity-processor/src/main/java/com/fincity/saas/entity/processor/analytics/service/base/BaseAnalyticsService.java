@@ -15,7 +15,7 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.StageService;
 import com.fincity.saas.entity.processor.service.base.IProcessorAccessService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
-import com.fincity.saas.entity.processor.util.FilterUtil;
+import com.fincity.saas.entity.processor.util.CollectionUtil;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import java.math.BigInteger;
 import java.util.List;
@@ -62,7 +62,7 @@ public abstract class BaseAnalyticsService<
     public Mono<TicketBucketFilter> resolveCreatedBys(ProcessorAccess access, TicketBucketFilter filter) {
 
         List<BigInteger> createdBysIds =
-                FilterUtil.intersectLists(
+                CollectionUtil.intersectLists(
                                 filter.getCreatedByIds(),
                                 access.getUserInherit().getManagingClientIds())
                         .stream()
@@ -88,7 +88,7 @@ public abstract class BaseAnalyticsService<
     public Mono<TicketBucketFilter> resolveAssignedUsers(ProcessorAccess access, TicketBucketFilter filter) {
 
         List<BigInteger> assignedUsersIds =
-                FilterUtil.intersectLists(
+                CollectionUtil.intersectLists(
                                 filter.getAssignedUserIds(),
                                 access.getUserInherit().getSubOrg())
                         .stream()
@@ -112,7 +112,7 @@ public abstract class BaseAnalyticsService<
     public Mono<TicketBucketFilter> resolveClients(ProcessorAccess access, TicketBucketFilter filter) {
 
         List<BigInteger> clientIds =
-                FilterUtil.intersectLists(
+                CollectionUtil.intersectLists(
                                 filter.getClientIds(), access.getUserInherit().getManagingClientIds())
                         .stream()
                         .map(ULong::toBigInteger)
