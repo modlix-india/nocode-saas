@@ -3,6 +3,7 @@ package com.modlix.saas.commons2.model;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +25,7 @@ public class Query implements Serializable {
     public static final Sort DEFAULT_SORT = Sort.by(Order.desc("updatedAt"));
 
     private AbstractCondition condition;
+	private Map<String, AbstractCondition> subQueryConditions;
     private int size = 10;
     private int page = 0;
     private Sort sort = DEFAULT_SORT;

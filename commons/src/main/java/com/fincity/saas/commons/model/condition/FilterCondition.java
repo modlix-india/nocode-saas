@@ -101,4 +101,5 @@ public class FilterCondition extends AbstractCondition {
 
         return Mono.just(this);
     }
+
 }
