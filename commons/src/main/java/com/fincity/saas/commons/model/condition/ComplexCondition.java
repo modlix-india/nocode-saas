@@ -20,10 +20,8 @@ public class ComplexCondition extends AbstractCondition {
     private static final long serialVersionUID = -2971120422063853598L;
 
     private ComplexConditionOperator operator;
-    /** WHERE clause conditions only; operator (AND/OR) applies to these. Do not put HavingCondition here. */
     private List<AbstractCondition> conditions;
-    /** HAVING clause; separate from conditions since operator does not apply to it. */
-    private HavingCondition havingCondition;
+    private GroupCondition groupCondition;
 
     public static ComplexCondition and(AbstractCondition... conditions) {
         return new ComplexCondition().setConditions(List.of(conditions)).setOperator(ComplexConditionOperator.AND);
@@ -31,13 +29,6 @@ public class ComplexCondition extends AbstractCondition {
 
     public static ComplexCondition and(List<AbstractCondition> conditions) {
         return new ComplexCondition().setConditions(List.copyOf(conditions)).setOperator(ComplexConditionOperator.AND);
-    }
-
-    public static ComplexCondition andWithHaving(List<AbstractCondition> conditions, HavingCondition havingCondition) {
-        return new ComplexCondition()
-                .setConditions(List.copyOf(conditions))
-                .setOperator(ComplexConditionOperator.AND)
-                .setHavingCondition(havingCondition);
     }
 
     public static ComplexCondition or(AbstractCondition... conditions) {
@@ -50,9 +41,12 @@ public class ComplexCondition extends AbstractCondition {
 
     @Override
     public boolean isEmpty() {
-        boolean conditionsEmpty = conditions == null || conditions.isEmpty();
-        boolean havingEmpty = havingCondition == null || havingCondition.isEmpty();
-        return conditionsEmpty && havingEmpty;
+        return conditions == null || conditions.isEmpty();
+    }
+
+    @Override
+    public boolean hasGroupCondition() {
+        return groupCondition != null && !groupCondition.isEmpty();
     }
 
     @Override
@@ -104,25 +98,18 @@ public class ComplexCondition extends AbstractCondition {
                     return Mono.just(new ComplexCondition()
                             .setOperator(this.operator)
                             .setConditions(updatedCond)
-                            .setHavingCondition(this.havingCondition)
                             .setNegate(this.isNegate()));
                 });
     }
 
-    @Override
-    public Mono<HavingCondition> getHavingCondition() {
-        if (this.havingCondition != null && !this.havingCondition.isEmpty()) return Mono.just(this.havingCondition);
+    public AbstractCondition getWhereCondition() {
+        if (this.conditions == null || this.conditions.isEmpty()) return null;
 
-        return Mono.empty();
-    }
+	    if (conditions.size() == 1) return conditions.getFirst();
 
-    @Override
-    public Mono<AbstractCondition> removeHavingConditions() {
-        if (this.conditions == null || this.conditions.isEmpty()) return Mono.empty();
-
-        return Mono.just(new ComplexCondition()
-                .setOperator(this.operator)
+        return new ComplexCondition()
                 .setConditions(this.conditions)
-                .setNegate(this.isNegate()));
+                .setOperator(this.operator)
+                .setNegate(this.isNegate());
     }
 }

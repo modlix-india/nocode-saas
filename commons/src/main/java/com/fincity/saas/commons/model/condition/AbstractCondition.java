@@ -23,6 +23,18 @@ public abstract class AbstractCondition implements Serializable {
         return !isEmpty();
     }
 
+    public boolean hasGroupCondition() {
+        return false;
+    }
+
+    public AbstractCondition getWhereCondition() {
+        return null;
+    }
+
+    public AbstractCondition getGroupCondition() {
+        return null;
+    }
+
     public abstract Flux<FilterCondition> findConditionWithField(String fieldName);
 
     public abstract Flux<FilterCondition> findConditionWithPrefix(String prefix);
@@ -32,10 +44,4 @@ public abstract class AbstractCondition implements Serializable {
     public abstract Flux<FilterCondition> findAndCreatePrefix(String prefix);
 
     public abstract Mono<AbstractCondition> removeConditionWithField(String fieldName);
-
-    public Mono<HavingCondition> getHavingCondition() {
-        return Mono.empty();
-    }
-
-    public abstract Mono<AbstractCondition> removeHavingConditions();
 }

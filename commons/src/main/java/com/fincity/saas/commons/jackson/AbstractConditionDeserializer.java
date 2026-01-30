@@ -9,12 +9,14 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.GroupCondition;
 import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.fincity.saas.commons.util.StringUtil;
 
@@ -33,6 +35,10 @@ public class AbstractConditionDeserializer extends StdDeserializer<AbstractCondi
         TreeNode node = p.readValueAsTree();
 
         if (node == null || node.size() == 0) return null;
+
+        if (node.get("havingConditions") instanceof ArrayNode) {
+            return p.getCodec().treeToValue(node, GroupCondition.class);
+        }
 
         if (node.get("operator") instanceof TextNode textNode) {
             String operator = textNode.asText();

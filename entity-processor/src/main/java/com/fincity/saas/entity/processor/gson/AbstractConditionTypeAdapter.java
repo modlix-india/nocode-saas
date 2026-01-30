@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.gson;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.GroupCondition;
 import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -33,6 +34,8 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
         switch (value) {
             case ComplexCondition cc ->
                 this.gson.getAdapter(ComplexCondition.class).write(out, cc);
+            case GroupCondition gc ->
+                this.gson.getAdapter(GroupCondition.class).write(out, gc);
             case FilterCondition fc ->
                 this.gson.getAdapter(FilterCondition.class).write(out, fc);
             case HavingCondition hc ->
@@ -63,6 +66,8 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
 
         if (jsonObject == null || jsonObject.isEmpty()) return null;
 
+        if (this.isGroupCondition(jsonObject)) return this.gson.fromJson(jsonObject, GroupCondition.class);
+
         if (this.isComplexCondition(jsonObject)) return this.gson.fromJson(jsonObject, ComplexCondition.class);
 
         if (this.isHavingCondition(jsonObject)) return this.gson.fromJson(jsonObject, HavingCondition.class);
@@ -70,8 +75,12 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
         return this.gson.fromJson(jsonObject, FilterCondition.class);
     }
 
+    private boolean isGroupCondition(JsonObject json) {
+        return json.has("havingConditions") && json.get("havingConditions").isJsonArray();
+    }
+
     private boolean isComplexCondition(JsonObject json) {
-        if (json.has("conditions")) return true;
+        if (json.has("conditions") && !json.has("havingConditions")) return true;
 
         if (json.has("operator")) {
             String op = json.get("operator").getAsString();

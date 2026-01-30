@@ -55,8 +55,17 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
     Mono<Condition> filter(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep);
 
+    Mono<Condition> filterHaving(AbstractCondition condition, SelectJoinStep<Record> selectJoinStep);
+
+    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> applyGroupByAndHaving(
+            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple,
+            Condition whereCondition,
+            Condition havingCondition,
+            AbstractCondition groupCondition);
+
     default Mono<Map<String, Object>> readSingleRecordByIdentityEager(
             AbstractCondition condition, List<String> tableFields, MultiValueMap<String, String> queryParams) {
+
         return getSelectJointStepEager(tableFields, queryParams).flatMap(tuple -> {
             Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
             Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
@@ -85,6 +94,16 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
             List<String> tableFields,
             MultiValueMap<String, String> queryParams,
             AbstractCondition subQueryCondition) {
+
+        if (condition.hasGroupCondition())
+            return this.readPageFilterEager(
+                    pageable,
+                    condition.getWhereCondition(),
+                    condition.getGroupCondition(),
+                    tableFields,
+                    queryParams,
+                    subQueryCondition);
+
         return this.getSelectJointStepEager(tableFields, queryParams, subQueryCondition)
                 .flatMap(tuple -> {
                     Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
@@ -99,6 +118,32 @@ public interface IEagerDAO<R extends UpdatableRecord<R>> {
 
                         return this.listAsMap(pageable, filteredQueries, relations, queryParams);
                     });
+                });
+    }
+
+    default Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            AbstractCondition groupCondition,
+            List<String> tableFields,
+            MultiValueMap<String, String> queryParams,
+            AbstractCondition subQueryCondition) {
+
+        if (groupCondition == null || groupCondition.isEmpty())
+            return this.readPageFilterEager(pageable, condition, tableFields, queryParams, subQueryCondition);
+
+        return this.getSelectJointStepEager(tableFields, queryParams, subQueryCondition)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+
+                    return this.filter(condition, selectJoinStepTuple.getT1())
+                            .flatMap(filterCondition -> this.filterHaving(groupCondition, selectJoinStepTuple.getT1())
+                                    .map(havingCondition -> this.applyGroupByAndHaving(
+                                            selectJoinStepTuple, filterCondition, havingCondition, groupCondition))
+                                    .flatMap(finalQueries -> this.listAsMap(
+                                            pageable, finalQueries, relations, queryParams)));
                 });
     }
 

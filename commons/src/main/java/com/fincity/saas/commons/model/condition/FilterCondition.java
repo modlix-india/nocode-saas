@@ -102,8 +102,4 @@ public class FilterCondition extends AbstractCondition {
         return Mono.just(this);
     }
 
-    @Override
-    public Mono<AbstractCondition> removeHavingConditions() {
-        return Mono.just(this);
-    }
 }

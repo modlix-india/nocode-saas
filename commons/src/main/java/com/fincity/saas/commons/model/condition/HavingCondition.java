@@ -86,14 +86,4 @@ public class HavingCondition extends AbstractCondition {
                 .map(removed -> (AbstractCondition) new HavingCondition(this).setCondition((FilterCondition) removed))
                 .switchIfEmpty(Mono.empty());
     }
-
-    @Override
-    public Mono<HavingCondition> getHavingCondition() {
-        return Mono.just(this);
-    }
-
-    @Override
-    public Mono<AbstractCondition> removeHavingConditions() {
-        return Mono.empty();
-    }
 }
