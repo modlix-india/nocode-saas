@@ -19,4 +19,5 @@ public class UserAppAccessRequest implements Serializable {
 
     private String requestId;
     private ULong profileId;
+    private boolean rememberMe = false;
 }

@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.analytics.model;
 
-import com.fincity.saas.entity.processor.analytics.util.DatePair;
+import com.fincity.saas.entity.processor.util.DatePair;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;

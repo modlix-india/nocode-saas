@@ -4,6 +4,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.analytics.dao.TicketBucketDAO;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.DateStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
@@ -12,7 +13,6 @@ import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
 import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
 import com.fincity.saas.entity.processor.analytics.service.base.BaseAnalyticsService;
-import com.fincity.saas.entity.processor.analytics.util.DatePair;
 import com.fincity.saas.entity.processor.analytics.util.ReactivePaginationUtil;
 import com.fincity.saas.entity.processor.analytics.util.ReportUtil;
 import com.fincity.saas.entity.processor.dto.Ticket;
@@ -80,14 +80,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 .collectList()
                                 .flux(),
                         (access, sFilter, perStageCount) -> ReportUtil.toDateStatusCounts(
-                                DatePair.of(filter.getStartDate(), filter.getEndDate()),
-                                filter.getTimePeriod(),
-                                perStageCount,
-                                sFilter.getFieldData().getStages(),
-                                sFilter.isIncludeZero(),
-                                sFilter.isIncludePercentage(),
-                                sFilter.isIncludeTotal(),
-                                sFilter.isIncludeNone()))
+                                perStageCount, sFilter.getFieldData().getStages(), sFilter.toReportOptions()))
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME, "TicketBucketService.getTicketPerAssignedUserStageSourceDateCount"));
     }
@@ -99,10 +92,12 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                         access -> resolveStages(access, filter).flux(),
                         (access, sFilter) -> Mono.zip(
                                         this.dao
-                                                .getTicketCountPerStageAndDateWithClientId(access, sFilter)
+                                                .getTicketCountPerStageAndDateWithClientId(
+                                                        access, sFilter, TimePeriod.DAYS)
                                                 .collectList(),
                                         this.dao
-                                                .getUniqueCreatedByCountPerStageAndDateWithClientId(access, sFilter)
+                                                .getUniqueCreatedByCountPerStageAndDateWithClientId(
+                                                        access, sFilter, sFilter.getTimePeriod())
                                                 .collectList())
                                 .flux(),
                         (access, sFilter, countsTuple) -> {
@@ -120,13 +115,7 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                             }
 
                             return ReportUtil.toDateStatusCountsAggregatedTotal(
-                                    DatePair.of(filter.getStartDate(), filter.getEndDate()),
-                                    filter.getTimePeriod(),
-                                    mergedList,
-                                    sFilter.getFieldData().getStages(),
-                                    sFilter.isIncludeZero(),
-                                    sFilter.isIncludePercentage(),
-                                    sFilter.isIncludeTotal());
+                                    mergedList, sFilter.getFieldData().getStages(), sFilter.toReportOptions());
                         })
                 .contextWrite(Context.of(
                         LogUtil.METHOD_NAME,
@@ -166,12 +155,9 @@ public class TicketBucketService extends BaseAnalyticsService<EntityProcessorTic
                                 .getTicketCountPerClientIdAndDate(access, clientFilter)
                                 .collectList(),
                         (access, clientFilter, perDateCountList) -> ReportUtil.toEntityDateCounts(
-                                        DatePair.of(filter.getStartDate(), filter.getEndDate()),
-                                        filter.getTimePeriod(),
                                         perDateCountList,
                                         clientFilter.getBaseFieldData().getClients(),
-                                        clientFilter.isIncludeZero(),
-                                        clientFilter.isIncludePercentage())
+                                        clientFilter.toReportOptions())
                                 .collectList(),
                         (access, clientFilter, perDateCountList, entityDateCounts) ->
                                 ReactivePaginationUtil.toPage(entityDateCounts, pageable))

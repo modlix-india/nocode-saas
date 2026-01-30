@@ -10,11 +10,13 @@ import com.fincity.saas.entity.processor.analytics.model.EntityDateCount;
 import com.fincity.saas.entity.processor.analytics.model.EntityEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusEntityCount;
 import com.fincity.saas.entity.processor.analytics.model.StatusNameCount;
+import com.fincity.saas.entity.processor.analytics.model.base.BaseFilter;
 import com.fincity.saas.entity.processor.analytics.model.base.BaseStatusCount;
 import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import com.fincity.saas.entity.processor.analytics.model.common.CountPercentage;
 import com.fincity.saas.entity.processor.analytics.model.common.PerDateCount;
 import com.fincity.saas.entity.processor.analytics.model.common.PerValueCount;
+import com.fincity.saas.entity.processor.util.DatePair;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -58,23 +60,18 @@ public class ReportUtil {
      * ----------------------------------------------------------------------- */
 
     public static Flux<DateStatusCount> toDateStatusCounts( // NOSONAR
-            DatePair totalDatePair,
-            TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
             List<IdAndValue<ULong, String>> requiredValueList,
-            boolean includeZero,
-            boolean includePercentage,
-            boolean includeTotal,
-            boolean includeNone) {
+            BaseFilter.ReportOptions options) {
 
-        if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+        if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
+                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList, options.timezone());
 
         requiredValueList = resolveRequiredValuesIfMissing(requiredValueList, perDateCountList, false);
 
-        Set<String> groupedValues = includeZero
+        Set<String> groupedValues = options.includeZero()
                 ? perDateCountList.stream().map(PerDateCount::getGroupedValue).collect(Collectors.toSet())
                 : Set.of();
 
@@ -83,25 +80,17 @@ public class ReportUtil {
         boolean shouldParallelize = datePairMap.size() > PARALLEL_THRESHOLD;
 
         Flux<Map.Entry<DatePair, List<PerDateCount>>> baseFlux = Flux.fromIterable(datePairMap.entrySet())
-                .filter(entry -> includeZero || !entry.getValue().isEmpty());
+                .filter(entry -> options.includeZero() || !entry.getValue().isEmpty());
 
         if (shouldParallelize) {
             return baseFlux.parallel()
                     .runOn(Schedulers.parallel())
-                    .flatMap(entry -> processDateEntry(
-                            entry,
-                            finalRequired,
-                            groupedValues,
-                            includeZero,
-                            includePercentage,
-                            includeTotal,
-                            includeNone))
+                    .flatMap(entry -> processDateEntry(entry, finalRequired, groupedValues, options))
                     .sequential()
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
         }
 
-        return baseFlux.flatMap(entry -> processDateEntry(
-                        entry, finalRequired, groupedValues, includeZero, includePercentage, includeTotal, includeNone))
+        return baseFlux.flatMap(entry -> processDateEntry(entry, finalRequired, groupedValues, options))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCounts"));
     }
 
@@ -109,28 +98,26 @@ public class ReportUtil {
             Map.Entry<DatePair, List<PerDateCount>> entry,
             List<IdAndValue<ULong, String>> requiredValueList,
             Set<String> groupedValues,
-            boolean includeZero,
-            boolean includePercentage,
-            boolean includeTotal,
-            boolean includeNone) {
+            BaseFilter.ReportOptions options) {
 
         String mapValue = requiredValueList.getFirst().getValue();
 
         List<PerDateCount> dateGroupedListWithZeros =
-                includeZero ? buildListWithZeros(entry, groupedValues, mapValue) : entry.getValue();
+                options.includeZero() ? buildListWithZeros(entry, groupedValues, mapValue) : entry.getValue();
 
         return toStatusCountsGroupedValue(
                         dateGroupedListWithZeros,
                         requiredValueList,
-                        includeZero,
-                        includePercentage,
-                        includeTotal,
-                        includeNone)
+                        options.includeZero(),
+                        options.includePercentage(),
+                        options.includeTotal(),
+                        options.includeNone() != null && options.includeNone())
                 .collectList()
                 .map(statusCounts -> {
-                    List<StatusNameCount> processed =
-                            includePercentage ? addPercentage(statusCounts, includeTotal) : statusCounts;
-                    processed.sort(includeTotal ? statusNameTotalComparator : statusNameComparator);
+                    List<StatusNameCount> processed = options.includePercentage()
+                            ? addPercentage(statusCounts, options.includeTotal())
+                            : statusCounts;
+                    processed.sort(options.includeTotal() ? statusNameTotalComparator : statusNameComparator);
                     return new DateStatusCount().setDatePair(entry.getKey()).setStatusCount(processed);
                 });
     }
@@ -156,61 +143,58 @@ public class ReportUtil {
     }
 
     public static Flux<DateStatusCount> toDateStatusCountsAggregatedTotal(
-            DatePair totalDatePair,
-            TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
             List<IdAndValue<ULong, String>> requiredValueList,
-            boolean includeZero,
-            boolean includePercentage,
-            boolean includeTotal) {
+            BaseFilter.ReportOptions options) {
 
-        if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+        if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
         Map<Boolean, List<PerDateCount>> partitioned =
                 perDateCountList.stream().collect(Collectors.partitioningBy(pdc -> pdc.getDate() == null));
 
-        List<PerDateCount> totalEntries = includeTotal ? partitioned.get(true) : List.of();
+        List<PerDateCount> totalEntries = options.includeTotal() ? partitioned.get(true) : List.of();
         List<PerDateCount> regularDateCountList = partitioned.get(false);
 
-        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                buildDatePairMap(totalDatePair, timePeriod, regularDateCountList);
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap = buildDatePairMap(
+                options.totalDatePair(), options.timePeriod(), regularDateCountList, options.timezone());
 
-        if (includeTotal && !totalEntries.isEmpty()) {
-            for (List<PerDateCount> list : datePairMap.values()) {
-                list.addAll(totalEntries);
-            }
-        }
+        if (options.includeTotal() && !totalEntries.isEmpty())
+            datePairMap.values().forEach(list -> list.addAll(totalEntries));
 
         requiredValueList = resolveRequiredValuesIfMissing(requiredValueList, perDateCountList, true);
 
-        List<IdAndValue<String, CountPercentage>> initialValues =
-                buildInitialValues(perDateCountList, requiredValueList, includePercentage, includeTotal);
+        List<IdAndValue<String, CountPercentage>> initialValues = buildInitialValues(
+                perDateCountList, requiredValueList, options.includePercentage(), options.includeTotal());
 
         List<IdAndValue<String, CountPercentage>> uniqueInitialValues =
-                buildUniqueInitialValues(initialValues, includePercentage);
+                buildUniqueInitialValues(initialValues, options.includePercentage());
 
         boolean shouldParallelize = datePairMap.size() > PARALLEL_THRESHOLD;
         Flux<Map.Entry<DatePair, List<PerDateCount>>> baseFlux = Flux.fromIterable(datePairMap.entrySet())
-                .filter(entry -> includeZero || !entry.getValue().isEmpty());
+                .filter(entry -> options.includeZero() || !entry.getValue().isEmpty());
 
         if (shouldParallelize) {
             return baseFlux.parallel()
                     .runOn(Schedulers.parallel())
                     .map(entry -> buildAggregatedTotalDateStatusCount(
-                            entry, initialValues, uniqueInitialValues, includePercentage, includeTotal))
+                            entry,
+                            initialValues,
+                            uniqueInitialValues,
+                            options.includePercentage(),
+                            options.includeTotal()))
                     .sequential()
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCountsAggregatedTotal"));
         }
 
         return baseFlux.map(entry -> buildAggregatedTotalDateStatusCount(
-                        entry, initialValues, uniqueInitialValues, includePercentage, includeTotal))
+                        entry, initialValues, uniqueInitialValues, options.includePercentage(), options.includeTotal()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toDateStatusCountsAggregatedTotal"));
     }
 
     // --- Date report helpers ---
 
     private static NavigableMap<DatePair, List<PerDateCount>> buildDatePairMap(
-            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList) {
+            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList, String timezone) {
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
                 totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
@@ -220,7 +204,7 @@ public class ReportUtil {
                 totalDatePair.toTimePeriodMap(timePeriod, () -> new ArrayList<>(estimatedSize));
 
         for (PerDateCount pdc : perDateCountList) {
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), optimizedMap);
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), optimizedMap, timezone);
             if (datePair != null) optimizedMap.get(datePair).add(pdc);
         }
 
@@ -588,11 +572,10 @@ public class ReportUtil {
         List<IdAndValue<String, CountPercentage>> result = new ArrayList<>(aggregated.size());
 
         Long totalValue = aggregated.get(TOTAL);
-        if (totalValue != null) {
-            CountPercentage totalCp =
-                    includePercentage ? CountPercentage.of(totalValue, total) : CountPercentage.withCount(totalValue);
-            result.add(IdAndValue.of(TOTAL, totalCp));
-        }
+        if (totalValue != null)
+            result.add(IdAndValue.of(
+                    TOTAL,
+                    includePercentage ? CountPercentage.of(totalValue, total) : CountPercentage.withCount(totalValue)));
 
         aggregated.entrySet().stream()
                 .filter(e -> !TOTAL.equalsIgnoreCase(e.getKey()))
@@ -774,17 +757,14 @@ public class ReportUtil {
     }
 
     public static Flux<EntityDateCount> toEntityDateCounts(
-            DatePair totalDatePair,
-            TimePeriod timePeriod,
             List<PerDateCount> perDateCountList,
             List<IdAndValue<ULong, String>> outerEntityList,
-            boolean includeZero,
-            boolean includePercentage) {
+            BaseFilter.ReportOptions options) {
 
-        if (perDateCountList.isEmpty() && !includeZero) return Flux.empty();
+        if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                buildDatePairMap(totalDatePair, timePeriod, perDateCountList);
+                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList, options.timezone());
 
         Map<ULong, String> outerEntityMap = IdAndValue.toMap(outerEntityList);
 
@@ -792,15 +772,15 @@ public class ReportUtil {
         Map<ULong, NavigableMap<DatePair, Long>> grouped =
                 LinkedHashMap.newLinkedHashMap((int) (expectedSize / 0.75f) + 1);
 
-        accumulateEntityDateCounts(perDateCountList, datePairMap, grouped);
+        accumulateEntityDateCounts(perDateCountList, datePairMap, grouped, options.timezone());
 
-        if (includeZero && !outerEntityList.isEmpty())
+        if (options.includeZero() && !outerEntityList.isEmpty())
             outerEntityList.forEach(client -> grouped.computeIfAbsent(client.getId(), k -> new TreeMap<>()));
 
         return Flux.fromIterable(grouped.entrySet())
-                .filter(entry -> includeZero || !entry.getValue().isEmpty())
+                .filter(entry -> options.includeZero() || !entry.getValue().isEmpty())
                 .map(entry -> buildAggregatedTotalEntityDateCount(
-                        entry, datePairMap, outerEntityMap, includePercentage, includeZero))
+                        entry, datePairMap, outerEntityMap, options.includePercentage(), options.includeZero()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityDateCounts"));
     }
 
@@ -809,14 +789,15 @@ public class ReportUtil {
     private static void accumulateEntityDateCounts(
             List<PerDateCount> perDateCountList,
             NavigableMap<DatePair, List<PerDateCount>> datePairMap,
-            Map<ULong, NavigableMap<DatePair, Long>> grouped) {
+            Map<ULong, NavigableMap<DatePair, Long>> grouped,
+            String timezone) {
 
         for (PerDateCount pdc : perDateCountList) {
             String entityIdStr = pdc.getGroupedValue();
             if (entityIdStr == null) continue;
 
             ULong entityId = ULongUtil.valueOf(entityIdStr);
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap, timezone);
             if (datePair != null)
                 grouped.computeIfAbsent(entityId, k -> new TreeMap<>()).merge(datePair, pdc.getCount(), Long::sum);
         }
