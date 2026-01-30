@@ -321,6 +321,11 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     @Override
     @SuppressWarnings("unchecked")
     public Mono<Page<D>> readPageFilterWithTimezone(Pageable pageable, AbstractCondition condition, String timezone) {
+
+        if (condition.hasGroupCondition())
+            return this.readPageFilterWithTimezone(
+                    pageable, condition.getWhereCondition(), condition.getGroupCondition(), timezone);
+
         return FlatMapUtil.flatMapMono(
                 this::getSelectJointStep,
                 selectJoinStepTuple -> (this).filter(condition, selectJoinStepTuple.getT1(), timezone),
@@ -329,6 +334,22 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                         selectJoinStepTuple
                                 .mapT1(e -> (SelectJoinStep<Record>) e.where(jCondition))
                                 .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(jCondition))));
+    }
+
+    protected Mono<Page<D>> readPageFilterWithTimezone(
+            Pageable pageable, AbstractCondition condition, AbstractCondition groupCondition, String timezone) {
+
+        if (groupCondition == null || groupCondition.isEmpty())
+            return this.readPageFilterWithTimezone(pageable, condition, timezone);
+
+        return FlatMapUtil.flatMapMono(
+                () -> this.getSelectJointStep(groupCondition),
+                selectJoinStepTuple -> (this).filter(condition, selectJoinStepTuple.getT1(), timezone),
+                (selectJoinStepTuple, whereCondition) -> this.filterHaving(groupCondition, selectJoinStepTuple.getT1()),
+                (selectJoinStepTuple, whereCondition, havingCondition) -> this.list(
+                        pageable,
+                        this.applyGroupByAndHaving(
+                                selectJoinStepTuple, whereCondition, havingCondition, groupCondition)));
     }
 
     @Override
@@ -345,21 +366,66 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             AbstractCondition condition,
             List<String> fields,
             String timezone,
-            MultiValueMap<String, String> queryParams) {
-        return this.getSelectJointStepEager(fields, queryParams).flatMap(tuple -> {
-            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple = tuple.getT1();
-            Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+            MultiValueMap<String, String> queryParams,
+            Map<String, AbstractCondition> subQueryConditions) {
 
-            return (this)
-                    .filter(condition, selectJoinStepTuple.getT1(), timezone)
-                    .flatMap(filterCondition -> {
-                        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
-                                selectJoinStepTuple
-                                        .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
-                                        .mapT2(e -> (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
+        if (condition.hasGroupCondition())
+            return this.readPageFilterEagerWithTimezone(
+                    pageable,
+                    condition.getWhereCondition(),
+                    condition.getGroupCondition(),
+                    fields,
+                    timezone,
+                    queryParams,
+                    subQueryConditions);
 
-                        return (this).listAsMapWithTimezone(pageable, filteredQueries, relations, queryParams);
-                    });
-        });
+        return this.getSelectJointStepEager(fields, queryParams, subQueryConditions)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+
+                    return (this)
+                            .filter(condition, selectJoinStepTuple.getT1(), timezone)
+                            .flatMap(filterCondition -> {
+                                Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> filteredQueries =
+                                        selectJoinStepTuple
+                                                .mapT1(e -> (SelectJoinStep<Record>) e.where(filterCondition))
+                                                .mapT2(e ->
+                                                        (SelectJoinStep<Record1<Integer>>) e.where(filterCondition));
+
+                                return (this).listAsMapWithTimezone(pageable, filteredQueries, relations, queryParams);
+                            });
+                });
+    }
+
+    protected Mono<Page<Map<String, Object>>> readPageFilterEagerWithTimezone(
+            Pageable pageable,
+            AbstractCondition condition,
+            AbstractCondition groupCondition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        if (groupCondition == null || groupCondition.isEmpty())
+            return this.readPageFilterEagerWithTimezone(
+                    pageable, condition, fields, timezone, queryParams, subQueryConditions);
+
+        return this.getSelectJointStepEager(fields, queryParams, subQueryConditions)
+                .flatMap(tuple -> {
+                    Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                            tuple.getT1();
+                    Map<String, Tuple2<Table<?>, String>> relations = tuple.getT2();
+
+                    return (this)
+                            .filter(condition, selectJoinStepTuple.getT1(), timezone)
+                            .flatMap(filterCondition -> (this)
+                                    .filterHaving(groupCondition, selectJoinStepTuple.getT1())
+                                    .map(havingCondition -> this.applyGroupByAndHaving(
+                                            selectJoinStepTuple, filterCondition, havingCondition, groupCondition))
+                                    .flatMap(finalQueries -> (this)
+                                            .listAsMapWithTimezone(pageable, finalQueries, relations, queryParams)));
+                });
     }
 }
