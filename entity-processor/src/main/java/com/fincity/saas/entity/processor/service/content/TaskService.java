@@ -12,7 +12,9 @@ import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.TaskDAO;
 import com.fincity.saas.entity.processor.dto.content.Task;
+import com.fincity.saas.entity.processor.dto.content.TaskType;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTasksRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
@@ -64,7 +66,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         String taskSchemaRef = classSchema.getNamespaceForClass(Task.class) + "." + Task.class.getSimpleName();
 
-        // TaskController: createRequest(TaskRequest)
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
                 "CreateRequest",
@@ -74,7 +75,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 gson,
                 self::createRequest));
 
-        // TaskController: setReminder(identity, reminderDate)
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
                 "SetReminder",
@@ -85,7 +85,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 gson,
                 self::setReminder));
 
-        // TaskController: setTaskCompleted(identity, completed, completedDate)
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
                 "SetTaskCompleted",
@@ -97,7 +96,6 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 gson,
                 self::setTaskCompleted));
 
-        // TaskController: setTaskCancelled(identity, cancelled, cancelledDate)
         this.functions.add(AbstractServiceFunction.createServiceFunction(
                 NAMESPACE,
                 "SetTaskCancelled",
@@ -169,11 +167,27 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
 
         return this.taskTypeService
                 .readById(access, entity.getTaskTypeId())
-                .map(taskType -> {
+                .flatMap(taskType -> {
                     entity.setContentEntitySeries(taskType.getContentEntitySeries());
-                    return entity;
+                    return this.checkTaskHasEntityForSeries(entity, taskType)
+                            .thenReturn(entity);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkEntity"));
+    }
+
+    private Mono<Void> checkTaskHasEntityForSeries(Task task, TaskType taskType) {
+        ContentEntitySeries series = taskType.getContentEntitySeries();
+        boolean hasRequiredId = switch (series) {
+            case TICKET -> task.getTicketId() != null;
+            case OWNER -> task.getOwnerId() != null;
+            case USER -> task.getUserId() != null;
+        };
+        if (hasRequiredId) return Mono.empty();
+        return this.msgService.throwMessage(
+                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                ProcessorMessageResourceService.TASK_TYPE_ENTITY_ID_MISSING,
+                series.getDisplayName(),
+                taskType.getName());
     }
 
     @Override

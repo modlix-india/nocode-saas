@@ -27,6 +27,8 @@ public class Activity extends BaseDto<Activity> {
     private static final long serialVersionUID = 4705602267455594423L;
 
     private ULong ticketId;
+    private ULong ownerId;
+    private ULong userId;
     private ULong taskId;
     private ULong noteId;
     private ULong stageId;
@@ -51,6 +53,8 @@ public class Activity extends BaseDto<Activity> {
     public Activity(Activity activity) {
         super(activity);
         this.ticketId = activity.ticketId;
+        this.ownerId = activity.ownerId;
+        this.userId = activity.userId;
         this.taskId = activity.taskId;
         this.noteId = activity.noteId;
         this.stageId = activity.stageId;
@@ -67,6 +71,23 @@ public class Activity extends BaseDto<Activity> {
     public static Activity of(ULong ticketId, ActivityAction action, ActivityObject object) {
         return new Activity()
                 .setTicketId(ticketId)
+                .setActivityAction(action)
+                .setComment(object.getComment())
+                .setObjectEntitySeries(object.getEntitySeries())
+                .setObjectId(object.getId())
+                .setObjectData(object.getData());
+    }
+
+    /**
+     * Create activity for content linked to ticket, owner, or user (ContentEntitySeries).
+     * Exactly one of ticketId, ownerId, userId must be non-null.
+     */
+    public static Activity of(
+            ULong ticketId, ULong ownerId, ULong userId, ActivityAction action, ActivityObject object) {
+        return new Activity()
+                .setTicketId(ticketId)
+                .setOwnerId(ownerId)
+                .setUserId(userId)
                 .setActivityAction(action)
                 .setComment(object.getComment())
                 .setObjectEntitySeries(object.getEntitySeries())
