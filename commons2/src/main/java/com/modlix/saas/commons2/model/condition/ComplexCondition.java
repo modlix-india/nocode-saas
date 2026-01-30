@@ -24,6 +24,7 @@ public class ComplexCondition extends AbstractCondition {
 
     private ComplexConditionOperator operator;
     private List<AbstractCondition> conditions;
+    private GroupCondition groupCondition;
 
     public static ComplexCondition and(AbstractCondition... conditions) {
         return new ComplexCondition().setConditions(List.of(conditions)).setOperator(ComplexConditionOperator.AND);
@@ -35,8 +36,27 @@ public class ComplexCondition extends AbstractCondition {
 
     @Override
     public boolean isEmpty() {
-
         return conditions == null || conditions.isEmpty();
+    }
+
+    @Override
+    public boolean hasGroupCondition() {
+        return groupCondition != null && !groupCondition.isEmpty();
+    }
+
+    @Override
+    public AbstractCondition getWhereCondition() {
+        if (this.conditions == null || this.conditions.isEmpty()) return null;
+        if (conditions.size() == 1) return conditions.getFirst();
+        return new ComplexCondition()
+                .setConditions(this.conditions)
+                .setOperator(this.operator)
+                .setNegate(this.isNegate());
+    }
+
+    @Override
+    public AbstractCondition getGroupCondition() {
+        return groupCondition;
     }
 
     @Override

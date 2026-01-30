@@ -18,9 +18,21 @@ public abstract class AbstractCondition implements Serializable {
 
     public abstract boolean isEmpty();
 
-	public boolean isNonEmpty() {
-		return !isEmpty();
-	}
+    public boolean isNonEmpty() {
+        return !isEmpty();
+    }
+
+    public boolean hasGroupCondition() {
+        return false;
+    }
+
+    public AbstractCondition getWhereCondition() {
+        return null;
+    }
+
+    public AbstractCondition getGroupCondition() {
+        return null;
+    }
 
     public abstract List<FilterCondition> findConditionWithField(String fieldName);
 

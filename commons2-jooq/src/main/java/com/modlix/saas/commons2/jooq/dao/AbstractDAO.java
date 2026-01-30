@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.jooq.Condition;
@@ -38,6 +39,7 @@ import com.modlix.saas.commons2.model.condition.ComplexCondition;
 import com.modlix.saas.commons2.model.condition.ComplexConditionOperator;
 import com.modlix.saas.commons2.model.condition.FilterCondition;
 import com.modlix.saas.commons2.model.condition.FilterConditionOperator;
+import com.modlix.saas.commons2.model.condition.GroupCondition;
 import com.modlix.saas.commons2.model.condition.HavingCondition;
 import com.modlix.saas.commons2.model.dto.AbstractDTO;
 import com.modlix.saas.commons2.util.Tuples;
@@ -72,7 +74,51 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     }
 
     @SuppressWarnings("unchecked")
+    public Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> applyGroupByAndHaving(
+            Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple,
+            Condition whereCondition,
+            Condition havingCondition,
+            AbstractCondition groupCondition) {
+
+        List<Field<?>> groupByFields = this.extractGroupByFields(groupCondition, selectJoinStepTuple.getT1());
+        var selectQuery = selectJoinStepTuple.getT1().where(whereCondition);
+        var countQuery = selectJoinStepTuple.getT2().where(whereCondition);
+
+        if (!groupByFields.isEmpty()) {
+            var groupedSelect = selectQuery.groupBy(groupByFields);
+            var groupedCount = countQuery.groupBy(groupByFields);
+            if (havingCondition != null && !DSL.noCondition().equals(havingCondition))
+                return Tuples.of(
+                        (SelectJoinStep<Record>) groupedSelect.having(havingCondition),
+                        (SelectJoinStep<Record1<Integer>>) groupedCount.having(havingCondition));
+
+            return Tuples.of((SelectJoinStep<Record>) groupedSelect, (SelectJoinStep<Record1<Integer>>) groupedCount);
+        }
+        return Tuples.of((SelectJoinStep<Record>) selectQuery, (SelectJoinStep<Record1<Integer>>) countQuery);
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private List<Field<?>> extractGroupByFields(
+            AbstractCondition groupCondition, SelectJoinStep<Record> selectJoinStep) {
+
+        if (!(groupCondition instanceof GroupCondition gc) || gc.getFields() == null) return Collections.emptyList();
+
+        List<Field<?>> groupByFields = new ArrayList<>(gc.getFields().size());
+
+        for (String fieldName : gc.getFields()) {
+            Field field = this.getField(fieldName, selectJoinStep);
+            if (field != null)
+                groupByFields.add(field);
+        }
+
+        return groupByFields;
+    }
+
+    @SuppressWarnings("unchecked")
     public Page<D> readPageFilter(Pageable pageable, AbstractCondition condition) {
+
+        if (condition.hasGroupCondition())
+            return this.readPageFilter(pageable, condition.getWhereCondition(), condition.getGroupCondition());
 
         Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
                 this.getSelectJointStep();
@@ -82,6 +128,20 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 Tuples.of((SelectJoinStep<Record>) selectJoinStepTuple.getT1().where(jCondition), (SelectJoinStep<
                                 Record1<Integer>>)
                         selectJoinStepTuple.getT2().where(jCondition)));
+    }
+
+    public Page<D> readPageFilter(
+            Pageable pageable, AbstractCondition condition, AbstractCondition groupCondition) {
+
+        if (groupCondition == null || groupCondition.isEmpty()) return this.readPageFilter(pageable, condition);
+
+        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
+                this.getSelectJointStep(groupCondition);
+        Condition whereCondition = this.filter(condition, selectJoinStepTuple.getT1());
+        Condition havingCondition = this.filterHaving(groupCondition, selectJoinStepTuple.getT1());
+        Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> withGroupBy =
+                this.applyGroupByAndHaving(selectJoinStepTuple, whereCondition, havingCondition, groupCondition);
+        return this.list(pageable, withGroupBy);
     }
 
     protected Page<D> list(
@@ -209,15 +269,21 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
 
         if (condition == null) return DSL.noCondition();
 
-        HavingCondition havingCondition = switch (condition) {
-            case HavingCondition hc -> hc;
-            case ComplexCondition cc -> cc.findFirstHavingCondition();
-            default -> null;
+        Condition result = switch (condition) {
+            case HavingCondition hc -> this.havingConditionFilter(hc, selectJoinStep);
+            case GroupCondition gc -> gc.getHavingConditions().stream()
+                    .map(hc -> this.havingConditionFilter(hc, selectJoinStep))
+                    .reduce(
+                            DSL.noCondition(),
+                            ComplexConditionOperator.OR == gc.getOperator() ? Condition::or : Condition::and);
+            case ComplexCondition cc -> {
+                HavingCondition first = cc.findFirstHavingCondition();
+                yield first != null ? this.havingConditionFilter(first, selectJoinStep) : DSL.noCondition();
+            }
+            default -> DSL.noCondition();
         };
 
-        if (havingCondition == null) return DSL.noCondition();
-
-        return this.havingConditionFilter(havingCondition, selectJoinStep);
+        return condition.isNegate() ? result.not() : result;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -253,7 +319,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
                 selectJoinStep);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"rawtypes"})
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) { // NO SONAR
         // Just 16 beyond the limit.
 
@@ -424,5 +490,10 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
         return Tuples.of(
                 dslContext.select(Arrays.asList(table.fields())).from(table),
                 dslContext.select(DSL.count()).from(table));
+    }
+
+    protected Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> getSelectJointStep(
+            AbstractCondition groupCondition) {
+        return this.getSelectJointStep();
     }
 }
