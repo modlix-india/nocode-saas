@@ -337,10 +337,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
     }
 
     protected Mono<Page<D>> readPageFilterWithTimezone(
-            Pageable pageable,
-            AbstractCondition condition,
-            AbstractCondition groupCondition,
-            String timezone) {
+            Pageable pageable, AbstractCondition condition, AbstractCondition groupCondition, String timezone) {
 
         if (groupCondition == null || groupCondition.isEmpty())
             return this.readPageFilterWithTimezone(pageable, condition, timezone);
@@ -370,7 +367,7 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams,
-            AbstractCondition subQueryCondition) {
+            Map<String, AbstractCondition> subQueryConditions) {
 
         if (condition.hasGroupCondition())
             return this.readPageFilterEagerWithTimezone(
@@ -380,9 +377,9 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                     fields,
                     timezone,
                     queryParams,
-                    subQueryCondition);
+                    subQueryConditions);
 
-        return this.getSelectJointStepEager(fields, queryParams, subQueryCondition)
+        return this.getSelectJointStepEager(fields, queryParams, subQueryConditions)
                 .flatMap(tuple -> {
                     Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
                             tuple.getT1();
@@ -409,13 +406,13 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams,
-            AbstractCondition subQueryCondition) {
+            Map<String, AbstractCondition> subQueryConditions) {
 
         if (groupCondition == null || groupCondition.isEmpty())
             return this.readPageFilterEagerWithTimezone(
-                    pageable, condition, fields, timezone, queryParams, subQueryCondition);
+                    pageable, condition, fields, timezone, queryParams, subQueryConditions);
 
-        return this.getSelectJointStepEager(fields, queryParams, subQueryCondition)
+        return this.getSelectJointStepEager(fields, queryParams, subQueryConditions)
                 .flatMap(tuple -> {
                     Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>> selectJoinStepTuple =
                             tuple.getT1();
@@ -427,8 +424,8 @@ public abstract class BaseProcessorDAO<R extends UpdatableRecord<R>, D extends B
                                     .filterHaving(groupCondition, selectJoinStepTuple.getT1())
                                     .map(havingCondition -> this.applyGroupByAndHaving(
                                             selectJoinStepTuple, filterCondition, havingCondition, groupCondition))
-                                    .flatMap(finalQueries -> (this).listAsMapWithTimezone(
-                                            pageable, finalQueries, relations, queryParams)));
+                                    .flatMap(finalQueries -> (this)
+                                            .listAsMapWithTimezone(pageable, finalQueries, relations, queryParams)));
                 });
     }
 }

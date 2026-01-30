@@ -7,6 +7,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.HavingCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.Ticket;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
@@ -40,7 +41,7 @@ import reactor.util.function.Tuples;
 @Component
 public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ticket> {
 
-    private static final String SUBQUERY_ALIAS = "activity_tickets";
+    private static final String SUBQUERY_ALIAS = "activityTickets";
     private final Field<ULong> productIdField;
 
     private ActivityDAO activityDAO;
@@ -187,11 +188,16 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             getSelectJointStepEager(
                     List<String> tableFields,
                     MultiValueMap<String, String> queryParams,
-                    AbstractCondition subQueryCondition) {
-        if (subQueryCondition == null || subQueryCondition.isEmpty())
+                    Map<String, AbstractCondition> subQueryConditions) {
+
+        if (subQueryConditions == null || subQueryConditions.isEmpty())
             return super.getSelectJointStepEager(tableFields, queryParams, null);
 
-        return this.buildActivitiesSubqueryTable(subQueryCondition)
+        AbstractCondition activityCondition = subQueryConditions.get(SUBQUERY_ALIAS);
+        if (activityCondition == null || activityCondition.isEmpty())
+            return super.getSelectJointStepEager(tableFields, queryParams, null);
+
+        return this.buildActivitiesSubqueryTable(activityCondition)
                 .flatMap(subqueryTable -> super.getSelectJointStepEager(tableFields, queryParams, null)
                         .map(tuple -> {
                             SelectJoinStep<Record> recordQuery = tuple.getT1().getT1();
@@ -213,16 +219,21 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         SelectJoinStep<Record> activityJoinStep = (SelectJoinStep<Record>) (SelectJoinStep<?>)
                 dslContext.select(ENTITY_PROCESSOR_ACTIVITIES.TICKET_ID).from(ENTITY_PROCESSOR_ACTIVITIES);
 
-        Mono<Condition> whereCondMono = subQueryCondition
-                .removeHavingConditions()
-                .filter(AbstractCondition::isNonEmpty)
-                .flatMap(cond -> this.activityDAO.filter(cond, activityJoinStep))
-                .defaultIfEmpty(DSL.noCondition());
+        AbstractCondition whereCondition = subQueryCondition.hasGroupCondition()
+                ? subQueryCondition.getWhereCondition()
+                : (subQueryCondition instanceof HavingCondition ? null : subQueryCondition);
 
-        Mono<Condition> havingCondMono = subQueryCondition
-                .getHavingCondition()
-                .flatMap(cond -> this.activityDAO.filterHaving(cond, activityJoinStep))
-                .defaultIfEmpty(DSL.noCondition());
+        Mono<Condition> whereCondMono = (whereCondition != null && whereCondition.isNonEmpty())
+                ? this.activityDAO.filter(whereCondition, activityJoinStep)
+                : Mono.just(DSL.noCondition());
+
+        AbstractCondition havingCondition = subQueryCondition.hasGroupCondition()
+                ? subQueryCondition.getGroupCondition()
+                : (subQueryCondition instanceof HavingCondition ? subQueryCondition : null);
+
+        Mono<Condition> havingCondMono = (havingCondition != null && havingCondition.isNonEmpty())
+                ? this.activityDAO.filterHaving(havingCondition, activityJoinStep)
+                : Mono.just(DSL.noCondition());
 
         return Mono.zip(whereCondMono, havingCondMono).map(tuple -> activityJoinStep
                 .where(tuple.getT1())

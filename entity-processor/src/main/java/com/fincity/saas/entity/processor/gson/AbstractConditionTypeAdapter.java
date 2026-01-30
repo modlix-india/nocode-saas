@@ -34,8 +34,7 @@ public class AbstractConditionTypeAdapter extends TypeAdapter<AbstractCondition>
         switch (value) {
             case ComplexCondition cc ->
                 this.gson.getAdapter(ComplexCondition.class).write(out, cc);
-            case GroupCondition gc ->
-                this.gson.getAdapter(GroupCondition.class).write(out, gc);
+            case GroupCondition gc -> this.gson.getAdapter(GroupCondition.class).write(out, gc);
             case FilterCondition fc ->
                 this.gson.getAdapter(FilterCondition.class).write(out, fc);
             case HavingCondition hc ->

@@ -82,12 +82,12 @@ public abstract class BaseProcessorService<
             List<String> fields,
             String timezone,
             MultiValueMap<String, String> queryParams,
-            AbstractCondition subQueryCondition) {
+            Map<String, AbstractCondition> subQueryConditions) {
 
         return FlatMapUtil.flatMapMono(
                 this::hasAccess,
                 access -> this.dao.processorAccessCondition(condition, access),
                 (access, pCondition) -> this.dao.readPageFilterEager(
-                        pageable, pCondition, fields, timezone, queryParams, subQueryCondition));
+                        pageable, pCondition, fields, timezone, queryParams, subQueryConditions));
     }
 }

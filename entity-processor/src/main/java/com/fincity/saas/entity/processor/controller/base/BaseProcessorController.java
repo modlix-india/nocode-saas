@@ -103,7 +103,7 @@ public abstract class BaseProcessorController<
                                 query.getFields(),
                                 null,
                                 queryParams,
-                                query.getSubQueryCondition())
+                                query.getSubQueryConditions())
                         .map(ResponseEntity::ok)
                 : this.service
                         .readPageFilterEager(
@@ -112,7 +112,7 @@ public abstract class BaseProcessorController<
                                 query.getFields(),
                                 timezone,
                                 queryParams,
-                                query.getSubQueryCondition())
+                                query.getSubQueryConditions())
                         .map(ResponseEntity::ok);
     }
 
