@@ -11,6 +11,7 @@ import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -117,7 +118,21 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.TICKET_ID</code>.
      * Ticket related to this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Ticket related to this Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.OWNER_ID</code>. Owner
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> OWNER_ID = createField(DSL.name("OWNER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Owner related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.USER_ID</code>. User
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "User related to this Activity.");
 
     /**
      * The column
@@ -295,7 +310,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX3_ACTIVITIES_ACTION_STAGE_TICKET_DATE);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES);
     }
 
     @Override
@@ -315,7 +330,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<ForeignKey<EntityProcessorActivitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID, Keys.FK4_ACTIVITIES_STAGE_ID, Keys.FK5_ACTIVITIES_STATUS_ID);
+        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID, Keys.FK4_ACTIVITIES_STAGE_ID, Keys.FK5_ACTIVITIES_STATUS_ID, Keys.FK_ACTIVITIES_OWNER_ID);
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
@@ -383,6 +398,19 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
             _fk5ActivitiesStatusId = new EntityProcessorStagesPath(this, Keys.FK5_ACTIVITIES_STATUS_ID, null);
 
         return _fk5ActivitiesStatusId;
+    }
+
+    private transient EntityProcessorOwnersPath _entityProcessorOwners;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_owners</code> table.
+     */
+    public EntityProcessorOwnersPath entityProcessorOwners() {
+        if (_entityProcessorOwners == null)
+            _entityProcessorOwners = new EntityProcessorOwnersPath(this, Keys.FK_ACTIVITIES_OWNER_ID, null);
+
+        return _entityProcessorOwners;
     }
 
     @Override
