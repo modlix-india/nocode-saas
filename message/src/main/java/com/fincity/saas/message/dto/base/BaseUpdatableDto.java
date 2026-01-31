@@ -1,11 +1,13 @@
 package com.fincity.saas.message.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.model.dto.AbstractDTO;
 import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.saas.commons.util.IClassConvertor;
 import com.fincity.saas.commons.util.UniqueUtil;
 import com.fincity.saas.message.eager.relations.IRelationMap;
 import com.fincity.saas.message.eager.relations.resolvers.RelationResolver;
+import com.fincity.saas.message.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.message.model.base.BaseResponse;
 import com.fincity.saas.message.model.common.Identity;
 import java.io.Serial;
@@ -54,6 +56,9 @@ public abstract class BaseUpdatableDto<T extends BaseUpdatableDto<T>> extends Ab
 
     protected BaseUpdatableDto() {
         super();
+        this.relationsResolverMap.put(UserFieldResolver.class, Fields.userId);
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractDTO.Fields.createdBy);
+        this.relationsResolverMap.put(UserFieldResolver.class, AbstractUpdatableDTO.Fields.updatedBy);
     }
 
     protected BaseUpdatableDto(BaseUpdatableDto<T> baseUpdatableDto) {

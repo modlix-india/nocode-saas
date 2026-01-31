@@ -35,7 +35,7 @@ public class PhoneNumberTypeAdapter extends TypeAdapter<PhoneNumber> {
         JsonToken token = in.peek();
         if (token == JsonToken.NULL) {
             in.nextNull();
-            return PhoneNumber.of(null);
+            return null;
         }
 
         if (token == JsonToken.STRING) {
@@ -66,6 +66,6 @@ public class PhoneNumberTypeAdapter extends TypeAdapter<PhoneNumber> {
         }
 
         in.skipValue();
-        return PhoneNumber.of(null);
+        return null;
     }
 }

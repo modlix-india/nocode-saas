@@ -20,7 +20,6 @@ import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketsRecord;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -335,7 +334,9 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             String defaultValue,
             boolean requiresNonNull) {
 
-        Field<LocalDate> castedDateField = DSL.cast(dateField, SQLDataType.LOCALDATE);
+        TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
+        Field<LocalDateTime> dateGroupField = this.toDateBucketGroupKeyField(timePeriod, dateField);
+        Field<LocalDateTime> minDateField = DSL.min(dateField).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
@@ -349,29 +350,29 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                     Select<?> select = ticketBucketFilter.isIncludeTotal()
                             ? this.unionAsRecord(
                                     this.buildGroupedStageJoinDateCountSelect(
-                                                    groupField, joinField, castedDateField, conditions, requiresNonNull)
-                                            .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, castedDateField),
+                                                    groupField, joinField, minDateField, conditions, requiresNonNull)
+                                            .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, dateGroupField),
                                     this.buildTotalOnlyDateCountSelect(
-                                                    groupField, castedDateField, totalConditions, requiresNonNull)
-                                            .groupBy(groupField, castedDateField))
+                                                    groupField, minDateField, totalConditions, requiresNonNull)
+                                            .groupBy(groupField, dateGroupField))
                             : this.buildGroupedStageJoinDateCountSelect(
-                                            groupField, joinField, castedDateField, conditions, requiresNonNull)
-                                    .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, castedDateField);
+                                            groupField, joinField, minDateField, conditions, requiresNonNull)
+                                    .groupBy(groupField, ENTITY_PROCESSOR_STAGES.NAME, dateGroupField);
 
                     return Flux.from(select)
-                            .map(rec -> this.mapToPerDateCount(rec, groupField, castedDateField, defaultValue));
+                            .map(rec -> this.mapToPerDateCount(rec, groupField, minDateField, defaultValue));
                 });
     }
 
     private SelectConditionStep<?> buildGroupedStageJoinDateCountSelect(
             Field<String> groupField,
             Field<ULong> joinField,
-            Field<LocalDate> castedDateField,
+            Field<LocalDateTime> groupByDateField,
             Condition conditions,
             boolean requiresNonNull) {
 
         SelectConditionStep<?> query = this.dslContext
-                .select(ENTITY_PROCESSOR_STAGES.NAME, groupField, castedDateField, DSL.count(this.idField))
+                .select(ENTITY_PROCESSOR_STAGES.NAME, groupField, groupByDateField, DSL.count(this.idField))
                 .from(this.table)
                 .leftJoin(ENTITY_PROCESSOR_STAGES)
                 .on(joinField.eq(ENTITY_PROCESSOR_STAGES.ID))
@@ -381,13 +382,16 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     }
 
     private SelectConditionStep<?> buildTotalOnlyDateCountSelect(
-            Field<String> groupField, Field<LocalDate> castedDateField, Condition conditions, boolean requiresNonNull) {
+            Field<String> groupField,
+            Field<LocalDateTime> groupByDateField,
+            Condition conditions,
+            boolean requiresNonNull) {
 
         SelectConditionStep<?> query = this.dslContext
                 .select(
                         DSL.val(TOTAL).as(ENTITY_PROCESSOR_STAGES.NAME),
                         groupField,
-                        castedDateField,
+                        groupByDateField,
                         DSL.count(this.idField))
                 .from(this.table)
                 .where(conditions);
@@ -396,13 +400,13 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     }
 
     private PerDateCount mapToPerDateCount(
-            Record rec, Field<String> groupField, Field<LocalDate> castedDateField, String defaultValue) {
+            Record rec, Field<String> groupField, Field<LocalDateTime> dateTimeField, String defaultValue) {
 
         String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
         if (stageName == null) stageName = defaultValue;
 
         return new PerDateCount()
-                .setDate(rec.get(castedDateField))
+                .setDate(rec.get(dateTimeField))
                 .setMapValue(stageName)
                 .setGroupedValue(rec.get(groupField))
                 .setCount(rec.get(DSL.count(this.idField)).longValue());
@@ -433,8 +437,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             boolean requiresCreatedByNotNull,
             Boolean requiresClientIdNotNull) {
 
-        Field<LocalDate> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField);
-        Field<LocalDate> selectedBucketDateField = this.toBucketDisplayDateField(timePeriod, dateField);
+        Field<LocalDateTime> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField);
+        Field<LocalDateTime> selectedBucketDateField = DSL.min(dateField).as("bucketDate");
 
         return FlatMapUtil.flatMapFlux(
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
@@ -479,7 +483,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
     private SelectConditionStep<?> buildStageOnlyDateCountSelect(
             Field<ULong> joinField,
-            Field<LocalDate> selectedBucketDateField,
+            Field<LocalDateTime> selectedBucketDateField,
             Field<? extends Number> countField,
             Condition conditions,
             boolean requiresCreatedByNotNull,
@@ -496,7 +500,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     }
 
     private SelectConditionStep<?> buildTotalOnlyStageDateCountSelect(
-            Field<LocalDate> selectedBucketDateField,
+            Field<LocalDateTime> selectedBucketDateField,
             Field<? extends Number> countField,
             Condition conditions,
             boolean requiresCreatedByNotNull,
@@ -522,13 +526,13 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     }
 
     private PerDateCount mapToPerStageOnlyDateCount(
-            Record rec, Field<LocalDate> castedDateField, Field<? extends Number> countField, String defaultValue) {
+            Record rec, Field<LocalDateTime> dateTimeField, Field<? extends Number> countField, String defaultValue) {
 
         String stageName = rec.get(ENTITY_PROCESSOR_STAGES.NAME);
         if (stageName == null) stageName = defaultValue;
 
         return new PerDateCount()
-                .setDate(rec.get(castedDateField))
+                .setDate(rec.get(dateTimeField))
                 .setMapValue(stageName)
                 .setGroupedValue(null)
                 .setCount(rec.get(countField).longValue());
@@ -551,38 +555,30 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 Boolean.TRUE);
     }
 
-    private Field<LocalDate> toDateBucketGroupKeyField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
+    private Field<LocalDateTime> toDateBucketGroupKeyField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
 
-        if (timePeriod == null) return DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
+        if (timePeriod == null)
+            return DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
 
         return switch (timePeriod) {
             case WEEKS ->
                 DSL.field(
-                        "date_sub(cast({0} as date), interval weekday(cast({0} as date)) day)",
-                        SQLDataType.LOCALDATE, dateTimeField);
+                        "timestamp(date_sub(cast({0} as date), interval weekday(cast({0} as date)) day))",
+                        SQLDataType.LOCALDATETIME, dateTimeField);
             case MONTHS ->
                 DSL.field(
-                        "str_to_date(date_format({0}, '%Y-%m-01'), '%Y-%m-%d')", SQLDataType.LOCALDATE, dateTimeField);
+                        "str_to_date(date_format({0}, '%Y-%m-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
+                        SQLDataType.LOCALDATETIME, dateTimeField);
             case QUARTERS ->
                 DSL.field(
-                        "str_to_date(concat(year({0}), '-', lpad(((quarter({0})-1)*3)+1, 2, '0'), '-01'), '%Y-%m-%d')",
-                        SQLDataType.LOCALDATE, dateTimeField);
+                        "str_to_date(concat(year({0}), '-', lpad(((quarter({0})-1)*3)+1, 2, '0'), '-01 00:00:00'),"
+                                + " '%Y-%m-%d %H:%i:%s')",
+                        SQLDataType.LOCALDATETIME, dateTimeField);
             case YEARS ->
                 DSL.field(
-                        "str_to_date(date_format({0}, '%Y-01-01'), '%Y-%m-%d')", SQLDataType.LOCALDATE, dateTimeField);
-            default -> DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
-        };
-    }
-
-    private Field<LocalDate> toBucketDisplayDateField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
-
-        Field<LocalDate> dateField = DSL.cast(dateTimeField, SQLDataType.LOCALDATE);
-
-        if (timePeriod == null) return dateField;
-
-        return switch (timePeriod) {
-            case WEEKS, MONTHS, QUARTERS, YEARS -> DSL.min(dateField).as("bucketDate");
-            default -> dateField;
+                        "str_to_date(date_format({0}, '%Y-01-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
+                        SQLDataType.LOCALDATETIME, dateTimeField);
+            default -> DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
         };
     }
 
@@ -611,7 +607,11 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
     public Flux<PerDateCount> getTicketCountPerClientIdAndDate(
             ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
-        Field<LocalDate> castedDateField = DSL.cast(ENTITY_PROCESSOR_TICKETS.CREATED_AT, SQLDataType.LOCALDATE);
+        TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
+        Field<LocalDateTime> dateGroupField =
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT);
+        Field<LocalDateTime> groupByDateField =
+                DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
                 () -> this.createTicketBucketConditions(access, ticketBucketFilter)
@@ -619,13 +619,13 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 abstractCondition -> super.filter(abstractCondition).flux(),
                 (abstractCondition, conditions) -> {
                     SelectConditionStep<?> query = this.dslContext
-                            .select(clientIdAsString, castedDateField, DSL.count(this.idField))
+                            .select(clientIdAsString, groupByDateField, DSL.count(this.idField))
                             .from(this.table)
                             .where(conditions.and(ENTITY_PROCESSOR_TICKETS.CLIENT_ID.isNotNull()));
 
-                    return Flux.from(query.groupBy(clientIdAsString, castedDateField))
+                    return Flux.from(query.groupBy(clientIdAsString, dateGroupField))
                             .map(rec -> new PerDateCount()
-                                    .setDate(rec.get(castedDateField))
+                                    .setDate(rec.get(groupByDateField))
                                     .setGroupedValue(rec.get(clientIdAsString))
                                     .setCount(rec.get(DSL.count(this.idField)).longValue()));
                 });

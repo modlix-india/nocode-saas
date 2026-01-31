@@ -9,6 +9,7 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
@@ -451,6 +452,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         return _fk3TicketsStageId;
     }
 
+    private transient EntityProcessorActivitiesPath _fk4ActivitiesStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table, via the
+     * <code>FK4_ACTIVITIES_STAGE_ID</code> key
+     */
+    public EntityProcessorActivitiesPath fk4ActivitiesStageId() {
+        if (_fk4ActivitiesStageId == null)
+            _fk4ActivitiesStageId = new EntityProcessorActivitiesPath(this, null, Keys.FK4_ACTIVITIES_STAGE_ID.getInverseKey());
+
+        return _fk4ActivitiesStageId;
+    }
+
     private transient EntityProcessorTicketsPath _fk4TicketsStatusId;
 
     /**
@@ -463,6 +478,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _fk4TicketsStatusId = new EntityProcessorTicketsPath(this, null, Keys.FK4_TICKETS_STATUS_ID.getInverseKey());
 
         return _fk4TicketsStatusId;
+    }
+
+    private transient EntityProcessorActivitiesPath _fk5ActivitiesStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table, via the
+     * <code>FK5_ACTIVITIES_STATUS_ID</code> key
+     */
+    public EntityProcessorActivitiesPath fk5ActivitiesStatusId() {
+        if (_fk5ActivitiesStatusId == null)
+            _fk5ActivitiesStatusId = new EntityProcessorActivitiesPath(this, null, Keys.FK5_ACTIVITIES_STATUS_ID.getInverseKey());
+
+        return _fk5ActivitiesStatusId;
     }
 
     @Override

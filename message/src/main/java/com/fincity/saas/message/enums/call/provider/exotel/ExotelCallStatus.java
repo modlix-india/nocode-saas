@@ -14,7 +14,7 @@ public enum ExotelCallStatus implements EnumType, ICallStatus {
     FAILED("FAILED", "failed"),
     BUSY("BUSY", "busy"),
     NO_ANSWER("NO_ANSWER", "no-answer"),
-	CANCELLED("CANCELLED", "cancelled");
+    CANCELLED("CANCELLED", "cancelled");
 
     private final String literal;
     private final String displayName;
@@ -52,7 +52,7 @@ public enum ExotelCallStatus implements EnumType, ICallStatus {
             case FAILED -> CallStatus.FAILED;
             case BUSY -> CallStatus.BUSY;
             case NO_ANSWER -> CallStatus.NO_ANSWER;
-	        case CANCELLED -> CallStatus.CANCELED;
+            case CANCELLED -> CallStatus.CANCELED;
         };
     }
 }

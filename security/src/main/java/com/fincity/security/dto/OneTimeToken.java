@@ -1,14 +1,15 @@
 package com.fincity.security.dto;
 
+import java.io.Serial;
+
+import org.jooq.types.ULong;
+
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
-
-import org.jooq.types.ULong;
-
-import java.io.Serial;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -22,5 +23,5 @@ public class OneTimeToken extends AbstractDTO<ULong, ULong> {
     private ULong userId;
     private String token;
     private String ipAddress;
-
+    private Boolean rememberMe;
 }

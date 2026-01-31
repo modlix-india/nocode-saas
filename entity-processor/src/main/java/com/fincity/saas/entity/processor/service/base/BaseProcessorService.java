@@ -3,12 +3,18 @@ package com.fincity.saas.entity.processor.service.base;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseProcessorDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import java.util.List;
+import java.util.Map;
 import org.jooq.UpdatableRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseProcessorService<
@@ -52,5 +58,36 @@ public abstract class BaseProcessorService<
                 this.getEntityPrefix(access.getAppCode()),
                 existing.getId(),
                 this.getEntityPrefix(access.getAppCode()));
+    }
+
+    public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition, String timezone) {
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.dao.processorAccessCondition(condition, access),
+                (access, pCondition) -> this.dao.readPageFilter(pageable, pCondition, timezone));
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams) {
+        return this.readPageFilterEager(pageable, condition, fields, timezone, queryParams, null);
+    }
+
+    public Mono<Page<Map<String, Object>>> readPageFilterEager(
+            Pageable pageable,
+            AbstractCondition condition,
+            List<String> fields,
+            String timezone,
+            MultiValueMap<String, String> queryParams,
+            Map<String, AbstractCondition> subQueryConditions) {
+
+        return FlatMapUtil.flatMapMono(
+                this::hasAccess,
+                access -> this.dao.processorAccessCondition(condition, access),
+                (access, pCondition) -> this.dao.readPageFilterEager(
+                        pageable, pCondition, fields, timezone, queryParams, subQueryConditions));
     }
 }
