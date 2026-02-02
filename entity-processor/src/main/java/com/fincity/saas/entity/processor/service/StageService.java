@@ -59,11 +59,8 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
     @Lazy
     private StageService self;
 
-    private final TicketStageViewService ticketStageViewService;
-
-    public StageService(Gson gson, TicketStageViewService ticketStageViewService) {
+    public StageService(Gson gson) {
         this.gson = gson;
-        this.ticketStageViewService = ticketStageViewService;
     }
 
     @PostConstruct
@@ -253,9 +250,6 @@ public class StageService extends BaseValueService<EntityProcessorStagesRecord, 
                                         access, productTemplateId, stageRequest.getChildren(), parentStage)
                                 : Mono.just(Tuples.of(parentStage, List.of())))
                 .map(tuple -> new BaseValueResponse<>(tuple.getT1(), tuple.getT2()))
-                .flatMap(response -> this.ticketStageViewService
-                        .rebuildTicketStageDatesView()
-                        .thenReturn(response))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "StageService.create[StageRequest]"));
     }
 
