@@ -10,14 +10,18 @@ ALTER TABLE `entity_processor`.`entity_processor_activities`
         ON DELETE RESTRICT
         ON UPDATE CASCADE;
 
-UPDATE `entity_processor`.`entity_processor_activities`
-SET `STATUS_ID` = CAST(JSON_UNQUOTE(JSON_EXTRACT(`OBJECT_DATA`, '$.status.id')) AS UNSIGNED)
-WHERE `ACTIVITY_ACTION` = 'STATUS_CREATE'
-  AND `OBJECT_DATA` IS NOT NULL
-  AND JSON_EXTRACT(`OBJECT_DATA`, '$.status.id') IS NOT NULL;
+UPDATE entity_processor.entity_processor_activities a
+    JOIN entity_processor.entity_processor_stages s
+    ON s.ID = CAST(JSON_UNQUOTE(JSON_EXTRACT(a.OBJECT_DATA, '$.status.id')) AS UNSIGNED)
+SET a.STATUS_ID = s.ID
+WHERE a.ACTIVITY_ACTION = 'STATUS_CREATE'
+  AND a.OBJECT_DATA IS NOT NULL
+  AND JSON_EXTRACT(a.OBJECT_DATA, '$.status.id') IS NOT NULL;
 
-UPDATE `entity_processor`.`entity_processor_activities`
-SET `STAGE_ID` = CAST(JSON_UNQUOTE(JSON_EXTRACT(`OBJECT_DATA`, '$.stage.id')) AS UNSIGNED)
-WHERE `ACTIVITY_ACTION` = 'STAGE_UPDATE'
-  AND `OBJECT_DATA` IS NOT NULL
-  AND JSON_EXTRACT(`OBJECT_DATA`, '$.stage.id') IS NOT NULL;
+UPDATE entity_processor.entity_processor_activities a
+    JOIN entity_processor.entity_processor_stages s
+    ON s.ID = CAST(JSON_UNQUOTE(JSON_EXTRACT(a.OBJECT_DATA, '$.status.id')) AS UNSIGNED)
+SET a.STATUS_ID = s.ID
+WHERE a.ACTIVITY_ACTION = 'STATUS_CREATE'
+  AND a.OBJECT_DATA IS NOT NULL
+  AND JSON_EXTRACT(a.OBJECT_DATA, '$.status.id') IS NOT NULL;
