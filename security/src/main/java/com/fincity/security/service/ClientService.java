@@ -2,9 +2,12 @@ package com.fincity.security.service;
 
 import java.math.BigInteger;
 import java.net.URI;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,23 +20,29 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
+import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ClientDAO;
 import com.fincity.security.dao.appregistration.AppRegistrationV2DAO;
 import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientHierarchy;
+import com.fincity.security.dto.User;
 import com.fincity.security.dto.policy.AbstractPolicy;
 import com.fincity.security.enums.ClientLevelType;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.tables.records.SecurityClientRecord;
@@ -44,9 +53,10 @@ import com.fincity.security.service.policy.ClientPinPolicyService;
 import com.fincity.security.service.policy.IPolicyService;
 
 import jakarta.annotation.PostConstruct;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 
 @Service
 public class ClientService
@@ -56,42 +66,39 @@ public class ClientService
     public static final String CACHE_NAME_CLIENT_URL = "clientUrl";
     public static final String CACHE_NAME_CLIENT_URI = "uri";
     public static final String CC = "clientCode";
-
-    private static final String CACHE_NAME_CLIENT_TYPE = "clientType";
+    private static final String FETCH_USER_COUNT = "fetchUserCounts";
+    private static final String FETCH_OWNERS = "fetchOwners";
+    private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
+    private static final String FETCH_APPS = "fetchApps";
+    private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
+    private static final String CACHE_NAME_CLIENT_TYPE_CODE_LEVEL = "clientTypeCodeLevel";
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
     private static final String CACHE_NAME_CLIENT_ID = "clientId";
-
+    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
+            AuthenticationPasswordType.class);
     @Autowired
     private CacheService cacheService;
-
     @Autowired
     @Lazy
     private AppService appService;
-
+    @Lazy
+    @Autowired
+    private UserService userService;
     @Autowired
     private SecurityMessageResourceService securityMessageResourceService;
-
     @Autowired
     private AppRegistrationV2DAO appRegistrationDAO;
-
     @Autowired
     private ClientHierarchyService clientHierarchyService;
-
     @Autowired
     private ClientPasswordPolicyService clientPasswordPolicyService;
-
     @Autowired
     private ClientPinPolicyService clientPinPolicyService;
-
     @Autowired
     private ClientOtpPolicyService clientOtpPolicyService;
-
     @Value("${security.subdomain.endings}")
     private String[] subDomainURLEndings;
-
-    private final EnumMap<AuthenticationPasswordType, IPolicyService<? extends AbstractPolicy>> policyServices = new EnumMap<>(
-            AuthenticationPasswordType.class);
 
     @PostConstruct
     public void init() {
@@ -149,15 +156,31 @@ public class ClientService
         return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
     }
 
+    public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
+        return this.userService.readInternal(userId).map(User::getClientId).flatMap(this::readInternal)
+                .map(Client::getCode)
+                .flatMap(uClientCode -> Mono.zip(this.clientHierarchyService.isBeingManagedBy(uClientCode, clientCode),
+                        this.clientHierarchyService.isBeingManagedBy(clientCode, uClientCode)))
+                .map(tup -> tup.getT1() || tup.getT2());
+    }
+
+    public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
+        return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
+    }
+
+    public Mono<List<ULong>> getManagingClientIds(ULong clientId) {
+        return this.clientHierarchyService.getManagingClientIds(clientId);
+    }
+
     public Mono<ClientUrlPattern> getClientPattern(String uriScheme, String uriHost, String uriPort) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_URI, () -> this.readAllAsClientURLPattern()
-                        .flatMapIterable(e -> e)
-                        .filter(e -> e.isValidClientURLPattern(uriHost, uriPort))
-                        .take(1)
-                        .collectList()
-                        .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
-                        .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost))), uriScheme, uriHost, ":",
+                .flatMapIterable(e -> e)
+                .filter(e -> e.isValidClientURLPattern(uriHost, uriPort))
+                .take(1)
+                .collectList()
+                .flatMap(e -> e.isEmpty() ? Mono.empty() : Mono.just(e.getFirst()))
+                .switchIfEmpty(Mono.defer(() -> getClientPatternBySubdomain(uriHost))), uriScheme, uriHost, ":",
                 uriPort);
     }
 
@@ -179,6 +202,7 @@ public class ClientService
             return Mono.empty();
 
         return this.appService.getAppByCode(code)
+                .filter(e -> e.getStatus().equals(SecurityAppStatus.ACTIVE))
                 .flatMap(app -> this.getClientInfoById(app.getClientId())
                         .map(client -> new ClientUrlPattern("", client.getCode(), uriHost, app.getAppCode())));
     }
@@ -190,7 +214,7 @@ public class ClientService
 
     @SuppressWarnings("unchecked")
     public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, ULong appId,
-                                                                 AuthenticationPasswordType passwordType) {
+            AuthenticationPasswordType passwordType) {
 
         IPolicyService<T> policyService = (IPolicyService<T>) policyServices.get(passwordType);
 
@@ -198,27 +222,33 @@ public class ClientService
     }
 
     public <T extends AbstractPolicy> Mono<T> getClientAppPolicy(ULong clientId, String appCode,
-                                                                 AuthenticationPasswordType passwordType) {
+            AuthenticationPasswordType passwordType) {
         return this.appService.getAppId(appCode).flatMap(appId -> getClientAppPolicy(clientId, appId, passwordType));
     }
 
-    public Mono<Tuple2<String, String>> getClientTypeNCode(ULong id) {
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_TYPE, () -> this.dao.getClientTypeNCode(id), id);
+    public Mono<Tuple3<String, String, String>> getClientTypeNCodeNClientLevel(ULong id) {
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_TYPE_CODE_LEVEL,
+                () -> this.dao.getClientTypeNCode(id), id);
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
     @Override
     public Mono<Client> create(Client entity) {
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> super.create(entity).map(e -> {
+        return FlatMapUtil.flatMapMono(
 
+                SecurityContextUtil::getUsersContextAuthentication,
+
+                ca -> super.create(entity.setLevelType(Client.getChildClientLevelType(ca.getClientLevelType()))),
+
+                (ca, client) -> {
                     if (!ca.isSystemClient())
-                        this.clientHierarchyService.create(ULongUtil.valueOf(ca.getUser().getClientId()), e.getId())
-                                .subscribe();
+                        return this.clientHierarchyService
+                                .create(ULongUtil.valueOf(ca.getUser().getClientId()), client.getId())
+                                .map(x -> client);
 
-                    return e;
-                }));
+                    return Mono.just(client);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.create"));
     }
 
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
@@ -234,6 +264,10 @@ public class ClientService
     @PreAuthorize("hasAuthority('Authorities.Client_READ')")
     @Override
     public Mono<Page<Client>> readPageFilter(Pageable pageable, AbstractCondition condition) {
+        return super.readPageFilter(pageable, condition);
+    }
+
+    public Mono<Page<Client>> readPageFilterInternal(Pageable pageable, AbstractCondition condition) {
         return super.readPageFilter(pageable, condition);
     }
 
@@ -280,14 +314,14 @@ public class ClientService
     }
 
     public Mono<Boolean> validatePasswordPolicy(ULong clientId, ULong appId, ULong userId,
-                                                AuthenticationPasswordType passwordType, String password) {
+            AuthenticationPasswordType passwordType, String password) {
         return policyServices.get(passwordType).checkAllConditions(clientId, appId, userId, password)
                 .switchIfEmpty(Mono.just(Boolean.TRUE));
     }
 
     @SuppressWarnings("unchecked")
     public <T extends AbstractPolicy> Mono<Boolean> validatePasswordPolicy(T policy, ULong userId,
-                                                                           AuthenticationPasswordType passType, String password) {
+            AuthenticationPasswordType passType, String password) {
 
         IPolicyService<T> service = (IPolicyService<T>) this.policyServices.get(passType);
 
@@ -295,7 +329,7 @@ public class ClientService
     }
 
     public Mono<Boolean> validatePasswordPolicy(ULong clientId, String appCode, ULong userId,
-                                                AuthenticationPasswordType passwordType, String password) {
+            AuthenticationPasswordType passwordType, String password) {
         return this.appService.getAppByCode(appCode)
                 .flatMap(app -> this.validatePasswordPolicy(clientId, app.getId(), userId, passwordType, password))
                 .switchIfEmpty(Mono.just(Boolean.TRUE));
@@ -312,8 +346,14 @@ public class ClientService
     public Mono<Client> getManagedClientOfClientById(ULong clientId) {
         return this.cacheService.cacheValueOrGet(CACHE_NAME_MANAGED_CLIENT_INFO,
                 () -> this.clientHierarchyService.getManagingClient(clientId, ClientHierarchy.Level.ZERO)
-                        .flatMap(this::getClientInfoById),
+                        .flatMap(this::getClientInfoById).defaultIfEmpty(new Client()),
                 clientId);
+    }
+
+    public Mono<Client> fillManagingClientDetails(Client client) {
+        return this.getManagedClientOfClientById(client.getId())
+                .map(client::setManagagingClient)
+                .defaultIfEmpty(client);
     }
 
     public Mono<Client> getClientBy(String clientCode) {
@@ -329,17 +369,17 @@ public class ClientService
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-                                .getClientId()))),
+                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+                        .getClientId()))),
 
-                        (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                                : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
+                (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
 
-                        (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
-                                ? this.dao.makeClientActiveIfInActive(clientId)
-                                : Mono.empty())
+                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
+                        ? this.dao.makeClientActiveIfInActive(clientId)
+                        : Mono.empty())
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientActiveIfInActive"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
@@ -353,17 +393,17 @@ public class ClientService
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
-                                .getClientId()))),
+                ca -> Mono.justOrEmpty(CommonsUtil.nonNullValue(clientId, ULong.valueOf(ca.getUser()
+                        .getClientId()))),
 
-                        (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                                : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
+                (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
+                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
                                 .getClientId()), id),
 
-                        (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
-                                : Mono.empty())
+                (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
+                        : Mono.empty())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.makeClientIfInActive"))
                 .switchIfEmpty(this.securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
@@ -401,8 +441,10 @@ public class ClientService
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getClientLevelType(ULong,ULong)"));
     }
 
-    public Mono<Client> createForRegistration(Client client) {
-        return super.create(client);
+    public Mono<Client> createForRegistration(Client client, ULong loggedInFromClientId) {
+        return this.readInternal(loggedInFromClientId)
+                .flatMap(parent -> super.create(
+                        client.setLevelType(Client.getChildClientLevelType(parent.getLevelType()))));
     }
 
     public Mono<Client> getActiveClient(ULong clientId) {
@@ -417,12 +459,12 @@ public class ClientService
     }
 
     public Mono<Boolean> isClientActive(ULong clientId) {
-        return this.clientHierarchyService.getClientHierarchyIds(clientId).collectList()
+        return this.getClientHierarchy(clientId)
                 .flatMap(clientHie -> this.dao.isClientActive(clientHie));
     }
 
     public Mono<Boolean> addClientRegistrationObjects(ULong appId, ULong appClientId, ULong urlClientId,
-                                                      Client client) {
+            Client client) {
 
         return FlatMapUtil.flatMapMono(
                 () -> this.getClientLevelType(client.getId(), appId),
@@ -438,5 +480,86 @@ public class ClientService
 
                     return this.dao.createProfileRestrictions(client.getId(), profileIds);
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.addClientRegistrationObjects"));
+    }
+
+    public Mono<Client> readById(ULong clientId, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readInternal(clientId),
+                client -> this.fillDetails(List.of(client), queryParams).map(List::getFirst));
+    }
+
+    public Mono<List<Client>> readByIds(List<ULong> clientIds, MultiValueMap<String, String> queryParams) {
+        return FlatMapUtil.flatMapMono(
+                () -> this.readAllFilter(new FilterCondition()
+                        .setField("id")
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(clientIds))
+                        .collectList(),
+                clients -> this.fillDetails(clients, queryParams));
+    }
+
+    public Mono<List<Client>> fillDetails(List<Client> clients, MultiValueMap<String, String> queryParams) {
+
+        String appCode = queryParams.getFirst("appCode");
+        String appId = queryParams.getFirst("appId");
+
+        boolean fetchUserCounts = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_USER_COUNT));
+        boolean fetchOwners = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_OWNERS));
+        boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
+        boolean fetchApps = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_APPS));
+        boolean fetchCreatedByUser = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY_USER));
+
+        Map<ULong, Client> map = clients.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
+
+        Mono<List<Client>> clientsMono = Mono.just(clients);
+
+        if (fetchCreatedByUser)
+            clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
+                    .filter(c -> c.getCreatedBy() != null)
+                    .flatMap(c -> this.userService.readInternal(c.getCreatedBy()).map(c::setCreatedByUser))
+                    .collectList();
+
+        if (fetchApps)
+            clientsMono = clientsMono.flatMap(c -> this.appService.fillApps(map));
+
+        if (fetchManagingClient)
+            clientsMono = clientsMono.flatMapMany(Flux::fromIterable)
+                    .flatMap(c -> this.clientHierarchyService.getManagingClient(c.getId(), ClientHierarchy.Level.ZERO)
+                            .flatMap(this::getClientInfoById).map(c::setManagagingClient))
+                    .collectList();
+
+        if (fetchUserCounts)
+            clientsMono = clientsMono.flatMap(c -> this.dao.fillUserCounts(map, appCode, appId));
+
+        if (fetchOwners)
+            clientsMono = clientsMono.flatMap(cs -> this.dao.getOwnersPerClient(map, appCode, appId))
+                    .flatMap(idsMap -> Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
+                            .distinct().flatMap(this.userService::readInternal)
+                            .collectMap(User::getId)
+                            .map(userMap -> map.values().stream()
+                                    .map(client -> idsMap.get(client.getId()) == null ? client
+                                            : client.setOwners(
+                                                    idsMap.get(client.getId()).stream().map(userMap::get).toList()))
+                                    .toList()));
+
+        return clientsMono;
+    }
+
+    public Mono<Map<ULong, String>> readClientURLs(String clientCode, Collection<ULong> urlIds) {
+        return this.dao.readClientURLs(clientCode, urlIds);
+    }
+
+    public Mono<List<String>> getOwnersEmails(ULong clientId, String appCode, ULong appId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.getClientInfoById(clientId),
+
+                client -> this.dao.getOwnersPerClient(Map.of(clientId, client), appCode,
+                        appId == null ? null : appId.toString()),
+
+                (client, owners) -> this.userService
+                        .getEmailsOfUsers(owners.values().stream().flatMap(Collection::stream).toList()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.getOwnersEmails"));
     }
 }

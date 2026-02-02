@@ -1,11 +1,13 @@
 package com.fincity.saas.commons.core.document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
+
 import java.io.Serial;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -55,7 +57,7 @@ public class Action extends AbstractOverridableDTO<Action> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Mono<Action> makeOverride(Action base) {
+    public Mono<Action> extractDifference(Action base) {
         if (base == null) return Mono.just(this);
 
         return Mono.just(this).flatMap(e -> DifferenceExtractor.extract(e.properties, base.properties)

@@ -1,5 +1,33 @@
 package com.fincity.security.dao;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
+
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.Record;
+import org.jooq.Record1;
+import org.jooq.Record2;
+import org.jooq.SelectConditionStep;
+import org.jooq.SelectJoinStep;
+import org.jooq.SortField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
+import org.jooq.types.UByte;
+import org.jooq.types.ULong;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.stereotype.Service;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
@@ -14,34 +42,25 @@ import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
 import com.fincity.security.dto.Client;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
-import com.fincity.security.jooq.tables.*;
-import com.fincity.security.jooq.tables.records.SecurityAppRecord;
-import com.fincity.security.model.AppDependency;
-import org.jooq.Record;
-import org.jooq.*;
-import org.jooq.impl.DSL;
-import org.jooq.types.UByte;
-import org.jooq.types.ULong;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort.Direction;
-import org.springframework.data.support.PageableExecutionUtils;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
-
-import java.math.BigInteger;
-import java.util.*;
-import java.util.Map.Entry;
-
+import com.fincity.security.jooq.tables.SecurityApp;
 import static com.fincity.security.jooq.tables.SecurityApp.SECURITY_APP;
 import static com.fincity.security.jooq.tables.SecurityAppAccess.SECURITY_APP_ACCESS;
 import static com.fincity.security.jooq.tables.SecurityAppDependency.SECURITY_APP_DEPENDENCY;
 import static com.fincity.security.jooq.tables.SecurityAppProperty.SECURITY_APP_PROPERTY;
 import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import com.fincity.security.jooq.tables.SecurityClientUrl;
+import com.fincity.security.jooq.tables.SecurityPermission;
+import com.fincity.security.jooq.tables.SecuritySslCertificate;
+import com.fincity.security.jooq.tables.SecuritySslChallenge;
+import com.fincity.security.jooq.tables.SecuritySslRequest;
+import com.fincity.security.jooq.tables.records.SecurityAppRecord;
+import com.fincity.security.model.AppDependency;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Service
 public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> {
@@ -78,9 +97,9 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     @Override
-    public Mono<Condition> filter(AbstractCondition acond) {
+    public Mono<Condition> filter(AbstractCondition acond, SelectJoinStep<Record> selectJoinStep) {
 
-        Mono<Condition> condition = super.filter(acond);
+        Mono<Condition> condition = super.filter(acond, selectJoinStep);
 
         return SecurityContextUtil.getUsersContextAuthentication()
                 .flatMap(ca -> {
@@ -388,12 +407,11 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
     }
 
     public Mono<Boolean> isNoneUsingTheAppOtherThan(ULong appId, BigInteger bigInteger) {
-        return Mono.justOrEmpty(
+        return Mono.from(
                 this.dslContext.selectCount()
                         .from(SECURITY_APP_ACCESS)
                         .where(SECURITY_APP_ACCESS.APP_ID.eq(appId)
-                                .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger))))
-                        .fetchOne())
+                                .and(SECURITY_APP_ACCESS.CLIENT_ID.ne(ULongUtil.valueOf(bigInteger)))))
                 .map(Record1::value1)
                 .map(e -> e == 0);
     }
@@ -424,9 +442,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
             return FlatMapUtil.flatMapMono(
 
-                    () ->
-
-                    Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
+                    () -> Mono.from(dsl.deleteFrom(SECURITY_APP_PROPERTY)
                             .where(SECURITY_APP_PROPERTY.APP_ID.eq(appId))),
 
                     a -> Mono.zip(urlIds, permissionIds, roleIds),
@@ -458,7 +474,10 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
                     ),
 
-                    (a, tuple, requests, x) -> Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
+                    (a, tuple, requests, x) -> Mono
+                            .from(dsl.delete(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.APP_ID.eq(appId)))
+                            .map(e -> e == 1),
+                    (a, tuple, requests, x, y) -> Mono.from(dsl.delete(SecurityApp.SECURITY_APP)
                             .where(SecurityApp.SECURITY_APP.ID.eq(appId))).map(e -> e == 1));
         })).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDao.deleteEverythingRelated"));
     }
@@ -480,7 +499,7 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
 
         return FlatMapUtil.flatMapMono(
 
-                () -> super.filter(condition),
+                () -> this.getSelectJointStep().map(Tuple2::getT1).flatMap(sjs -> super.filter(condition, sjs)),
 
                 filterCondition -> {
 
@@ -586,5 +605,19 @@ public class AppDAO extends AbstractUpdatableDAO<SecurityAppRecord, ULong, App> 
                 .where(DSL.and(SECURITY_APP.APP_CODE.eq(appCode),
                         SECURITY_CLIENT.CODE.ne(clientCode))))
                 .map(Record1::value1).map(e -> e == 0);
+    }
+
+    public Mono<Map<ULong, List<ULong>>> getAppsIDsPerClient(Collection<ULong> clientIds) {
+
+        if (clientIds == null || clientIds.isEmpty())
+            return Mono.just(Map.of());
+
+        return Flux
+                .from(this.dslContext.select(SECURITY_APP.CLIENT_ID, SECURITY_APP.ID).from(SECURITY_APP)
+                        .where(SECURITY_APP.CLIENT_ID.in(clientIds)).union(
+                                this.dslContext.select(SECURITY_APP_ACCESS.CLIENT_ID, SECURITY_APP_ACCESS.APP_ID)
+                                        .from(SECURITY_APP_ACCESS).where(SECURITY_APP_ACCESS.CLIENT_ID.in(clientIds))))
+                .collect(Collectors.groupingBy(Record2::value1,
+                        Collectors.mapping(Record2::value2, Collectors.toList())));
     }
 }

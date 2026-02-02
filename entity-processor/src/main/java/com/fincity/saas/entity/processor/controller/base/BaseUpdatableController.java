@@ -5,10 +5,10 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseUpdatableDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.model.base.BaseResponse;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple4;
+import reactor.util.function.Tuple2;
 
 public abstract class BaseUpdatableController<
                 R extends UpdatableRecord<R>,
@@ -65,12 +66,10 @@ public abstract class BaseUpdatableController<
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_ID) final ULong id, ServerHttpRequest request) {
 
-        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
-        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
         List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(id, fieldParams, eager, eagerParams)
+                .readEager(id, fieldParams, request.getQueryParams())
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -80,12 +79,10 @@ public abstract class BaseUpdatableController<
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_CODE) final String code, ServerHttpRequest request) {
 
-        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
-        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
         List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(code, fieldParams, eager, eagerParams)
+                .readEager(code, fieldParams, request.getQueryParams())
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -95,12 +92,10 @@ public abstract class BaseUpdatableController<
     public Mono<ResponseEntity<Map<String, Object>>> readEager(
             @PathVariable(PATH_VARIABLE_ID) final Identity identity, ServerHttpRequest request) {
 
-        Boolean eager = EagerUtil.getIsEagerParams(request.getQueryParams());
-        List<String> eagerParams = EagerUtil.getEagerParams(request.getQueryParams());
         List<String> fieldParams = EagerUtil.getFieldParams(request.getQueryParams());
 
         return this.service
-                .readEager(identity, fieldParams, eager, eagerParams)
+                .readEager(identity, fieldParams, request.getQueryParams())
                 .map(ResponseEntity::ok)
                 .switchIfEmpty(
                         Mono.defer(() -> Mono.just(ResponseEntity.notFound().build())));
@@ -138,7 +133,7 @@ public abstract class BaseUpdatableController<
 
     @GetMapping(REQ_PATH_ID)
     public Mono<ResponseEntity<D>> readIdentity(@PathVariable(PATH_VARIABLE_ID) final Identity identity) {
-        return this.service.readIdentityWithAccess(identity).map(ResponseEntity::ok);
+        return this.service.readByIdentity(identity).map(ResponseEntity::ok);
     }
 
     @DeleteMapping(REQ_PATH_ID)
@@ -152,22 +147,22 @@ public abstract class BaseUpdatableController<
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple4<AbstractCondition, List<String>, Boolean, List<String>> eagerParams =
-                EagerUtil.getEagerConditions(request.getQueryParams());
+        Tuple2<AbstractCondition, List<String>> fieldParams = EagerUtil.getFieldConditions(request.getQueryParams());
         return this.service
-                .readPageFilterEager(
-                        pageable, eagerParams.getT1(), eagerParams.getT2(), eagerParams.getT3(), eagerParams.getT4())
+                .readPageFilterEager(pageable, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
                 .map(ResponseEntity::ok);
     }
 
     @PostMapping(EAGER_PATH_QUERY)
-    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            @RequestBody Query query, ServerHttpRequest request) {
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
+
         return this.service
-                .readPageFilterEager(
-                        pageable, query.getCondition(), query.getFields(), query.getEager(), query.getEagerFields())
+                .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
                 .map(ResponseEntity::ok);
     }
 }

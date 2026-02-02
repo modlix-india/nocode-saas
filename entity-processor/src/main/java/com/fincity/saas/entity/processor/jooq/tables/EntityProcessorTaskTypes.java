@@ -4,7 +4,9 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTaskTypesRecord;
@@ -18,6 +20,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -33,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -103,17 +107,24 @@ public class EntityProcessorTaskTypes extends TableImpl<EntityProcessorTaskTypes
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_task_types.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this task type is applicable
+     */
+    public final TableField<EntityProcessorTaskTypesRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this task type is applicable", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_task_types.TEMP_ACTIVE</code>.
      * Temporary active flag for this task type.
      */
-    public final TableField<EntityProcessorTaskTypesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this task type.");
+    public final TableField<EntityProcessorTaskTypesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this task type.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_task_types.IS_ACTIVE</code>. Flag
      * to check if this task type is active or not.
      */
-    public final TableField<EntityProcessorTaskTypesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this task type is active or not.");
+    public final TableField<EntityProcessorTaskTypesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this task type is active or not.");
 
     /**
      * The column
@@ -211,6 +222,11 @@ public class EntityProcessorTaskTypes extends TableImpl<EntityProcessorTaskTypes
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASK_TYPES_IDX0_TASK_TYPES_AC_CC);
     }
 
     @Override

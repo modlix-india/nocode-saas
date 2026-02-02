@@ -21,6 +21,7 @@ import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
 public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDto<D>, O extends BaseDAO<R, D>>
@@ -36,26 +37,27 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
     protected CacheService cacheService;
 
     @Autowired
-    public void setMessageResourceService(ProcessorMessageResourceService msgService) {
+    protected void setMessageResourceService(ProcessorMessageResourceService msgService) {
         this.msgService = msgService;
     }
 
     @Autowired
-    public void setSecurityService(IFeignSecurityService securityService) {
+    protected void setSecurityService(IFeignSecurityService securityService) {
         this.securityService = securityService;
     }
 
     @Autowired
-    public void setCacheService(CacheService cacheService) {
+    protected void setCacheService(CacheService cacheService) {
         this.cacheService = cacheService;
     }
 
-    public Mono<D> createInternal(ProcessorAccess access, D entity) {
+    protected Mono<D> createInternal(ProcessorAccess access, D entity) {
 
         if (entity.getName() == null || entity.getName().isEmpty()) entity.setName(entity.getCode());
 
         entity.setAppCode(access.getAppCode());
-        entity.setClientCode(access.getClientCode());
+        entity.setClientCode(
+                access.isOutsideUser() ? access.getUserInherit().getManagedClientCode() : access.getClientCode());
 
         entity.setCreatedBy(access.getUserId());
 
@@ -66,18 +68,17 @@ public abstract class BaseService<R extends UpdatableRecord<R>, D extends BaseDt
             Pageable pageable,
             AbstractCondition condition,
             List<String> tableFields,
-            Boolean eager,
-            List<String> eagerFields) {
+            MultiValueMap<String, String> queryParams) {
         return this.hasAccess()
                 .flatMap(access -> this.dao.readPageFilterEager(
                         pageable,
                         this.addAppCodeAndClientCodeToCondition(access, condition),
                         tableFields,
-                        eager,
-                        eagerFields));
+                        queryParams));
     }
 
-    public AbstractCondition addAppCodeAndClientCodeToCondition(ProcessorAccess access, AbstractCondition condition) {
+    protected AbstractCondition addAppCodeAndClientCodeToCondition(
+            ProcessorAccess access, AbstractCondition condition) {
         if (condition == null || condition.isEmpty())
             return ComplexCondition.and(
                     FilterCondition.make(AbstractFlowUpdatableDTO.Fields.appCode, access.getAppCode())

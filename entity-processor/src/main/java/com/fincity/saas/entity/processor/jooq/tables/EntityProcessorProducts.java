@@ -4,12 +4,20 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorCampaigns.EntityProcessorCampaignsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductComms.EntityProcessorProductCommsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketRuRules.EntityProcessorProductTicketRuRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms.EntityProcessorProductWalkInFormsPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules.EntityProcessorTicketDuplicationRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductsRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -20,7 +28,9 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -119,17 +129,66 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_products.PRODUCT_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> PRODUCT_WALK_IN_FORM_ID = createField(DSL.name("PRODUCT_WALK_IN_FORM_ID"), SQLDataType.BIGINTUNSIGNED, this, "Walk in form related to this product.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> LOGO_FILE_DETAIL = createField(DSL.name("LOGO_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a logo file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public final TableField<EntityProcessorProductsRecord, FileDetail> BANNER_FILE_DETAIL = createField(DSL.name("BANNER_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if product has a banner file", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorProductsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public final TableField<EntityProcessorProductsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorProductsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.CLIENT_ID</code>. Id of
+     * client who created this product.
+     */
+    public final TableField<EntityProcessorProductsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this product.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
+     * to tell whether Partner has access to this product or not.
+     */
+    public final TableField<EntityProcessorProductsRecord, Boolean> FOR_PARTNER = createField(DSL.name("FOR_PARTNER"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell whether Partner has access to this product or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public final TableField<EntityProcessorProductsRecord, Boolean> OVERRIDE_C_TEMPLATE = createField(DSL.name("OVERRIDE_C_TEMPLATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather to override the Create (C) template rules");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public final TableField<EntityProcessorProductsRecord, Boolean> OVERRIDE_RU_TEMPLATE = createField(DSL.name("OVERRIDE_RU_TEMPLATE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to tell weather to override the Read Update (RU) template rules");
 
     /**
      * The column
@@ -230,6 +289,11 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_PRODUCTS_IDX0_PRODUCTS_AC_CC);
+    }
+
+    @Override
     public Identity<EntityProcessorProductsRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorProductsRecord, ULong>) super.getIdentity();
     }
@@ -246,7 +310,7 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
 
     @Override
     public List<ForeignKey<EntityProcessorProductsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID);
+        return Arrays.asList(Keys.FK1_PRODUCTS_PRODUCT_TEMPLATE_ID, Keys.FK2_PRODUCTS_PWIF_ID);
     }
 
     private transient EntityProcessorProductTemplatesPath _entityProcessorProductTemplates;
@@ -262,17 +326,86 @@ public class EntityProcessorProducts extends TableImpl<EntityProcessorProductsRe
         return _entityProcessorProductTemplates;
     }
 
-    private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
+    private transient EntityProcessorProductWalkInFormsPath _entityProcessorProductWalkInForms;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table.
+     */
+    public EntityProcessorProductWalkInFormsPath entityProcessorProductWalkInForms() {
+        if (_entityProcessorProductWalkInForms == null)
+            _entityProcessorProductWalkInForms = new EntityProcessorProductWalkInFormsPath(this, Keys.FK2_PRODUCTS_PWIF_ID, null);
+
+        return _entityProcessorProductWalkInForms;
+    }
+
+    private transient EntityProcessorCampaignsPath _entityProcessorCampaigns;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_stage_rules</code> table
+     * <code>entity_processor.entity_processor_campaigns</code> table
      */
-    public EntityProcessorProductStageRulesPath entityProcessorProductStageRules() {
-        if (_entityProcessorProductStageRules == null)
-            _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, null, Keys.FK1_PRODUCT_RULES_PRODUCT_ID.getInverseKey());
+    public EntityProcessorCampaignsPath entityProcessorCampaigns() {
+        if (_entityProcessorCampaigns == null)
+            _entityProcessorCampaigns = new EntityProcessorCampaignsPath(this, null, Keys.FK1_CAMPAIGNS_PRODUCT_ID.getInverseKey());
 
-        return _entityProcessorProductStageRules;
+        return _entityProcessorCampaigns;
+    }
+
+    private transient EntityProcessorProductCommsPath _entityProcessorProductComms;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_comms</code> table
+     */
+    public EntityProcessorProductCommsPath entityProcessorProductComms() {
+        if (_entityProcessorProductComms == null)
+            _entityProcessorProductComms = new EntityProcessorProductCommsPath(this, null, Keys.FK1_PRODUCT_COMMS_PRODUCT_ID.getInverseKey());
+
+        return _entityProcessorProductComms;
+    }
+
+    private transient EntityProcessorProductTicketCRulesPath _entityProcessorProductTicketCRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>
+     * table
+     */
+    public EntityProcessorProductTicketCRulesPath entityProcessorProductTicketCRules() {
+        if (_entityProcessorProductTicketCRules == null)
+            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK1_PTCR_PID.getInverseKey());
+
+        return _entityProcessorProductTicketCRules;
+    }
+
+    private transient EntityProcessorProductTicketRuRulesPath _entityProcessorProductTicketRuRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_ticket_ru_rules</code>
+     * table
+     */
+    public EntityProcessorProductTicketRuRulesPath entityProcessorProductTicketRuRules() {
+        if (_entityProcessorProductTicketRuRules == null)
+            _entityProcessorProductTicketRuRules = new EntityProcessorProductTicketRuRulesPath(this, null, Keys.FK1_PTRUR_PID.getInverseKey());
+
+        return _entityProcessorProductTicketRuRules;
+    }
+
+    private transient EntityProcessorTicketDuplicationRulesPath _entityProcessorTicketDuplicationRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>
+     * table
+     */
+    public EntityProcessorTicketDuplicationRulesPath entityProcessorTicketDuplicationRules() {
+        if (_entityProcessorTicketDuplicationRules == null)
+            _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK1_TDR_PID.getInverseKey());
+
+        return _entityProcessorTicketDuplicationRules;
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;

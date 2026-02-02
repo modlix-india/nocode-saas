@@ -1,12 +1,14 @@
 package com.fincity.saas.commons.core.document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
+
 import java.io.Serial;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -54,7 +56,7 @@ public class EventDefinition extends AbstractOverridableDTO<EventDefinition> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Mono<EventDefinition> makeOverride(EventDefinition base) {
+    public Mono<EventDefinition> extractDifference(EventDefinition base) {
         if (base == null) return Mono.just(this);
 
         return Mono.just(this)

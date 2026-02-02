@@ -1,0 +1,4 @@
+use security;
+
+ALTER TABLE `security`.`security_app`
+ADD COLUMN `STATUS` ENUM('ACTIVE', 'ARCHIVED') NOT NULL DEFAULT 'ACTIVE' AFTER `APP_USAGE_TYPE`;

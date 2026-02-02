@@ -1,5 +1,6 @@
 package com.fincity.saas.entity.processor.dto.content;
 
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
@@ -18,6 +19,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Task extends BaseContentDto<Task> {
 
     @Serial
@@ -54,26 +56,23 @@ public class Task extends BaseContentDto<Task> {
     }
 
     public static Task of(TaskRequest taskRequest) {
-        return new Task()
-                .setName(taskRequest.getName())
-                .setContent(taskRequest.getContent())
-                .setHasAttachment(taskRequest.getHasAttachment())
-                .setOwnerId(
-                        taskRequest.getOwnerId() != null
-                                ? taskRequest.getOwnerId().getULongId()
-                                : null)
-                .setTicketId(
-                        taskRequest.getTicketId() != null
-                                ? taskRequest.getTicketId().getULongId()
-                                : null)
-                .setTaskTypeId(
-                        taskRequest.getTaskTypeId() != null
-                                ? taskRequest.getTaskTypeId().getULongId()
-                                : null)
+
+        Task task = (Task) new Task()
+                .setTaskTypeId(taskRequest.getTaskTypeId().getULongId())
                 .setDueDate(taskRequest.getDueDate())
                 .setTaskPriority(taskRequest.getTaskPriority())
                 .setHasReminder(taskRequest.isHasReminder())
-                .setNextReminder(taskRequest.getNextReminder());
+                .setNextReminder(taskRequest.getNextReminder())
+                .setName(taskRequest.getName())
+                .setContent(taskRequest.getContent())
+                .setHasAttachment(taskRequest.getHasAttachment())
+                .setContentEntitySeries(taskRequest.getContentEntitySeries());
+
+        return switch (task.getContentEntitySeries()) {
+            case OWNER -> task.setOwnerId(taskRequest.getOwnerId().getULongId());
+            case TICKET -> task.setTicketId(taskRequest.getTicketId().getULongId());
+            case USER -> task.setUserId(taskRequest.getUserId());
+        };
     }
 
     @Override

@@ -9,12 +9,7 @@ import static com.fincity.security.jooq.tables.SecurityAppRegDesignation.*;
 import static com.fincity.security.jooq.tables.SecurityAppRegProfileRestriction.*;
 import static com.fincity.security.jooq.tables.SecurityAppRegUserDesignation.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.jooq.Condition;
 import org.jooq.DSLContext;
@@ -59,14 +54,14 @@ import reactor.util.function.Tuples;
 @Service
 public class AppRegistrationV2DAO {
 
-    private DSLContext dslContext;
+    private final DSLContext dslContext;
 
     public AppRegistrationV2DAO(DSLContext dslContext) {
         this.dslContext = dslContext;
     }
 
     public Mono<? extends AbstractAppRegistration> create(AppRegistrationObjectType type,
-            AbstractAppRegistration entity) {
+                                                          AbstractAppRegistration entity) {
 
         Record r = this.dslContext.newRecord(type.table, entity);
 
@@ -87,7 +82,7 @@ public class AppRegistrationV2DAO {
     }
 
     public Mono<Page<AbstractAppRegistration>> get(AppRegistrationObjectType type, ULong appId,
-            ULong clientId, String clientType, ClientLevelType level, String businessType, Pageable pageable) {
+                                                   ULong clientId, String clientType, ClientLevelType level, String businessType, Pageable pageable) {
 
         List<Condition> conditions = new ArrayList<>();
 
@@ -111,8 +106,8 @@ public class AppRegistrationV2DAO {
         return FlatMapUtil.flatMapMono(
 
                 () -> Flux.from(this.dslContext.selectFrom(type.table).where(condition)
-                        .orderBy(type.table.field("CREATED_AT").desc()).limit(pageable.getPageSize())
-                        .offset(pageable.getOffset())).map(e -> e.into(type.pojoClass))
+                                .orderBy(Objects.requireNonNull(type.table.field("CREATED_AT")).desc()).limit(pageable.getPageSize())
+                                .offset(pageable.getOffset())).map(e -> e.into(type.pojoClass))
                         .map(AbstractAppRegistration.class::cast).collectList(),
 
                 lst -> Mono.from(this.dslContext.selectCount().from(type.table).where(condition))
@@ -127,9 +122,65 @@ public class AppRegistrationV2DAO {
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppRegistrationV2DAO.get"));
     }
 
+    public Mono<List<ULong>> getAppIdsForRegistrationForAdditionalRegistration(ULong appId, ULong appClientId,
+                                                                               ULong urlClientId,
+                                                                               String clientType, ClientLevelType level, String businessType) {
+
+        Condition condition = DSL.and(SECURITY_APP_REG_ACCESS.APP_ID.eq(appId),
+                SECURITY_APP_REG_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
+                SECURITY_APP_REG_ACCESS.CLIENT_TYPE.eq(clientType),
+                SECURITY_APP_REG_ACCESS.LEVEL.eq(level.to(SecurityAppRegAccessLevel.class)),
+                SECURITY_APP_REG_ACCESS.BUSINESS_TYPE
+                        .eq(CommonsUtil.nonNullValue(businessType, AppRegistrationServiceV2.DEFAULT_BUSINESS_TYPE)),
+                SECURITY_APP_REG_ACCESS.REGISTER.eq(ByteUtil.ONE)
+        );
+
+        SelectConditionStep<Record3<ULong, ULong, Byte>> query = this.dslContext
+                .select(SECURITY_APP_REG_ACCESS.CLIENT_ID,
+                        SECURITY_APP_REG_ACCESS.ALLOW_APP_ID, SECURITY_APP_REG_ACCESS.WRITE_ACCESS)
+                .from(SECURITY_APP_REG_ACCESS)
+                .where(condition);
+
+        return Flux.from(query).collectList().map(e -> {
+
+            if (e.isEmpty())
+                return List.of(appId);
+
+            Map<ULong, List<ULong>> map = new HashMap<>();
+
+            for (var r : e) {
+                ULong clientId = r.get(SECURITY_APP_REG_ACCESS.CLIENT_ID);
+                ULong tup = r.get(SECURITY_APP_REG_ACCESS.ALLOW_APP_ID);
+                if (!map.containsKey(clientId))
+                    map.put(clientId, new ArrayList<>());
+                map.get(clientId).add(tup);
+            }
+
+            List<ULong> list = map.getOrDefault(urlClientId, map.get(appClientId));
+            if (list == null || list.isEmpty())
+                return List.of(appId);
+
+            ULong found = null;
+            for (var t : list) {
+                if (!t.equals(appId))
+                    continue;
+                found = t;
+                list.remove(t);
+                break;
+            }
+
+            if (found == null)
+                found = appId;
+
+            list.addFirst(found);
+
+            return list;
+        });
+    }
+
     public Mono<List<Tuple2<ULong, Boolean>>> getAppIdsForRegistration(ULong appId, ULong appClientId,
-            ULong urlClientId,
-            String clientType, ClientLevelType level, String businessType) {
+                                                                       ULong urlClientId,
+                                                                       String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_ACCESS.APP_ID.eq(appId),
                 SECURITY_APP_REG_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
@@ -176,15 +227,15 @@ public class AppRegistrationV2DAO {
             if (found == null)
                 found = Tuples.of(appId, false);
 
-            list.add(0, found);
+            list.addFirst(found);
 
             return list;
         });
     }
 
     public Mono<List<AppRegistrationFileAccess>> getFileAccessForRegistration(ULong appId, ULong appClientId,
-            ULong urlClientId,
-            String clientType, ClientLevelType level, String businessType) {
+                                                                              ULong urlClientId,
+                                                                              String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_FILE_ACCESS.APP_ID.eq(appId),
                 SECURITY_APP_REG_FILE_ACCESS.CLIENT_ID.in(appClientId, urlClientId),
@@ -212,10 +263,10 @@ public class AppRegistrationV2DAO {
                 });
     }
 
-    // Even though these are at client level we need to create in user registration
+    // Even though these are at client level, we need to create in user registration
     // as we need to put that in user.
     public Mono<List<AppRegistrationDepartment>> getDepartmentsForRegistration(ULong appId, ULong appClientId,
-            ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
+                                                                               ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_DEPARTMENT.APP_ID.eq(appId),
                 SECURITY_APP_REG_DEPARTMENT.CLIENT_ID.in(appClientId, urlClientId),
@@ -243,10 +294,10 @@ public class AppRegistrationV2DAO {
                 });
     }
 
-    // Even though these are at client level we need to create in user registration
+    // Even though these are at client level, we need to create in user registration
     // as we need to put that in user.
     public Mono<List<AppRegistrationDesignation>> getDesignationsForRegistration(ULong appId, ULong appClientId,
-            ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
+                                                                                 ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_DESIGNATION.APP_ID.eq(appId),
                 SECURITY_APP_REG_DESIGNATION.CLIENT_ID.in(appClientId, urlClientId),
@@ -275,7 +326,7 @@ public class AppRegistrationV2DAO {
     }
 
     public Mono<List<ULong>> getRoleIdsForUserRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-            String clientType, ClientLevelType level, String businessType) {
+                                                           String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_ROLE_V2.APP_ID.eq(appId),
                 SECURITY_APP_REG_USER_ROLE_V2.CLIENT_ID.in(appClientId, urlClientId),
@@ -309,7 +360,7 @@ public class AppRegistrationV2DAO {
     }
 
     public Mono<List<ULong>> getProfileIdsForUserRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-            String clientType, ClientLevelType level, String businessType) {
+                                                              String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_PROFILE.APP_ID.eq(appId),
                 SECURITY_APP_REG_USER_PROFILE.CLIENT_ID.in(appClientId, urlClientId),
@@ -343,7 +394,7 @@ public class AppRegistrationV2DAO {
     }
 
     public Mono<List<ULong>> getProfileRestrictionIdsForRegistration(ULong appId, ULong appClientId, ULong urlClientId,
-            String clientType, ClientLevelType level, String businessType) {
+                                                                     String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_PROFILE_RESTRICTION.APP_ID.eq(appId),
                 SECURITY_APP_REG_PROFILE_RESTRICTION.CLIENT_ID.in(appClientId, urlClientId),
@@ -378,7 +429,7 @@ public class AppRegistrationV2DAO {
     }
 
     public Mono<List<AppRegistrationUserDesignation>> getUserDesignationsForRegistration(ULong appId, ULong appClientId,
-            ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
+                                                                                         ULong urlClientId, String clientType, ClientLevelType level, String businessType) {
 
         Condition condition = DSL.and(SECURITY_APP_REG_USER_DESIGNATION.APP_ID.eq(appId),
                 SECURITY_APP_REG_USER_DESIGNATION.CLIENT_ID.in(appClientId, urlClientId),

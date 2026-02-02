@@ -2,11 +2,15 @@ package com.fincity.saas.entity.processor.service.content.base;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.CloneUtil;
+import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.content.base.BaseContentDAO;
 import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.content.BaseContentRequest;
 import com.fincity.saas.entity.processor.service.ActivityService;
 import com.fincity.saas.entity.processor.service.OwnerService;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
@@ -19,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 public abstract class BaseContentService<
                 R extends UpdatableRecord<R>, D extends BaseContentDto<D>, O extends BaseContentDAO<R, D>>
@@ -47,19 +52,15 @@ public abstract class BaseContentService<
     }
 
     @Override
-    public Mono<D> create(D entity) {
-        return super.hasAccess().flatMap(access -> this.createInternal(access, entity));
-    }
-
-    public Mono<D> createPublic(D entity) {
-        return super.hasPublicAccess().flatMap(access -> this.createInternal(access, entity));
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
     }
 
     @Override
-    public Mono<D> createInternal(ProcessorAccess access, D entity) {
-        return super.createInternal(access, entity)
+    public Mono<D> create(ProcessorAccess access, D entity) {
+        return super.create(access, entity)
                 .flatMap(cContent ->
-                        this.activityService.acContentCreate(cContent).then(Mono.just(cContent)));
+                        this.activityService.acContentCreate(access, cContent).then(Mono.just(cContent)));
     }
 
     @Override
@@ -87,7 +88,7 @@ public abstract class BaseContentService<
     public Mono<Integer> deleteIdentity(Identity identity) {
 
         return FlatMapUtil.flatMapMono(
-                () -> this.readIdentityWithAccess(identity),
+                () -> this.readByIdentity(identity),
                 entity -> super.delete(entity.getId()),
                 (entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
@@ -110,24 +111,37 @@ public abstract class BaseContentService<
         return FlatMapUtil.flatMapMono(
                 super::hasAccess,
                 access -> this.readById(access, id),
-                (access, entity) -> super.delete(entity.getId()),
+                super::deleteInternal,
                 (access, entity, deleted) -> this.activityService
                         .acContentDelete(entity, LocalDateTime.now())
                         .then(Mono.just(deleted)));
     }
 
     @Override
-    public Mono<D> update(D entity) {
+    public Mono<D> update(ProcessorAccess access, D entity) {
         return FlatMapUtil.flatMapMono(
-                super::hasAccess,
-                access -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
-                (access, oEntity) -> this.updateInternal(entity),
-                (access, oEntity, uEntity) ->
-                        activityService.acContentUpdate(oEntity, uEntity).then(Mono.just(uEntity)));
+                () -> this.readById(access, entity.getId()).map(CloneUtil::cloneObject),
+                oEntity -> super.update(access, entity),
+                (oEntity, uEntity) -> activityService
+                        .acContentUpdate(access, oEntity, uEntity)
+                        .then(Mono.just(uEntity)));
     }
 
-    public Mono<D> updateInternal(D entity) {
-        return super.update(entity).flatMap(updated -> this.evictCache(entity).map(evicted -> updated));
+    protected <T extends BaseContentRequest<T>> Mono<T> updateBaseIdentities(ProcessorAccess access, T request) {
+
+        if (request.getUserId() != null) return Mono.just(request);
+
+        Mono<Identity> ticketIdMono = request.getTicketId() != null
+                ? this.checkTicket(access, request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        Mono<Identity> ownerIdMono = request.getOwnerId() != null
+                ? this.checkOwner(access, request.getOwnerId(), request.getTicketId())
+                : Mono.just(Identity.ofNull());
+
+        return Mono.zip(ticketIdMono, ownerIdMono)
+                .map(tuple3 -> request.setTicketId(tuple3.getT1()).setOwnerId(tuple3.getT2()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "BaseContentService.updateIdentities"));
     }
 
     protected Mono<Identity> checkTicket(ProcessorAccess access, Identity ticketId) {
@@ -153,8 +167,8 @@ public abstract class BaseContentService<
 
         return FlatMapUtil.flatMapMono(
                 () -> Mono.zip(
-                        this.ownerService.readIdentityWithAccess(access, ownerId),
-                        this.ticketService.readIdentityWithAccess(access, ticketId)),
+                        this.ownerService.readByIdentity(access, ownerId),
+                        this.ticketService.readByIdentity(access, ticketId)),
                 tOEntity -> {
                     if (!tOEntity.getT2().getOwnerId().equals(tOEntity.getT1().getId()))
                         return this.msgService.throwMessage(
@@ -169,13 +183,22 @@ public abstract class BaseContentService<
                 });
     }
 
-    protected Mono<D> createTicketContent(ProcessorAccess access, D content) {
-        if (content.getTicketId() == null || content.isOwnerContent()) return Mono.empty();
+    protected Mono<D> createContent(ProcessorAccess access, D content) {
+        return switch (content.getContentEntitySeries()) {
+            case OWNER -> this.createOwnerContent(access, content);
+            case TICKET -> this.createTicketContent(access, content);
+            case USER -> this.createUserContent(access, content);
+        };
+    }
 
-        return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(content.getTicketId()), ticket -> {
+    private Mono<D> createTicketContent(ProcessorAccess access, D content) {
+        if (content.getTicketId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.TICKET))
+            return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(() -> this.ticketService.readById(access, content.getTicketId()), ticket -> {
                     content.setTicketId(ticket.getId());
                     content.setOwnerId(ticket.getOwnerId());
-                    return this.createInternal(access, content);
+                    return this.create(access, content);
                 })
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
@@ -184,16 +207,36 @@ public abstract class BaseContentService<
                         content.getTicketId()));
     }
 
-    protected Mono<D> createOwnerContent(ProcessorAccess access, D content) {
-        if (content.getOwnerId() == null || content.isTicketContent()) return Mono.empty();
+    private Mono<D> createOwnerContent(ProcessorAccess access, D content) {
+        if (content.getOwnerId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.OWNER))
+            return Mono.empty();
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.ownerService.readById(content.getOwnerId()),
-                        owner -> this.createInternal(access, content.setOwnerId(owner.getId())))
+                        () -> this.ownerService.readById(access, content.getOwnerId()),
+                        owner -> this.create(access, content.setOwnerId(owner.getId())))
                 .switchIfEmpty(this.msgService.throwMessage(
                         msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                         ProcessorMessageResourceService.IDENTITY_WRONG,
                         this.ownerService.getEntityName(),
                         content.getTicketId()));
+    }
+
+    private Mono<D> createUserContent(ProcessorAccess access, D content) {
+        if (content.getUserId() == null || !content.getContentEntitySeries().equals(ContentEntitySeries.USER))
+            return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.securityService.getUserInternal(
+                                content.getUserId().toBigInteger(), null),
+                        user -> {
+                            content.setUserId(ULongUtil.valueOf(user.getId()));
+                            content.setClientId(ULongUtil.valueOf(user.getClientId()));
+                            return this.create(access, content);
+                        })
+                .switchIfEmpty(this.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        "user",
+                        content.getUserId()));
     }
 }

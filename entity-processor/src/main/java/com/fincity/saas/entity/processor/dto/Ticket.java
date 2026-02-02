@@ -1,11 +1,15 @@
 package com.fincity.saas.entity.processor.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.commons.functions.annotations.IgnoreGeneration;
 import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.enums.Tag;
+import com.fincity.saas.entity.processor.model.request.CampaignTicketRequest;
+import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
-import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
@@ -21,6 +25,7 @@ import org.jooq.types.ULong;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
+@IgnoreGeneration
 public class Ticket extends BaseProcessorDto<Ticket> {
 
     @Serial
@@ -36,6 +41,11 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong status;
     private String source;
     private String subSource;
+    private ULong campaignId;
+    private Boolean dnc = Boolean.FALSE;
+    private Tag tag;
+
+    private ULong productTemplateId = null;
 
     public Ticket() {
         super();
@@ -44,6 +54,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.relationsMap.put(Fields.stage, EntitySeries.STAGE.getTable());
         this.relationsMap.put(Fields.status, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.assignedUserId);
+        this.relationsMap.put(Fields.campaignId, EntitySeries.CAMPAIGN.getTable());
+        this.relationsMap.put(Fields.productTemplateId, EntitySeries.PRODUCT_TEMPLATE.getTable());
     }
 
     public Ticket(Ticket ticket) {
@@ -58,6 +70,10 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.status = ticket.status;
         this.source = ticket.source;
         this.subSource = ticket.subSource;
+        this.campaignId = ticket.campaignId;
+        this.dnc = ticket.dnc;
+        this.tag = ticket.tag;
+        this.productTemplateId = ticket.productTemplateId;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {
@@ -78,6 +94,61 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                 .setSubSource(ticketRequest.getSubSource() != null ? ticketRequest.getSubSource() : null)
                 .setName(ticketRequest.getName())
                 .setDescription(ticketRequest.getDescription());
+    }
+
+    public static Ticket of(CampaignTicketRequest campaignTicketRequest) {
+        return new Ticket()
+                .setDialCode(
+                        campaignTicketRequest.getLeadDetails().getPhone() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getPhone()
+                                        .getCountryCode()
+                                : null)
+                .setPhoneNumber(
+                        campaignTicketRequest.getLeadDetails().getPhone() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getPhone()
+                                        .getNumber()
+                                : null)
+                .setEmail(
+                        campaignTicketRequest.getLeadDetails().getEmail() != null
+                                ? campaignTicketRequest
+                                        .getLeadDetails()
+                                        .getEmail()
+                                        .getAddress()
+                                : null)
+                .setSource(campaignTicketRequest.getLeadDetails().getSource())
+                .setSubSource(
+                        campaignTicketRequest.getLeadDetails().getSubSource() != null
+                                ? campaignTicketRequest.getLeadDetails().getSubSource()
+                                : null)
+                .setName(
+                        campaignTicketRequest.getLeadDetails().getFullName() != null
+                                ? campaignTicketRequest.getLeadDetails().getFullName()
+                                : campaignTicketRequest.getLeadDetails().getFirstName() + " "
+                                        + campaignTicketRequest.getLeadDetails().getLastName());
+    }
+
+    public static Ticket of(WalkInFormTicketRequest walkInFormTicketRequest) {
+        return new Ticket()
+                .setDialCode(
+                        walkInFormTicketRequest.getPhoneNumber() != null
+                                ? walkInFormTicketRequest.getPhoneNumber().getCountryCode()
+                                : null)
+                .setPhoneNumber(
+                        walkInFormTicketRequest.getPhoneNumber() != null
+                                ? walkInFormTicketRequest.getPhoneNumber().getNumber()
+                                : null)
+                .setEmail(
+                        walkInFormTicketRequest.getEmail() != null
+                                ? walkInFormTicketRequest.getEmail().getAddress()
+                                : null)
+                .setSubSource(
+                        walkInFormTicketRequest.getSubSource() != null ? walkInFormTicketRequest.getSubSource() : null)
+                .setName(walkInFormTicketRequest.getName())
+                .setDescription(walkInFormTicketRequest.getDescription());
     }
 
     @Override

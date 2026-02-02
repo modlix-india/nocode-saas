@@ -9,12 +9,13 @@ import com.fincity.saas.entity.processor.enums.StageType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesPlatform;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorStagesStageType;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductStageRules.EntityProcessorProductStageRulesPath;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateRules.EntityProcessorProductTemplateRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplateWalkInForms.EntityProcessorProductTemplateWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTemplates.EntityProcessorProductTemplatesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductTicketCRules.EntityProcessorProductTicketCRulesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProductWalkInForms.EntityProcessorProductWalkInFormsPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTicketDuplicationRules.EntityProcessorTicketDuplicationRulesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorStagesRecord;
 
@@ -116,7 +117,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * is where this stage will be displayed in CRM, can be PRE_QUALIFICATION,
      * POST_QUALIFICATION.
      */
-    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesPlatform.class), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<EntityProcessorStagesPlatform, Platform>(EntityProcessorStagesPlatform.class, Platform.class));
+    public final TableField<EntityProcessorStagesRecord, Platform> PLATFORM = createField(DSL.name("PLATFORM"), SQLDataType.VARCHAR(18).nullable(false).defaultValue(DSL.inline("PRE_QUALIFICATION", SQLDataType.VARCHAR)), this, "Platform is where this stage will be displayed in CRM, can be PRE_QUALIFICATION, POST_QUALIFICATION.", new EnumConverter<String, Platform>(String.class, Platform.class));
 
     /**
      * The column
@@ -130,7 +131,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.IS_PARENT</code>. Is this
      * the main Source or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_PARENT = createField(DSL.name("IS_PARENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Is this the main Source or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_PARENT = createField(DSL.name("IS_PARENT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Is this the main Source or not.");
 
     /**
      * The column
@@ -157,35 +158,35 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
      * <code>entity_processor.entity_processor_stages.STAGE_TYPE</code>. Stage
      * type can be Open or Closed.
      */
-    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorStagesStageType.class), this, "Stage type can be Open or Closed.", new EnumConverter<EntityProcessorStagesStageType, StageType>(EntityProcessorStagesStageType.class, StageType.class));
+    public final TableField<EntityProcessorStagesRecord, StageType> STAGE_TYPE = createField(DSL.name("STAGE_TYPE"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("OPEN", SQLDataType.VARCHAR)), this, "Stage type can be Open or Closed.", new EnumConverter<String, StageType>(String.class, StageType.class));
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_SUCCESS</code>. This
      * flag will tell whether this stage will end in a success or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a success or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_SUCCESS = createField(DSL.name("IS_SUCCESS"), SQLDataType.BOOLEAN, this, "This flag will tell whether this stage will end in a success or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_FAILURE</code>. This
      * flag will tell whether this stage will end in a failure or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.TINYINT, this, "This flag will tell whether this stage will end in a failure or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_FAILURE = createField(DSL.name("IS_FAILURE"), SQLDataType.BOOLEAN, this, "This flag will tell whether this stage will end in a failure or not.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_stages.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public final TableField<EntityProcessorStagesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorStagesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
 
     /**
      * The column
@@ -287,7 +288,7 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_PROCESSOR_STAGES_IDX1_STAGE_NAME, Indexes.ENTITY_PROCESSOR_STAGES_IDX2_STAGE_NAME_PLATFORM);
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_STAGES_IDX0_STAGES_AC_CC, Indexes.ENTITY_PROCESSOR_STAGES_IDX1_STAGE_NAME, Indexes.ENTITY_PROCESSOR_STAGES_IDX2_STAGE_NAME_PLATFORM);
     }
 
     @Override
@@ -351,31 +352,90 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         return _fk3StagesParentLevel_1;
     }
 
-    private transient EntityProcessorProductStageRulesPath _entityProcessorProductStageRules;
+    private transient EntityProcessorProductTemplateWalkInFormsPath _fk2ProductTemplateWalkInFormsStageId;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_stage_rules</code> table
+     * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>
+     * table, via the <code>FK2_PRODUCT_TEMPLATE_WALK_IN_FORMS_STAGE_ID</code>
+     * key
      */
-    public EntityProcessorProductStageRulesPath entityProcessorProductStageRules() {
-        if (_entityProcessorProductStageRules == null)
-            _entityProcessorProductStageRules = new EntityProcessorProductStageRulesPath(this, null, Keys.FK2_PRODUCT_RULES_STAGE_ID.getInverseKey());
+    public EntityProcessorProductTemplateWalkInFormsPath fk2ProductTemplateWalkInFormsStageId() {
+        if (_fk2ProductTemplateWalkInFormsStageId == null)
+            _fk2ProductTemplateWalkInFormsStageId = new EntityProcessorProductTemplateWalkInFormsPath(this, null, Keys.FK2_PRODUCT_TEMPLATE_WALK_IN_FORMS_STAGE_ID.getInverseKey());
 
-        return _entityProcessorProductStageRules;
+        return _fk2ProductTemplateWalkInFormsStageId;
     }
 
-    private transient EntityProcessorProductTemplateRulesPath _entityProcessorProductTemplateRules;
+    private transient EntityProcessorProductWalkInFormsPath _fk2ProductWalkInFormsStageId;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>entity_processor.entity_processor_product_template_rules</code>
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table, via the <code>FK2_PRODUCT_WALK_IN_FORMS_STAGE_ID</code> key
+     */
+    public EntityProcessorProductWalkInFormsPath fk2ProductWalkInFormsStageId() {
+        if (_fk2ProductWalkInFormsStageId == null)
+            _fk2ProductWalkInFormsStageId = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK2_PRODUCT_WALK_IN_FORMS_STAGE_ID.getInverseKey());
+
+        return _fk2ProductWalkInFormsStageId;
+    }
+
+    private transient EntityProcessorProductTicketCRulesPath _entityProcessorProductTicketCRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_ticket_c_rules</code>
      * table
      */
-    public EntityProcessorProductTemplateRulesPath entityProcessorProductTemplateRules() {
-        if (_entityProcessorProductTemplateRules == null)
-            _entityProcessorProductTemplateRules = new EntityProcessorProductTemplateRulesPath(this, null, Keys.FK2_PRODUCT_TEMPLATE_RULES_STAGE_ID.getInverseKey());
+    public EntityProcessorProductTicketCRulesPath entityProcessorProductTicketCRules() {
+        if (_entityProcessorProductTicketCRules == null)
+            _entityProcessorProductTicketCRules = new EntityProcessorProductTicketCRulesPath(this, null, Keys.FK2_PTCR_SID.getInverseKey());
 
-        return _entityProcessorProductTemplateRules;
+        return _entityProcessorProductTicketCRules;
+    }
+
+    private transient EntityProcessorTicketDuplicationRulesPath _entityProcessorTicketDuplicationRules;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_ticket_duplication_rules</code>
+     * table
+     */
+    public EntityProcessorTicketDuplicationRulesPath entityProcessorTicketDuplicationRules() {
+        if (_entityProcessorTicketDuplicationRules == null)
+            _entityProcessorTicketDuplicationRules = new EntityProcessorTicketDuplicationRulesPath(this, null, Keys.FK2_TDR_MSID.getInverseKey());
+
+        return _entityProcessorTicketDuplicationRules;
+    }
+
+    private transient EntityProcessorProductTemplateWalkInFormsPath _fk3ProductTemplateWalkInFormsStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_template_walk_in_forms</code>
+     * table, via the <code>FK3_PRODUCT_TEMPLATE_WALK_IN_FORMS_STATUS_ID</code>
+     * key
+     */
+    public EntityProcessorProductTemplateWalkInFormsPath fk3ProductTemplateWalkInFormsStatusId() {
+        if (_fk3ProductTemplateWalkInFormsStatusId == null)
+            _fk3ProductTemplateWalkInFormsStatusId = new EntityProcessorProductTemplateWalkInFormsPath(this, null, Keys.FK3_PRODUCT_TEMPLATE_WALK_IN_FORMS_STATUS_ID.getInverseKey());
+
+        return _fk3ProductTemplateWalkInFormsStatusId;
+    }
+
+    private transient EntityProcessorProductWalkInFormsPath _fk3ProductWalkInFormsStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_product_walk_in_forms</code>
+     * table, via the <code>FK3_PRODUCT_WALK_IN_FORMS_STATUS_ID</code> key
+     */
+    public EntityProcessorProductWalkInFormsPath fk3ProductWalkInFormsStatusId() {
+        if (_fk3ProductWalkInFormsStatusId == null)
+            _fk3ProductWalkInFormsStatusId = new EntityProcessorProductWalkInFormsPath(this, null, Keys.FK3_PRODUCT_WALK_IN_FORMS_STATUS_ID.getInverseKey());
+
+        return _fk3ProductWalkInFormsStatusId;
     }
 
     private transient EntityProcessorTicketsPath _fk3TicketsStageId;
@@ -392,6 +452,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
         return _fk3TicketsStageId;
     }
 
+    private transient EntityProcessorActivitiesPath _fk4ActivitiesStageId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table, via the
+     * <code>FK4_ACTIVITIES_STAGE_ID</code> key
+     */
+    public EntityProcessorActivitiesPath fk4ActivitiesStageId() {
+        if (_fk4ActivitiesStageId == null)
+            _fk4ActivitiesStageId = new EntityProcessorActivitiesPath(this, null, Keys.FK4_ACTIVITIES_STAGE_ID.getInverseKey());
+
+        return _fk4ActivitiesStageId;
+    }
+
     private transient EntityProcessorTicketsPath _fk4TicketsStatusId;
 
     /**
@@ -404,6 +478,20 @@ public class EntityProcessorStages extends TableImpl<EntityProcessorStagesRecord
             _fk4TicketsStatusId = new EntityProcessorTicketsPath(this, null, Keys.FK4_TICKETS_STATUS_ID.getInverseKey());
 
         return _fk4TicketsStatusId;
+    }
+
+    private transient EntityProcessorActivitiesPath _fk5ActivitiesStatusId;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table, via the
+     * <code>FK5_ACTIVITIES_STATUS_ID</code> key
+     */
+    public EntityProcessorActivitiesPath fk5ActivitiesStatusId() {
+        if (_fk5ActivitiesStatusId == null)
+            _fk5ActivitiesStatusId = new EntityProcessorActivitiesPath(this, null, Keys.FK5_ACTIVITIES_STATUS_ID.getInverseKey());
+
+        return _fk5ActivitiesStatusId;
     }
 
     @Override

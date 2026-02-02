@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
@@ -105,10 +106,13 @@ public class UserSubOrganizationService
     }
 
     public Mono<Boolean> evictOwnerCache(ULong clientId, ULong userId) {
+
+        if (userId == null) return this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER));
+
         return Mono.zip(
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
-                this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId))
-                ).map(evicted -> evicted.getT1() && evicted.getT2());
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, OWNER)),
+                        this.cacheService.evict(this.getCacheName(), this.getCacheKey(clientId, userId)))
+                .map(evicted -> evicted.getT1() && evicted.getT2());
     }
 
     private <T> Mono<T> forbiddenError(String message, Object... params) {
@@ -131,11 +135,19 @@ public class UserSubOrganizationService
         return this.tokenService.evictTokensOfUser(id);
     }
 
+    @Override
+    protected Mono<User> updatableEntity(User entity) {
+        return this.read(entity.getId()).map(e -> {
+            e.setReportingTo(entity.getReportingTo());
+            return e;
+        });
+    }
+
     @PreAuthorize("hasAuthority('Authorities.User_UPDATE')")
     public Mono<User> updateManager(ULong userId, ULong managerId) {
 
         return FlatMapUtil.flatMapMono(() -> this.dao.readById(userId), user -> {
-                    if (user.getReportingTo().equals(managerId)) return Mono.just(user);
+                    if (user.getReportingTo() != null && user.getReportingTo().equals(managerId)) return Mono.just(user);
                     return this.updateManager(user, managerId);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.updateReportingManager"));
@@ -146,36 +158,35 @@ public class UserSubOrganizationService
         return FlatMapUtil.flatMapMono(
                         SecurityContextUtil::getUsersContextAuthentication,
                         ca -> Mono.just(user),
-                        (ca, uUser) -> ca.isSystemClient()
+                        (ContextAuthentication ca, User uUser) -> ca.isSystemClient()
                                 ? Mono.just(Boolean.TRUE)
                                 : clientService
                                         .isBeingManagedBy(
                                                 ULongUtil.valueOf(ca.getUser().getClientId()), uUser.getClientId())
-                                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                                        .<Boolean>flatMap(BooleanUtil::safeValueOfWithEmpty),
                         (ca, uUser, sysOrManaged) -> this.canReportTo(uUser.getClientId(), managerId, uUser.getId())
                                 .flatMap(canReport -> !BooleanUtil.safeValueOf(canReport)
                                         ? this.msgService.throwMessage(
                                                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
                                                 SecurityMessageResourceService.USER_REPORTING_ERROR)
                                         : Mono.just(uUser)),
-                        (ca, uUser, sysOrManaged, validUser) -> {
-                            ULong oldReportingTo = validUser.getReportingTo();
+                        (ContextAuthentication ca, User uUser, Boolean sysOrManaged, User validUser) -> {
                             return super.update(validUser.setReportingTo(managerId))
-                                    .flatMap(updated -> this.evictHierarchyCaches(updated, oldReportingTo, managerId));
+                                    .flatMap(updated -> this.evictHierarchyCaches(updated, validUser.getReportingTo(), managerId));
                         },
                         (ca, uUser, sysOrManaged, validUser, updated) ->
-                                this.evictTokens(updated.getId()).map(evicted -> updated))
+                                this.evictTokens(updated.getId()).<User>map(evicted -> updated))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user reporting manager"));
     }
 
     private Mono<User> evictHierarchyCaches(User updatedUser, ULong oldReportingTo, ULong newReportingTo) {
 
-        ULong clientId = updatedUser.getClientId();
+        if (oldReportingTo == null || newReportingTo == null) return Mono.just(updatedUser);
 
-        return Flux.fromIterable(Set.of(oldReportingTo, newReportingTo))
+        return Flux.fromIterable(List.of(oldReportingTo, newReportingTo))
                 .filter(Objects::nonNull)
-                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(clientId, managerId)))
+                .flatMap(managerId -> this.cacheService.evict(getCacheName(), getCacheKey(updatedUser.getClientId(), managerId)))
                 .then(Mono.just(updatedUser))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.evictHierarchyCaches"));
     }
@@ -272,5 +283,29 @@ public class UserSubOrganizationService
                 this.getCacheName(),
                 () -> this.dao.getUserIdsByClientId(clientId, null).collectList(),
                 this.getCacheKey(clientId, OWNER));
+    }
+
+    private Flux<User> mapIdsToUser(Flux<ULong> idsFlux) {
+        return idsFlux.collectList()
+                .flatMapMany(ids -> (ids == null || ids.isEmpty())
+                        ? Flux.empty()
+                        : this.userService.readByIds(ids, null).flatMapMany(Flux::fromIterable))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserSubOrganizationService.mapIdsToResponses"));
+    }
+
+    public Flux<User> getCurrentUserSubOrgUsers() {
+        return this.mapIdsToUser(this.getCurrentUserSubOrg())
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getCurrentUserSubOrgUsers"));
+    }
+
+    public Flux<User> getUserSubOrgInternalUsers(String appCode, ULong clientId, ULong userId) {
+        return this.mapIdsToUser(this.getUserSubOrgInternal(appCode, clientId, userId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgInternalUsers"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.User_READ')")
+    public Flux<User> getUserSubOrgUsers(String appCode, ULong clientId, ULong userId, ULong managerId) {
+        return this.mapIdsToUser(this.getUserSubOrg(appCode, clientId, userId, managerId))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.getUserSubOrgUsers"));
     }
 }

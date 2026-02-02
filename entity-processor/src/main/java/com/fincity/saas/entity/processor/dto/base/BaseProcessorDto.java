@@ -23,6 +23,8 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     @Version
     private int version = 1;
 
+    private ULong clientId;
+
     protected BaseProcessorDto() {
         super();
     }
@@ -30,6 +32,13 @@ public abstract class BaseProcessorDto<T extends BaseProcessorDto<T>> extends Ba
     protected BaseProcessorDto(BaseProcessorDto<T> baseProcessorDto) {
         super(baseProcessorDto);
         this.version = baseProcessorDto.version;
+        this.clientId = baseProcessorDto.clientId;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T setClientId(ULong clientId) {
+        this.clientId = clientId;
+        return (T) this;
     }
 
     @JsonIgnore

@@ -8,10 +8,11 @@ import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConver
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesActivityAction;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorActivitiesObjectEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorStages.EntityProcessorStagesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
@@ -26,6 +27,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.JSON;
 import org.jooq.Name;
@@ -116,7 +118,21 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.TICKET_ID</code>.
      * Ticket related to this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Ticket related to this Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.OWNER_ID</code>. Owner
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> OWNER_ID = createField(DSL.name("OWNER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Owner related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.USER_ID</code>. User
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "User related to this Activity.");
 
     /**
      * The column
@@ -131,6 +147,20 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * related to this Activity.
      */
     public final TableField<EntityProcessorActivitiesRecord, ULong> NOTE_ID = createField(DSL.name("NOTE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Note related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.STAGE_ID</code>. Stage
+     * related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> STAGE_ID = createField(DSL.name("STAGE_ID"), SQLDataType.BIGINTUNSIGNED, this, "Stage related to this Activity.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_activities.STATUS_ID</code>.
+     * Status related to this Activity.
+     */
+    public final TableField<EntityProcessorActivitiesRecord, ULong> STATUS_ID = createField(DSL.name("STATUS_ID"), SQLDataType.BIGINTUNSIGNED, this, "Status related to this Activity.");
 
     /**
      * The column
@@ -149,9 +179,8 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.ACTIVITY_ACTION</code>.
-     * Activity Action categories for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false).asEnumDataType(EntityProcessorActivitiesActivityAction.class), this, "Activity Action categories for this Activity.", new EnumConverter<EntityProcessorActivitiesActivityAction, ActivityAction>(EntityProcessorActivitiesActivityAction.class, ActivityAction.class));
+    public final TableField<EntityProcessorActivitiesRecord, ActivityAction> ACTIVITY_ACTION = createField(DSL.name("ACTIVITY_ACTION"), SQLDataType.VARCHAR(19).nullable(false), this, "", new EnumConverter<String, ActivityAction>(String.class, ActivityAction.class));
 
     /**
      * The column
@@ -165,7 +194,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.OBJECT_ENTITY_SERIES</code>.
      * Entity Series of the object associated with this Activity. 
      */
-    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorActivitiesObjectEntitySeries.class), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<EntityProcessorActivitiesObjectEntitySeries, EntitySeries>(EntityProcessorActivitiesObjectEntitySeries.class, EntitySeries.class));
+    public final TableField<EntityProcessorActivitiesRecord, EntitySeries> OBJECT_ENTITY_SERIES = createField(DSL.name("OBJECT_ENTITY_SERIES"), SQLDataType.VARCHAR(33).nullable(false).defaultValue(DSL.inline("XXX", SQLDataType.VARCHAR)), this, "Entity Series of the object associated with this Activity. ", new EnumConverter<String, EntitySeries>(String.class, EntitySeries.class));
 
     /**
      * The column
@@ -186,14 +215,14 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
      * <code>entity_processor.entity_processor_activities.TEMP_ACTIVE</code>.
      * Temporary active flag for this Activity.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this Activity.");
+    public final TableField<EntityProcessorActivitiesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this Activity.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_activities.IS_ACTIVE</code>. Flag
      * to check if this Activity is active or not.
      */
-    public final TableField<EntityProcessorActivitiesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this Activity is active or not.");
+    public final TableField<EntityProcessorActivitiesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this Activity is active or not.");
 
     /**
      * The column
@@ -280,6 +309,11 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX0_ACTIVITIES_AC_CC, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX1_ACTIVITIES_ACTIVITY_ACTION, Indexes.ENTITY_PROCESSOR_ACTIVITIES_IDX2_ACTIVITIES_OBJECT_ENTITY_SERIES);
+    }
+
+    @Override
     public Identity<EntityProcessorActivitiesRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorActivitiesRecord, ULong>) super.getIdentity();
     }
@@ -296,7 +330,7 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
 
     @Override
     public List<ForeignKey<EntityProcessorActivitiesRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID);
+        return Arrays.asList(Keys.FK1_ACTIVITIES_TICKET_ID, Keys.FK2_ACTIVITIES_TASK_ID, Keys.FK3_ACTIVITIES_NOTE_ID, Keys.FK4_ACTIVITIES_STAGE_ID, Keys.FK5_ACTIVITIES_STATUS_ID, Keys.FK_ACTIVITIES_OWNER_ID);
     }
 
     private transient EntityProcessorTicketsPath _entityProcessorTickets;
@@ -336,6 +370,47 @@ public class EntityProcessorActivities extends TableImpl<EntityProcessorActiviti
             _entityProcessorNotes = new EntityProcessorNotesPath(this, Keys.FK3_ACTIVITIES_NOTE_ID, null);
 
         return _entityProcessorNotes;
+    }
+
+    private transient EntityProcessorStagesPath _fk4ActivitiesStageId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK4_ACTIVITIES_STAGE_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk4ActivitiesStageId() {
+        if (_fk4ActivitiesStageId == null)
+            _fk4ActivitiesStageId = new EntityProcessorStagesPath(this, Keys.FK4_ACTIVITIES_STAGE_ID, null);
+
+        return _fk4ActivitiesStageId;
+    }
+
+    private transient EntityProcessorStagesPath _fk5ActivitiesStatusId;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_stages</code> table, via the
+     * <code>FK5_ACTIVITIES_STATUS_ID</code> key.
+     */
+    public EntityProcessorStagesPath fk5ActivitiesStatusId() {
+        if (_fk5ActivitiesStatusId == null)
+            _fk5ActivitiesStatusId = new EntityProcessorStagesPath(this, Keys.FK5_ACTIVITIES_STATUS_ID, null);
+
+        return _fk5ActivitiesStatusId;
+    }
+
+    private transient EntityProcessorOwnersPath _entityProcessorOwners;
+
+    /**
+     * Get the implicit join path to the
+     * <code>entity_processor.entity_processor_owners</code> table.
+     */
+    public EntityProcessorOwnersPath entityProcessorOwners() {
+        if (_entityProcessorOwners == null)
+            _entityProcessorOwners = new EntityProcessorOwnersPath(this, Keys.FK_ACTIVITIES_OWNER_ID, null);
+
+        return _entityProcessorOwners;
     }
 
     @Override

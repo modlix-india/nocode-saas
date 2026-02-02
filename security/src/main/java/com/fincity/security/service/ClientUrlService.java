@@ -57,7 +57,7 @@ public class ClientUrlService
     private static final String CACHE_NAME_CLIENT_URI = "uri";
 
     // This is used in gateway
-    private static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
+    public static final String CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE = "gatewayClientAppCode";
 
     private static final String HTTPS = "https://";
 
@@ -321,5 +321,19 @@ public class ClientUrlService
         String nStr = trimBackSlash(url);
 
         return !nStr.startsWith(HTTPS) ? HTTPS + nStr : nStr;
+    }
+
+    public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
+        return FlatMapUtil.flatMapMono(
+
+                        SecurityContextUtil::getUsersContextAuthentication,
+
+                        ca -> this.appService.hasReadAccess(appCode, ca.getClientCode()).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess) -> this.clientService.isBeingManagedBy(ca.getClientCode(), clientCode).filter(BooleanUtil::safeValueOf),
+
+                        (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode)
+                ).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getClientUrls"));
     }
 }

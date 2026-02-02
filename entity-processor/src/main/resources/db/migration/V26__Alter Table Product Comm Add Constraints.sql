@@ -1,0 +1,13 @@
+RENAME TABLE `entity_processor`.`entity_processor_product_comm` TO `entity_processor`.`entity_processor_product_comms`;
+
+ALTER TABLE `entity_processor`.`entity_processor_product_comms`
+    ADD CONSTRAINT `FK1_PRODUCT_COMMS_PRODUCT_ID` FOREIGN KEY (`PRODUCT_ID`)
+        REFERENCES `entity_processor`.`entity_processor_products` (`ID`)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    ADD INDEX `IDX1_PRODUCT_COMMS_APP_CLIENT_PRODUCT` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`),
+    ADD INDEX `IDX2_PRODUCT_COMMS_AC_CC_PRODUCT_CONNECTION` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `CONNECTION_TYPE`),
+    ADD INDEX `IDX3_PRODUCT_COMMS_AC_CC_PRODUCT_IS_DEFAULT` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `CONNECTION_TYPE`,
+                                                             `IS_DEFAULT`),
+    ADD INDEX `IDX4_PRODUCT_COMMS_AC_CC_PRODUCT_DIAL_PHONE` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `DIAL_CODE`, `PHONE_NUMBER`),
+    ADD INDEX `IDX5_PRODUCT_COMMS_AC_CC_PRODUCT_EMAIL` (`APP_CODE`, `CLIENT_CODE`, `PRODUCT_ID`, `EMAIL`);

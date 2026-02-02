@@ -22,6 +22,7 @@ public class Profile extends AbstractUpdatableDTO<ULong, ULong> {
     private ULong appId;
     private ULong clientId;
     private String name;
+    private String title;
     private String description;
     private boolean defaultProfile;
 

@@ -3,10 +3,18 @@ package com.fincity.saas.commons.util;
 import static com.fincity.saas.commons.util.CommonsUtil.*;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fincity.nocode.kirun.engine.model.FunctionDefinition;
 import com.fincity.nocode.kirun.engine.model.ParameterReference;
 import com.fincity.nocode.kirun.engine.model.Position;
@@ -28,6 +36,7 @@ import reactor.util.function.Tuples;
 public class DifferenceExtractor {
 
 	private static final String DIFFERENCE_EXTRACTOR_EXTRACT = "DifferenceExtractor.extract";
+	private static final JsonNodeFactory FACTORY = JsonNodeFactory.instance;
 
 	public static Mono<Map<String, ?>> extract(Map<String, ?> incoming, Map<String, ?> existing) { // NOSONAR
 
@@ -124,6 +133,9 @@ public class DifferenceExtractor {
 		if (existing instanceof JsonElement est && incoming instanceof JsonElement ist)
 			return extract(ist, est).map(Function.identity());
 
+		if (existing instanceof JsonNode est && incoming instanceof JsonNode ist)
+			return extract(ist, est).map(Function.identity());
+
 		return Mono.just(incoming);
 	}
 
@@ -171,6 +183,46 @@ public class DifferenceExtractor {
 				})
 				.flatMap(e -> e.size() == 0 ? Mono.just(new JsonObject()) : Mono.just(e));
 	}
+
+    public static Mono<JsonNode> extract(JsonNode incoming, JsonNode existing) {
+
+        if (incoming.equals(existing)) return Mono.empty();
+
+        if (existing == null || existing.isNull()) return Mono.just(incoming);
+
+        if (existing.isValueNode() || existing.isArray()) return Mono.just(incoming);
+
+        if (isEmpty(existing)) {
+            if (isEmpty(incoming)) return Mono.just(FACTORY.objectNode());
+            else return Mono.just(incoming);
+        }
+
+        if (isEmpty(incoming)) {
+            ObjectNode jo = FACTORY.objectNode();
+            existing.fieldNames().forEachRemaining(k -> jo.set(k, FACTORY.nullNode()));
+            return Mono.just(jo);
+        }
+
+        Set<String> allKeys = Stream.concat(toStream(existing.fieldNames()), toStream(incoming.fieldNames()))
+                .collect(Collectors.toSet());
+
+        return Flux.fromIterable(allKeys)
+                .flatMap(key -> extract(incoming.get(key), existing.get(key)).map(node -> Tuples.of(key, node)))
+                .reduce(FACTORY.objectNode(), (obj, tup) -> {
+                    obj.set(tup.getT1(), tup.getT2());
+                    return obj;
+                })
+                .flatMap(e -> isEmpty(e) ? Mono.just(FACTORY.objectNode()) : Mono.just(e));
+    }
+
+    private static boolean isEmpty(JsonNode node) {
+        return node == null || node.isNull() || (node.isObject() && node.isEmpty());
+    }
+
+    private static Stream<String> toStream(Iterator<String> iterator) {
+        Iterable<String> iterable = () -> iterator;
+        return StreamSupport.stream(iterable.spliterator(), false);
+    }
 
 	private static Mono<Object> extract(ParameterReference incoming, ParameterReference existing) {
 

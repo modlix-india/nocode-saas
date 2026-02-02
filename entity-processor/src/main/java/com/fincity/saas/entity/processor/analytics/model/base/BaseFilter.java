@@ -1,0 +1,116 @@
+package com.fincity.saas.entity.processor.analytics.model.base;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.util.DatePair;
+import com.fincity.saas.entity.processor.util.CollectionUtil;
+import java.io.Serial;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.Data;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldNameConstants;
+import org.jooq.types.ULong;
+
+@Data
+@Accessors(chain = true)
+@ToString(callSuper = true)
+@FieldNameConstants
+public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 5132180322339375704L;
+
+    private List<ULong> createdByIds;
+    private List<ULong> assignedUserIds;
+    private List<ULong> clientIds;
+
+    private boolean includeZero;
+    private boolean includePercentage;
+    private boolean includeTotal;
+    private TimePeriod timePeriod = TimePeriod.WEEKS;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
+    private String timezone;
+
+    @JsonIgnore
+    private BaseFieldData baseFieldData = new BaseFieldData();
+
+    public T filterCreatedByIds(List<ULong> createdByIds) {
+        this.createdByIds = CollectionUtil.intersectLists(this.createdByIds, createdByIds);
+        return (T) this;
+    }
+
+    public T filterAssignedUserIds(List<ULong> assignedUserIds) {
+        this.assignedUserIds = CollectionUtil.intersectLists(this.assignedUserIds, assignedUserIds);
+        return (T) this;
+    }
+
+    public T filterClientIds(List<ULong> clientIds) {
+        this.clientIds = CollectionUtil.intersectLists(this.clientIds, clientIds);
+        return (T) this;
+    }
+
+    public T setCreatedBys(List<IdAndValue<ULong, String>> createdBys) {
+        this.baseFieldData.setCreatedBys(createdBys);
+        return (T) this;
+    }
+
+    public T setAssignedUsers(List<IdAndValue<ULong, String>> assignedUsers) {
+        this.baseFieldData.setAssignedUsers(assignedUsers);
+        return (T) this;
+    }
+
+    public T setClients(List<IdAndValue<ULong, String>> clients) {
+        this.baseFieldData.setClients(clients);
+        return (T) this;
+    }
+
+    public ReportOptions toReportOptions() {
+        return new ReportOptions(
+                DatePair.of(this.startDate, this.endDate, this.timezone),
+                this.timePeriod,
+                this.includeZero,
+                this.includePercentage,
+                this.includeTotal,
+                null,
+                this.timezone);
+    }
+
+    public ReportOptions toReportOptions(Boolean includeNone) {
+        return new ReportOptions(
+                DatePair.of(this.startDate, this.endDate, this.timezone),
+                this.timePeriod,
+                this.includeZero,
+                this.includePercentage,
+                this.includeTotal,
+                includeNone,
+                this.timezone);
+    }
+
+    public record ReportOptions(
+            DatePair totalDatePair,
+            TimePeriod timePeriod,
+            boolean includeZero,
+            boolean includePercentage,
+            boolean includeTotal,
+            Boolean includeNone,
+            String timezone) {}
+
+    @Data
+    @Accessors(chain = true)
+    @ToString(callSuper = true)
+    @FieldNameConstants
+    public static class BaseFieldData implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1408689325675518972L;
+
+        private List<IdAndValue<ULong, String>> createdBys;
+        private List<IdAndValue<ULong, String>> assignedUsers;
+        private List<IdAndValue<ULong, String>> clients;
+    }
+}

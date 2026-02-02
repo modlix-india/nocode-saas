@@ -4530,436 +4530,860 @@ CREATE TABLE `security`.`security_user_request`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
 
--- V1__initial_script.sql (Worker)
+-- V49__Add Notification Permission and roles.sql (security)
 
-CREATE DATABASE IF NOT EXISTS `worker`;
+START TRANSACTION;
 
--- V2__worker_scheduler.sql (Worker)
+-- Adding Notification package, role and permissions
+SELECT `ID`
+  FROM `security_client`
+ WHERE `CODE` = 'SYSTEM'
+ LIMIT 1
+  INTO @`v_client_system`;
 
-USE `worker`;
+INSERT IGNORE INTO `security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification CREATE', 'Notification create'),
+       (@`v_client_system`, 'Notification READ', 'Notification read'),
+       (@`v_client_system`, 'Notification UPDATE', 'Notification update'),
+       (@`v_client_system`, 'Notification DELETE', 'Notification delete');
 
--- Create Scheduler Table
-CREATE TABLE IF NOT EXISTS `worker_scheduler`
+INSERT IGNORE INTO `security_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification Manager', 'Role to hold Notification operations permissions');
+
+SELECT `ID`
+  FROM `security_role`
+ WHERE `NAME` = 'Notification Manager'
+ LIMIT 1
+  INTO @`v_role_notification`;
+
+INSERT IGNORE INTO `security_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification CREATE' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification READ' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification UPDATE' LIMIT 1)),
+       (@`v_role_notification`, (SELECT `ID` FROM `security_permission` WHERE `NAME` = 'Notification DELETE' LIMIT 1));
+
+INSERT IGNORE INTO `security_package` (`CLIENT_ID`, `CODE`, `NAME`, `DESCRIPTION`, `BASE`)
+VALUES (@`v_client_system`, 'NOTI', 'Notifications Management',
+        'Notifications management roles and permissions will be part of this package', FALSE);
+
+SELECT `ID`
+  FROM `security_package`
+ WHERE `CODE` = 'NOTI'
+ LIMIT 1
+  INTO @`v_package_notification`;
+
+INSERT IGNORE INTO `security_package_role` (`ROLE_ID`, `PACKAGE_ID`)
+VALUES (@`v_role_notification`, @`v_package_notification`);
+
+COMMIT;
+
+-- Adding Notification package and role to the system client and system user
+START TRANSACTION;
+
+INSERT IGNORE INTO `security_client_package` (`CLIENT_ID`, `PACKAGE_ID`)
+VALUES (@`v_client_system`, @`v_package_notification`);
+
+SELECT `ID`
+  FROM `security`.`security_user`
+ WHERE `USER_NAME` = 'sysadmin'
+ LIMIT 1
+  INTO @`v_user_sysadmin`;
+
+INSERT IGNORE INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`)
+VALUES (@`v_user_sysadmin`, @`v_role_notification`);
+
+COMMIT;
+
+-- V50__ClientLevel Addition.sql (security)
+
+use `security`;
+
+ALTER TABLE `security`.`security_client`
+    ADD COLUMN `LEVEL_TYPE` ENUM ('SYSTEM', 'CLIENT', 'CUSTOMER', 'CONSUMER') NOT NULL DEFAULT 'CLIENT' AFTER `TYPE_CODE`;
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE security.security_client AS c
+    LEFT JOIN security.security_client_hierarchy AS h ON h.CLIENT_ID = c.ID
+   SET c.LEVEL_TYPE = CASE
+                          WHEN h.MANAGE_CLIENT_LEVEL_0 IS NULL THEN 'SYSTEM'
+                          WHEN h.MANAGE_CLIENT_LEVEL_1 IS NULL THEN 'CLIENT'
+                          WHEN h.MANAGE_CLIENT_LEVEL_2 IS NULL THEN 'CUSTOMER'
+                          WHEN h.MANAGE_CLIENT_LEVEL_3 IS NULL THEN 'CONSUMER'
+                          ELSE c.LEVEL_TYPE
+       END
+ WHERE c.LEVEL_TYPE <> CASE
+                           WHEN h.MANAGE_CLIENT_LEVEL_0 IS NULL THEN 'SYSTEM'
+                           WHEN h.MANAGE_CLIENT_LEVEL_1 IS NULL THEN 'CLIENT'
+                           WHEN h.MANAGE_CLIENT_LEVEL_2 IS NULL THEN 'CUSTOMER'
+                           WHEN h.MANAGE_CLIENT_LEVEL_3 IS NULL THEN 'CONSUMER'
+                           ELSE c.LEVEL_TYPE
+     END;
+SET SQL_SAFE_UPDATES = 1;
+
+-- V51__Designation Department app registration independence.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_app_reg_designation`
+    DROP FOREIGN KEY `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID`;
+ALTER TABLE `security`.`security_app_reg_designation`
+    CHANGE COLUMN `DEPARTMENT_ID` `DEPARTMENT_ID` BIGINT UNSIGNED NULL COMMENT 'Department ID for which this designation belongs to';
+ALTER TABLE `security`.`security_app_reg_designation`
+    ADD CONSTRAINT `FK2_APP_REG_DESIGNATION_DEPARTMENT_ID`
+        FOREIGN KEY (`DEPARTMENT_ID`)
+            REFERENCES `security`.`security_app_reg_department` (`ID`)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE;
+
+-- V52__Mobile Application Role.sql (security)
+
+use security;
+
+select id
+  from security.security_client
+ where CODE = 'SYSTEM'
+  into @v_system_client_id;
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@v_system_client_id, 'MobileApp CREATE', 'Create', 'Mobile Application create');
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@v_system_client_id, 'MobileApp UPLOADER', 'Uploader', 'Mobile Application file uploader');
+
+-- V53__Profile Title.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_profile`
+    ADD COLUMN `Title` VARCHAR(512) NULL DEFAULT NULL AFTER `NAME`;
+
+-- V54__Add Partner Manager Role.sql (security)
+
+SELECT `ID`
+  FROM `security`.`security_client`
+ WHERE `CODE` = 'SYSTEM'
+  INTO @`v_system_client_id`;
+
+SELECT `ID`
+  FROM `security`.`security_app`
+ WHERE `APP_CODE` = 'leadzump'
+  INTO @`v_leadzump_app_id`;
+
+INSERT INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`, `APP_ID`)
+VALUES (@`v_system_client_id`, 'Partner Manager', 'Partner Manager', 'Role for Managing Partners in Leadzump.',
+        @`v_leadzump_app_id`);
+
+-- V55__SSO APP Security.sql (security)
+
+DROP TABLE IF EXISTS `security`.`security_app_sso`;
+
+CREATE TABLE `security`.`security_app_sso`
 (
-    `ID`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
-    `NAME`        VARCHAR(100)    NOT NULL COMMENT 'name of the scheduler',
-    `STATUS`      ENUM ('STARTED', 'STANDBY', 'SHUTDOWN') DEFAULT 'STARTED' NOT NULL COMMENT 'scheduler running flag',
-    `INSTANCE_ID` VARCHAR(32)     NOT NULL COMMENT 'scheduler instance id',
-
-    `CREATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who last updated this row',
-    `UPDATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_ID`  bigint unsigned NOT NULL COMMENT 'Client ID',
+    `APP_ID`     bigint unsigned NOT NULL COMMENT 'Application ID',
+    `TO_APP_ID`  bigint unsigned NOT NULL COMMENT 'TO Application ID',
+    `CREATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
     PRIMARY KEY (`ID`),
-    UNIQUE KEY (NAME)
-);
+    UNIQUE KEY `UK1_APP_SSO_CLIENT` (`CLIENT_ID`, `APP_ID`, `TO_APP_ID`),
+    KEY `FK1_APP_SSO_CLIENT_ID` (`CLIENT_ID`),
+    KEY `FK1_APP_SSO_ACCESS_APP_ID` (`APP_ID`),
+    CONSTRAINT `FK1_APP_SSO_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK1_APP_SSO_TO_APP_ID` FOREIGN KEY (`TO_APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT `FK1_APP_SSO_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
--- V3__worker_task.sql (Worker)
+-- V56__SSO APP token Security.sql (security)
 
-USE `worker`;
+use security;
 
--- create worker task/jobs
-CREATE TABLE IF NOT EXISTS `worker_task`
+DROP TABLE IF EXISTS `security`.`security_app_sso`;
+
+DROP TABLE IF EXISTS `security`.`security_app_sso_token`;
+DROP TABLE IF EXISTS `security`.`security_bundled_app`;
+DROP TABLE IF EXISTS `security`.`security_app_sso_bundle`;
+
+CREATE TABLE `security`.`security_app_sso_bundle`
 (
-    `ID`               BIGINT UNSIGNED                                                   NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
-    `NAME`             VARCHAR(255)                                                      NOT NULL COMMENT 'name of job',
-    `CLIENT_ID`        BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the client to which this job belongs. References security_client table',
-    `APP_ID`           BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the application to which this job belongs. References security_app table',
-    `SCHEDULER_ID`     BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the scheduler to which this job belongs. References worker_scheduler table',
-    `GROUP_NAME`       VARCHAR(255)                                                      NOT NULL COMMENT 'job group name',
-    `DESCRIPTION`      VARCHAR(255)                                                               DEFAULT NULL COMMENT 'description about the job',
-    `STATE`            ENUM ('NONE', 'NORMAL', 'PAUSED', 'COMPLETE', 'ERROR', 'BLOCKED') NOT NULL DEFAULT 'NORMAL' COMMENT 'task triggering state',
-    `JOB_TYPE`         ENUM ('SIMPLE', 'CRON')                                                    DEFAULT 'SIMPLE' NOT NULL COMMENT 'job type',
-    `JOB_DATA`         JSON                                                                       DEFAULT NULL COMMENT 'job data',
-    `DURABLE`          BOOLEAN                                                           NOT NULL DEFAULT FALSE COMMENT 'if we want to keep job even if it does not have any trigger',
-    `START_TIME`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'task start datetime',
-    `END_TIME`         TIMESTAMP                                                                  DEFAULT NULL COMMENT 'task end datetime',
-    `SCHEDULE`         VARCHAR(255)                                                      NOT NULL COMMENT 'job schedule expression for simple/cron job',
-    `REPEAT_INTERVAL`  INT                                                                        DEFAULT NULL COMMENT 'total times this job will repeat, only applicable for simple jobs',
-    `RECOVERABLE`      BOOLEAN                                                                    DEFAULT TRUE COMMENT 're-run the job if the scheduler crashed before finishing',
-    `NEXT_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'upcoming execution at',
-    `LAST_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'last execution at',
-    `LAST_FIRE_STATUS` ENUM ('SUCCESS', 'FAILED')                                                 DEFAULT NULL COMMENT 'last task execution status',
-    `LAST_FIRE_RESULT` TEXT                                                                       DEFAULT NULL COMMENT 'last execution log',
-
-    `CREATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who last updated this row',
-    `UPDATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
+    `ID`          bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `CLIENT_CODE` char(8)         NOT NULL COMMENT 'Client Code',
+    `BUNDLE_NAME` varchar(255)    NOT NULL COMMENT 'SSO Bundle Name',
+    `CREATED_BY`  bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT`  timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_BY`  bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who updated this row',
+    `UPDATED_AT`  timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
     PRIMARY KEY (`ID`),
-    UNIQUE KEY `UNQ_WORKER_TASK_NAME_GROUP` (`NAME`, `GROUP_NAME`),
-    INDEX `IDX_WORKER_TASK_NAME` (`NAME`),
-    CONSTRAINT `FK_WORKER_TASK_SCHEDULER` FOREIGN KEY (`SCHEDULER_ID`) REFERENCES `worker_scheduler` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+    KEY `FK1_APP_SSO_BUNDLE_CLIENT_CODE` (`CLIENT_CODE`),
+    CONSTRAINT `FK1_APP_SSO_BUNDLE_CLIENT_CODE` FOREIGN KEY (`CLIENT_CODE`) REFERENCES `security_client` (`CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security`.`security_bundled_app`
+(
+    ID         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    BUNDLE_ID  bigint unsigned NOT NULL COMMENT 'Bundle ID',
+    APP_CODE   char(64)        NOT NULL COMMENT 'Application Code',
+    APP_URL_ID bigint unsigned          DEFAULT NULL COMMENT 'Application URL ID',
+    CREATED_BY bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    CREATED_AT timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `UK1_APP_BUNDLE_APP` (`BUNDLE_ID`, `APP_CODE`),
+    KEY `FK1_BUNDLED_APP_URL_ID` (`APP_URL_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_URL_ID` FOREIGN KEY (`APP_URL_ID`) REFERENCES `security_client_url` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    KEY `FK1_BUNDLED_APP_BUNDLE_ID` (`BUNDLE_ID`),
+    CONSTRAINT `FK1_BUNDLED_APP_BUNDLE_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    KEY `FK1_BUNDLED_APP_APP_CODE` (`APP_CODE`),
+    CONSTRAINT `FK1_BUNDLED_APP_APP_CODE` FOREIGN KEY (`APP_CODE`) REFERENCES `security_app` (`APP_CODE`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `security`.`security_app_sso_token`
+(
+    `ID`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `BUNDLE_ID`  bigint unsigned NOT NULL COMMENT 'Bundle ID',
+    `USER_ID`    bigint unsigned NOT NULL COMMENT 'User id',
+    `TOKEN`      char(36)        NOT NULL COMMENT 'UUID Token',
+    `EXPIRES_AT` timestamp       NOT NULL DEFAULT '2022-01-01 01:01:01' COMMENT 'When the token expires',
+    `IP_ADDRESS` varchar(50)     NOT NULL COMMENT 'User IP from where he logged in',
+    `CREATED_BY` bigint unsigned          DEFAULT NULL COMMENT 'ID of the user who created this row',
+    `CREATED_AT` timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `TOKEN` (`TOKEN`),
+    KEY `FK1_APP_SSO_TOKEN_USER_ID` (`USER_ID`),
+    CONSTRAINT `FK1_APP_SSO_TOKEN_USER_ID` FOREIGN KEY (`USER_ID`) REFERENCES `security_user` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    KEY `FK1_APP_SSO_TOKEN_BUNDLE_ID` (`BUNDLE_ID`),
+    CONSTRAINT `FK1_APP_SSO_BUNDLE_USER_ID` FOREIGN KEY (`BUNDLE_ID`) REFERENCES `security_app_sso_bundle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- V57__Add Notification Role to V2 Roles.sql (security)
+
+SELECT `ID`
+  FROM `security`.`security_client`
+ WHERE `CODE` = 'SYSTEM'
+ LIMIT 1
+  INTO @`v_client_system`;
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification Manager', 'Role to hold Notification operations permissions');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Notification CREATE', 'Create', 'Notification create'),
+       (@`v_client_system`, 'Notification READ', 'Read', 'Notification read'),
+       (@`v_client_system`, 'Notification UPDATE', 'Update', 'Notification update'),
+       (@`v_client_system`, 'Notification DELETE', 'Delete', 'Notification delete');
+
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification Manager'
+  INTO @`v_v2_role_notification_manager`;
+
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification CREATE'
+  INTO @`v_v2_role_notification_create`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification READ'
+  INTO @`v_v2_role_notification_read`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification UPDATE'
+  INTO @`v_v2_role_notification_update`;
+SELECT `ID`
+  FROM `security`.`security_v2_role`
+ WHERE `NAME` = 'Notification DELETE'
+  INTO @`v_v2_role_notification_delete`;
+
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification CREATE'
+  INTO @`v_permission_notification_create`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification READ'
+  INTO @`v_permission_notification_read`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification UPDATE'
+  INTO @`v_permission_notification_update`;
+SELECT `ID`
+  FROM `security`.`security_permission`
+ WHERE `NAME` = 'Notification DELETE'
+  INTO @`v_permission_notification_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_notification_manager`, @`v_v2_role_notification_create`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_read`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_update`),
+       (@`v_v2_role_notification_manager`, @`v_v2_role_notification_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_notification_manager`, @`v_permission_notification_create`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_read`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_update`),
+       (@`v_v2_role_notification_manager`, @`v_permission_notification_delete`);
+
+-- V58__Remove Bundle ID.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_app_sso_token`
+    DROP FOREIGN KEY `FK1_APP_SSO_BUNDLE_USER_ID`;
+ALTER TABLE `security`.`security_app_sso_token`
+    DROP COLUMN `BUNDLE_ID`,
+    DROP INDEX `FK1_APP_SSO_TOKEN_BUNDLE_ID`;
+;
+
+-- V59__Remove SSO Bundles.sql (security)
+
+DROP TABLE IF EXISTS `security`.`security_app_sso`;
+DROP TABLE IF EXISTS `security`.`security_app_sso_token`;
+DROP TABLE IF EXISTS `security`.`security_bundled_app`;
+DROP TABLE IF EXISTS `security`.`security_app_sso_bundle`;
+
+-- V1__Notification Init.sql    (notification)
+
+DROP DATABASE IF EXISTS `notification`;
+
+CREATE DATABASE IF NOT EXISTS `notification` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- V2__Notification Tables.sql (notification)
+
+use notification;
+
+DROP TABLE IF EXISTS `notification`.`notification_inapp`;
+
+CREATE TABLE `notification`.`notification_inapp`
+(
+    `ID`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each notification entry',
+    `USER_ID`           BIGINT UNSIGNED NOT NULL COMMENT 'User ID',
+    `APP_CODE`          CHAR(64)        NOT NULL COMMENT 'App Code',
+    `NOTIFICATION_NAME` VARCHAR(256)    NOT NULL COMMENT 'Notification name',
+    `NOTIFICATION_ID`   CHAR(32)        NOT NULL COMMENT 'Notification ID',
+    `TITLE`             VARCHAR(256)    NOT NULL COMMENT 'Notification title',
+    `MESSAGE`           TEXT            NOT NULL COMMENT 'Notification message',
+    `MIME_URL`          VARCHAR(1024)            DEFAULT NULL COMMENT 'Mime URL',
+    `NOTIFICATION_TYPE` VARCHAR(256)    NOT NULL COMMENT 'Notification type',
+    `READ_AT`           TIMESTAMP                DEFAULT NULL COMMENT 'Read at',
+    `CREATED_AT`        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    PRIMARY KEY (`ID`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-#     `MISFIRE_POLICY`  INT   DEFAULT NULL COMMENT 'what to do if job trigger missed', -- not including right now, having different properties for simple and cron jobs
+DROP TABLE IF EXISTS `notification`.`notification_preference`;
 
--- V4__quartz_job_store.sql (Worker)
-
-USE `worker`;
-
-# this script is copied from quartz-guide do not edit anything
-CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS
+CREATE TABLE `notification`.`notification_preference`
 (
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    JOB_NAME  VARCHAR(200) NOT NULL,
-    JOB_GROUP VARCHAR(200) NOT NULL,
-    DESCRIPTION VARCHAR(250) NULL,
-    JOB_CLASS_NAME   VARCHAR(250) NOT NULL,
-    IS_DURABLE VARCHAR(1) NOT NULL,
-    IS_NONCONCURRENT VARCHAR(1) NOT NULL,
-    IS_UPDATE_DATA VARCHAR(1) NOT NULL,
-    REQUESTS_RECOVERY VARCHAR(1) NOT NULL,
-    JOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    JOB_NAME  VARCHAR(200) NOT NULL,
-    JOB_GROUP VARCHAR(200) NOT NULL,
-    DESCRIPTION VARCHAR(250) NULL,
-    NEXT_FIRE_TIME BIGINT(13) NULL,
-    PREV_FIRE_TIME BIGINT(13) NULL,
-    PRIORITY INTEGER NULL,
-    TRIGGER_STATE VARCHAR(16) NOT NULL,
-    TRIGGER_TYPE VARCHAR(8) NOT NULL,
-    START_TIME BIGINT(13) NOT NULL,
-    END_TIME BIGINT(13) NULL,
-    CALENDAR_NAME VARCHAR(200) NULL,
-    MISFIRE_INSTR SMALLINT(2) NULL,
-    JOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
-    REFERENCES QRTZ_JOB_DETAILS(SCHED_NAME,JOB_NAME,JOB_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_SIMPLE_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    REPEAT_COUNT BIGINT(7) NOT NULL,
-    REPEAT_INTERVAL BIGINT(12) NOT NULL,
-    TIMES_TRIGGERED BIGINT(10) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_CRON_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    CRON_EXPRESSION VARCHAR(200) NOT NULL,
-    TIME_ZONE_ID VARCHAR(80),
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_SIMPROP_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    STR_PROP_1 VARCHAR(512) NULL,
-    STR_PROP_2 VARCHAR(512) NULL,
-    STR_PROP_3 VARCHAR(512) NULL,
-    INT_PROP_1 INT NULL,
-    INT_PROP_2 INT NULL,
-    LONG_PROP_1 BIGINT NULL,
-    LONG_PROP_2 BIGINT NULL,
-    DEC_PROP_1 NUMERIC(13,4) NULL,
-    DEC_PROP_2 NUMERIC(13,4) NULL,
-    BOOL_PROP_1 VARCHAR(1) NULL,
-    BOOL_PROP_2 VARCHAR(1) NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_BLOB_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    BLOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_CALENDARS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    CALENDAR_NAME  VARCHAR(200) NOT NULL,
-    CALENDAR BLOB NOT NULL,
-    PRIMARY KEY (SCHED_NAME,CALENDAR_NAME)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_PAUSED_TRIGGER_GRPS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_GROUP  VARCHAR(200) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_FIRED_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    ENTRY_ID VARCHAR(95) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    INSTANCE_NAME VARCHAR(200) NOT NULL,
-    FIRED_TIME BIGINT(13) NOT NULL,
-    SCHED_TIME BIGINT(13) NOT NULL,
-    PRIORITY INTEGER NOT NULL,
-    STATE VARCHAR(16) NOT NULL,
-    JOB_NAME VARCHAR(200) NULL,
-    JOB_GROUP VARCHAR(200) NULL,
-    IS_NONCONCURRENT VARCHAR(1) NULL,
-    REQUESTS_RECOVERY VARCHAR(1) NULL,
-    PRIMARY KEY (SCHED_NAME,ENTRY_ID)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_SCHEDULER_STATE
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    INSTANCE_NAME VARCHAR(200) NOT NULL,
-    LAST_CHECKIN_TIME BIGINT(13) NOT NULL,
-    CHECKIN_INTERVAL BIGINT(13) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,INSTANCE_NAME)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_LOCKS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    LOCK_NAME  VARCHAR(40) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,LOCK_NAME)
-    );
-
-
--- V1__initial_script.sql (Worker)
-
-CREATE DATABASE IF NOT EXISTS `worker`;
-
--- V2__worker_scheduler.sql (Worker)
-
-USE `worker`;
-
--- Create Scheduler Table
-CREATE TABLE IF NOT EXISTS `worker_scheduler`
-(
-    `ID`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
-    `NAME`        VARCHAR(100)    NOT NULL COMMENT 'name of the scheduler',
-    `STATUS`      ENUM ('STARTED', 'STANDBY', 'SHUTDOWN') DEFAULT 'STARTED' NOT NULL COMMENT 'scheduler running flag',
-    `INSTANCE_ID` VARCHAR(32)     NOT NULL COMMENT 'scheduler instance id',
-
-    `CREATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY`  BIGINT UNSIGNED                         DEFAULT NULL COMMENT 'ID of the user who last updated this row',
-    `UPDATED_AT`  TIMESTAMP       NOT NULL                DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY (NAME)
-);
-
--- V3__worker_task.sql (Worker)
-
-USE `worker`;
-
--- create worker task/jobs
-CREATE TABLE IF NOT EXISTS `worker_task`
-(
-    `ID`               BIGINT UNSIGNED                                                   NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each Task',
-    `NAME`             VARCHAR(255)                                                      NOT NULL COMMENT 'name of job',
-    `CLIENT_ID`        BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the client to which this job belongs. References security_client table',
-    `APP_ID`           BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the application to which this job belongs. References security_app table',
-    `SCHEDULER_ID`     BIGINT UNSIGNED                                                   NOT NULL COMMENT 'Identifier for the scheduler to which this job belongs. References worker_scheduler table',
-    `GROUP_NAME`       VARCHAR(255)                                                      NOT NULL COMMENT 'job group name',
-    `DESCRIPTION`      VARCHAR(255)                                                               DEFAULT NULL COMMENT 'description about the job',
-    `STATE`            ENUM ('NONE', 'NORMAL', 'PAUSED', 'COMPLETE', 'ERROR', 'BLOCKED') NOT NULL DEFAULT 'NORMAL' COMMENT 'task triggering state',
-    `JOB_TYPE`         ENUM ('SIMPLE', 'CRON')                                                    DEFAULT 'SIMPLE' NOT NULL COMMENT 'job type',
-    `JOB_DATA`         JSON                                                                       DEFAULT NULL COMMENT 'job data',
-    `DURABLE`          BOOLEAN                                                           NOT NULL DEFAULT FALSE COMMENT 'if we want to keep job even if it does not have any trigger',
-    `START_TIME`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'task start datetime',
-    `END_TIME`         TIMESTAMP                                                                  DEFAULT NULL COMMENT 'task end datetime',
-    `SCHEDULE`         VARCHAR(255)                                                      NOT NULL COMMENT 'job schedule expression for simple/cron job',
-    `REPEAT_INTERVAL`  INT                                                                        DEFAULT NULL COMMENT 'total times this job will repeat, only applicable for simple jobs',
-    `RECOVERABLE`      BOOLEAN                                                                    DEFAULT TRUE COMMENT 're-run the job if the scheduler crashed before finishing',
-    `NEXT_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'upcoming execution at',
-    `LAST_FIRE_TIME`   TIMESTAMP                                                                  DEFAULT NULL COMMENT 'last execution at',
-    `LAST_FIRE_STATUS` ENUM ('SUCCESS', 'FAILED')                                                 DEFAULT NULL COMMENT 'last task execution status',
-    `LAST_FIRE_RESULT` TEXT                                                                       DEFAULT NULL COMMENT 'last execution log',
-
-    `CREATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY`       BIGINT UNSIGNED                                                            DEFAULT NULL COMMENT 'ID of the user who last updated this row',
-    `UPDATED_AT`       TIMESTAMP                                                         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is last updated',
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `UNQ_WORKER_TASK_NAME_GROUP` (`NAME`, `GROUP_NAME`),
-    INDEX `IDX_WORKER_TASK_NAME` (`NAME`),
-    CONSTRAINT `FK_WORKER_TASK_SCHEDULER` FOREIGN KEY (`SCHEDULER_ID`) REFERENCES `worker_scheduler` (`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each notification preference entry',
+    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'User ID',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code',
+    `PREFERENCE` JSON DEFAULT NULL COMMENT 'Preference',
+    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+    `CREATED_BY` BIGINT UNSIGNED NOT NULL COMMENT 'Created by',
+    `UPDATED_BY` BIGINT UNSIGNED NOT NULL COMMENT 'Updated by',
+    PRIMARY KEY (`ID`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = `utf8mb4`
   COLLATE = `utf8mb4_unicode_ci`;
 
-#     `MISFIRE_POLICY`  INT   DEFAULT NULL COMMENT 'what to do if job trigger missed', -- not including right now, having different properties for simple and cron jobs
+-- V60__Adding Registration prop to App Reg object.sql (security)
 
--- V4__quartz_job_store.sql (Worker)
+ALTER TABLE `security`.`security_app_reg_access`
+	ADD COLUMN `REGISTER` tinyint(1) NOT NULL DEFAULT '0' AFTER `WRITE_ACCESS`;
 
-USE `worker`;
+-- V61__Billing and Payments.sql (security)
+use `security`;
 
-# this script is copied from quartz-guide do not edit anything
-CREATE TABLE IF NOT EXISTS QRTZ_JOB_DETAILS
+SELECT `ID`
+  FROM `security`.`security_client`
+ WHERE `CODE` = 'SYSTEM'
+ LIMIT 1
+  INTO @`v_client_system`;
+
+-- Plan based permissions and roles
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Plan CREATE', 'Plan create'),
+       (@`v_client_system`, 'Plan READ', 'Plan read'),
+       (@`v_client_system`, 'Plan UPDATE', 'Plan update'),
+       (@`v_client_system`, 'Plan DELETE', 'Plan delete');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Plan CREATE', 'Create', 'Plan create'),
+       (@`v_client_system`, 'Plan READ', 'Read', 'Plan read'),
+       (@`v_client_system`, 'Plan UPDATE', 'Update', 'Plan update'),
+       (@`v_client_system`, 'Plan DELETE', 'Delete', 'Plan delete'),
+       (@`v_client_system`, 'Plan Manager', 'Manager', 'Plan manager');
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Plan Manager' LIMIT 1 INTO @`v_v2_role_plan_manager`;
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Plan CREATE' LIMIT 1 INTO @`v_v2_role_plan_create`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Plan READ' LIMIT 1 INTO @`v_v2_role_plan_read`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Plan UPDATE' LIMIT 1 INTO @`v_v2_role_plan_update`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Plan DELETE' LIMIT 1 INTO @`v_v2_role_plan_delete`;
+
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Plan CREATE' LIMIT 1 INTO @`v_permission_plan_create`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Plan READ' LIMIT 1 INTO @`v_permission_plan_read`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Plan UPDATE' LIMIT 1 INTO @`v_permission_plan_update`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Plan DELETE' LIMIT 1 INTO @`v_permission_plan_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_plan_create`, @`v_permission_plan_create`),
+       (@`v_v2_role_plan_read`, @`v_permission_plan_read`),
+       (@`v_v2_role_plan_update`, @`v_permission_plan_update`),
+       (@`v_v2_role_plan_delete`, @`v_permission_plan_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_plan_manager`, @`v_v2_role_plan_create`),
+       (@`v_v2_role_plan_manager`, @`v_v2_role_plan_read`),
+       (@`v_v2_role_plan_manager`, @`v_v2_role_plan_update`),
+       (@`v_v2_role_plan_manager`, @`v_v2_role_plan_delete`);
+
+-- Invoice based permissions and roles
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Invoice CREATE', 'Invoice create'),
+       (@`v_client_system`, 'Invoice READ', 'Invoice read'),
+       (@`v_client_system`, 'Invoice UPDATE', 'Invoice update'),
+       (@`v_client_system`, 'Invoice DELETE', 'Invoice delete');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Invoice CREATE', 'Create', 'Invoice create'),
+       (@`v_client_system`, 'Invoice READ', 'Read', 'Invoice read'),
+       (@`v_client_system`, 'Invoice UPDATE', 'Update', 'Invoice update'),
+       (@`v_client_system`, 'Invoice DELETE', 'Delete', 'Invoice delete'),
+       (@`v_client_system`, 'Invoice Manager', 'Manager', 'Invoice manager');
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Invoice Manager' LIMIT 1 INTO @`v_v2_role_invoice_manager`;
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Invoice CREATE' LIMIT 1 INTO @`v_v2_role_invoice_create`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Invoice READ' LIMIT 1 INTO @`v_v2_role_invoice_read`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Invoice UPDATE' LIMIT 1 INTO @`v_v2_role_invoice_update`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Invoice DELETE' LIMIT 1 INTO @`v_v2_role_invoice_delete`;
+
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Invoice CREATE' LIMIT 1 INTO @`v_permission_invoice_create`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Invoice READ' LIMIT 1 INTO @`v_permission_invoice_read`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Invoice UPDATE' LIMIT 1 INTO @`v_permission_invoice_update`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Invoice DELETE' LIMIT 1 INTO @`v_permission_invoice_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_invoice_create`, @`v_permission_invoice_create`),
+       (@`v_v2_role_invoice_read`, @`v_permission_invoice_read`),
+       (@`v_v2_role_invoice_update`, @`v_permission_invoice_update`),
+       (@`v_v2_role_invoice_delete`, @`v_permission_invoice_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_invoice_manager`, @`v_v2_role_invoice_create`),
+       (@`v_v2_role_invoice_manager`, @`v_v2_role_invoice_read`),
+       (@`v_v2_role_invoice_manager`, @`v_v2_role_invoice_update`),
+       (@`v_v2_role_invoice_manager`, @`v_v2_role_invoice_delete`);
+
+
+-- Payment based permissions and roles
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Payment CREATE', 'Payment create'),
+       (@`v_client_system`, 'Payment READ', 'Payment read'),
+       (@`v_client_system`, 'Payment UPDATE', 'Payment update'),
+       (@`v_client_system`, 'Payment DELETE', 'Payment delete');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Payment CREATE', 'Create', 'Payment create'),
+       (@`v_client_system`, 'Payment READ', 'Read', 'Payment read'),
+       (@`v_client_system`, 'Payment UPDATE', 'Update', 'Payment update'),
+       (@`v_client_system`, 'Payment DELETE', 'Delete', 'Payment delete'),
+       (@`v_client_system`, 'Payment Manager', 'Manager', 'Payment manager');
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Payment Manager' LIMIT 1 INTO @`v_v2_role_payment_manager`;
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Payment CREATE' LIMIT 1 INTO @`v_v2_role_payment_create`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Payment READ' LIMIT 1 INTO @`v_v2_role_payment_read`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Payment UPDATE' LIMIT 1 INTO @`v_v2_role_payment_update`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Payment DELETE' LIMIT 1 INTO @`v_v2_role_payment_delete`;
+
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Payment CREATE' LIMIT 1 INTO @`v_permission_payment_create`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Payment READ' LIMIT 1 INTO @`v_permission_payment_read`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Payment UPDATE' LIMIT 1 INTO @`v_permission_payment_update`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Payment DELETE' LIMIT 1 INTO @`v_permission_payment_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_payment_create`, @`v_permission_payment_create`),
+       (@`v_v2_role_payment_read`, @`v_permission_payment_read`),
+       (@`v_v2_role_payment_update`, @`v_permission_payment_update`),
+       (@`v_v2_role_payment_delete`, @`v_permission_payment_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_payment_manager`, @`v_v2_role_payment_create`),
+       (@`v_v2_role_payment_manager`, @`v_v2_role_payment_read`),
+       (@`v_v2_role_payment_manager`, @`v_v2_role_payment_update`),
+       (@`v_v2_role_payment_manager`, @`v_v2_role_payment_delete`);
+
+-- Subscription based permissions and roles
+
+INSERT IGNORE INTO `security`.`security_permission` (`CLIENT_ID`, `NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Subscription CREATE', 'Subscription create'),
+       (@`v_client_system`, 'Subscription READ', 'Subscription read'),
+       (@`v_client_system`, 'Subscription UPDATE', 'Subscription update'),
+       (@`v_client_system`, 'Subscription DELETE', 'Subscription delete');
+
+INSERT IGNORE INTO `security`.`security_v2_role` (`CLIENT_ID`, `NAME`, `SHORT_NAME`, `DESCRIPTION`)
+VALUES (@`v_client_system`, 'Subscription CREATE', 'Create', 'Subscription create'),
+       (@`v_client_system`, 'Subscription READ', 'Read', 'Subscription read'),
+       (@`v_client_system`, 'Subscription UPDATE', 'Update', 'Subscription update'),
+       (@`v_client_system`, 'Subscription DELETE', 'Delete', 'Subscription delete'),
+       (@`v_client_system`, 'Subscription Manager', 'Manager', 'Subscription manager');
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription Manager' LIMIT 1 INTO @`v_v2_role_subscription_manager`;
+
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription CREATE' LIMIT 1 INTO @`v_v2_role_subscription_create`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription READ' LIMIT 1 INTO @`v_v2_role_subscription_read`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription UPDATE' LIMIT 1 INTO @`v_v2_role_subscription_update`;
+SELECT `ID` FROM `security`.`security_v2_role` WHERE `NAME` = 'Subscription DELETE' LIMIT 1 INTO @`v_v2_role_subscription_delete`;
+
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Subscription CREATE' LIMIT 1 INTO @`v_permission_subscription_create`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Subscription READ' LIMIT 1 INTO @`v_permission_subscription_read`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Subscription UPDATE' LIMIT 1 INTO @`v_permission_subscription_update`;
+SELECT `ID` FROM `security`.`security_permission` WHERE `NAME` = 'Subscription DELETE' LIMIT 1 INTO @`v_permission_subscription_delete`;
+
+INSERT IGNORE INTO `security`.`security_v2_role_permission` (`ROLE_ID`, `PERMISSION_ID`)
+VALUES (@`v_v2_role_subscription_create`, @`v_permission_subscription_create`),
+       (@`v_v2_role_subscription_read`, @`v_permission_subscription_read`),
+       (@`v_v2_role_subscription_update`, @`v_permission_subscription_update`),
+       (@`v_v2_role_subscription_delete`, @`v_permission_subscription_delete`);
+
+INSERT IGNORE INTO `security`.`security_v2_role_role` (`ROLE_ID`, `SUB_ROLE_ID`)
+VALUES (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_create`),
+       (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_read`),
+       (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_update`),
+       (@`v_v2_role_subscription_manager`, @`v_v2_role_subscription_delete`);
+
+-- Plans Table
+
+DROP TABLE IF EXISTS `security`.`security_payment_gateway`;
+DROP TABLE IF EXISTS `security`.`security_payment`;
+DROP TABLE IF EXISTS `security`.`security_invoice_item`;
+DROP TABLE IF EXISTS `security`.`security_invoice`;
+DROP TABLE IF EXISTS `security`.`security_client_plan`;
+DROP TABLE IF EXISTS `security`.`security_plan_limit`;
+DROP TABLE IF EXISTS `security`.`security_plan_cycle`;
+DROP TABLE IF EXISTS `security`.`security_plan_app`;
+DROP TABLE IF EXISTS `security`.`security_plan`;
+
+CREATE TABLE `security`.`security_plan` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'URL Client ID for which this plan belongs to',
+  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the package',
+  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the package',
+  `FEATURES` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Features of the plan',
+  `STATUS` enum('ACTIVE','INACTIVE','DELETED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE' COMMENT 'Status of the plan',
+  `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+  `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
+  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK2_PLAN_NAME_CLIENT_ID` (`NAME`,`CLIENT_ID`),
+  KEY `FK1_PLAN_CLIENT_ID` (`CLIENT_ID`),
+  CONSTRAINT `FK1_PLAN_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Apps part of a Plan Table
+
+CREATE TABLE `security`.`security_plan_app` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `PLAN_ID` bigint unsigned NOT NULL COMMENT 'Plan ID',
+  `APP_ID` bigint unsigned NOT NULL COMMENT 'App ID',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PLAN_APP_PLAN_ID_APP_ID` (`PLAN_ID`,`APP_ID`),
+  KEY `FK1_PLAN_APP_PLAN_ID` (`PLAN_ID`),
+  KEY `FK2_PLAN_APP_APP_ID` (`APP_ID`),
+  CONSTRAINT `FK1_PLAN_APP_PLAN_ID` FOREIGN KEY (`PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_PLAN_APP_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Plan Cycle Table
+
+CREATE TABLE `security`.`security_plan_cycle` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the cycle',
+  `DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Description of the cycle',
+  `PLAN_ID` bigint unsigned NOT NULL COMMENT 'Plan ID',
+  `COST` decimal(10,2) NOT NULL COMMENT 'Cost of the plan',
+  `CURRENCY` char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Currency of the plan',
+  `TAX1` decimal(10,2) DEFAULT NULL COMMENT 'Tax1 of the plan',
+  `TAX1_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tax1 name of the plan',
+  `TAX2` decimal(10,2) DEFAULT NULL COMMENT 'Tax2 of the plan',
+  `TAX2_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tax2 name of the plan',
+  `TAX3` decimal(10,2) DEFAULT NULL COMMENT 'Tax3 of the plan',
+  `TAX3_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tax3 name of the plan',
+  `TAX4` decimal(10,2) DEFAULT NULL COMMENT 'Tax4 of the plan',
+  `TAX4_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tax4 name of the plan',
+  `TAX5` decimal(10,2) DEFAULT NULL COMMENT 'Tax5 of the plan',
+  `TAX5_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Tax5 name of the plan',
+  `INTERVAL` int NOT NULL COMMENT 'Interval of the plan in days',
+  `STATUS` enum('ACTIVE','INACTIVE','DELETED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE' COMMENT 'Status of the cycle in a plan',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PLAN_CYCLE_PLAN_ID_NAME` (`PLAN_ID`,`NAME`),
+  KEY `FK1_PLAN_CYCLE_PLAN_ID` (`PLAN_ID`),
+  CONSTRAINT `FK1_PLAN_CYCLE_PLAN_ID` FOREIGN KEY (`PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Limits Table
+
+CREATE TABLE `security`.`security_plan_limit` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `PLAN_ID` bigint unsigned NOT NULL COMMENT 'Plan ID',
+  `NAME` enum('USER', 'CLIENT', 'APP', 'FILE', 'CONNECTIONS', 'PAGES', 'STORAGE', 'CUSTOM') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Name of the limit',
+  `CUSTOM_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Custom name of the limit',
+  `LIMIT` int NOT NULL COMMENT 'Limit of the plan',
+  `STATUS` enum('ACTIVE','INACTIVE','DELETED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE' COMMENT 'Status of the limit in a plan',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PLAN_LIMIT_PLAN_ID_NAME` (`PLAN_ID`,`NAME`),
+  KEY `FK1_PLAN_LIMIT_PLAN_ID` (`PLAN_ID`),
+  CONSTRAINT `FK1_PLAN_LIMIT_PLAN_ID` FOREIGN KEY (`PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Client's plan Table
+
+CREATE TABLE `security`.`security_client_plan` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID',
+  `PLAN_ID` bigint unsigned NOT NULL COMMENT 'Plan ID',
+  `CYCLE_ID` bigint unsigned NOT NULL COMMENT 'Cycle ID',
+  `START_DATE` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Start date of the plan',
+  `END_DATE` timestamp DEFAULT NULL COMMENT 'End date of the plan',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_CLIENT_PLAN_CLIENT_ID_PLAN_ID` (`CLIENT_ID`,`PLAN_ID`),
+  KEY `FK1_CLIENT_PLAN_CLIENT_ID` (`CLIENT_ID`),
+  KEY `FK2_CLIENT_PLAN_PLAN_ID` (`PLAN_ID`),
+  CONSTRAINT `FK1_CLIENT_PLAN_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_CLIENT_PLAN_PLAN_ID` FOREIGN KEY (`PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Invoices Table
+
+CREATE TABLE `security`.`security_invoice` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID',
+  `PLAN_ID` bigint unsigned DEFAULT NULL COMMENT 'Plan ID',
+  `CYCLE_ID` bigint unsigned DEFAULT NULL COMMENT 'Cycle ID',
+  `INVOICE_NUMBER` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Invoice number',
+  `INVOICE_DATE` timestamp NOT NULL COMMENT 'Invoice date',
+  `INVOICE_DUE_DATE` timestamp NOT NULL COMMENT 'Invoice due date',
+  `INVOICE_AMOUNT` decimal(10,2) NOT NULL COMMENT 'Invoice amount',
+  `INVOICE_STATUS` enum('DRAFT', 'SENT', 'PENDING','PAID','FAILED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'Invoice status',
+  `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+  `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
+  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_INVOICE_CLIENT_ID_INVOICE_NUMBER` (`CLIENT_ID`,`INVOICE_NUMBER`),
+  KEY `FK1_INVOICE_CLIENT_ID` (`CLIENT_ID`),
+  KEY `FK2_INVOICE_PLAN_ID` (`PLAN_ID`),
+  KEY `FK3_INVOICE_CYCLE_ID` (`CYCLE_ID`),
+  CONSTRAINT `FK1_INVOICE_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK2_INVOICE_PLAN_ID` FOREIGN KEY (`PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `FK3_INVOICE_CYCLE_ID` FOREIGN KEY (`CYCLE_ID`) REFERENCES `security_plan_cycle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Invoice Items Table
+
+CREATE TABLE `security`.`security_invoice_item` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `INVOICE_ID` bigint unsigned NOT NULL COMMENT 'Invoice ID',
+  `ITEM_NAME` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Item name',
+  `ITEM_DESCRIPTION` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Item description',
+  `ITEM_AMOUNT` decimal(10,2) NOT NULL COMMENT 'Item amount',
+  `ITEM_TAX1` decimal(10,2) DEFAULT NULL COMMENT 'Item tax1',
+  `ITEM_TAX2` decimal(10,2) DEFAULT NULL COMMENT 'Item tax2',
+  `ITEM_TAX3` decimal(10,2) DEFAULT NULL COMMENT 'Item tax3',
+  `ITEM_TAX4` decimal(10,2) DEFAULT NULL COMMENT 'Item tax4',
+  `ITEM_TAX5` decimal(10,2) DEFAULT NULL COMMENT 'Item tax5',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_INVOICE_ITEM_INVOICE_ID_ITEM_NAME` (`INVOICE_ID`,`ITEM_NAME`),
+  KEY `FK1_INVOICE_ITEM_INVOICE_ID` (`INVOICE_ID`),
+  CONSTRAINT `FK1_INVOICE_ITEM_INVOICE_ID` FOREIGN KEY (`INVOICE_ID`) REFERENCES `security_invoice` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payments Table
+
+CREATE TABLE `security`.`security_payment` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `INVOICE_ID` bigint unsigned NOT NULL COMMENT 'Invoice ID',
+  `PAYMENT_DATE` timestamp NOT NULL COMMENT 'Payment date',
+  `PAYMENT_AMOUNT` decimal(10,2) NOT NULL COMMENT 'Payment amount',
+  `PAYMENT_STATUS` enum('PENDING','PAID','FAILED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT 'Payment status',
+  `PAYMENT_METHOD` enum('CASHFREE', 'RAZORPAY', 'STRIPE', 'OTHER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OTHER' COMMENT 'Payment method',
+  `PAYMENT_REFERENCE` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Payment reference or trasaction id',
+  `PAYMENT_RESPONSE` json DEFAULT NULL COMMENT 'Payment response or error message',
+  `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+  `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
+  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PAYMENT_INVOICE_ID_PAYMENT_REFERENCE` (`INVOICE_ID`,`PAYMENT_REFERENCE`),
+  KEY `FK1_PAYMENT_INVOICE_ID` (`INVOICE_ID`),
+  CONSTRAINT `FK1_PAYMENT_INVOICE_ID` FOREIGN KEY (`INVOICE_ID`) REFERENCES `security_invoice` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payment gateway details Table
+
+CREATE TABLE `security`.`security_payment_gateway` (
+  `ID` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+  `CLIENT_ID` bigint unsigned NOT NULL COMMENT 'Client ID for which this payment gateway belongs to',
+  `PAYMENT_GATEWAY` enum('CASHFREE', 'RAZORPAY', 'STRIPE', 'OTHER') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OTHER' COMMENT 'Payment gateway',
+  `PAYMENT_GATEWAY_DETAILS` json NOT NULL COMMENT 'Payment gateway details',
+  `CREATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who created this row',
+  `CREATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+  `UPDATED_BY` bigint unsigned DEFAULT NULL COMMENT 'ID of the user who updated this row',
+  `UPDATED_AT` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `UK1_PAYMENT_GATEWAY_CLIENT_ID_PAYMENT_GATEWAY` (`CLIENT_ID`,`PAYMENT_GATEWAY`),
+  KEY `FK1_PAYMENT_GATEWAY_CLIENT_ID` (`CLIENT_ID`),
+  CONSTRAINT `FK1_PAYMENT_GATEWAY_CLIENT_ID` FOREIGN KEY (`CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+ALTER TABLE `security`.`security_client_plan`
+  MODIFY COLUMN `END_DATE` TIMESTAMP NOT NULL DEFAULT '2035-12-31 23:59:59' COMMENT 'End date of the plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FALL_BACK_PLAN_ID` bigint unsigned DEFAULT NULL COMMENT 'Fallback plan ID',
+  ADD CONSTRAINT `FK1_PLAN_FALL_BACK_PLAN_ID` FOREIGN KEY (`FALL_BACK_PLAN_ID`) REFERENCES `security_plan` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  ADD KEY `FK1_PLAN_FALL_BACK_PLAN_ID` (`FALL_BACK_PLAN_ID`),
+  ADD COLUMN `PLAN_CODE` CHAR(8) NOT NULL COMMENT 'Plan code';
+
+ALTER TABLE `security`.`security_plan`
+  ADD UNIQUE KEY `UK1_PLAN_PLAN_CODE` (`PLAN_CODE`);
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FOR_REGISTRATION` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Indicator if this plan is for registration';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `ORDER_NUMBER` int NOT NULL DEFAULT 0 COMMENT 'Order number of the plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `DEFAULT_PLAN` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Indicator if this plan is the default plan';
+
+ALTER TABLE `security`.`security_plan`
+  ADD COLUMN `FOR_CLIENT_ID` bigint unsigned DEFAULT NULL COMMENT 'Client ID for which this plan is applicable',
+  ADD KEY `FK1_PLAN_FOR_CLIENT_ID` (`FOR_CLIENT_ID`),
+  ADD CONSTRAINT `FK1_PLAN_FOR_CLIENT_ID` FOREIGN KEY (`FOR_CLIENT_ID`) REFERENCES `security_client` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- V62__Invoice Changes.sql (security)
+
+ALTER TABLE `security`.`security_invoice`
+    ADD COLUMN `INVOICE_REASON` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Invoice reason';
+
+ALTER TABLE `security`.`security_sox_log`
+    CHANGE COLUMN `OBJECT_NAME` `OBJECT_NAME` ENUM('USER', 'ROLE', 'PERMISSION', 'PACKAGE', 'CLIENT', 'CLIENT_TYPE', 'APP', 'PROFILE', 'INVOICE') CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci' NOT NULL COMMENT 'Operation on the object' ;
+
+ALTER TABLE security.security_client
+  ADD COLUMN BILLING_TIMEZONE varchar(64) NOT NULL DEFAULT 'Asia/Calcutta' COMMENT 'IANA timezone for billing';
+
+
+-- V63__Invoice Plan Billing period.sql (security)
+
+DROP TABLE IF EXISTS `security`.`security_plan_app`;
+
+ALTER TABLE `security`.`security_plan`
+    ADD COLUMN `APP_ID` BIGINT UNSIGNED NULL DEFAULT NULL AFTER `CLIENT_ID`,
+    ADD CONSTRAINT `FK1_PLAN_APP_ID` FOREIGN KEY (`APP_ID`) REFERENCES `security`.`security_app` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+ALTER TABLE `security`.`security_plan`
+    ADD COLUMN `PREPAID` TINYINT(1) NOT NULL DEFAULT '0' AFTER `DESCRIPTION`;
+
+ALTER TABLE `security`.`security_plan_cycle`
+    DROP COLUMN `INTERVAL`,
+    ADD COLUMN `INTERVAL_TYPE` ENUM('MONTH', 'QUARTER', 'ANNUAL', 'WEEK') NOT NULL AFTER `TAX5_NAME`,
+    ADD COLUMN `REMiNDER_INTERVAL_DAYS` INT NULL DEFAULT NULL AFTER `INTERVAL_TYPE`,
+    ADD COLUMN `PAYMENT_TERMS_DAYS` INT NOT NULL DEFAULT 7 AFTER `REMiNDER_INTERVAL_DAYS`;
+
+ALTER TABLE security.security_invoice
+  ADD COLUMN PERIOD_START TIMESTAMP NULL COMMENT 'Service period start (UTC)',
+  ADD COLUMN PERIOD_END   TIMESTAMP NULL COMMENT 'Service period end (UTC)';
+
+ALTER TABLE security.security_invoice
+  ADD CONSTRAINT CHK_INVOICE_PERIOD_VALID
+  CHECK (PERIOD_START IS NULL OR PERIOD_END IS NULL OR PERIOD_START < PERIOD_END);
+
+CREATE UNIQUE INDEX UK_INVOICE_PERIOD
+  ON security.security_invoice (CLIENT_ID, PLAN_ID, CYCLE_ID, PERIOD_START);
+
+ALTER TABLE `security`.`security_client_plan`
+  ADD COLUMN `NEXT_INVOICE_DATE` TIMESTAMP NOT NULL AFTER `END_DATE`;
+
+
+-- V64__User Invite reporting_to added.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_user_invite`
+ADD COLUMN `REPORTING_TO` bigint unsigned DEFAULT NULL COMMENT 'Reporting to ID for which this user belongs to' AFTER `DESIGNATION_ID`;
+
+ALTER TABLE `security`.`security_user_invite`
+ADD CONSTRAINT `FK1_USER_INVITE_REPORTING_TO_ID` FOREIGN KEY (`REPORTING_TO`) REFERENCES `security_user` (`ID`) ON DELETE SET NULL ON UPDATE RESTRICT;
+
+
+-- V65__CYCLE Changes.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_client_plan`
+ADD COLUMN `CYCLE_NUMBER` INT NOT NULL DEFAULT 1 AFTER `CYCLE_ID`;
+
+ALTER TABLE `security`.`security_invoice_item`
+    ADD COLUMN `CYCLE_ID` BIGINT UNSIGNED NULL DEFAULT NULL COMMENT 'Cycle ID in case of prorated credit'  AFTER `INVOICE_ID`,
+    ADD CONSTRAINT `FK1_INVOICE_ITEM_CYCLE_ID` FOREIGN KEY (`CYCLE_ID`) REFERENCES `security_plan_cycle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+-- V66__App usage type.sql (security)
+
+USE security;
+
+ALTER TABLE `security`.`security_user`
+DROP COLUMN `DESIGNATION`;
+
+use security;
+
+ALTER TABLE `security`.`security_app`
+    ADD COLUMN `APP_USAGE_TYPE` ENUM('S', 'B', 'B2C', 'B2B', 'B2X', 'B2B2B', 'B2B2C', 'B2B2X', 'B2X2C', 'B2X2X') NOT NULL DEFAULT 'S' COMMENT 'S - Standalone (Mostly for sites), B - Business only, B to C Consumer, B Business, X Any, and so on so forth.' AFTER `THUMB_URL`;
+
+-- V67__App status.sql (security)
+
+use security;
+
+ALTER TABLE `security`.`security_app`
+    ADD COLUMN `STATUS` ENUM('ACTIVE', 'ARCHIVED') NOT NULL DEFAULT 'ACTIVE' AFTER `APP_USAGE_TYPE`;
+
+-- V6__Add Entity Processor Functions.sql (core)
+
+CREATE TABLE IF NOT EXISTS core.core_remote_repositories
 (
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    JOB_NAME  VARCHAR(200) NOT NULL,
-    JOB_GROUP VARCHAR(200) NOT NULL,
-    DESCRIPTION VARCHAR(250) NULL,
-    JOB_CLASS_NAME   VARCHAR(250) NOT NULL,
-    IS_DURABLE VARCHAR(1) NOT NULL,
-    IS_NONCONCURRENT VARCHAR(1) NOT NULL,
-    IS_UPDATE_DATA VARCHAR(1) NOT NULL,
-    REQUESTS_RECOVERY VARCHAR(1) NOT NULL,
-    JOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
-    );
+    ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    CREATED_BY BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
+    CREATED_AT TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
+    APP_CODE CHAR(8) NOT NULL COMMENT 'App Code',
+    REPO_NAME ENUM('PROCESSOR') NOT NULL COMMENT 'Repository name',
 
-CREATE TABLE IF NOT EXISTS QRTZ_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    JOB_NAME  VARCHAR(200) NOT NULL,
-    JOB_GROUP VARCHAR(200) NOT NULL,
-    DESCRIPTION VARCHAR(250) NULL,
-    NEXT_FIRE_TIME BIGINT(13) NULL,
-    PREV_FIRE_TIME BIGINT(13) NULL,
-    PRIORITY INTEGER NULL,
-    TRIGGER_STATE VARCHAR(16) NOT NULL,
-    TRIGGER_TYPE VARCHAR(8) NOT NULL,
-    START_TIME BIGINT(13) NOT NULL,
-    END_TIME BIGINT(13) NULL,
-    CALENDAR_NAME VARCHAR(200) NULL,
-    MISFIRE_INSTR SMALLINT(2) NULL,
-    JOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,JOB_NAME,JOB_GROUP)
-    REFERENCES QRTZ_JOB_DETAILS(SCHED_NAME,JOB_NAME,JOB_GROUP)
-    );
+    PRIMARY KEY (ID)
+)
+ENGINE = INNODB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS QRTZ_SIMPLE_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    REPEAT_COUNT BIGINT(7) NOT NULL,
-    REPEAT_INTERVAL BIGINT(12) NOT NULL,
-    TIMES_TRIGGERED BIGINT(10) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_CRON_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    CRON_EXPRESSION VARCHAR(200) NOT NULL,
-    TIME_ZONE_ID VARCHAR(80),
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_SIMPROP_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    STR_PROP_1 VARCHAR(512) NULL,
-    STR_PROP_2 VARCHAR(512) NULL,
-    STR_PROP_3 VARCHAR(512) NULL,
-    INT_PROP_1 INT NULL,
-    INT_PROP_2 INT NULL,
-    LONG_PROP_1 BIGINT NULL,
-    LONG_PROP_2 BIGINT NULL,
-    DEC_PROP_1 NUMERIC(13,4) NULL,
-    DEC_PROP_2 NUMERIC(13,4) NULL,
-    BOOL_PROP_1 VARCHAR(1) NULL,
-    BOOL_PROP_2 VARCHAR(1) NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_BLOB_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    BLOB_DATA BLOB NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP),
-    FOREIGN KEY (SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    REFERENCES QRTZ_TRIGGERS(SCHED_NAME,TRIGGER_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_CALENDARS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    CALENDAR_NAME  VARCHAR(200) NOT NULL,
-    CALENDAR BLOB NOT NULL,
-    PRIMARY KEY (SCHED_NAME,CALENDAR_NAME)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_PAUSED_TRIGGER_GRPS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    TRIGGER_GROUP  VARCHAR(200) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,TRIGGER_GROUP)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_FIRED_TRIGGERS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    ENTRY_ID VARCHAR(95) NOT NULL,
-    TRIGGER_NAME VARCHAR(200) NOT NULL,
-    TRIGGER_GROUP VARCHAR(200) NOT NULL,
-    INSTANCE_NAME VARCHAR(200) NOT NULL,
-    FIRED_TIME BIGINT(13) NOT NULL,
-    SCHED_TIME BIGINT(13) NOT NULL,
-    PRIORITY INTEGER NOT NULL,
-    STATE VARCHAR(16) NOT NULL,
-    JOB_NAME VARCHAR(200) NULL,
-    JOB_GROUP VARCHAR(200) NULL,
-    IS_NONCONCURRENT VARCHAR(1) NULL,
-    REQUESTS_RECOVERY VARCHAR(1) NULL,
-    PRIMARY KEY (SCHED_NAME,ENTRY_ID)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_SCHEDULER_STATE
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    INSTANCE_NAME VARCHAR(200) NOT NULL,
-    LAST_CHECKIN_TIME BIGINT(13) NOT NULL,
-    CHECKIN_INTERVAL BIGINT(13) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,INSTANCE_NAME)
-    );
-
-CREATE TABLE IF NOT EXISTS QRTZ_LOCKS
-(
-    SCHED_NAME VARCHAR(120) NOT NULL,
-    LOCK_NAME  VARCHAR(40) NOT NULL,
-    PRIMARY KEY (SCHED_NAME,LOCK_NAME)
-    );
+insert into core.core_remote_repositories (APP_CODE, REPO_NAME) values ('leadzump', 'PROCESSOR');
 
 
 -- Add scripts from the project above this line and seed data below this line.
@@ -5215,141 +5639,7 @@ VALUES (@v_client_fin1, @v_app_appbuilder, 0),
 INSERT INTO `security`.`security_user_role_permission` (`USER_ID`, `ROLE_ID`)
 VALUES (@v_client_system, @v_role_schema);
 
--- INSERT INTO security.security_app_package (client_id, app_id, package_id)
---	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
+USE security;
 
--- INSERT INTO security.security_app_package (client_id, app_id, package_id)
---	select 8, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
-
--- INSERT INTO security.security_app_user_role (client_id, app_id, role_id)
--- SELECT 1, 6, role_id FROM security.security_package_role pr 
--- 	 join security.security_app_package ap on ap.PACKAGE_ID = pr.PACKAGE_ID
---      where ap.client_id = 1;
-
--- INSERT INTO security.security_app_package (client_id, app_id, package_id)
--- 	select 1, 6, id from security.security_package WHERE code NOT IN ('CLITYP', 'APPSYS', 'CLIENT', 'TRANSP');
-
--- insert into security.security_app_user_role(client_id, app_id, role_id)
--- select 1, 6, role_id from security.security_app_package ap
--- 	left join security.security_package_role rp on rp.package_id = ap.package_id
---     where role_id is not null;
-
--- Testing
-
-/* Creating Database */
-
-DROP DATABASE IF EXISTS `notification`;
-
-CREATE DATABASE IF NOT EXISTS `notification` DEFAULT CHARACTER SET `UTF8MB4` COLLATE `UTF8MB4_UNICODE_CI`;
-
-USE `notification`;
-
-DROP TABLE IF EXISTS `notification`.`notification_user_preferences`;
-
-CREATE TABLE `notification`.`notification_user_preferences` (
-
-    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'App Id for which this user preference is getting created. References security_app table',
-    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'App User Id under which this user preference is getting created. References security_user table',
-
-    `PREFERENCES` JSON NULL COMMENT 'Notification preference',
-    `ENABLED` TINYINT NOT NULL DEFAULT 1 COMMENT 'Notification enabled or not',
-
-    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
-    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
-
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_USER_PREF_CODE` (`CODE`),
-    UNIQUE KEY `UK2_USER_NOTI_PREF_APP_ID_USER_ID_NAME` (`APP_ID`, `USER_ID`)
-
-) ENGINE = InnoDB
-  DEFAULT CHARSET = `utf8mb4`
-  COLLATE = `utf8mb4_unicode_ci`;
-
-DROP TABLE IF EXISTS `notification`.`notification_sent_notifications`;
-
-CREATE TABLE `notification`.`notification_sent_notifications` (
-
-    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
-    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
-    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
-    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
-
-    `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY') NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification that is sent',
-    `NOTIFICATION_CHANNEL` JSON NOT NULL COMMENT 'Notification message that is sent in different channels',
-    `NOTIFICATION_STAGE` ENUM ('PLATFORM', 'GATEWAY', 'NETWORK') NOT NULL DEFAULT 'PLATFORM' COMMENT 'Stage of the notification that is sent',
-    `TRIGGER_TIME` TIMESTAMP NOT NULL COMMENT 'Time when the notification was triggered',
-
-    `IS_EMAIL` TINYINT NOT NULL DEFAULT 0 COMMENT 'Email notification enabled or not',
-    `EMAIL_DELIVERY_STATUS` JSON NULL COMMENT 'Email delivery status',
-    `IS_IN_APP` TINYINT NOT NULL DEFAULT 0 COMMENT 'In-app notification enabled or not',
-    `IN_APP_DELIVERY_STATUS` JSON NULL COMMENT 'In-app delivery status',
-    `IS_MOBILE_PUSH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Mobile push notification enabled or not',
-    `MOBILE_PUSH_DELIVERY_STATUS` JSON NULL COMMENT 'Mobile push delivery status',
-    `IS_WEB_PUSH` TINYINT NOT NULL DEFAULT 0 COMMENT 'Web push notification enabled or not',
-    `WEB_PUSH_DELIVERY_STATUS` JSON NULL COMMENT 'Web push delivery status',
-    `IS_SMS` TINYINT NOT NULL DEFAULT 0 COMMENT 'SMS notification enabled or not',
-    `SMS_DELIVERY_STATUS` JSON NULL COMMENT 'SMS delivery status',
-    `IS_ERROR` TINYINT NOT NULL DEFAULT 0 COMMENT 'If we are getting error in notification or not',
-    `ERROR_INFO` JSON NULL COMMENT 'Error info if error occurs during this notification',
-    `CHANNEL_ERRORS` JSON NULL COMMENT 'Channel Errors if error occurs during channel listeners processing',
-
-    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
-    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
-
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_SENT_NOTIFICATION_CODE` (`CODE`),
-    INDEX `IDX1_SENT_NOTIFICATION_APP_CODE_CLIENT_CODE_USER_ID` (`APP_CODE`, `CLIENT_CODE`, `USER_ID`),
-    INDEX `IDX2_SENT_NOTIFICATION_APP_CODE_CLIENT_CODE` (`APP_CODE`, `CLIENT_CODE`),
-    INDEX `IDX3_SENT_NOTIFICATION_CREATED_AT` (`CREATED_AT` DESC)
-
-) ENGINE = InnoDB
-  DEFAULT CHARSET = `utf8mb4`
-  COLLATE = `utf8mb4_unicode_ci`;
-
-DROP TABLE IF EXISTS `notification`.`notification_in_app_notifications`;
-
-CREATE TABLE `notification`.`notification_in_app_notifications` (
-
-    `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
-    `CODE` CHAR(22) NOT NULL COMMENT 'Unique Code to identify this row',
-    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this notification was sent. References security_app table',
-    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code to whom this notification we sent. References security_user table',
-    `USER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the user. References security_user table',
-
-    `NOTIFICATION_TYPE` ENUM ('ALERT', 'BULK', 'INFO', 'WARNING', 'ERROR', 'SUCCESS', 'REMINDER', 'SCHEDULED', 'SYSTEM', 'PROMOTIONAL', 'UPDATE', 'SECURITY') NOT NULL DEFAULT 'INFO' COMMENT 'Type of notification that is sent',
-    `IN_APP_MESSAGE` JSON NOT NULL COMMENT 'In-App Notification message that is sent',
-    `NOTIFICATION_STAGE` ENUM ('PLATFORM', 'GATEWAY', 'NETWORK') NOT NULL DEFAULT 'PLATFORM' COMMENT 'Stage of the notification that is sent',
-    `NOTIFICATION_DELIVERY_STATUS` ENUM ('NO_INFO', 'CREATED', 'ERROR', 'CANCELLED', 'QUEUED', 'SENT', 'DELIVERED', 'READ', 'FAILED') NOT NULL DEFAULT 'NO_INFO' COMMENT 'Current Delivery status of this notification message',
-    `ACTIONS` JSON NULL COMMENT 'Actions to be performed on this notification',
-    `TRIGGER_TIME` TIMESTAMP NOT NULL COMMENT 'Time when the notification was triggered',
-
-    `SENT` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this notification is sent or not',
-    `SENT_TIME` TIMESTAMP NULL COMMENT 'Time when this notification was sent',
-    `DELIVERED` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this notification is delivered or not',
-    `DELIVERED_TIME` TIMESTAMP NULL COMMENT 'Time when this notification was delivered to user',
-    `READ` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this notification is read or not',
-    `READ_TIME` TIMESTAMP NULL COMMENT 'Time when this notification was read by user',
-    `FAILED` TINYINT NOT NULL DEFAULT 0 COMMENT 'Is this notification is failed or not',
-    `FAILED_TIME` TIMESTAMP NULL COMMENT 'Time when this notification was failed',
-
-    `CREATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who created this row',
-    `CREATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time when this row is created',
-    `UPDATED_BY` BIGINT UNSIGNED DEFAULT NULL COMMENT 'ID of the user who updated this row',
-    `UPDATED_AT` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Time when this row is updated',
-
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `UK1_IN_APP_NOTIFICATION_CODE` (`CODE`),
-    INDEX `IDX1_SENT_NOTIFICATION_APP_CODE_CLIENT_CODE_USER_ID` (`APP_CODE`, `CLIENT_CODE`, `USER_ID`),
-    INDEX `IDX2_SENT_NOTIFICATION_APP_CODE_CLIENT_CODE` (`APP_CODE`, `CLIENT_CODE`),
-    INDEX `IDX3_SENT_NOTIFICATION_CREATED_AT` (`CREATED_AT` DESC)
-
-) ENGINE = InnoDB
-  DEFAULT CHARSET = `utf8mb4`
-  COLLATE = `utf8mb4_unicode_ci`;
+ALTER TABLE `security`.`security_user`
+DROP COLUMN `DESIGNATION`;

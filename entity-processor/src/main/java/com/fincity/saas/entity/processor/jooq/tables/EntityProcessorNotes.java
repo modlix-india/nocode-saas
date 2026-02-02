@@ -4,12 +4,16 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorNotesRecord;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -20,7 +24,9 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -35,6 +41,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -114,10 +121,24 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_notes.ATTACHMENT_FILE_DETAIL</code>.
+     * File Details if note has an attachment
+     */
+    public final TableField<EntityProcessorNotesRecord, FileDetail> ATTACHMENT_FILE_DETAIL = createField(DSL.name("ATTACHMENT_FILE_DETAIL"), SQLDataType.JSON, this, "File Details if note has an attachment", new JSONtoClassConverter<JSON, FileDetail>(JSON.class, FileDetail.class));
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_notes.HAS_ATTACHMENT</code>.
      * Whether this note has attachments.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Whether this note has attachments.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Whether this note has attachments.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_notes.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public final TableField<EntityProcessorNotesRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this content was created", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
 
     /**
      * The column <code>entity_processor.entity_processor_notes.OWNER_ID</code>.
@@ -133,18 +154,31 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
     public final TableField<EntityProcessorNotesRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this note.");
 
     /**
+     * The column <code>entity_processor.entity_processor_notes.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public final TableField<EntityProcessorNotesRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of user for which this task was created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_notes.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public final TableField<EntityProcessorNotesRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client for which this task was created.");
+
+    /**
      * The column
      * <code>entity_processor.entity_processor_notes.TEMP_ACTIVE</code>.
      * Temporary active flag for this note.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this note.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this note.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_notes.IS_ACTIVE</code>. Flag to
      * check if this note is active or not.
      */
-    public final TableField<EntityProcessorNotesRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this note is active or not.");
+    public final TableField<EntityProcessorNotesRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this note is active or not.");
 
     /**
      * The column
@@ -242,6 +276,11 @@ public class EntityProcessorNotes extends TableImpl<EntityProcessorNotesRecord> 
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_NOTES_IDX0_NOTES_AC_CC);
     }
 
     @Override

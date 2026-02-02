@@ -2,10 +2,10 @@ package com.fincity.saas.entity.processor.dto;
 
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
-import com.fincity.saas.entity.processor.relations.resolvers.UserFieldResolver;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -27,8 +27,12 @@ public class Activity extends BaseDto<Activity> {
     private static final long serialVersionUID = 4705602267455594423L;
 
     private ULong ticketId;
+    private ULong ownerId;
+    private ULong userId;
     private ULong taskId;
     private ULong noteId;
+    private ULong stageId;
+    private ULong statusId;
     private String comment;
     private LocalDateTime activityDate;
     private ActivityAction activityAction;
@@ -41,14 +45,20 @@ public class Activity extends BaseDto<Activity> {
         super();
         this.relationsMap.put(Fields.taskId, EntitySeries.TASK.getTable());
         this.relationsMap.put(Fields.noteId, EntitySeries.NOTE.getTable());
+        this.relationsMap.put(Fields.stageId, EntitySeries.STAGE.getTable());
+        this.relationsMap.put(Fields.statusId, EntitySeries.STAGE.getTable());
         this.relationsResolverMap.put(UserFieldResolver.class, Fields.actorId);
     }
 
     public Activity(Activity activity) {
         super(activity);
         this.ticketId = activity.ticketId;
+        this.ownerId = activity.ownerId;
+        this.userId = activity.userId;
         this.taskId = activity.taskId;
         this.noteId = activity.noteId;
+        this.stageId = activity.stageId;
+        this.statusId = activity.statusId;
         this.comment = activity.comment;
         this.activityDate = activity.activityDate;
         this.activityAction = activity.activityAction;
@@ -61,6 +71,23 @@ public class Activity extends BaseDto<Activity> {
     public static Activity of(ULong ticketId, ActivityAction action, ActivityObject object) {
         return new Activity()
                 .setTicketId(ticketId)
+                .setActivityAction(action)
+                .setComment(object.getComment())
+                .setObjectEntitySeries(object.getEntitySeries())
+                .setObjectId(object.getId())
+                .setObjectData(object.getData());
+    }
+
+    /**
+     * Create activity for content linked to ticket, owner, or user (ContentEntitySeries).
+     * Exactly one of ticketId, ownerId, userId must be non-null.
+     */
+    public static Activity of(
+            ULong ticketId, ULong ownerId, ULong userId, ActivityAction action, ActivityObject object) {
+        return new Activity()
+                .setTicketId(ticketId)
+                .setOwnerId(ownerId)
+                .setUserId(userId)
                 .setActivityAction(action)
                 .setComment(object.getComment())
                 .setObjectEntitySeries(object.getEntitySeries())

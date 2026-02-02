@@ -87,10 +87,25 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
     }
 
     /**
+     * Setter for <code>security.security_profile.Title</code>.
+     */
+    public SecurityProfileRecord setTitle(String value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_profile.Title</code>.
+     */
+    public String getTitle() {
+        return (String) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_profile.APP_ID</code>.
      */
     public SecurityProfileRecord setAppId(ULong value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -98,7 +113,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Getter for <code>security.security_profile.APP_ID</code>.
      */
     public ULong getAppId() {
-        return (ULong) get(4);
+        return (ULong) get(5);
     }
 
     /**
@@ -106,7 +121,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Description of the profile
      */
     public SecurityProfileRecord setDescription(String value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -115,7 +130,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Description of the profile
      */
     public String getDescription() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
@@ -123,7 +138,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Profile ID to which the user is assigned
      */
     public SecurityProfileRecord setRootProfileId(ULong value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -132,7 +147,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Profile ID to which the user is assigned
      */
     public ULong getRootProfileId() {
-        return (ULong) get(6);
+        return (ULong) get(7);
     }
 
     /**
@@ -140,7 +155,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Arrangement of the profile
      */
     public SecurityProfileRecord setArrangement(Map value) {
-        set(7, value);
+        set(8, value);
         return this;
     }
 
@@ -149,7 +164,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * Arrangement of the profile
      */
     public Map getArrangement() {
-        return (Map) get(7);
+        return (Map) get(8);
     }
 
     /**
@@ -157,7 +172,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who created this row
      */
     public SecurityProfileRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -166,7 +181,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -174,7 +189,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is created
      */
     public SecurityProfileRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -183,7 +198,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -191,7 +206,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who updated this row
      */
     public SecurityProfileRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -200,7 +215,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * user who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -208,7 +223,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is updated
      */
     public SecurityProfileRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -217,7 +232,7 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
      * this row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -243,13 +258,14 @@ public class SecurityProfileRecord extends UpdatableRecordImpl<SecurityProfileRe
     /**
      * Create a detached, initialised SecurityProfileRecord
      */
-    public SecurityProfileRecord(ULong id, ULong clientId, Byte defaultProfile, String name, ULong appId, String description, ULong rootProfileId, Map arrangement, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityProfileRecord(ULong id, ULong clientId, Byte defaultProfile, String name, String title, ULong appId, String description, ULong rootProfileId, Map arrangement, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityProfile.SECURITY_PROFILE);
 
         setId(id);
         setClientId(clientId);
         setDefaultProfile(defaultProfile);
         setName(name);
+        setTitle(title);
         setAppId(appId);
         setDescription(description);
         setRootProfileId(rootProfileId);

@@ -1,11 +1,5 @@
 package com.fincity.saas.core.controller;
 
-import com.fincity.saas.commons.core.document.Connection;
-import com.fincity.saas.commons.core.enums.ConnectionType;
-import com.fincity.saas.commons.core.repository.ConnectionRepository;
-import com.fincity.saas.commons.core.service.ConnectionService;
-import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
-import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -15,6 +9,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fincity.saas.commons.core.document.Connection;
+import com.fincity.saas.commons.core.enums.ConnectionType;
+import com.fincity.saas.commons.core.model.NotificationConnectionDetails;
+import com.fincity.saas.commons.core.repository.ConnectionRepository;
+import com.fincity.saas.commons.core.service.ConnectionService;
+import com.fincity.saas.commons.core.service.connection.rest.OAuth2RestService;
+import com.fincity.saas.commons.mongo.controller.AbstractOverridableDataController;
+
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -43,18 +46,34 @@ public class ConnectionController
         return this.oAuth2RestService.revokeConnectionToken(connectionName).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/oauth2/token/{connectionName}")
-    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName) {
-        return this.oAuth2RestService.getAccessToken(connectionName);
+    @GetMapping("/internal/oauth2/token/{connectionName}")
+    public Mono<String> getOAuth2Token(@PathVariable("connectionName") String connectionName,
+            ServerHttpRequest request) {
+
+        String appCode = request.getHeaders().getFirst("appCode");
+        String clientCode = request.getHeaders().getFirst("clientCode");
+
+        return this.oAuth2RestService.getAccessToken(appCode, clientCode, connectionName);
     }
 
-    @GetMapping("/internal")
-    public Mono<Connection> getConnection(
-            @RequestParam String connectionName,
+    @GetMapping("/internal/notification/{name}")
+    public Mono<ResponseEntity<NotificationConnectionDetails>> getNotificationConnections(
+            @PathVariable("name") String connectionName,
             @RequestParam String appCode,
             @RequestParam String clientCode,
-            @RequestParam String connectionType) {
-        return this.service.readInternalConnection(
-                connectionName, appCode, clientCode, ConnectionType.valueOf(connectionType));
+            @RequestParam String urlClientCode) {
+        return this.service.getNotificationConnections(connectionName, appCode, urlClientCode, clientCode)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/{name}")
+    public Mono<ResponseEntity<Connection>> getNotificationConnections(
+            @PathVariable("name") String connectionName,
+            @RequestParam String appCode,
+            @RequestParam String clientCode,
+            @RequestParam String urlClientCode,
+            @RequestParam ConnectionType connectionType) {
+        return this.service.getConnection(connectionName, appCode, urlClientCode, clientCode, connectionType)
+                .map(ResponseEntity::ok);
     }
 }

@@ -8,8 +8,10 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+
 import java.util.List;
 import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -36,7 +38,7 @@ public class SendGridService extends AbstractEmailService implements IAppEmailSe
         return FlatMapUtil.flatMapMono(
                         () -> Mono.just(
                                 Tuples.of(toAddresses == null ? List.of() : toAddresses, template, templateData)),
-                        tup -> this.getProcessedEmailDetails(toAddresses, template, templateData),
+                        tup -> this.getProcessedEmailDetails(connection, toAddresses, template, templateData),
                         (tup, details) -> WebClient.create()
                                 .post()
                                 .uri("https://api.sendgrid.com/v3/mail/send")

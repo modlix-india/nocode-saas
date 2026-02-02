@@ -30,70 +30,69 @@ import reactor.util.function.Tuples;
 @RestController
 @RequestMapping("api/ui/functions")
 public class FunctionController
-		extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
+        extends AbstractOverridableDataController<UIFunction, UIFunctionDocumentRepository, UIFunctionService> {
 
-	private final Gson gson;
+    private final Gson gson;
 
-	public FunctionController(Gson gson) {
+    public FunctionController(Gson gson) {
 
-		this.gson = gson;
-	}
+        this.gson = gson;
+    }
 
-	@GetMapping("/repositoryFind")
+    @GetMapping("/repositoryFind")
+    public Mono<ResponseEntity<String>> find(@RequestParam(required = false) String appCode,
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos, String namespace,
+            String name) {
 
-	public Mono<ResponseEntity<String>> find(@RequestParam(required = false) String appCode,
-			@RequestParam(required = false) String clientCode,
-			@RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos, String namespace,
-			String name) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
+                        CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
-						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
+                (ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
 
-				(ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
+                (ca, tup, appFunctionRepo) -> {
 
-				(ca, tup, appFunctionRepo) -> {
+                    ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
+                            ? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
+                                    appFunctionRepo)
+                            : appFunctionRepo);
 
-					ReactiveRepository<ReactiveFunction> fRepo = (includeKIRunRepos
-							? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-									appFunctionRepo)
-							: appFunctionRepo);
+                    return fRepo.find(namespace, name);
+                },
 
-					return fRepo.find(namespace, name);
-				},
+                (ca, tup, appFunctionRepo, fun) -> Mono.just((this.gson).toJson(fun)))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
+                .map(str -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(str));
+    }
 
-				(ca, tup, appFunctionRepo, fun) -> Mono.just((this.gson).toJson(fun)))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.find"))
-				.map(str -> ResponseEntity.ok()
-						.contentType(MediaType.APPLICATION_JSON)
-						.body(str));
-	}
+    @GetMapping("/repositoryFilter")
+    public Mono<ResponseEntity<List<String>>> filter(@RequestParam(required = false) String appCode,
+            @RequestParam(required = false) String clientCode,
+            @RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
+            @RequestParam(required = false, defaultValue = "") String filter) {
 
-	@GetMapping("/repositoryFilter")
-	public Mono<ResponseEntity<List<String>>> filter(@RequestParam(required = false) String appCode,
-			@RequestParam(required = false) String clientCode,
-			@RequestParam(required = false, defaultValue = "false") boolean includeKIRunRepos,
-			@RequestParam(required = false, defaultValue = "") String filter) {
+        return FlatMapUtil.flatMapMono(
 
-		return FlatMapUtil.flatMapMono(
+                SecurityContextUtil::getUsersContextAuthentication,
 
-				SecurityContextUtil::getUsersContextAuthentication,
+                ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
+                        CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
 
-				ca -> Mono.just(Tuples.of(CommonsUtil.nonNullValue(appCode, ca.getUrlAppCode()),
-						CommonsUtil.nonNullValue(clientCode, ca.getUrlClientCode()))),
+                (ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
 
-				(ca, tup) -> this.service.getFunctionRepository(tup.getT1(), tup.getT2()),
+                (ca, tup, appFunctionRepo) -> (includeKIRunRepos
+                        ? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
+                                appFunctionRepo)
+                        : appFunctionRepo).filter(filter).collectList()
 
-				(ca, tup, appFunctionRepo) -> (includeKIRunRepos
-						? new ReactiveHybridRepository<ReactiveFunction>(new KIRunReactiveFunctionRepository(),
-								appFunctionRepo)
-						: appFunctionRepo).filter(filter).collectList()
-
-		)
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
-				.map(ResponseEntity::ok);
-	}
+        )
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "FunctionController.filter"))
+                .map(ResponseEntity::ok);
+    }
 }

@@ -56,6 +56,13 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
     private ULong designationId;
     private ULong reportingTo;
 
+    private List<Profile> profiles;
+    private Client client;
+    private Client managingClient;
+    private User createdByUser;
+    private Designation designation;
+    private User reportingUser;
+
     public String getUserName() {
         return PLACEHOLDER.equals(this.userName) ? null : this.userName;
     }
@@ -121,7 +128,8 @@ public class User extends AbstractUpdatableDTO<ULong, ULong> implements BasePass
                 .setStatusCode(this.statusCode.toString())
                 .setLockedUntil(lockedUntil)
                 .setLockedDueTo(lockedDueTo)
-                .setUserName(this.getUserName());
+                .setUserName(this.getUserName())
+		        .setDesignationId(safeFrom(this.designationId));
     }
 
     public static BigInteger safeFrom(ULong v) {

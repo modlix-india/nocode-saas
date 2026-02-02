@@ -1,0 +1,487 @@
+package com.fincity.saas.entity.processor.service.form;
+
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
+import com.fincity.saas.commons.security.model.User;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.saas.entity.processor.dao.form.ProductWalkInFormDAO;
+import com.fincity.saas.entity.processor.dto.Ticket;
+import com.fincity.saas.entity.processor.dto.form.ProductWalkInForm;
+import com.fincity.saas.entity.processor.dto.product.Product;
+import com.fincity.saas.entity.processor.enums.AssignmentType;
+import com.fincity.saas.entity.processor.enums.EntitySeries;
+import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorProductWalkInFormsRecord;
+import com.fincity.saas.entity.processor.model.common.IdAndValue;
+import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.common.PhoneNumber;
+import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
+import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequest;
+import com.fincity.saas.entity.processor.model.response.ProcessorResponse;
+import com.fincity.saas.entity.processor.model.response.WalkInFormResponse;
+import com.fincity.saas.entity.processor.service.ActivityService;
+import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
+import com.fincity.saas.entity.processor.service.SourceUtil;
+import com.fincity.saas.entity.processor.service.TicketService;
+import com.fincity.saas.entity.processor.service.product.ProductService;
+import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
+import com.fincity.saas.entity.processor.util.NameUtil;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
+
+@Service
+public class ProductWalkInFormService
+        extends BaseWalkInFormService<EntityProcessorProductWalkInFormsRecord, ProductWalkInForm, ProductWalkInFormDAO>
+        implements IRepositoryProvider {
+
+    private static final String SYSTEM = "SYSTEM";
+    private static final String PRODUCT_WALK_IN_FORM_CACHE = "productWalkInForm";
+    private static final String NAMESPACE = "EntityProcessor.ProductWalkInForm";
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+    private final ProductService productService;
+    private TicketService ticketService;
+    private ActivityService activityService;
+
+    private ProductTemplateWalkInFormService productTemplateWalkInFormService;
+
+    @Autowired
+    @Lazy
+    private ProductWalkInFormService self;
+
+    public ProductWalkInFormService(ProductService productService, Gson gson) {
+        this.productService = productService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, ProductWalkInForm.class, classSchema, gson));
+        this.functions.addAll(
+                super.getWalkInFormFunctions(NAMESPACE, ProductWalkInForm.class, classSchema, gson, self));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInFromUsers",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                "result",
+                Schema.ofArray(
+                        "result",
+                        Schema.ofRef(classSchema.getNamespaceForClass(IdAndValue.class) + "."
+                                + IdAndValue.class.getSimpleName())),
+                gson,
+                self::getWalkInFromUsers));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInTickets",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                ClassSchema.ArgSpec.ofRef("phoneNumber", PhoneNumber.class, classSchema),
+                "result",
+                Schema.ofArray("result", Schema.ofRef("EntityProcessor.DTO.Ticket")),
+                gson,
+                self::getWalkInTickets));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInProduct",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(Product.class) + "." + Product.class.getSimpleName()),
+                gson,
+                self::getWalkInProduct));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateWalkInTicket",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                ClassSchema.ArgSpec.ofRef("ticketRequest", WalkInFormTicketRequest.class, classSchema),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(ProcessorResponse.class) + "."
+                        + ProcessorResponse.class.getSimpleName()),
+                gson,
+                self::createWalkInTicket));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "GetWalkInFormResponse",
+                ClassSchema.ArgSpec.string("appCode"),
+                ClassSchema.ArgSpec.string("clientCode"),
+                EntityProcessorArgSpec.identity("productId"),
+                "result",
+                Schema.ofRef(classSchema.getNamespaceForClass(WalkInFormResponse.class) + "."
+                        + WalkInFormResponse.class.getSimpleName()),
+                gson,
+                self::getWalkInFormResponse));
+    }
+
+    @Autowired
+    private void setTicketService(TicketService ticketService) {
+        this.ticketService = ticketService;
+    }
+
+    @Autowired
+    private void setActivityService(ActivityService activityService) {
+        this.activityService = activityService;
+    }
+
+    @Lazy
+    @Autowired
+    private void setProductTemplateWalkInFormService(
+            ProductTemplateWalkInFormService productTemplateWalkInFormService) {
+        this.productTemplateWalkInFormService = productTemplateWalkInFormService;
+    }
+
+    @Override
+    protected String getCacheName() {
+        return PRODUCT_WALK_IN_FORM_CACHE;
+    }
+
+    @Override
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.PRODUCT_WALK_IN_FORMS;
+    }
+
+    @Override
+    protected String getProductEntityName() {
+        return productService.getEntityName();
+    }
+
+    @Override
+    protected Mono<Tuple2<ULong, ULong>> resolveProduct(ProcessorAccess access, Identity productId) {
+        return productService
+                .readByIdentity(access, productId)
+                .map(product -> Tuples.of(product.getId(), product.getProductTemplateId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.resolveProduct"));
+    }
+
+    @Override
+    protected ProductWalkInForm create(
+            String name, ULong entityId, ULong stageId, ULong statusId, AssignmentType assignmentType) {
+        return (ProductWalkInForm) new ProductWalkInForm()
+                .setName(name)
+                .setProductId(entityId)
+                .setStageId(stageId)
+                .setStatusId(statusId)
+                .setAssignmentType(assignmentType);
+    }
+
+    @Override
+    protected Mono<ProductWalkInForm> attachEntity(ProcessorAccess access, ULong productId, ProductWalkInForm entity) {
+        return this.productService.setProductWalkInForm(access, productId, entity);
+    }
+
+    public Mono<List<IdAndValue<BigInteger, String>>> getWalkInFromUsers(String appCode, String clientCode) {
+
+        return this.getUsers(appCode, clientCode)
+                .flatMap(users -> Mono.just(users.stream()
+                        .filter(user -> user.getFirstName() != null && user.getLastName() != null)
+                        .map(user -> IdAndValue.of(
+                                user.getId(),
+                                NameUtil.assembleFullName(
+                                        user.getFirstName(), user.getMiddleName(), user.getLastName())))
+                        .sorted(Comparator.comparing(IdAndValue::getId))
+                        .toList()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFromUsers"));
+    }
+
+    private Mono<List<User>> getUsers(String appCode, String clientCode) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        return FlatMapUtil.flatMapMono(
+                () -> super.securityService.getClientByCode(clientCode),
+                client -> super.securityService
+                        .hasReadAccess(appCode, clientCode)
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (client, hasAccess) -> {
+                    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+                    queryParams.add(User.Fields.statusCode, "ACTIVE");
+                    queryParams.add("appCode", appCode);
+                    queryParams.add("fetchProfiles", Boolean.TRUE.toString());
+                    return super.securityService.getClientUserInternal(List.of(client.getId()), queryParams);
+                });
+    }
+
+    public Mono<Ticket> getWalkInTicket(
+            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.resolveProduct(access, productId)
+                .flatMap(product -> this.ticketService.getTicket(access, product.getT1(), phoneNumber, null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTicket"));
+    }
+
+    public Mono<List<Ticket>> getWalkInTickets(
+            String appCode, String clientCode, Identity productId, PhoneNumber phoneNumber) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.resolveProduct(access, productId)
+                .flatMap(product -> this.ticketService.getTickets(access, product.getT1(), phoneNumber, null))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInTickets"));
+    }
+
+    public Mono<Product> getWalkInProduct(String appCode, String clientCode, Identity productId) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.productService
+                .readByIdentity(access, productId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInProduct"));
+    }
+
+    public Mono<ProcessorResponse> createWalkInTicket(
+            String appCode, String clientCode, Identity productId, WalkInFormTicketRequest ticketRequest) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return FlatMapUtil.flatMapMono(
+                        () -> this.resolveProduct(access, productId),
+                        resolvedProduct -> this.getWalkInFormResponseInternal(access, resolvedProduct),
+                        (resolvedProduct, walkInFormResponse) ->
+                                this.validateAndGetTicket(access, resolvedProduct, walkInFormResponse, ticketRequest),
+                        (resolvedProduct, walkInFormResponse, ticket) -> {
+                            if (ticket.getId() != null)
+                                return FlatMapUtil.flatMapMono(
+                                        () -> this.createProcessorAccessForUser(access, ticketRequest.getUserId()),
+                                        uAccess -> this.updateExistingTicket(
+                                                uAccess, ticket, walkInFormResponse, ticketRequest),
+                                        (uAccess, updated) -> this.activityService
+                                                .acWalkIn(uAccess, updated.getT1(), ticketRequest.getComment())
+                                                .thenReturn(updated.getT2()));
+
+                            return FlatMapUtil.flatMapMono(
+                                    () -> this.createNewTicket(
+                                            access, resolvedProduct, ticket, walkInFormResponse, ticketRequest),
+                                    created -> this.createProcessorAccessForUser(
+                                            access, created.getT1().getAssignedUserId()),
+                                    (created, uAccess) -> this.activityService
+                                            .acWalkIn(uAccess, created.getT1(), ticketRequest.getComment())
+                                            .thenReturn(created.getT2()));
+                        })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createWalkInTicket"));
+    }
+
+    private Mono<ProcessorAccess> createProcessorAccessForUser(ProcessorAccess baseAccess, ULong userId) {
+        if (userId == null) return Mono.just(baseAccess);
+
+        return super.securityService
+                .getUserInternal(userId.toBigInteger(), null)
+                .map(user -> ProcessorAccess.of(
+                                baseAccess.getAppCode(),
+                                baseAccess.getClientCode(),
+                                baseAccess.isHasAccessFlag(),
+                                null,
+                                null)
+                        .setUserId(userId)
+                        .setUserInfo(user))
+                .switchIfEmpty(Mono.just(baseAccess))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createProcessorAccessForUser"));
+    }
+
+    private Mono<Ticket> validateAndGetTicket(
+            ProcessorAccess access,
+            Tuple2<ULong, ULong> resolvedProduct,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
+
+        if (!walkInFormResponse.isActive())
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.ENTITY_INACTIVE,
+                    this.getEntityName());
+
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL) && ticketRequest.getUserId() == null)
+            return msgService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    ProcessorMessageResourceService.IDENTITY_MISSING,
+                    "Owner User");
+
+        if (ticketRequest.getTicketId() == null || ticketRequest.getTicketId().isNull()) {
+            return FlatMapUtil.flatMapMono(
+                            () -> this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest),
+                            users -> this.ticketService.getTickets(
+                                    access, resolvedProduct.getT1(), ticketRequest.getPhoneNumber(), null),
+                            (users, tickets) -> {
+                                if (!tickets.isEmpty())
+                                    return msgService.throwMessage(
+                                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                            ProcessorMessageResourceService.TICKET_ID_NOT_SELECTED);
+                                return Mono.just(Ticket.of(ticketRequest));
+                            })
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
+        }
+
+        return this.fetchTicketByIdentity(access, walkInFormResponse, ticketRequest)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateAndGetTicket"));
+    }
+
+    private Mono<Ticket> fetchTicketByIdentity(
+            ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
+
+        return this.validateUserAndGetUsers(access, walkInFormResponse, ticketRequest)
+                .flatMap(users -> this.ticketService.readByIdentityInternal(ticketRequest.getTicketId()))
+                .switchIfEmpty(msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
+                        ProcessorMessageResourceService.IDENTITY_WRONG,
+                        this.ticketService.getEntityName(),
+                        ticketRequest.getTicketId().getId()))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.fetchTicketByIdentity"));
+    }
+
+    private Mono<List<User>> validateUserAndGetUsers(
+            ProcessorAccess access, WalkInFormResponse walkInFormResponse, WalkInFormTicketRequest ticketRequest) {
+
+        return FlatMapUtil.flatMapMono(() -> this.getUsers(access.getAppCode(), access.getClientCode()), users -> {
+                    if (walkInFormResponse.getAssignmentType().equals(AssignmentType.MANUAL)
+                            && users.stream().noneMatch(user -> user.getId()
+                                    .equals(ticketRequest.getUserId().toBigInteger())))
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                ticketRequest.getUserId(),
+                                access.getClientCode());
+
+                    return Mono.just(users);
+                })
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.validateUserAndGetUsers"));
+    }
+
+    private Mono<Tuple2<Ticket, ProcessorResponse>> updateExistingTicket(
+            ProcessorAccess access,
+            Ticket ticket,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
+
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
+
+        if (ticketRequest.getEmail() != null)
+            ticket.setEmail(ticketRequest.getEmail().getAddress());
+
+        if (ticketRequest.getName() != null) ticket.setName(ticketRequest.getName());
+
+        if (ticketRequest.getDescription() != null) ticket.setDescription(ticketRequest.getDescription());
+
+        if (ticket.getSubSource() == null) ticket.setSubSource(ticketRequest.getSubSource());
+
+        boolean stageUnchanged = walkInFormResponse.getStageId().equals(ticket.getStage());
+
+        boolean statusUnchanged = walkInFormResponse.getStatusId() == null
+                || walkInFormResponse.getStatusId().equals(ticket.getStatus());
+
+        if (stageUnchanged && statusUnchanged)
+            return ticketService
+                    .updateInternal(access, ticket)
+                    .map(updated -> Tuples.of(
+                            updated, ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries())))
+                    .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
+
+        return this.ticketService
+                .updateTicketStage(
+                        access,
+                        ticket,
+                        ticketRequest.getUserId(),
+                        walkInFormResponse.getStageId(),
+                        walkInFormResponse.getStatusId(),
+                        null,
+                        ticketRequest.getComment())
+                .map(updated ->
+                        Tuples.of(updated, ProcessorResponse.ofNoContent(updated.getCode(), updated.getEntitySeries())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.updateExistingTicket"));
+    }
+
+    private Mono<Tuple2<Ticket, ProcessorResponse>> createNewTicket(
+            ProcessorAccess access,
+            Tuple2<ULong, ULong> resolvedProduct,
+            Ticket ticket,
+            WalkInFormResponse walkInFormResponse,
+            WalkInFormTicketRequest ticketRequest) {
+
+        if (walkInFormResponse.getAssignmentType().equals(AssignmentType.DEAL_FLOW)) ticketRequest.setUserId(null);
+
+        return this.ticketService
+                .create(
+                        access,
+                        ticket.setStage(walkInFormResponse.getStageId())
+                                .setStatus(walkInFormResponse.getStatusId())
+                                .setSource(SourceUtil.WALK_IN)
+                                .setProductId(resolvedProduct.getT1())
+                                .setAssignedUserId(ticketRequest.getUserId()))
+                .map(created ->
+                        Tuples.of(created, ProcessorResponse.ofCreated(created.getCode(), created.getEntitySeries())))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.createNewTicket"));
+    }
+
+    public Mono<WalkInFormResponse> getWalkInFormResponse(String appCode, String clientCode, Identity productId) {
+
+        if (clientCode == null || clientCode.equals(SYSTEM)) return Mono.empty();
+
+        ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, Boolean.TRUE, null, null);
+
+        return this.resolveProduct(access, productId)
+                .flatMap(resolvedProduct -> this.getWalkInFormResponseInternal(access, resolvedProduct))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponse"));
+    }
+
+    private Mono<WalkInFormResponse> getWalkInFormResponseInternal(
+            ProcessorAccess access, Tuple2<ULong, ULong> resolvedProduct) {
+        return this.getWalkInFormResponse(access, resolvedProduct.getT1())
+                .switchIfEmpty(
+                        this.productTemplateWalkInFormService.getWalkInFormResponse(access, resolvedProduct.getT2()))
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "ProductWalkInFormService.getWalkInFormResponseInternal"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(ProductWalkInForm.class, classSchema);
+    }
+}

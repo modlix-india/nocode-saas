@@ -7,6 +7,7 @@ package com.fincity.security.jooq.tables.records;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.tables.SecurityApp;
 
 import java.time.LocalDateTime;
@@ -153,11 +154,26 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
     }
 
     /**
+     * Setter for <code>security.security_app.STATUS</code>.
+     */
+    public SecurityAppRecord setStatus(SecurityAppStatus value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_app.STATUS</code>.
+     */
+    public SecurityAppStatus getStatus() {
+        return (SecurityAppStatus) get(8);
+    }
+
+    /**
      * Setter for <code>security.security_app.CREATED_BY</code>. ID of the user
      * who created this row
      */
     public SecurityAppRecord setCreatedBy(ULong value) {
-        set(8, value);
+        set(9, value);
         return this;
     }
 
@@ -166,7 +182,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * who created this row
      */
     public ULong getCreatedBy() {
-        return (ULong) get(8);
+        return (ULong) get(9);
     }
 
     /**
@@ -174,7 +190,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * row is created
      */
     public SecurityAppRecord setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -183,7 +199,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
     }
 
     /**
@@ -191,7 +207,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * who updated this row
      */
     public SecurityAppRecord setUpdatedBy(ULong value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -200,7 +216,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * who updated this row
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(11);
     }
 
     /**
@@ -208,7 +224,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * row is updated
      */
     public SecurityAppRecord setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -217,7 +233,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
      * row is updated
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -243,7 +259,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
     /**
      * Create a detached, initialised SecurityAppRecord
      */
-    public SecurityAppRecord(ULong id, ULong clientId, String appName, String appCode, SecurityAppAppType appType, SecurityAppAppAccessType appAccessType, String thumbUrl, SecurityAppAppUsageType appUsageType, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public SecurityAppRecord(ULong id, ULong clientId, String appName, String appCode, SecurityAppAppType appType, SecurityAppAppAccessType appAccessType, String thumbUrl, SecurityAppAppUsageType appUsageType, SecurityAppStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityApp.SECURITY_APP);
 
         setId(id);
@@ -254,6 +270,7 @@ public class SecurityAppRecord extends UpdatableRecordImpl<SecurityAppRecord> {
         setAppAccessType(appAccessType);
         setThumbUrl(thumbUrl);
         setAppUsageType(appUsageType);
+        setStatus(status);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);

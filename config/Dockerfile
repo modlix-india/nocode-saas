@@ -11,4 +11,4 @@ ENV INSTANCE_ID=default
 
 VOLUME [ "/logs" ]
 
-ENTRYPOINT ["java", "-Dspring.cloud.config.server.git.uri=${GIT_URL}", "-Dspring.cloud.config.server.git.username=${GIT_USERNAME}", "-Dspring.cloud.config.server.git.password=${GIT_PASSWORD}", "-Dlogging.file.name=/logs/config-${INSTANCE_ID}.log", "-jar", "config-1.1.0.jar"]
+ENTRYPOINT ["java", "-Dspring.cloud.config.server.git.uri=${GIT_URL}", "-Dspring.cloud.config.server.git.username=${GIT_USERNAME}", "-Dspring.cloud.config.server.git.password=${GIT_PASSWORD}", "-Dlogging.file.name=/logs/config-${INSTANCE_ID}.log", "-Dspring.cloud.config.server.default-label=master", "-jar", "config-1.1.0.jar"]

@@ -22,7 +22,7 @@ public abstract class AbstractJOOQUpdatableDataService<R extends UpdatableRecord
         extends AbstractJOOQDataService<R, I, D, O> {
 
     @Autowired
-    private ObjectMapper objectMapper;
+    protected ObjectMapper objectMapper;
 
     public Mono<D> update(I key, Map<String, Object> fields) {
 

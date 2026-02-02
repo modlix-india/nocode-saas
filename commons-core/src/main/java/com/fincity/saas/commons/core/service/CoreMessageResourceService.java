@@ -1,8 +1,9 @@
 package com.fincity.saas.commons.core.service;
 
-import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
+
+import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
 
 @Primary
 @Service
@@ -75,4 +76,12 @@ public class CoreMessageResourceService extends AbstractMongoMessageResourceServ
     public static final String CONNECTION_NOT_AVAILABLE = "connection_not_available";
 
     public static final String INVALID_USER_FOR_CLIENT = "invalid_user_for_client";
+
+    public static final String UNABLE_TO_EXECUTE = "unable_to_execute";
+
+    public static final String UNABLE_AI_CONNECTION = "unable_ai_connection";
+
+    public static final String EMPTY_AI_RESPONSE = "empty_ai_response";
+
+    public static final String EMPTY_FUNCTION_RESPONSE = "empty_function_response";
 }

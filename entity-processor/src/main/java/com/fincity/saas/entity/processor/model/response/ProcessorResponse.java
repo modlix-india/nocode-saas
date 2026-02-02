@@ -47,6 +47,10 @@ public class ProcessorResponse implements Serializable {
         return of(transId, ProcessorStatus.of(series, HttpStatus.OK), series, details);
     }
 
+    public static ProcessorResponse ofNoContent(String transId, EntitySeries series, String... details) {
+        return of(transId, ProcessorStatus.of(series, HttpStatus.NO_CONTENT), series, details);
+    }
+
     public static ProcessorResponse ofCreated(String transId, EntitySeries series, String... details) {
         return of(transId, ProcessorStatus.of(series, HttpStatus.CREATED), series, details);
     }

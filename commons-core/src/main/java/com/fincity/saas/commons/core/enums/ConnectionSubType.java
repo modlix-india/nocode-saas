@@ -8,5 +8,11 @@ public enum ConnectionSubType {
     REST_API_OAUTH2,
     REST_API_BASIC,
     REST_API_AUTH,
-    SMTP
+    SMTP,
+    EXOTEL,
+    OPENAI,
+    GEMINI,
+    CLAUDE,
+    GROK,
+    DEEP_SEEK
 }

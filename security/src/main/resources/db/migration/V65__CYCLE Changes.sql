@@ -1,0 +1,8 @@
+use security;
+
+ALTER TABLE `security`.`security_client_plan`
+ADD COLUMN `CYCLE_NUMBER` INT NOT NULL DEFAULT 1 AFTER `CYCLE_ID`;
+
+ALTER TABLE `security`.`security_invoice_item`
+    ADD COLUMN `CYCLE_ID` BIGINT UNSIGNED NULL DEFAULT NULL COMMENT 'Cycle ID in case of prorated credit'  AFTER `INVOICE_ID`,
+    ADD CONSTRAINT `FK1_INVOICE_ITEM_CYCLE_ID` FOREIGN KEY (`CYCLE_ID`) REFERENCES `security_plan_cycle` (`ID`) ON DELETE RESTRICT ON UPDATE RESTRICT;

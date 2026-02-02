@@ -4,10 +4,11 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.enums.content.TaskPriority;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTasksTaskPriority;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTaskTypes.EntityProcessorTaskTypesPath;
@@ -23,6 +24,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -124,6 +126,13 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
     public final TableField<EntityProcessorTasksRecord, String> HAS_ATTACHMENT = createField(DSL.name("HAS_ATTACHMENT"), SQLDataType.VARCHAR(255), this, "Whether this task has attachments.");
 
     /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CONTENT_ENTITY_SERIES</code>.
+     * Type of entity for which this content was created
+     */
+    public final TableField<EntityProcessorTasksRecord, ContentEntitySeries> CONTENT_ENTITY_SERIES = createField(DSL.name("CONTENT_ENTITY_SERIES"), SQLDataType.VARCHAR(6).defaultValue(DSL.inline("TICKET", SQLDataType.VARCHAR)), this, "Type of entity for which this content was created", new EnumConverter<String, ContentEntitySeries>(String.class, ContentEntitySeries.class));
+
+    /**
      * The column <code>entity_processor.entity_processor_tasks.OWNER_ID</code>.
      * Owner related to this task.
      */
@@ -135,6 +144,19 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * related to this task.
      */
     public final TableField<EntityProcessorTasksRecord, ULong> TICKET_ID = createField(DSL.name("TICKET_ID"), SQLDataType.BIGINTUNSIGNED, this, "Ticket related to this task.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tasks.USER_ID</code>.
+     * Id of user for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> USER_ID = createField(DSL.name("USER_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of user for which this task was created.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tasks.CLIENT_ID</code>. Id of
+     * client for which this task was created.
+     */
+    public final TableField<EntityProcessorTasksRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client for which this task was created.");
 
     /**
      * The column
@@ -154,14 +176,14 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.TASK_PRIORITY</code>.
      * Priority level of the task.
      */
-    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorTasksTaskPriority.class), this, "Priority level of the task.", new EnumConverter<EntityProcessorTasksTaskPriority, TaskPriority>(EntityProcessorTasksTaskPriority.class, TaskPriority.class));
+    public final TableField<EntityProcessorTasksRecord, TaskPriority> TASK_PRIORITY = createField(DSL.name("TASK_PRIORITY"), SQLDataType.VARCHAR(6).nullable(false).defaultValue(DSL.inline("MEDIUM", SQLDataType.VARCHAR)), this, "Priority level of the task.", new EnumConverter<String, TaskPriority>(String.class, TaskPriority.class));
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tasks.IS_COMPLETED</code>. Flag
      * to tell, is the task Completed
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_COMPLETED = createField(DSL.name("IS_COMPLETED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Completed");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_COMPLETED = createField(DSL.name("IS_COMPLETED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell, is the task Completed");
 
     /**
      * The column
@@ -175,7 +197,7 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.IS_CANCELLED</code>. Flag
      * to tell, is the task Cancelled
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_CANCELLED = createField(DSL.name("IS_CANCELLED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Flag to tell, is the task Cancelled");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_CANCELLED = createField(DSL.name("IS_CANCELLED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to tell, is the task Cancelled");
 
     /**
      * The column
@@ -189,14 +211,14 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.IS_DELAYED</code>. Error
      * Message
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_DELAYED = createField(DSL.name("IS_DELAYED"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Error Message");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_DELAYED = createField(DSL.name("IS_DELAYED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Error Message");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tasks.HAS_REMINDER</code>.
      * Whether this task has a reminder set.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> HAS_REMINDER = createField(DSL.name("HAS_REMINDER"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Whether this task has a reminder set.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> HAS_REMINDER = createField(DSL.name("HAS_REMINDER"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Whether this task has a reminder set.");
 
     /**
      * The column
@@ -210,14 +232,14 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
      * <code>entity_processor.entity_processor_tasks.TEMP_ACTIVE</code>.
      * Temporary active flag for this task.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this task.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this task.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tasks.IS_ACTIVE</code>. Flag to
      * check if this task is active or not.
      */
-    public final TableField<EntityProcessorTasksRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this task is active or not.");
+    public final TableField<EntityProcessorTasksRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this task is active or not.");
 
     /**
      * The column
@@ -315,6 +337,11 @@ public class EntityProcessorTasks extends TableImpl<EntityProcessorTasksRecord> 
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TASKS_IDX0_TASKS_AC_CC);
     }
 
     @Override

@@ -45,355 +45,361 @@ import reactor.util.context.Context;
 @Service
 public class URIPathService extends AbstractOverridableDataService<URIPath, URIPathRepository> {
 
-	private static final String CACHE_NAME_URI = "URICache";
+    private static final String CACHE_NAME_URI = "URICache";
 
-	private static final String CACHE_NAME_PATTERN = "URIPatternCache";
+    private static final String CACHE_NAME_PATTERN = "URIPatternCache";
 
-	private static final Set<String> ALLOWED_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.POST.name(),
-			HttpMethod.PUT.name(), HttpMethod.PATCH.name(), HttpMethod.DELETE.name());
+    private static final Set<String> ALLOWED_METHODS = Set.of(HttpMethod.GET.name(), HttpMethod.POST.name(),
+            HttpMethod.PUT.name(), HttpMethod.PATCH.name(), HttpMethod.DELETE.name());
 
-	private final IFeignCoreService iFeignCoreService;
+    private final IFeignCoreService iFeignCoreService;
 
-	private final PathMatcher pathMatcher;
+    private final PathMatcher pathMatcher;
 
-	private final Gson gson;
+    private final Gson gson;
 
-	private static final String FO_RESULT = "result";
+    private static final String FO_RESULT = "result";
 
-	private static final String FO_NAME = "name";
+    private static final String FO_NAME = "name";
 
-	public URIPathService(IFeignCoreService iFeignCoreService) {
-		super(URIPath.class);
-		this.iFeignCoreService = iFeignCoreService;
-		this.pathMatcher = new AntPathMatcher();
-		gson = new Gson();
-	}
+    public URIPathService(IFeignCoreService iFeignCoreService) {
+        super(URIPath.class);
+        this.iFeignCoreService = iFeignCoreService;
+        this.pathMatcher = new AntPathMatcher();
+        gson = new Gson();
+    }
 
-	@Override
-	public String getAccessCheckName() {
-		return "Application";
-	}
+    @Override
+    public String getAccessCheckName() {
+        return "Application";
+    }
 
-	@Override
-	protected String getCollectionName() {
-		return "uri_path";
-	}
+    @Override
+    protected String getCollectionName() {
+        return "uri_path";
+    }
 
-	@Override
-	public String getCacheName(String appCode, String cacheAction) {
-		return super.getCacheName(appCode + "_" + CACHE_NAME_URI, appCode) + cacheAction;
-	}
+    @Override
+    public String getCacheName(String appCode, String cacheAction) {
+        return super.getCacheName(appCode + "_" + CACHE_NAME_URI, appCode) + cacheAction;
+    }
 
-	@Override
-	public Mono<URIPath> update(URIPath entity) {
+    @Override
+    public Mono<URIPath> update(URIPath entity) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.validateURIPath(entity),
+                () -> this.validateURIPath(entity),
 
-				valid -> super.update(entity),
+                valid -> super.update(entity),
 
-				(valid, updatable) -> cacheService.evict(CACHE_NAME_PATTERN,
-						updatable.getAppCode(), "-", updatable.getClientCode())
-						.thenReturn(updatable)
+                (valid, updatable) -> cacheService.evict(CACHE_NAME_PATTERN,
+                        updatable.getAppCode(), "-", updatable.getClientCode())
+                        .thenReturn(updatable)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.update"));
-	}
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.update"));
+    }
 
-	@Override
-	public Mono<Boolean> delete(String id) {
+    @Override
+    public Mono<Boolean> delete(String id) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.read(id),
+                () -> this.read(id),
 
-				uriPath -> super.delete(id),
+                uriPath -> super.delete(id),
 
-				(uriPath, deleted) -> cacheService.evict(CACHE_NAME_PATTERN,
-						uriPath.getAppCode(), "-", uriPath.getClientCode())
-						.thenReturn(deleted)
+                (uriPath, deleted) -> cacheService.evict(CACHE_NAME_PATTERN,
+                        uriPath.getAppCode(), "-", uriPath.getClientCode())
+                        .thenReturn(deleted)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.delete"));
-	}
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.delete"));
+    }
 
-	@Override
-	public Mono<URIPath> create(URIPath entity) {
+    @Override
+    public Mono<URIPath> create(URIPath entity) {
 
-		if (StringUtil.safeIsBlank(entity.getName())) {
-			if (StringUtil.safeIsBlank(entity.getShortCode()))
-				entity.setShortCode(UniqueUtil.shortUUID());
-			entity.setName("/" + entity.getShortCode());
-		}
+        if (StringUtil.safeIsBlank(entity.getName())) {
+            if (StringUtil.safeIsBlank(entity.getShortCode()))
+                entity.setShortCode(UniqueUtil.shortUUID());
+            entity.setName("/" + entity.getShortCode());
+        }
 
-		if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getPathString()))
-			return this.messageResourceService.throwMessage(
-					msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-					UIMessageResourceService.URI_STRING_NULL);
+        if (StringUtil.safeIsBlank(entity.getName()) || StringUtil.safeIsBlank(entity.getPathString()))
+            return this.messageResourceService.throwMessage(
+                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                    UIMessageResourceService.URI_STRING_NULL);
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.setPathDefinitions(entity),
+                () -> this.setPathDefinitions(entity),
 
-				this::validateURIPath,
+                this::validateURIPath,
 
-				(pEntity, valid) -> super.create(pEntity),
+                (pEntity, valid) -> super.create(pEntity),
 
-				(pEntity, valid, created) -> cacheService.evict(CACHE_NAME_PATTERN,
-						created.getAppCode(), "-", created.getClientCode())
-						.thenReturn(created)
+                (pEntity, valid, created) -> cacheService.evict(CACHE_NAME_PATTERN,
+                        created.getAppCode(), "-", created.getClientCode())
+                        .thenReturn(created)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.create"));
-	}
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.create"));
+    }
 
-	private Mono<URIPath> setPathDefinitions(URIPath entity) {
+    private Mono<URIPath> setPathDefinitions(URIPath entity) {
 
-		for (Map.Entry<String, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
-			PathDefinition pathDef = pathDefs.getValue();
-			if (pathDef.getUriType() == URIType.REDIRECTION) {
-				if (pathDef.getRedirectionDefinition() == null)
-					pathDef.setRedirectionDefinition(new RedirectionDefinition());
-				// TODO : Add url short redirection;
-				pathDef.setKiRunFxDefinition(null);
-			} else {
-				pathDef.setRedirectionDefinition(null);
-			}
-		}
-		return Mono.just(entity).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPathService.setPathDefinitions"));
-	}
+        for (Map.Entry<String, PathDefinition> pathDefs : entity.getPathDefinitions().entrySet()) {
+            PathDefinition pathDef = pathDefs.getValue();
+            if (pathDef.getUriType() == URIType.REDIRECTION) {
+                if (pathDef.getRedirectionDefinition() == null)
+                    pathDef.setRedirectionDefinition(new RedirectionDefinition());
+                // TODO : Add url short redirection;
+                pathDef.setKiRunFxDefinition(null);
+            } else {
+                pathDef.setRedirectionDefinition(null);
+            }
+        }
+        return Mono.just(entity).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIPathService.setPathDefinitions"));
+    }
 
-	private Mono<Boolean> validateURIPath(URIPath entity) {
+    private Mono<Boolean> validateURIPath(URIPath entity) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> {
+                () -> {
 
-					if (StringUtil.safeIsBlank(entity.getPathString()))
-						return Mono.just(true);
+                    if (StringUtil.safeIsBlank(entity.getPathString()))
+                        return Mono.just(true);
 
-					boolean isValid = PathPatternParser.defaultInstance.parse(entity.getName())
-							.matches(PathContainer.parsePath(entity.getPathString()));
+                    boolean isValid = PathPatternParser.defaultInstance.parse(entity.getName())
+                            .matches(PathContainer.parsePath(entity.getPathString()));
 
-					if (!isValid)
-						return this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								UIMessageResourceService.URI_PATTERN_PATH_MISMATCH);
+                    if (!isValid)
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                UIMessageResourceService.URI_PATTERN_PATH_MISMATCH);
 
-					return Mono.just(true);
-				},
+                    return Mono.just(true);
+                },
 
-				valid -> {
+                valid -> {
 
-					for (Map.Entry<String, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
-						if (!pathDef.getValue().isValidType())
-							return this.messageResourceService.throwMessage(
-									msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-									UIMessageResourceService.URI_INVALID_TYPE);
-					}
+                    for (Map.Entry<String, PathDefinition> pathDef : entity.getPathDefinitions().entrySet()) {
+                        if (!pathDef.getValue().isValidType())
+                            return this.messageResourceService.throwMessage(
+                                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                    UIMessageResourceService.URI_INVALID_TYPE);
+                    }
 
-					if (entity.getPathDefinitions().keySet().stream().noneMatch(ALLOWED_METHODS::contains))
-						return this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-								UIMessageResourceService.URI_INVALID_METHOD);
+                    if (entity.getPathDefinitions().keySet().stream().noneMatch(ALLOWED_METHODS::contains))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                UIMessageResourceService.URI_INVALID_METHOD);
 
-					return Mono.just(true);
-				},
+                    return Mono.just(true);
+                },
 
-				(valid, valid2) -> StringUtil.safeIsBlank(entity.getName()) ? this.messageResourceService.throwMessage(
-						msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-						AbstractMongoMessageResourceService.NAME_MISSING) : Mono.just(true)
+                (valid, valid2) -> StringUtil.safeIsBlank(entity.getName()) ? this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        AbstractMongoMessageResourceService.NAME_MISSING) : Mono.just(true)
 
-		).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.validateURIPath"));
-	}
+        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.validateURIPath"));
+    }
 
-	@Override
-	protected Mono<URIPath> updatableEntity(URIPath entity) {
+    @Override
+    protected Mono<URIPath> updatableEntity(URIPath entity) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.read(entity.getId()),
+                () -> this.read(entity.getId()),
 
-				existing -> {
+                existing -> {
 
-					if (existing.getVersion() != entity.getVersion())
-						return this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
-								AbstractMongoMessageResourceService.VERSION_MISMATCH);
+                    if (existing.getVersion() != entity.getVersion())
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.PRECONDITION_FAILED, msg),
+                                AbstractMongoMessageResourceService.VERSION_MISMATCH);
 
-					existing.setPathString(entity.getPathString());
-					existing.setPathDefinitions(entity.getPathDefinitions());
+                    existing.setPathString(entity.getPathString());
+                    existing.setPathDefinitions(entity.getPathDefinitions());
 
-					existing.setVersion(existing.getVersion() + 1);
+                    existing.setVersion(existing.getVersion() + 1);
 
-					return Mono.just(existing);
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.updatableEntity"));
-	}
+                    return Mono.just(existing);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.updatableEntity"));
+    }
 
-	public Mono<ObjectWithUniqueID<String>> generateApiDocs(String appCode, String clientCode) {
-		return Mono.just("Coming soon...").map(ObjectWithUniqueID::new);
-	}
+    public Mono<ObjectWithUniqueID<String>> generateApiDocs(String appCode, String clientCode) {
+        return Mono.just("Coming soon...").map(ObjectWithUniqueID::new);
+    }
 
-	public Mono<String> getResponse(ServerHttpRequest request, JsonObject jsonObject,
-			String appCode, String clientCode) {
+    public Mono<String> getResponse(ServerHttpRequest request, JsonObject jsonObject,
+            String appCode, String clientCode, String forwardedHost, String forwardedPort) {
 
-		String uriPathString = request.getURI().getPath();
+        String uriPathString = request.getURI().getPath();
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> this.findMatchingURIPath(uriPathString, appCode, clientCode),
+                () -> this.findMatchingURIPath(uriPathString, appCode, clientCode),
 
-				this::uriPathAccessCheck,
+                this::uriPathAccessCheck,
 
-				(uriPath, hasAccess) -> Mono.just(uriPath.getPathDefinitions()
-						.getOrDefault(request.getMethod().name(), null)),
+                (uriPath, hasAccess) -> Mono.just(uriPath.getPathDefinitions()
+                        .getOrDefault(request.getMethod().name(), null)),
 
-				(uriPath, hasAccess, pathDef) -> switch (pathDef.getUriType()) {
-					case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getPathString(),
-							pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), clientCode);
+                (uriPath, hasAccess, pathDef) -> switch (pathDef.getUriType()) {
+                    case KIRUN_FUNCTION -> executeKIRunFunction(request, jsonObject, uriPath.getPathString(),
+                            pathDef.getKiRunFxDefinition(), uriPath.getAppCode(), clientCode, forwardedHost,
+                            forwardedPort);
 
-					case REDIRECTION -> // TODO
-						Mono.empty();
-				}).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.getResponse"))
-				.switchIfEmpty(Mono.empty());
-	}
+                    case REDIRECTION -> // TODO
+                        Mono.empty();
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.getResponse"))
+                .switchIfEmpty(Mono.empty());
+    }
 
-	public Mono<Boolean> uriPathAccessCheck(URIPath uriPath) {
+    public Mono<Boolean> uriPathAccessCheck(URIPath uriPath) {
 
-		if (StringUtil.safeIsBlank(uriPath.getPermission()))
-			return Mono.just(true);
+        if (StringUtil.safeIsBlank(uriPath.getPermission()))
+            return Mono.just(true);
 
-		return SecurityContextUtil.hasAuthority(uriPath.getPermission())
-				.filter(Boolean::booleanValue).switchIfEmpty(
-						this.messageResourceService.throwMessage(
-								msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-								AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION, uriPath.getPermission()));
-	}
+        return SecurityContextUtil.hasAuthority(uriPath.getPermission())
+                .filter(Boolean::booleanValue).switchIfEmpty(
+                        this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                                AbstractMongoMessageResourceService.FORBIDDEN_EXECUTION, uriPath.getPermission()));
+    }
 
-	private Mono<URIPath> findMatchingURIPath(String uriPath, String appCode, String clientCode) {
+    private Mono<URIPath> findMatchingURIPath(String uriPath, String appCode, String clientCode) {
 
-		return FlatMapUtil.flatMapMono(
+        return FlatMapUtil.flatMapMono(
 
-				() -> inheritanceService.order(appCode, clientCode, clientCode),
+                () -> inheritanceService.order(appCode, clientCode, clientCode),
 
-				clientCodes -> Flux.fromIterable(clientCodes)
-						.flatMap(cc -> getURIPathPatternString(appCode, cc).flatMapMany(Flux::fromIterable))
-						.filter(pattern -> pathMatcher.match(pattern, uriPath)).next(),
+                clientCodes -> Flux.fromIterable(clientCodes)
+                        .flatMap(cc -> getURIPathPatternString(appCode, cc).flatMapMany(Flux::fromIterable))
+                        .filter(pattern -> pathMatcher.match(pattern, uriPath)).next(),
 
-				(clientCodes, matchingPattern) -> super.read(matchingPattern, appCode, clientCode)
-						.map(ObjectWithUniqueID::getObject))
-				.contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.findMatchingURIPath"));
-	}
+                (clientCodes, matchingPattern) -> super.read(matchingPattern, appCode, clientCode)
+                        .map(ObjectWithUniqueID::getObject))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "URIService.findMatchingURIPath"));
+    }
 
-	private Mono<List<String>> getURIPathPatternString(String appCode, String clientCode) {
+    private Mono<List<String>> getURIPathPatternString(String appCode, String clientCode) {
 
-		return cacheService.cacheEmptyValueOrGet(CACHE_NAME_PATTERN,
-				() -> this.repo.findAllNamesByAppCodeAndClientCode(appCode, clientCode).collectList(),
-				appCode, "-", clientCode);
-	}
+        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_PATTERN,
+                () -> this.repo.findAllNamesByAppCodeAndClientCode(appCode, clientCode).collectList(),
+                appCode, "-", clientCode);
+    }
 
-	private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
-			KIRunFxDefinition kiRunFxDef, String appCode, String clientCode) {
+    private Mono<String> executeKIRunFunction(ServerHttpRequest request, JsonObject jsonObject, String uriPathString,
+            KIRunFxDefinition kiRunFxDef, String appCode, String clientCode, String forwardedHost,
+            String forwardedPort) {
 
-		return FlatMapUtil.flatMapMono(
+        String authHeader = request.getHeaders().getFirst("Authorization");
 
-				() -> switch (request.getMethod().toString()) {
-					case "GET" -> iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-							kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
+        return FlatMapUtil.flatMapMono(
 
-					case "POST", "PUT", "PATCH", "DELETE" ->
-						iFeignCoreService.executeWith(appCode, clientCode, kiRunFxDef.getNamespace(),
-								kiRunFxDef.getName(), jsonObject.toString());
+                () -> switch (request.getMethod().toString()) {
+                    case "GET" -> iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode,
+                            clientCode, kiRunFxDef.getNamespace(),
+                            kiRunFxDef.getName(), getParamsFromHeadersPathRequest(request, uriPathString, kiRunFxDef));
 
-					default -> Mono.empty();
-				},
-				responseString -> {
+                    case "POST", "PUT", "PATCH", "DELETE" ->
+                        iFeignCoreService.executeWith(authHeader, forwardedHost, forwardedPort, appCode, clientCode,
+                                kiRunFxDef.getNamespace(),
+                                kiRunFxDef.getName(), jsonObject.toString());
 
-					if (StringUtil.safeIsBlank(responseString))
-						return Mono.just("");
+                    default -> Mono.empty();
+                },
+                responseString -> {
 
-					if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName()))
-						return Mono.just(responseString);
+                    if (StringUtil.safeIsBlank(responseString))
+                        return Mono.just("");
 
-					JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
+                    if (StringUtil.safeIsBlank(kiRunFxDef.getOutputEventName()))
+                        return Mono.just(responseString);
 
-					return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
-							kiRunFxDef.getOutputEventParamName());
-				});
-	}
+                    JsonArray response = this.gson.fromJson(responseString, JsonArray.class);
 
-	private Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
-			String outputEventParamName) {
+                    return extractOutputEvent(response, kiRunFxDef.getOutputEventName(),
+                            kiRunFxDef.getOutputEventParamName());
+                });
+    }
 
-		return FlatMapUtil.flatMapMono(
+    private Mono<String> extractOutputEvent(JsonArray response, String outputEventName,
+            String outputEventParamName) {
 
-				() -> findMatchingOutputEvent(response, outputEventName),
-				matchingOutput -> {
+        return FlatMapUtil.flatMapMono(
 
-					if (StringUtil.safeIsBlank(outputEventParamName))
-						return Mono.justOrEmpty(matchingOutput.get(FO_RESULT).toString());
+                () -> findMatchingOutputEvent(response, outputEventName),
+                matchingOutput -> {
 
-					if (matchingOutput.has(FO_RESULT)
-							&& matchingOutput.get(FO_RESULT).isJsonObject()) {
+                    if (StringUtil.safeIsBlank(outputEventParamName))
+                        return Mono.justOrEmpty(matchingOutput.get(FO_RESULT).toString());
 
-						ArgumentsTokenValueExtractor atv = new ArgumentsTokenValueExtractor(
-								Map.of(FO_RESULT, matchingOutput.get(FO_RESULT)));
+                    if (matchingOutput.has(FO_RESULT)
+                            && matchingOutput.get(FO_RESULT).isJsonObject()) {
 
-						return Mono.justOrEmpty(atv.getValue(ArgumentsTokenValueExtractor.PREFIX
-								+ outputEventParamName).toString());
-					}
-					return Mono.empty();
+                        ArgumentsTokenValueExtractor atv = new ArgumentsTokenValueExtractor(
+                                Map.of(FO_RESULT, matchingOutput.get(FO_RESULT)));
 
-				}).switchIfEmpty(Mono.empty());
-	}
+                        return Mono.justOrEmpty(atv.getValue(ArgumentsTokenValueExtractor.PREFIX
+                                + outputEventParamName).toString());
+                    }
+                    return Mono.empty();
 
-	private Mono<JsonObject> findMatchingOutputEvent(JsonArray response, String outputEventName) {
-		return Flux.fromIterable(response)
-				.filter(JsonElement::isJsonObject)
-				.map(JsonElement::getAsJsonObject)
-				.filter(output -> output.has(FO_NAME) &&
-						output.get(FO_NAME).isJsonPrimitive() &&
-						outputEventName.equals(output.get(FO_NAME).getAsString()))
-				.next();
-	}
+                }).switchIfEmpty(Mono.empty());
+    }
 
-	private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,
-			String uriPathString, KIRunFxDefinition kiRunFxDefinition) {
+    private Mono<JsonObject> findMatchingOutputEvent(JsonArray response, String outputEventName) {
+        return Flux.fromIterable(response)
+                .filter(JsonElement::isJsonObject)
+                .map(JsonElement::getAsJsonObject)
+                .filter(output -> output.has(FO_NAME) &&
+                        output.get(FO_NAME).isJsonPrimitive() &&
+                        outputEventName.equals(output.get(FO_NAME).getAsString()))
+                .next();
+    }
 
-		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+    private MultiValueMap<String, String> getParamsFromHeadersPathRequest(ServerHttpRequest request,
+            String uriPathString, KIRunFxDefinition kiRunFxDefinition) {
 
-		this.addToParams(params, kiRunFxDefinition.getQueryParamMapping(), request.getQueryParams());
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 
-		if (!StringUtil.safeIsBlank(uriPathString)) {
+        this.addToParams(params, kiRunFxDefinition.getQueryParamMapping(), request.getQueryParams());
 
-			PathPattern.PathMatchInfo matchInfo = PathPatternParser.defaultInstance.parse(uriPathString)
-					.matchAndExtract(PathContainer.parsePath(request.getURI().getPath()));
+        if (!StringUtil.safeIsBlank(uriPathString)) {
 
-			if (matchInfo != null) {
+            PathPattern.PathMatchInfo matchInfo = PathPatternParser.defaultInstance.parse(uriPathString)
+                    .matchAndExtract(PathContainer.parsePath(request.getURI().getPath()));
 
-				Map<String, String> iPathParams = matchInfo.getUriVariables();
+            if (matchInfo != null) {
 
-				if (kiRunFxDefinition.getPathParamMapping() == null
-						|| kiRunFxDefinition.getPathParamMapping().isEmpty()) {
-					params.setAll(iPathParams);
-				} else {
-					kiRunFxDefinition.getPathParamMapping()
-							.forEach((key, value) -> params.add(value, iPathParams.get(key)));
-				}
-			}
-		}
+                Map<String, String> iPathParams = matchInfo.getUriVariables();
 
-		this.addToParams(params, kiRunFxDefinition.getHeadersMapping(), request.getHeaders());
+                if (kiRunFxDefinition.getPathParamMapping() == null
+                        || kiRunFxDefinition.getPathParamMapping().isEmpty()) {
+                    params.setAll(iPathParams);
+                } else {
+                    kiRunFxDefinition.getPathParamMapping()
+                            .forEach((key, value) -> params.add(value, iPathParams.get(key)));
+                }
+            }
+        }
 
-		return params;
-	}
+        this.addToParams(params, kiRunFxDefinition.getHeadersMapping(), request.getHeaders());
 
-	private void addToParams(MultiValueMap<String, String> params, Map<String, String> map,
-			MultiValueMap<String, String> sourceMap) {
+        return params;
+    }
 
-		if (map == null || map.isEmpty()) {
-			params.addAll(sourceMap);
-			return;
-		}
+    private void addToParams(MultiValueMap<String, String> params, Map<String, String> map,
+            MultiValueMap<String, String> sourceMap) {
 
-		map.forEach((key, value) -> params.add(value, sourceMap.getFirst(key)));
-	}
+        if (map == null || map.isEmpty()) {
+            params.addAll(sourceMap);
+            return;
+        }
+
+        map.forEach((key, value) -> params.add(value, sourceMap.getFirst(key)));
+    }
 }

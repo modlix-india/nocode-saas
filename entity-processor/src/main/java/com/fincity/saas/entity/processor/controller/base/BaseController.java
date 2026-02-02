@@ -5,8 +5,8 @@ import com.fincity.saas.commons.model.Query;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.entity.processor.dao.base.BaseDAO;
 import com.fincity.saas.entity.processor.dto.base.BaseDto;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.service.base.BaseService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.jooq.UpdatableRecord;
@@ -17,11 +17,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple4;
+import reactor.util.function.Tuple2;
 
 public abstract class BaseController<
                 R extends UpdatableRecord<R>,
@@ -38,22 +39,22 @@ public abstract class BaseController<
             Pageable pageable, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple4<AbstractCondition, List<String>, Boolean, List<String>> eagerParams =
-                EagerUtil.getEagerConditions(request.getQueryParams());
+        Tuple2<AbstractCondition, List<String>> fieldParams = EagerUtil.getFieldConditions(request.getQueryParams());
         return this.service
-                .readPageFilterEager(
-                        pageable, eagerParams.getT1(), eagerParams.getT2(), eagerParams.getT3(), eagerParams.getT4())
+                .readPageFilterEager(pageable, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
                 .map(ResponseEntity::ok);
     }
 
     @PostMapping(EAGER_PATH_QUERY)
-    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(@RequestBody Query query) {
+    public Mono<ResponseEntity<Page<Map<String, Object>>>> readPageFilterEager(
+            @RequestBody Query query, ServerHttpRequest request) {
 
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
 
+        MultiValueMap<String, String> queryParams = EagerUtil.addEagerParamsFromQuery(request.getQueryParams(), query);
+
         return this.service
-                .readPageFilterEager(
-                        pageable, query.getCondition(), query.getFields(), query.getEager(), query.getEagerFields())
+                .readPageFilterEager(pageable, query.getCondition(), query.getFields(), queryParams)
                 .map(ResponseEntity::ok);
     }
 }

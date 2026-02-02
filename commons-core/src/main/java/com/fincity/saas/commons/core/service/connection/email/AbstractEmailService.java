@@ -1,6 +1,7 @@
 package com.fincity.saas.commons.core.service.connection.email;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.core.document.Connection;
 import com.fincity.saas.commons.core.document.Template;
 import com.fincity.saas.commons.core.model.ProcessedEmailDetails;
 import com.fincity.saas.commons.core.service.AbstractTemplateService;
@@ -8,9 +9,11 @@ import com.fincity.saas.commons.core.service.CoreMessageResourceService;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -18,10 +21,10 @@ import reactor.util.context.Context;
 public abstract class AbstractEmailService extends AbstractTemplateService {
 
     protected Mono<ProcessedEmailDetails> getProcessedEmailDetails(
-            List<String> toAddresses, Template template, Map<String, Object> templateData) {
+            Connection connection, List<String> toAddresses, Template template, Map<String, Object> templateData) {
         return FlatMapUtil.flatMapMono(
                         () -> this.getToAddresses(toAddresses, template, templateData),
-                        to -> this.getFromAddress(template, templateData),
+                        to -> this.getFromAddress(connection, template, templateData),
                         (to, from) -> this.getLanguage(template, templateData),
                         (to, from, language) -> this.getProcessedTemplate(language, template, templateData),
                         (to, from, language, temp) -> Mono.just(new ProcessedEmailDetails()
@@ -32,10 +35,16 @@ public abstract class AbstractEmailService extends AbstractTemplateService {
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractEmailService.getProcessedEmailDetails"));
     }
 
-    protected Mono<String> getFromAddress(Template template, Map<String, Object> templateData) {
+    protected Mono<String> getFromAddress(Connection connection, Template template, Map<String, Object> templateData) {
         boolean isBlankExpression = StringUtil.safeIsBlank(template.getFromExpression());
 
-        if (isBlankExpression) return Mono.just("");
+        if (isBlankExpression) {
+            String fromAddress = "";
+            if (connection.getConnectionDetails() != null) {
+                fromAddress = connection.getConnectionDetails().getOrDefault("fromAddress", "").toString();
+            }
+            return Mono.just(fromAddress);
+        }
 
         return processFreeMarker("fromExpression", template.getFromExpression(), templateData);
     }

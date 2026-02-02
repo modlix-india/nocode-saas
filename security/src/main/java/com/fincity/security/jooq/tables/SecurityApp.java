@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.enums.SecurityAppAppAccessType;
 import com.fincity.security.jooq.enums.SecurityAppAppType;
 import com.fincity.security.jooq.enums.SecurityAppAppUsageType;
+import com.fincity.security.jooq.enums.SecurityAppStatus;
 import com.fincity.security.jooq.tables.SecurityAppAccess.SecurityAppAccessPath;
 import com.fincity.security.jooq.tables.SecurityAppDependency.SecurityAppDependencyPath;
 import com.fincity.security.jooq.tables.SecurityAppProperty.SecurityAppPropertyPath;
@@ -28,6 +29,7 @@ import com.fincity.security.jooq.tables.SecurityClientPinPolicy.SecurityClientPi
 import com.fincity.security.jooq.tables.SecurityClientUrl.SecurityClientUrlPath;
 import com.fincity.security.jooq.tables.SecurityOtp.SecurityOtpPath;
 import com.fincity.security.jooq.tables.SecurityPermission.SecurityPermissionPath;
+import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
 import com.fincity.security.jooq.tables.SecurityUserRequest.SecurityUserRequestPath;
 import com.fincity.security.jooq.tables.SecurityV2Role.SecurityV2RolePath;
@@ -126,6 +128,11 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
      * Business, X Any, and so on so forth.
      */
     public final TableField<SecurityAppRecord, SecurityAppAppUsageType> APP_USAGE_TYPE = createField(DSL.name("APP_USAGE_TYPE"), SQLDataType.VARCHAR(5).nullable(false).defaultValue(DSL.inline("S", SQLDataType.VARCHAR)).asEnumDataType(SecurityAppAppUsageType.class), this, "S - Standalone (Mostly for sites), B - Business only, B to C Consumer, B Business, X Any, and so on so forth.");
+
+    /**
+     * The column <code>security.security_app.STATUS</code>.
+     */
+    public final TableField<SecurityAppRecord, SecurityAppStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityAppStatus.class), this, "");
 
     /**
      * The column <code>security.security_app.CREATED_BY</code>. ID of the user
@@ -328,6 +335,19 @@ public class SecurityApp extends TableImpl<SecurityAppRecord> {
             _securityOtp = new SecurityOtpPath(this, null, Keys.FK1_OTP_APP_ID.getInverseKey());
 
         return _securityOtp;
+    }
+
+    private transient SecurityPlanPath _securityPlan;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>security.security_plan</code> table
+     */
+    public SecurityPlanPath securityPlan() {
+        if (_securityPlan == null)
+            _securityPlan = new SecurityPlanPath(this, null, Keys.FK1_PLAN_APP_ID.getInverseKey());
+
+        return _securityPlan;
     }
 
     private transient SecurityAppDependencyPath _fk2AppDepDepAppId;

@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 import java.time.LocalDateTime;
@@ -336,11 +337,64 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
+     * Campaign Id related to this ticket.
+     */
+    public EntityProcessorTicketsRecord setCampaignId(ULong value) {
+        set(17, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
+     * Campaign Id related to this ticket.
+     */
+    public ULong getCampaignId() {
+        return (ULong) get(17);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tickets.TAG</code>.
+     * Deal Tag - HOT / WARM / COLD
+     */
+    public EntityProcessorTicketsRecord setTag(EntityProcessorTicketsTag value) {
+        set(18, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.TAG</code>.
+     * Deal Tag - HOT / WARM / COLD
+     */
+    public EntityProcessorTicketsTag getTag() {
+        return (EntityProcessorTicketsTag) get(18);
+    }
+
+    /**
+     * Setter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public EntityProcessorTicketsRecord setDnc(Boolean value) {
+        set(19, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public Boolean getDnc() {
+        return (Boolean) get(19);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorTicketsRecord setTempActive(Byte value) {
-        set(17, value);
+    public EntityProcessorTicketsRecord setTempActive(Boolean value) {
+        set(20, value);
         return this;
     }
 
@@ -349,8 +403,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(17);
+    public Boolean getTempActive() {
+        return (Boolean) get(20);
     }
 
     /**
@@ -358,8 +412,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public EntityProcessorTicketsRecord setIsActive(Byte value) {
-        set(18, value);
+    public EntityProcessorTicketsRecord setIsActive(Boolean value) {
+        set(21, value);
         return this;
     }
 
@@ -368,8 +422,27 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(18);
+    public Boolean getIsActive() {
+        return (Boolean) get(21);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
+     * client who created this ticket.
+     */
+    public EntityProcessorTicketsRecord setClientId(ULong value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
+     * client who created this ticket.
+     */
+    public ULong getClientId() {
+        return (ULong) get(22);
     }
 
     /**
@@ -378,7 +451,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public EntityProcessorTicketsRecord setCreatedBy(ULong value) {
-        set(19, value);
+        set(23, value);
         return this;
     }
 
@@ -388,7 +461,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(19);
+        return (ULong) get(23);
     }
 
     /**
@@ -397,7 +470,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public EntityProcessorTicketsRecord setCreatedAt(LocalDateTime value) {
-        set(20, value);
+        set(24, value);
         return this;
     }
 
@@ -407,7 +480,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(20);
+        return (LocalDateTime) get(24);
     }
 
     /**
@@ -416,7 +489,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public EntityProcessorTicketsRecord setUpdatedBy(ULong value) {
-        set(21, value);
+        set(25, value);
         return this;
     }
 
@@ -426,7 +499,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(21);
+        return (ULong) get(25);
     }
 
     /**
@@ -435,7 +508,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public EntityProcessorTicketsRecord setUpdatedAt(LocalDateTime value) {
-        set(22, value);
+        set(26, value);
         return this;
     }
 
@@ -445,7 +518,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(22);
+        return (LocalDateTime) get(26);
     }
 
     // -------------------------------------------------------------------------
@@ -471,7 +544,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, EntityProcessorTicketsTag tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);
@@ -491,12 +564,16 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
         setStatus(status);
         setSource(source);
         setSubSource(subSource);
+        setCampaignId(campaignId);
+        setTag(tag);
+        setDnc(dnc);
         setTempActive(tempActive);
         setIsActive(isActive);
+        setClientId(clientId);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

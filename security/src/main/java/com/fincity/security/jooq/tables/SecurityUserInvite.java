@@ -9,6 +9,7 @@ import com.fincity.security.jooq.Security;
 import com.fincity.security.jooq.tables.SecurityClient.SecurityClientPath;
 import com.fincity.security.jooq.tables.SecurityDesignation.SecurityDesignationPath;
 import com.fincity.security.jooq.tables.SecurityProfile.SecurityProfilePath;
+import com.fincity.security.jooq.tables.SecurityUser.SecurityUserPath;
 import com.fincity.security.jooq.tables.records.SecurityUserInviteRecord;
 
 import java.time.LocalDateTime;
@@ -121,6 +122,12 @@ public class SecurityUserInvite extends TableImpl<SecurityUserInviteRecord> {
     public final TableField<SecurityUserInviteRecord, ULong> DESIGNATION_ID = createField(DSL.name("DESIGNATION_ID"), SQLDataType.BIGINTUNSIGNED, this, "Designation Id to assign by default");
 
     /**
+     * The column <code>security.security_user_invite.REPORTING_TO</code>.
+     * Reporting to ID for which this user belongs to
+     */
+    public final TableField<SecurityUserInviteRecord, ULong> REPORTING_TO = createField(DSL.name("REPORTING_TO"), SQLDataType.BIGINTUNSIGNED, this, "Reporting to ID for which this user belongs to");
+
+    /**
      * The column <code>security.security_user_invite.CREATED_BY</code>. ID of
      * the user who created this row
      */
@@ -218,7 +225,20 @@ public class SecurityUserInvite extends TableImpl<SecurityUserInviteRecord> {
 
     @Override
     public List<ForeignKey<SecurityUserInviteRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.FK_SECURITY_USER_INVITE_CLIENT, Keys.FK_SECURITY_USER_INVITE_DESIGNATION, Keys.FK_SECURITY_USER_INVITE_PROFILE);
+        return Arrays.asList(Keys.FK1_USER_INVITE_REPORTING_TO_ID, Keys.FK_SECURITY_USER_INVITE_CLIENT, Keys.FK_SECURITY_USER_INVITE_DESIGNATION, Keys.FK_SECURITY_USER_INVITE_PROFILE);
+    }
+
+    private transient SecurityUserPath _securityUser;
+
+    /**
+     * Get the implicit join path to the <code>security.security_user</code>
+     * table.
+     */
+    public SecurityUserPath securityUser() {
+        if (_securityUser == null)
+            _securityUser = new SecurityUserPath(this, Keys.FK1_USER_INVITE_REPORTING_TO_ID, null);
+
+        return _securityUser;
     }
 
     private transient SecurityClientPath _securityClient;

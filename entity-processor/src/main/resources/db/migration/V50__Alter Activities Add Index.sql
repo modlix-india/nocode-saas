@@ -1,0 +1,7 @@
+ALTER TABLE `entity_processor`.`entity_processor_activities`
+    ADD INDEX `IDX3_ACTIVITIES_ACTION_STAGE_TICKET_DATE` (ACTIVITY_ACTION, STAGE_ID, TICKET_ID, ACTIVITY_DATE);
+
+ALTER TABLE `entity_processor`.`entity_processor_activities`
+    ADD INDEX `IDX4_ACTIVITIES_ACTION_STATUS_TICKET_DATE` (ACTIVITY_ACTION, STATUS_ID, TICKET_ID, ACTIVITY_DATE);
+
+DROP VIEW IF EXISTS `entity_processor`.`entity_processor_view_ticket_stage_dates`;

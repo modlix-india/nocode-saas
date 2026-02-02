@@ -3,7 +3,6 @@ package com.fincity.saas.commons.security.service;
 import java.math.BigInteger;
 import java.util.List;
 
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.security.dto.App;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 
@@ -22,11 +22,15 @@ import reactor.util.context.Context;
 public class FeignAuthenticationService implements IAuthenticationService {
 
     private static final String CACHE_NAME_BEING_MANAGED = "beingManaged";
+    private static final String CACHE_NAME_BEING_MANAGED_ID = "beingManagedId";
     private static final String CACHE_NAME_USER_BEING_MANAGED = "userBeingManaged";
     private static final String CACHE_NAME_APP_READ_ACCESS = "appReadAccess";
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
     private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
     private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
+    private static final String CACHE_NAME_USER_PART_CLIENT = "userPartOfHierarchy";
+
+    private static final String CACHE_NAME_APP_STATUS = "appStatus";
 
     @Autowired(required = false)
     private IFeignSecurityService feignAuthService;
@@ -36,28 +40,28 @@ public class FeignAuthenticationService implements IAuthenticationService {
 
     @Override
     public Mono<Authentication> getAuthentication(boolean isBasic, String bearerToken, String clientCode,
-                                                  String appCode, ServerHttpRequest request) {
+            String appCode, ServerHttpRequest request) {
 
         return FlatMapUtil.flatMapMonoWithNull(
 
-                        () -> cacheService.<Authentication>get(CACHE_NAME_TOKEN, bearerToken),
+                () -> cacheService.<Authentication>get(CACHE_NAME_TOKEN, bearerToken),
 
-                        auth -> {
+                auth -> {
 
-                            if (auth instanceof ContextAuthentication ca) {
-                                if (ca.getUser().getGrantedAuthorities() != null || ca.getUser().getStringAuthorities() != null)
-                                    return Mono.just(auth);
-                            }
+                    if (auth instanceof ContextAuthentication ca) {
+                        if (ca.getUser().getGrantedAuthorities() != null || ca.getUser().getStringAuthorities() != null)
+                            return Mono.just(auth);
+                    }
 
-                            return this.getAuthenticationFromSecurity(isBasic, bearerToken, clientCode, appCode, request);
-                        }
+                    return this.getAuthenticationFromSecurity(isBasic, bearerToken, clientCode, appCode, request);
+                }
 
-                )
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "FeignAuthenticationService.getAuthentication"));
     }
 
     private Mono<Authentication> getAuthenticationFromSecurity(boolean isBasic, String bearerToken, String clientCode,
-                                                               String appCode, ServerHttpRequest request) {
+            String appCode, ServerHttpRequest request) {
 
         if (feignAuthService == null)
             return Mono.empty();
@@ -96,6 +100,13 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 clientCode);
     }
 
+    public Mono<Boolean> isBeingManaged(BigInteger managingClientId, BigInteger clientId) {
+
+        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED_ID,
+                () -> this.feignAuthService.isBeingManagedById(managingClientId, clientId), managingClientId, ":",
+                clientId);
+    }
+
     public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
 
         return cacheService.cacheValueOrGet(CACHE_NAME_USER_BEING_MANAGED, () -> {
@@ -103,6 +114,16 @@ public class FeignAuthenticationService implements IAuthenticationService {
             BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
 
             return this.feignAuthService.isUserBeingManaged(biUserId, clientCode);
+        }, clientCode, ":", userId);
+    }
+
+    public Mono<Boolean> isUserPartOfHierarchy(Object userId, String clientCode) {
+
+        return cacheService.cacheValueOrGet(CACHE_NAME_USER_PART_CLIENT, () -> {
+
+            BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
+
+            return this.feignAuthService.isUserPartOfHierarchy(biUserId, clientCode);
         }, clientCode, ":", userId);
     }
 
@@ -132,5 +153,10 @@ public class FeignAuthenticationService implements IAuthenticationService {
         return cacheService.cacheValueOrGet(CACHE_NAME_APP_DEP_LIST,
                 () -> this.feignAuthService.getDependencies(appCode),
                 appCode);
+    }
+
+    public Mono<String> getAppStatusByCode(String appCode) {
+        return cacheService.cacheValueOrGet(CACHE_NAME_APP_STATUS,
+                () -> this.feignAuthService.getAppStatus(appCode), appCode);
     }
 }

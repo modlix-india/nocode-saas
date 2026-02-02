@@ -1,14 +1,16 @@
 package com.fincity.saas.commons.core.document;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.DifferenceApplicator;
 import com.fincity.saas.commons.util.DifferenceExtractor;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.commons.util.StringUtil;
+
 import java.io.Serial;
 import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -79,7 +81,7 @@ public class Template extends AbstractOverridableDTO<Template> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Mono<Template> makeOverride(Template base) {
+    public Mono<Template> extractDifference(Template base) {
         if (base == null) return Mono.just(this);
 
         return FlatMapUtil.flatMapMono(

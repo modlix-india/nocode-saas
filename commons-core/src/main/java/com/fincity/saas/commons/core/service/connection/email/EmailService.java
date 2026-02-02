@@ -11,9 +11,11 @@ import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import jakarta.annotation.PostConstruct;
+
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -75,7 +77,7 @@ public class EmailService {
                                 .switchIfEmpty(msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                                         CoreMessageResourceService.CONNECTION_DETAILS_MISSING,
-                                        templateName)),
+                                        connectionName)),
                         (actup, conn) -> Mono.justOrEmpty(this.services.get(conn.getConnectionSubType()))
                                 .switchIfEmpty(msgService.throwMessage(
                                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg),

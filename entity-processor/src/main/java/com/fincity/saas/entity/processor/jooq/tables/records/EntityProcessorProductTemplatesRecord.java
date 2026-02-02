@@ -157,11 +157,30 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product template.
+     */
+    public EntityProcessorProductTemplatesRecord setProductTemplateWalkInFormId(ULong value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_product_templates.PRODUCT_TEMPLATE_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product template.
+     */
+    public ULong getProductTemplateWalkInFormId() {
+        return (ULong) get(7);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_product_templates.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorProductTemplatesRecord setTempActive(Byte value) {
-        set(7, value);
+    public EntityProcessorProductTemplatesRecord setTempActive(Boolean value) {
+        set(8, value);
         return this;
     }
 
@@ -170,8 +189,8 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(7);
+    public Boolean getTempActive() {
+        return (Boolean) get(8);
     }
 
     /**
@@ -179,8 +198,8 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.IS_ACTIVE</code>.
      * Flag to check if this product is active or not.
      */
-    public EntityProcessorProductTemplatesRecord setIsActive(Byte value) {
-        set(8, value);
+    public EntityProcessorProductTemplatesRecord setIsActive(Boolean value) {
+        set(9, value);
         return this;
     }
 
@@ -189,8 +208,8 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * <code>entity_processor.entity_processor_product_templates.IS_ACTIVE</code>.
      * Flag to check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(8);
+    public Boolean getIsActive() {
+        return (Boolean) get(9);
     }
 
     /**
@@ -199,7 +218,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public EntityProcessorProductTemplatesRecord setCreatedBy(ULong value) {
-        set(9, value);
+        set(10, value);
         return this;
     }
 
@@ -209,7 +228,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(9);
+        return (ULong) get(10);
     }
 
     /**
@@ -218,7 +237,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public EntityProcessorProductTemplatesRecord setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
         return this;
     }
 
@@ -228,7 +247,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
@@ -237,7 +256,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public EntityProcessorProductTemplatesRecord setUpdatedBy(ULong value) {
-        set(11, value);
+        set(12, value);
         return this;
     }
 
@@ -247,7 +266,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * ID of the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(11);
+        return (ULong) get(12);
     }
 
     /**
@@ -256,7 +275,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public EntityProcessorProductTemplatesRecord setUpdatedAt(LocalDateTime value) {
-        set(12, value);
+        set(13, value);
         return this;
     }
 
@@ -266,7 +285,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
      * Time when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(12);
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -292,7 +311,7 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
     /**
      * Create a detached, initialised EntityProcessorProductTemplatesRecord
      */
-    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ProductTemplateType productTemplateType, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductTemplatesRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ProductTemplateType productTemplateType, ULong productTemplateWalkInFormId, Boolean tempActive, Boolean isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProductTemplates.ENTITY_PROCESSOR_PRODUCT_TEMPLATES);
 
         setId(id);
@@ -302,12 +321,13 @@ public class EntityProcessorProductTemplatesRecord extends UpdatableRecordImpl<E
         setName(name);
         setDescription(description);
         setProductTemplateType(productTemplateType);
+        setProductTemplateWalkInFormId(productTemplateWalkInFormId);
         setTempActive(tempActive);
         setIsActive(isActive);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

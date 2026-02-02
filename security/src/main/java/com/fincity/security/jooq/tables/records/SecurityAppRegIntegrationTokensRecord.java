@@ -99,7 +99,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
     /**
      * Setter for
      * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
-     * url from request made
+     * app metadata from request url
      */
     public SecurityAppRegIntegrationTokensRecord setRequestParam(Map value) {
         set(4, value);
@@ -109,7 +109,7 @@ public class SecurityAppRegIntegrationTokensRecord extends UpdatableRecordImpl<S
     /**
      * Getter for
      * <code>security.security_app_reg_integration_tokens.REQUEST_PARAM</code>.
-     * url from request made
+     * app metadata from request url
      */
     public Map getRequestParam() {
         return (Map) get(4);

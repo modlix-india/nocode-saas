@@ -38,7 +38,7 @@ public class UNumberAdapter<R extends UNumber> extends TypeAdapter<R> implements
             out.nullValue();
             return;
         }
-        out.value(value.toString());
+        out.value(value);
     }
 
     @SuppressWarnings("unchecked")

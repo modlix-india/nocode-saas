@@ -5,7 +5,9 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.EntityProcessorTasksPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.EntityProcessorTicketsPath;
@@ -20,6 +22,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -146,14 +149,21 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
      * <code>entity_processor.entity_processor_owners.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorOwnersRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorOwnersRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_owners.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public final TableField<EntityProcessorOwnersRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorOwnersRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_owners.CLIENT_ID</code>. Id of
+     * client who created this owner.
+     */
+    public final TableField<EntityProcessorOwnersRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this owner.");
 
     /**
      * The column
@@ -254,6 +264,11 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
     }
 
     @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_OWNERS_IDX0_OWNERS_AC_CC);
+    }
+
+    @Override
     public Identity<EntityProcessorOwnersRecord, ULong> getIdentity() {
         return (Identity<EntityProcessorOwnersRecord, ULong>) super.getIdentity();
     }
@@ -305,6 +320,19 @@ public class EntityProcessorOwners extends TableImpl<EntityProcessorOwnersRecord
             _entityProcessorTasks = new EntityProcessorTasksPath(this, null, Keys.FK2_TASKS_OWNER_ID.getInverseKey());
 
         return _entityProcessorTasks;
+    }
+
+    private transient EntityProcessorActivitiesPath _entityProcessorActivities;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>entity_processor.entity_processor_activities</code> table
+     */
+    public EntityProcessorActivitiesPath entityProcessorActivities() {
+        if (_entityProcessorActivities == null)
+            _entityProcessorActivities = new EntityProcessorActivitiesPath(this, null, Keys.FK_ACTIVITIES_OWNER_ID.getInverseKey());
+
+        return _entityProcessorActivities;
     }
 
     @Override

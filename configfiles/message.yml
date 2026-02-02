@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: message
+  freemarker:
+    check-template-location: false
+  r2dbc:
+    url: ${message.db.url}
+    username: ${message.db.username}
+    password: ${message.db.password}
+    pool:
+      initial-size: 2
+      max-size: 4
+      max-idle-time: 30m
+      validation-query: SELECT 1
+  flyway:
+    enabled: true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${message.db.flyway.url}
+    user: ${message.db.username}
+    password: ${message.db.password}
+  boot:
+    admin:
+      client:
+        instance:
+          name: message
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+  cloud:
+    gateway:
+      routes:
+        - id: message
+          uri: lb://message
+          predicates:
+            - Path=/api/message/**, /*/api/message/**, /*/*/api/message/**, /*/*/*/api/message/**, /*/*/*/*/api/message/**, /*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/api/message/**, /*/*/*/*/*/*/*/*/*/api/message/**,
+management:
+  endpoint:
+    flyway:
+      enabled: true
+
+redis:
+  cache:
+    prefix: msg

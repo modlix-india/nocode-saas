@@ -1,7 +1,14 @@
 package com.fincity.saas.entity.processor.service;
 
+import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
+import com.fincity.nocode.kirun.engine.json.schema.Schema;
+import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.functions.AbstractServiceFunction;
+import com.fincity.saas.commons.functions.ClassSchema;
+import com.fincity.saas.commons.functions.IRepositoryProvider;
+import com.fincity.saas.commons.functions.repository.ListFunctionRepository;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.saas.entity.processor.dao.OwnerDAO;
@@ -12,6 +19,11 @@ import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorOwne
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.model.request.OwnerRequest;
 import com.fincity.saas.entity.processor.service.base.BaseProcessorService;
+import com.google.gson.Gson;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,14 +31,40 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 @Service
-public class OwnerService extends BaseProcessorService<EntityProcessorOwnersRecord, Owner, OwnerDAO> {
+public class OwnerService extends BaseProcessorService<EntityProcessorOwnersRecord, Owner, OwnerDAO>
+        implements IRepositoryProvider {
 
     private static final String OWNER_CACHE = "owner";
+    private static final String NAMESPACE = "EntityProcessor.Owner";
 
     private final TicketService ticketService;
+    private final List<ReactiveFunction> functions = new ArrayList<>();
+    private final Gson gson;
+    private static final ClassSchema classSchema =
+            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
-    public OwnerService(@Lazy TicketService ticketService) {
+    @Autowired
+    @Lazy
+    private OwnerService self;
+
+    public OwnerService(@Lazy TicketService ticketService, Gson gson) {
         this.ticketService = ticketService;
+        this.gson = gson;
+    }
+
+    @PostConstruct
+    private void init() {
+
+        this.functions.addAll(super.getCommonFunctions(NAMESPACE, Owner.class, classSchema, gson));
+
+        this.functions.add(AbstractServiceFunction.createServiceFunction(
+                NAMESPACE,
+                "CreateRequest",
+                ClassSchema.ArgSpec.ofRef("ownerRequest", OwnerRequest.class, classSchema),
+                "created",
+                Schema.ofRef("EntityProcessor.DTO.Owner"),
+                gson,
+                self::createRequest));
     }
 
     @Override
@@ -35,13 +73,13 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
     }
 
     @Override
-    public EntitySeries getEntitySeries() {
-        return EntitySeries.OWNER;
+    protected boolean canOutsideCreate() {
+        return Boolean.TRUE;
     }
 
     @Override
-    protected Mono<Owner> checkEntity(Owner entity, ProcessorAccess access) {
-        return Mono.just(entity);
+    public EntitySeries getEntitySeries() {
+        return EntitySeries.OWNER;
     }
 
     @Override
@@ -54,46 +92,59 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
 
                     return Mono.just(existing);
                 })
-                .flatMap(this::updateTickets)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updatableEntity"));
     }
 
-    public Mono<Owner> create(OwnerRequest ownerRequest) {
+    public Mono<Owner> createRequest(OwnerRequest ownerRequest) {
         return FlatMapUtil.flatMapMono(
                         super::hasAccess,
-                        access -> this.checkDuplicate(access.getAppCode(), access.getClientCode(), ownerRequest),
-                        (access, isDuplicate) -> super.createInternal(access, Owner.of(ownerRequest)))
+                        access -> this.checkDuplicate(access, ownerRequest),
+                        (access, isDuplicate) -> super.create(access, Owner.of(ownerRequest)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.create"));
+    }
+
+    @Override
+    public Mono<Owner> update(Owner entity) {
+        return FlatMapUtil.flatMapMono(
+                        super::hasAccess,
+                        access -> super.update(access, entity),
+                        (access, updated) ->
+                                this.updateOwnerTickets(access, updated).thenReturn(updated))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.update"));
     }
 
     public Mono<Owner> getOrCreateTicketOwner(ProcessorAccess access, Ticket ticket) {
 
         if (ticket.getOwnerId() != null)
-            return this.readById(ULongUtil.valueOf(ticket.getOwnerId()))
+            return this.readById(access, ULongUtil.valueOf(ticket.getOwnerId()))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
 
         return this.getOrCreateTicketPhoneOwner(access, ticket)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketOwner"));
     }
 
-    private Mono<Owner> updateTickets(Owner owner) {
+    private Mono<Owner> updateOwnerTickets(ProcessorAccess access, Owner owner) {
         return this.ticketService
-                .updateOwnerTickets(owner)
+                .updateOwnerTickets(access, owner)
                 .collectList()
                 .map(tickets -> owner)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.updateTickets"));
+    }
+
+    public Mono<Ticket> updateTicketOwner(ProcessorAccess access, Ticket ticket) {
+        return this.readById(access, ticket.getOwnerId()).flatMap(owner -> {
+            owner.setName(ticket.getName());
+            owner.setEmail(ticket.getEmail());
+            return this.update(access, owner).thenReturn(ticket);
+        });
     }
 
     private Mono<Owner> getOrCreateTicketPhoneOwner(ProcessorAccess access, Ticket ticket) {
         return FlatMapUtil.flatMapMono(
                         () -> this.dao
                                 .readByNumberAndEmail(
-                                        access.getAppCode(),
-                                        access.getClientCode(),
-                                        ticket.getDialCode(),
-                                        ticket.getPhoneNumber(),
-                                        ticket.getEmail())
-                                .switchIfEmpty(this.createInternal(access, Owner.of(ticket))),
+                                        access, ticket.getDialCode(), ticket.getPhoneNumber(), ticket.getEmail())
+                                .switchIfEmpty(this.create(access, Owner.of(ticket))),
                         owner -> {
                             if (owner.getId() == null)
                                 return this.msgService.throwMessage(
@@ -104,11 +155,10 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.getOrCreateTicketPhoneOwner"));
     }
 
-    private Mono<Boolean> checkDuplicate(String appCode, String clientCode, OwnerRequest ownerRequest) {
+    private Mono<Boolean> checkDuplicate(ProcessorAccess access, OwnerRequest ownerRequest) {
         return this.dao
                 .readByNumberAndEmail(
-                        appCode,
-                        clientCode,
+                        access,
                         ownerRequest.getPhoneNumber() != null
                                 ? ownerRequest.getPhoneNumber().getCountryCode()
                                 : null,
@@ -119,17 +169,22 @@ public class OwnerService extends BaseProcessorService<EntityProcessorOwnersReco
                                 ? ownerRequest.getEmail().getAddress()
                                 : null)
                 .flatMap(existing -> {
-                    if (existing.getId() != null)
-                        return this.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.DUPLICATE_ENTITY,
-                                this.getEntityPrefix(appCode),
-                                existing.getId(),
-                                this.getEntityPrefix(appCode));
+                    if (existing.getId() != null) return super.throwDuplicateError(access, existing);
 
                     return Mono.just(Boolean.FALSE);
                 })
                 .switchIfEmpty(Mono.just(Boolean.FALSE))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "OwnerService.checkDuplicate"));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<ReactiveFunction>> getFunctionRepository(String appCode, String clientCode) {
+        return Mono.just(new ListFunctionRepository(this.functions));
+    }
+
+    @Override
+    public Mono<ReactiveRepository<Schema>> getSchemaRepository(
+            ReactiveRepository<Schema> staticSchemaRepository, String appCode, String clientCode) {
+        return this.defaultSchemaRepositoryFor(Owner.class, classSchema);
     }
 }

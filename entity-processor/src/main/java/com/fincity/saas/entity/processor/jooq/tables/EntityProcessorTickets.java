@@ -5,7 +5,9 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
+import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
+import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
@@ -23,6 +25,7 @@ import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
+import org.jooq.Index;
 import org.jooq.InverseForeignKey;
 import org.jooq.Name;
 import org.jooq.Path;
@@ -181,17 +184,43 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column
+     * <code>entity_processor.entity_processor_tickets.CAMPAIGN_ID</code>.
+     * Campaign Id related to this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> CAMPAIGN_ID = createField(DSL.name("CAMPAIGN_ID"), SQLDataType.BIGINTUNSIGNED, this, "Campaign Id related to this ticket.");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
+     * Deal Tag - HOT / WARM / COLD
+     */
+    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT / WARM / COLD");
+
+    /**
+     * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
+     * Not Call flag for this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> DNC = createField(DSL.name("DNC"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Do Not Call flag for this ticket.");
+
+    /**
+     * The column
      * <code>entity_processor.entity_processor_tickets.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public final TableField<EntityProcessorTicketsRecord, Byte> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("0", SQLDataType.TINYINT)), this, "Temporary active flag for this product.");
+    public final TableField<EntityProcessorTicketsRecord, Boolean> TEMP_ACTIVE = createField(DSL.name("TEMP_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Temporary active flag for this product.");
 
     /**
      * The column
      * <code>entity_processor.entity_processor_tickets.IS_ACTIVE</code>. Flag to
      * check if this product is active or not.
      */
-    public final TableField<EntityProcessorTicketsRecord, Byte> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.inline("1", SQLDataType.TINYINT)), this, "Flag to check if this product is active or not.");
+    public final TableField<EntityProcessorTicketsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.CLIENT_ID</code>. Id of
+     * client who created this ticket.
+     */
+    public final TableField<EntityProcessorTicketsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this ticket.");
 
     /**
      * The column
@@ -289,6 +318,11 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
     @Override
     public Schema getSchema() {
         return aliased() ? null : EntityProcessor.ENTITY_PROCESSOR;
+    }
+
+    @Override
+    public List<Index> getIndexes() {
+        return Arrays.asList(Indexes.ENTITY_PROCESSOR_TICKETS_IDX0_TICKETS_AC_CC);
     }
 
     @Override

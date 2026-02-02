@@ -5,10 +5,11 @@ import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.saas.entity.processor.controller.base.BaseController;
 import com.fincity.saas.entity.processor.dao.ActivityDAO;
 import com.fincity.saas.entity.processor.dto.Activity;
+import com.fincity.saas.entity.processor.eager.EagerUtil;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.Identity;
+import com.fincity.saas.entity.processor.model.request.ticket.CallLogRequest;
 import com.fincity.saas.entity.processor.service.ActivityService;
-import com.fincity.saas.entity.processor.util.EagerUtil;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -19,10 +20,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple4;
+import reactor.util.function.Tuple2;
 
 @RestController
 @RequestMapping("api/entity/processor/activities")
@@ -32,6 +35,7 @@ public class ActivityController
     public static final String TICKET_PATH = "/tickets";
     public static final String TICKET_PATH_ID = TICKET_PATH + PATH_ID;
     public static final String EAGER_TICKET_PATH_ID = TICKET_PATH_ID + EAGER_BASE;
+    public static final String CALL_LOG_PATH = "/call-log";
 
     @GetMapping(TICKET_PATH_ID)
     public Mono<ResponseEntity<Page<Activity>>> readPageFilter(
@@ -47,17 +51,18 @@ public class ActivityController
             Pageable pageable, @PathVariable(PATH_VARIABLE_ID) final Identity identity, ServerHttpRequest request) {
         pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.DESC, PATH_VARIABLE_ID) : pageable);
 
-        Tuple4<AbstractCondition, List<String>, Boolean, List<String>> eagerParams =
-                EagerUtil.getEagerConditions(request.getQueryParams());
+        Tuple2<AbstractCondition, List<String>> fieldParams = EagerUtil.getFieldConditions(request.getQueryParams());
 
         return this.service
                 .readPageFilterEager(
-                        pageable,
-                        identity,
-                        eagerParams.getT1(),
-                        eagerParams.getT2(),
-                        eagerParams.getT3(),
-                        eagerParams.getT4())
+                        pageable, identity, fieldParams.getT1(), fieldParams.getT2(), request.getQueryParams())
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(CALL_LOG_PATH)
+    public Mono<ResponseEntity<Void>> createCallLog(@RequestBody CallLogRequest callLogRequest) {
+        return this.service
+                .createCallLog(callLogRequest)
+                .then(Mono.just(ResponseEntity.ok().build()));
     }
 }

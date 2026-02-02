@@ -1,54 +1,105 @@
 package com.fincity.saas.commons.model.condition;
 
+import java.io.Serial;
 import java.util.List;
 
+import com.fincity.saas.commons.util.CloneUtil;
 import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 public class FilterCondition extends AbstractCondition {
 
-	private static final long serialVersionUID = -4542270694019365457L;
+    @Serial
+    private static final long serialVersionUID = -4542270694019365457L;
 
-	private String field;
-	private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
-	private Object value; // NOSONAR
-	private Object toValue; // NOSONAR
-	private List<?> multiValue; // NOSONAR
-	private boolean isValueField = false;
-	private boolean isToValueField = false;
-	private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
+    private String field;
+    private FilterConditionOperator operator = FilterConditionOperator.EQUALS;
+    private Object value; // NOSONAR
+    private Object toValue; // NOSONAR
+    private List<?> multiValue; // NOSONAR
+    private boolean isValueField = false;
+    private boolean isToValueField = false;
+    private FilterConditionOperator matchOperator = FilterConditionOperator.EQUALS;
 
-	@Override
-	public Flux<FilterCondition> findConditionWithField(String fieldName) {
+    public FilterCondition() {
+        super();
+    }
 
-		if (StringUtil.safeEquals(field, fieldName))
-			return Flux.just(this);
+    public FilterCondition(FilterCondition condition) {
+        super();
+        this.field = condition.getField();
+        this.operator = condition.getOperator();
+        this.value = CloneUtil.cloneObject(condition.getValue());
+        this.toValue = CloneUtil.cloneObject(condition.getToValue());
+        this.multiValue = CloneUtil.cloneMapList(condition.getMultiValue());
+        this.isValueField = condition.isValueField();
+        this.isToValueField = condition.isToValueField();
+        this.matchOperator = condition.getMatchOperator();
+    }
 
-		return Flux.empty();
-	}
+    public static FilterCondition make(String field, Object value) {
+        return new FilterCondition().setField(field).setValue(value);
+    }
 
-	@Override
-	public boolean isEmpty() {
+    public static FilterCondition of(String field, Object value, FilterConditionOperator operator) {
+        return new FilterCondition().setField(field).setValue(value).setOperator(operator);
+    }
 
-		return false;
-	}
+    @Override
+    public boolean isEmpty() {
+        return false;
+    }
 
-	public static FilterCondition make(String field, Object value) {
+    @Override
+    public Flux<FilterCondition> findConditionWithField(String fieldName) {
 
-		return new FilterCondition().setField(field)
-				.setValue(value);
-	}
+        if (StringUtil.safeEquals(field, fieldName)) return Flux.just(this);
 
-	public static FilterCondition of(String field, Object value, FilterConditionOperator operator) {
+        return Flux.empty();
+    }
 
-		return new FilterCondition().setField(field)
-				.setValue(value).setOperator(operator);
-	}
+    @Override
+    public Flux<FilterCondition> findConditionWithPrefix(String prefix) {
+
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(this);
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndTrimPrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(this.setField(field.substring(prefix.length() + 1)));
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Flux<FilterCondition> findAndCreatePrefix(String prefix) {
+        if (StringUtil.safeIsBlank(prefix)) return Flux.empty();
+
+        if (field.startsWith(prefix)) return Flux.just(new FilterCondition(this).setField(field.substring(prefix.length() + 1)));
+
+        return Flux.empty();
+    }
+
+    @Override
+    public Mono<AbstractCondition> removeConditionWithField(String fieldName) {
+
+        if (StringUtil.safeEquals(field, fieldName)) return Mono.empty();
+
+        return Mono.just(this);
+    }
+
 }

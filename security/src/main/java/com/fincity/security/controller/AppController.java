@@ -3,7 +3,7 @@ package com.fincity.security.controller;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.util.StringUtil;
+import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
 import com.mysql.cj.util.StringUtils;
 import org.jooq.types.ULong;
 import org.springframework.beans.factory.annotation.Value;
@@ -241,6 +241,12 @@ public class AppController
     @GetMapping("/clientHasReadAccess")
     public Mono<ResponseEntity<Map<String, Boolean>>> hasAccess(@RequestParam String[] appCodes) {
         return this.service.hasReadAccess(appCodes)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/appStatus/{appCode}")
+    public Mono<ResponseEntity<String>> getAppStatus(@PathVariable String appCode) {
+        return this.service.getAppStatus(appCode)
                 .map(ResponseEntity::ok);
     }
 }

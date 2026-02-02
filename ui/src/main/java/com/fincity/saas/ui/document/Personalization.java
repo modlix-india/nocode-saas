@@ -5,7 +5,7 @@ import java.util.Map;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import com.fincity.saas.commons.mongo.model.AbstractOverridableDTO;
+import com.fincity.saas.commons.model.dto.AbstractOverridableDTO;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,20 +21,20 @@ import reactor.core.publisher.Mono;
 @ToString(callSuper = true)
 public class Personalization extends AbstractOverridableDTO<Personalization> {
 
-	private static final long serialVersionUID = 4797291119009554778L;
+    private static final long serialVersionUID = 4797291119009554778L;
 
-	private Map<String, Object> personalization; // NOSONAR
+    private Map<String, Object> personalization; // NOSONAR
 
-	@Override
-	public Mono<Personalization> applyOverride(Personalization base) {
+    @Override
+    public Mono<Personalization> applyOverride(Personalization base) {
 
-		return Mono.just(this);
-	}
+        return Mono.just(this);
+    }
 
-	@Override
-	public Mono<Personalization> makeOverride(Personalization base) {
+    @Override
+    public Mono<Personalization> extractDifference(Personalization base) {
 
-		return Mono.just(this);
-	}
+        return Mono.just(this);
+    }
 
 }

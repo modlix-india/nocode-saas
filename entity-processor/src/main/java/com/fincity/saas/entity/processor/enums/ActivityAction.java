@@ -25,7 +25,7 @@ public enum ActivityAction implements EnumType {
             keys("entity", Ticket.Fields.source)),
     RE_INQUIRY(
             "RE_INQUIRY",
-            "$entity re-inquired from $%s for $user.".formatted(Ticket.Fields.source),
+            "$entity re-inquired from $%s by $user.".formatted(Ticket.Fields.source),
             keys("entity", Ticket.Fields.source)),
     QUALIFY("QUALIFY", "$entity qualified by $user.", keys("entity")),
     DISQUALIFY("DISQUALIFY", "$entity marked as disqualified by $user.", keys("entity")),
@@ -39,6 +39,14 @@ public enum ActivityAction implements EnumType {
             "STAGE_UPDATE",
             "Stage moved from $%s to $%s by $user.".formatted(getOldName(Ticket.Fields.stage), Ticket.Fields.stage),
             keys(getOldName(Ticket.Fields.stage), Ticket.Fields.stage)),
+    WALK_IN("WALK_IN", "$entity walked in by $user.", keys("entity")),
+    DCRM_IMPORT("DCRM_IMPORT", "$entity imported via DCRM by $user.", keys("entity")),
+    TAG_CREATE("TAG_CREATE", "$entity was tagged $%s by $user.".formatted(Ticket.Fields.tag), keys(Ticket.Fields.tag)),
+    TAG_UPDATE(
+            "TAG_UPDATE",
+            "$entity was tagged $%s from $%s by $user."
+                    .formatted(Ticket.Fields.tag, ActivityAction.getOldName(Ticket.Fields.tag)),
+            keys(Ticket.Fields.tag, ActivityAction.getOldName(Ticket.Fields.tag))),
 
     // Task-related actions
     TASK_CREATE(
@@ -186,10 +194,9 @@ public enum ActivityAction implements EnumType {
     public String formatMessage(Map<String, Object> context) {
         String formattedMessage = template;
 
-        for (Map.Entry<String, Object> entry : context.entrySet()) {
+        for (Map.Entry<String, Object> entry : context.entrySet())
             formattedMessage = formattedMessage.replace(
                     "$" + entry.getKey(), this.formatMarkdown(entry.getKey(), this.getValue(entry.getValue())));
-        }
 
         return formattedMessage;
     }

@@ -11,13 +11,11 @@ public enum ConnectionType {
 
     NOTIFICATION,
 
-    IN_APP,
+    TEXT(ConnectionSubType.WHATSAPP),
 
-    MOBILE_PUSH,
+    CALL(ConnectionSubType.EXOTEL),
 
-    WEB_PUSH,
-
-    SMS;
+    AI(ConnectionSubType.OPENAI, ConnectionSubType.GEMINI, ConnectionSubType.CLAUDE, ConnectionSubType.GROK, ConnectionSubType.DEEP_SEEK);
 
     private final Set<ConnectionSubType> allowedSubtypes;
 

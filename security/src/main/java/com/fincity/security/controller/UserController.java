@@ -1,25 +1,52 @@
 package com.fincity.security.controller;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.model.condition.AbstractCondition;
-import com.fincity.security.dto.*;
-import com.fincity.security.model.*;
-import com.fincity.security.service.UserInviteService;
-import com.fincity.security.service.UserRequestService;
-import com.fincity.security.service.UserService;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQUpdatableDataController;
+import com.fincity.saas.commons.model.Query;
+import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.security.model.EntityProcessorUser;
+import com.fincity.saas.commons.security.model.NotificationUser;
+import com.fincity.saas.commons.security.model.UsersListRequest;
+import com.fincity.saas.commons.util.ConditionUtil;
 import com.fincity.security.dao.UserDAO;
+import com.fincity.security.dto.Profile;
+import com.fincity.security.dto.User;
+import com.fincity.security.dto.UserClient;
+import com.fincity.security.dto.UserInvite;
+import com.fincity.security.dto.UserRequest;
+import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
+import com.fincity.security.model.AuthenticationRequest;
+import com.fincity.security.model.RegistrationResponse;
+import com.fincity.security.model.RequestUpdatePassword;
+import com.fincity.security.model.UserAppAccessRequest;
+import com.fincity.security.model.UserRegistrationRequest;
+import com.fincity.security.service.UserInviteService;
+import com.fincity.security.service.UserRequestService;
+import com.fincity.security.service.UserService;
 import com.fincity.security.service.UserSubOrganizationService;
 
 import reactor.core.publisher.Mono;
@@ -77,18 +104,20 @@ public class UserController
             @RequestParam(value = "appLevel", required = false, defaultValue = "true") Boolean appLevel,
             ServerHttpRequest request) {
 
-        return this.service.findUserClients(authRequest, appLevel, request).map(ResponseEntity::ok);
+        return this.service.findUserClients(authRequest, appLevel, request)
+                .flatMapIterable(e -> e)
+                .filter(e -> e.getClient() != null && SecurityClientStatusCode.ACTIVE == e.getClient().getStatusCode())
+                .collectList()
+                .map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserActive")
+    @PatchMapping("/makeUserActive")
     public Mono<ResponseEntity<Boolean>> makeUserActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserActive(userId).map(ResponseEntity::ok);
     }
 
-    @GetMapping("/makeUserInActive")
+    @PatchMapping("/makeUserInActive")
     public Mono<ResponseEntity<Boolean>> makeUserInActive(@RequestParam(required = false) ULong userId) {
-
         return this.service.makeUserInActive(userId).map(ResponseEntity::ok);
     }
 
@@ -131,7 +160,7 @@ public class UserController
     }
 
     @PostMapping("/invite")
-    public Mono<ResponseEntity<Map<String,Object>>> inviteUser(@RequestBody UserInvite invite) {
+    public Mono<ResponseEntity<Map<String, Object>>> inviteUser(@RequestBody UserInvite invite) {
         return this.inviteService.createInvite(invite).map(ResponseEntity::ok);
     }
 
@@ -158,13 +187,42 @@ public class UserController
     }
 
     @GetMapping("/internal" + PATH_ID)
-    public Mono<ResponseEntity<UserResponse>> getUser(@PathVariable ULong id) {
-        return this.service.readById(id).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<User>> getUserInternal(
+            @PathVariable ULong id, @RequestParam MultiValueMap<String, String> queryParams) {
+        return this.service.readById(id, queryParams).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal")
-    public Mono<ResponseEntity<List<UserResponse>>> getUsers(@RequestParam List<ULong> userIds) {
-        return this.service.readByIds(userIds).map(ResponseEntity::ok);
+    public Mono<ResponseEntity<List<User>>> getUsersInternal(
+            @RequestParam List<ULong> userIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        return this.service.readByIds(userIds, queryParams).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/batch")
+    public Mono<ResponseEntity<List<User>>> getUsersInternalBatch(
+            @RequestBody List<BigInteger> userIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        List<ULong> uLongUserIds = userIds.stream()
+                .map(ULong::valueOf)
+                .toList();
+        return this.service.readByIds(uLongUserIds, queryParams).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/clients")
+    public Mono<ResponseEntity<List<User>>> getClientUsersInternal(
+            @RequestParam List<ULong> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
+
+        return this.service.readByClientIds(clientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams)
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/clients/batch")
+    public Mono<ResponseEntity<List<User>>> getClientUsersInternalBatch(
+            @RequestBody List<BigInteger> clientIds, @RequestParam MultiValueMap<String, String> queryParams) {
+        List<ULong> uLongClientIds = clientIds.stream()
+                .map(ULong::valueOf)
+                .toList();
+        return this.service.readByClientIds(uLongClientIds, ConditionUtil.parameterMapToMap(queryParams), queryParams)
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/exists")
@@ -220,7 +278,7 @@ public class UserController
     }
 
     @GetMapping("/internal/adminEmails")
-    public Mono<ResponseEntity<Map<String, Object>>> getUserAdminEmails(ServerHttpRequest request){
+    public Mono<ResponseEntity<Map<String, Object>>> getUserAdminEmails(ServerHttpRequest request) {
         return this.service.getUserAdminEmails(request).map(ResponseEntity::ok);
     }
 
@@ -229,5 +287,62 @@ public class UserController
         return this.requestService.getRequestUser(requestId).map(ResponseEntity::ok);
     }
 
-}
+    @PostMapping("/noMapping")
+    @Override
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(Query query) {
+        return Mono.just(ResponseEntity.badRequest().build());
+    }
 
+    @GetMapping()
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(Pageable pageable, ServerHttpRequest request) {
+        pageable = (pageable == null ? PageRequest.of(0, 10, Sort.Direction.ASC, PATH_VARIABLE_ID) : pageable);
+        return this.service
+                .readPageFilter(pageable, ConditionUtil.parameterMapToMap(request.getQueryParams()))
+                .flatMap(page -> this.service
+                        .fillDetails(page.getContent(), request.getQueryParams())
+                        .thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping(PATH_QUERY)
+    public Mono<ResponseEntity<Page<User>>> readPageFilter(@RequestBody Query query, ServerHttpRequest request) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service
+                .readPageFilter(pageable, query.getCondition())
+                .flatMap(page -> this.service
+                        .fillDetails(page.getContent(), request.getQueryParams())
+                        .thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/" + PATH_QUERY)
+    public Mono<ResponseEntity<Page<User>>> readPageFilterInternal(
+            @RequestBody Query query, @RequestParam MultiValueMap<String, String> queryParams) {
+
+        Pageable pageable = PageRequest.of(query.getPage(), query.getSize(), query.getSort());
+
+        return this.service
+                .readPageFilterInternal(pageable, query.getCondition())
+                .flatMap(page -> this.service.fillDetails(page.getContent(), queryParams).thenReturn(page))
+                .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/notification")
+    public Mono<ResponseEntity<List<NotificationUser>>> getUsersForNotification(@RequestBody UsersListRequest request) {
+        return this.service.getUsersForNotification(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/processor")
+    public Mono<ResponseEntity<List<EntityProcessorUser>>> getUsersForEntityProcessor(
+            @RequestBody UsersListRequest request) {
+        return this.service.getUsersForEntityProcessor(request).map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/{userId}/processor")
+    public Mono<ResponseEntity<EntityProcessorUser>> getUsersForEntityProcessor(
+            @PathVariable ULong userId, @RequestBody UsersListRequest request) {
+        return this.service.getUserForEntityProcessor(userId, request).map(ResponseEntity::ok);
+    }
+}

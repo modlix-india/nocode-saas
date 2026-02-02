@@ -20,9 +20,13 @@ public class AuthenticationResponse implements Serializable {
     private String verifiedAppCode;
     private String loggedInClientCode;
     private BigInteger loggedInClientId;
+    private BigInteger managedClientId;
+    private String managedClientCode;
 
     private String accessToken;
     private LocalDateTime accessTokenExpiryAt;
+
+    private String ssoToken;
 
     public ContextAuthentication makeContextAuthentication() {
 

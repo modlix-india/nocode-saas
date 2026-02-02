@@ -5,6 +5,7 @@ package com.fincity.saas.entity.processor.jooq.tables.records;
 
 
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
+import com.fincity.saas.entity.processor.oserver.files.model.FileDetail;
 
 import java.time.LocalDateTime;
 
@@ -173,11 +174,68 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
 
     /**
      * Setter for
+     * <code>entity_processor.entity_processor_products.PRODUCT_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product.
+     */
+    public EntityProcessorProductsRecord setProductWalkInFormId(ULong value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.PRODUCT_WALK_IN_FORM_ID</code>.
+     * Walk in form related to this product.
+     */
+    public ULong getProductWalkInFormId() {
+        return (ULong) get(8);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public EntityProcessorProductsRecord setLogoFileDetail(FileDetail value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.LOGO_FILE_DETAIL</code>.
+     * File Details if product has a logo file
+     */
+    public FileDetail getLogoFileDetail() {
+        return (FileDetail) get(9);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public EntityProcessorProductsRecord setBannerFileDetail(FileDetail value) {
+        set(10, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.BANNER_FILE_DETAIL</code>.
+     * File Details if product has a banner file
+     */
+    public FileDetail getBannerFileDetail() {
+        return (FileDetail) get(10);
+    }
+
+    /**
+     * Setter for
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public EntityProcessorProductsRecord setTempActive(Byte value) {
-        set(8, value);
+    public EntityProcessorProductsRecord setTempActive(Boolean value) {
+        set(11, value);
         return this;
     }
 
@@ -186,8 +244,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.TEMP_ACTIVE</code>.
      * Temporary active flag for this product.
      */
-    public Byte getTempActive() {
-        return (Byte) get(8);
+    public Boolean getTempActive() {
+        return (Boolean) get(11);
     }
 
     /**
@@ -195,8 +253,8 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public EntityProcessorProductsRecord setIsActive(Byte value) {
-        set(9, value);
+    public EntityProcessorProductsRecord setIsActive(Boolean value) {
+        set(12, value);
         return this;
     }
 
@@ -205,8 +263,84 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * <code>entity_processor.entity_processor_products.IS_ACTIVE</code>. Flag
      * to check if this product is active or not.
      */
-    public Byte getIsActive() {
-        return (Byte) get(9);
+    public Boolean getIsActive() {
+        return (Boolean) get(12);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.CLIENT_ID</code>. Id of
+     * client who created this product.
+     */
+    public EntityProcessorProductsRecord setClientId(ULong value) {
+        set(13, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.CLIENT_ID</code>. Id of
+     * client who created this product.
+     */
+    public ULong getClientId() {
+        return (ULong) get(13);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
+     * to tell whether Partner has access to this product or not.
+     */
+    public EntityProcessorProductsRecord setForPartner(Boolean value) {
+        set(14, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.FOR_PARTNER</code>. Flag
+     * to tell whether Partner has access to this product or not.
+     */
+    public Boolean getForPartner() {
+        return (Boolean) get(14);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public EntityProcessorProductsRecord setOverrideCTemplate(Boolean value) {
+        set(15, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_C_TEMPLATE</code>.
+     * Flag to tell weather to override the Create (C) template rules
+     */
+    public Boolean getOverrideCTemplate() {
+        return (Boolean) get(15);
+    }
+
+    /**
+     * Setter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public EntityProcessorProductsRecord setOverrideRuTemplate(Boolean value) {
+        set(16, value);
+        return this;
+    }
+
+    /**
+     * Getter for
+     * <code>entity_processor.entity_processor_products.OVERRIDE_RU_TEMPLATE</code>.
+     * Flag to tell weather to override the Read Update (RU) template rules
+     */
+    public Boolean getOverrideRuTemplate() {
+        return (Boolean) get(16);
     }
 
     /**
@@ -215,7 +349,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public EntityProcessorProductsRecord setCreatedBy(ULong value) {
-        set(10, value);
+        set(17, value);
         return this;
     }
 
@@ -225,7 +359,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who created this row.
      */
     public ULong getCreatedBy() {
-        return (ULong) get(10);
+        return (ULong) get(17);
     }
 
     /**
@@ -234,7 +368,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public EntityProcessorProductsRecord setCreatedAt(LocalDateTime value) {
-        set(11, value);
+        set(18, value);
         return this;
     }
 
@@ -244,7 +378,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is created.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(18);
     }
 
     /**
@@ -253,7 +387,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public EntityProcessorProductsRecord setUpdatedBy(ULong value) {
-        set(12, value);
+        set(19, value);
         return this;
     }
 
@@ -263,7 +397,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * the user who updated this row.
      */
     public ULong getUpdatedBy() {
-        return (ULong) get(12);
+        return (ULong) get(19);
     }
 
     /**
@@ -272,7 +406,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public EntityProcessorProductsRecord setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+        set(20, value);
         return this;
     }
 
@@ -282,7 +416,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
      * when this row is updated.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -308,7 +442,7 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
     /**
      * Create a detached, initialised EntityProcessorProductsRecord
      */
-    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, Byte tempActive, Byte isActive, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorProductsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong productTemplateId, ULong productWalkInFormId, FileDetail logoFileDetail, FileDetail bannerFileDetail, Boolean tempActive, Boolean isActive, ULong clientId, Boolean forPartner, Boolean overrideCTemplate, Boolean overrideRuTemplate, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS);
 
         setId(id);
@@ -319,12 +453,19 @@ public class EntityProcessorProductsRecord extends UpdatableRecordImpl<EntityPro
         setDescription(description);
         setVersion(version);
         setProductTemplateId(productTemplateId);
+        setProductWalkInFormId(productWalkInFormId);
+        setLogoFileDetail(logoFileDetail);
+        setBannerFileDetail(bannerFileDetail);
         setTempActive(tempActive);
         setIsActive(isActive);
+        setClientId(clientId);
+        setForPartner(forPartner);
+        setOverrideCTemplate(overrideCTemplate);
+        setOverrideRuTemplate(overrideRuTemplate);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
         setUpdatedBy(updatedBy);
         setUpdatedAt(updatedAt);
-        resetTouchedOnNotNull();
+        resetChangedOnNotNull();
     }
 }

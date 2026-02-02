@@ -1,0 +1,112 @@
+# Cursor Rules for NoCode SaaS Platform
+
+## Architecture & Framework
+
+-   This is a Spring Boot microservices application using Project Reactor for reactive programming
+-   Services extend `AbstractJOOQUpdatableDataService` or similar base classes from commons modules
+-   Use JOOQ for type-safe database operations
+-   Use `org.jooq.types.ULong` for all ID types (not Long or Integer)
+-   Use `java.time.LocalDateTime` for timestamps
+
+## Reactive Programming Patterns
+
+-   All service methods return `Mono<T>` or `Flux<T>` from Project Reactor
+-   Use `FlatMapUtil.flatMapMono()` for chaining multiple reactive operations
+-   Always use `.contextWrite(Context.of(LogUtil.METHOD_NAME, "ServiceName.methodName"))` at the end of reactive chains for logging
+-   Use `.switchIfEmpty()` with `Mono.defer()` for error handling when operations return empty
+-   Chain operations using lambda expressions: `(param1, param2) -> nextOperation()`
+
+## Security & Authentication
+
+-   Use `@PreAuthorize("hasAuthority('Authorities.ACTION')")` annotations on all public service methods
+-   Always start reactive chains with `SecurityContextUtil::getUsersContextAuthentication` to get current user context
+-   Access user info via `ca.getUser().getClientId()` from the context authentication
+-   Use `ClientService.isBeingManagedBy()` to check if a user has access to a client's resources
+-   Use `BooleanUtil.safeValueOf` with `.filter()` to validate boolean permissions
+
+## Error Handling
+
+-   Use `SecurityMessageResourceService` (or appropriate MessageResourceService) for all error messages
+-   Use `messageResourceService.throwMessage()` with `GenericException` for error handling
+-   Common message keys:
+    -   `SecurityMessageResourceService.PARAMS_NOT_FOUND` - for 404 errors
+    -   `SecurityMessageResourceService.FORBIDDEN_PERMISSION` - for 403 permission errors
+    -   `SecurityMessageResourceService.FORBIDDEN_CREATE` - for create permission errors
+    -   `SecurityMessageResourceService.FORBIDDEN_UPDATE` - for update permission errors
+    -   `SecurityMessageResourceService.FIELDS_MISSING` - for 400 validation errors
+    -   `SecurityMessageResourceService.UNKNOWN_ERROR` - for 400 unexpected errors
+-   Always provide descriptive error messages as the last parameter
+-   Use appropriate HTTP status codes: `HttpStatus.NOT_FOUND`, `HttpStatus.FORBIDDEN`, `HttpStatus.BAD_REQUEST`
+
+## Service Method Structure
+
+1. Start with `@PreAuthorize` annotation
+2. Use `FlatMapUtil.flatMapMono()` for the main logic chain
+3. First step: `SecurityContextUtil::getUsersContextAuthentication`
+4. Subsequent steps: validate permissions, fetch data, perform operations
+5. End with `.switchIfEmpty()` for permission errors
+6. Add `.contextWrite(Context.of(LogUtil.METHOD_NAME, "ServiceName.methodName"))`
+
+## Payment Gateway Integration Pattern
+
+-   Use strategy pattern with `IPaymentGatewayIntegration` interface
+-   Create abstract base classes like `AbstractPaymentGatewayIntegration` for common functionality
+-   Implement gateway-specific logic in concrete implementations
+-   Use `List<IPaymentGatewayIntegration>` injection and filter by `getSupportedGateway()`
+-   Gateway types are enums: `SecurityPaymentGatewayPaymentGateway` (CASHFREE, RAZORPAY, STRIPE, etc.)
+-   Payment statuses are enums: `SecurityPaymentPaymentStatus` (PENDING, PAID, FAILED, etc.)
+
+## DAO Pattern
+
+-   DAOs are injected via constructor
+-   DAO methods return `Mono<T>` for reactive operations
+-   Use DAO methods like `readById()`, `create()`, `update()`, `findBy*()` for database operations
+-   Always check for empty results with `.switchIfEmpty()` and appropriate error messages
+
+## Code Style
+
+-   Use constructor injection (not field injection with @Autowired)
+-   Keep methods focused and single-purpose
+-   Use descriptive method names that indicate the operation
+-   Add JavaDoc comments for public methods explaining permissions and behavior
+-   Use switch expressions for enum-based logic (Java 14+)
+-   Use `Mono.just()` for simple values, `Mono.justOrEmpty()` for optional values
+
+## Entity Updates
+
+-   Override `updatableEntity()` method when extending `AbstractJOOQUpdatableDataService`
+-   In `updatableEntity()`, read existing entity, update only allowed fields, return updated entity
+-   Use `FlatMapUtil.flatMapMono()` in `updatableEntity()` for consistency
+
+## Validation
+
+-   Validate required fields before database operations
+-   Use gateway-specific validation methods for payment gateway details
+-   Return `Mono<Boolean>` for validation methods, use `Mono.just(true)` for success
+-   Throw errors using `messageResourceService.throwMessage()` for validation failures
+
+## Common Imports Pattern
+
+```java
+import com.fincity.nocode.reactor.util.FlatMapUtil;
+import com.fincity.saas.commons.exeception.GenericException;
+import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
+import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.util.BooleanUtil;
+import com.fincity.saas.commons.util.LogUtil;
+import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+```
+
+
+
+
+
+
+
+
+
+
