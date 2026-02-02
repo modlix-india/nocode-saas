@@ -3,6 +3,7 @@ package com.fincity.saas.commons.model.condition;
 import java.io.Serial;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.commons.util.StringUtil;
 
 import lombok.Data;
@@ -102,6 +103,8 @@ public class ComplexCondition extends AbstractCondition {
                 });
     }
 
+    @JsonIgnore
+    @Override
     public AbstractCondition getWhereCondition() {
         if (this.conditions == null || this.conditions.isEmpty()) return null;
 
