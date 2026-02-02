@@ -4,6 +4,7 @@ import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.modlix.saas.commons2.util.StringUtil;
 
 import lombok.AllArgsConstructor;
@@ -39,11 +40,13 @@ public class ComplexCondition extends AbstractCondition {
         return conditions == null || conditions.isEmpty();
     }
 
+	@JsonIgnore
     @Override
     public boolean hasGroupCondition() {
         return groupCondition != null && !groupCondition.isEmpty();
     }
 
+	@JsonIgnore
     @Override
     public AbstractCondition getWhereCondition() {
         if (this.conditions == null || this.conditions.isEmpty()) return null;
