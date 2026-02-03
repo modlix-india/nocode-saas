@@ -10,6 +10,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
@@ -128,8 +129,8 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
-            case DAYS -> date.plusDays(1).atStartOfDay();
-            case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atStartOfDay();
+            case DAYS -> date.plusDays(1).atTime(LocalTime.MAX);
+            case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
             case MONTHS -> getMonthEnd(date);
             case QUARTERS -> getQuarterEnd(date);
             case YEARS -> getYearEnd(date);
@@ -140,27 +141,27 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
     private static LocalDateTime getMonthEnd(LocalDate date) {
         LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfMonth());
         return (lastDay.isAfter(date) ? lastDay : date.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth()))
-                .atStartOfDay();
+                .atTime(LocalTime.MAX);
     }
 
     private static LocalDateTime getQuarterEnd(LocalDate date) {
         int monthInQuarter = (date.getMonthValue() - 1) % 3;
         LocalDate quarterEnd = date.plusMonths(2L - monthInQuarter).with(TemporalAdjusters.lastDayOfMonth());
         if (quarterEnd.isAfter(date)) {
-            return quarterEnd.atStartOfDay();
+            return quarterEnd.atTime(LocalTime.MAX);
         }
         LocalDate nextQuarterStart = date.plusMonths(3);
         int nextMonthInQuarter = (nextQuarterStart.getMonthValue() - 1) % 3;
         return nextQuarterStart
                 .plusMonths(2L - nextMonthInQuarter)
                 .with(TemporalAdjusters.lastDayOfMonth())
-                .atStartOfDay();
+                .atTime(LocalTime.MAX);
     }
 
     private static LocalDateTime getYearEnd(LocalDate date) {
         LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfYear());
         return (lastDay.isAfter(date) ? lastDay : date.plusYears(1).with(TemporalAdjusters.lastDayOfYear()))
-                .atStartOfDay();
+                .atTime(LocalTime.MAX);
     }
 
     public boolean containsDate(LocalDate date) {
