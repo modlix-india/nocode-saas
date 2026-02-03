@@ -169,19 +169,19 @@ public class TaskService extends BaseContentService<EntityProcessorTasksRecord, 
                 .readById(access, entity.getTaskTypeId())
                 .flatMap(taskType -> {
                     entity.setContentEntitySeries(taskType.getContentEntitySeries());
-                    return this.checkTaskHasEntityForSeries(entity, taskType)
-                            .thenReturn(entity);
+                    return this.checkTaskHasEntityForSeries(entity, taskType).thenReturn(entity);
                 })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "TaskService.checkEntity"));
     }
 
     private Mono<Void> checkTaskHasEntityForSeries(Task task, TaskType taskType) {
         ContentEntitySeries series = taskType.getContentEntitySeries();
-        boolean hasRequiredId = switch (series) {
-            case TICKET -> task.getTicketId() != null;
-            case OWNER -> task.getOwnerId() != null;
-            case USER -> task.getUserId() != null;
-        };
+        boolean hasRequiredId =
+                switch (series) {
+                    case TICKET -> task.getTicketId() != null;
+                    case OWNER -> task.getOwnerId() != null;
+                    case USER -> task.getUserId() != null;
+                };
         if (hasRequiredId) return Mono.empty();
         return this.msgService.throwMessage(
                 msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
