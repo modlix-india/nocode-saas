@@ -27,7 +27,6 @@ import com.fincity.saas.entity.processor.dto.content.base.BaseContentDto;
 import com.fincity.saas.entity.processor.enums.ActivityAction;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.Tag;
-import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorActivitiesRecord;
 import com.fincity.saas.entity.processor.model.common.ActivityObject;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
@@ -151,9 +150,11 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
                 ? ULongUtil.valueOf(context.get(Activity.Fields.userId))
                 : null;
 
-        if (isValidId(ticketId)) return this.createActivityForTicket(access, action, createdOn, comment, context, ticketId);
+        if (isValidId(ticketId))
+            return this.createActivityForTicket(access, action, createdOn, comment, context, ticketId);
 
-        if (isValidId(ownerId)) return this.createActivityForOwner(access, action, createdOn, comment, context, ownerId);
+        if (isValidId(ownerId))
+            return this.createActivityForOwner(access, action, createdOn, comment, context, ownerId);
 
         if (isValidId(userId)) return this.createActivityForUser(access, action, createdOn, comment, context, userId);
 
@@ -183,7 +184,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             String comment,
             Map<String, Object> context,
             ULong ticketId) {
-        Map<String, Object> mutableContext = this.prepareActivityContext(access, context, EntitySeries.TICKET, createdOn);
+        Map<String, Object> mutableContext =
+                this.prepareActivityContext(access, context, EntitySeries.TICKET, createdOn);
         LocalDateTime activityDate = (LocalDateTime) mutableContext.get("dateTime");
         ActivityObject activityObject = ActivityObject.ofTicket(ticketId, comment, mutableContext);
         Activity activity = Activity.of(ticketId, null, null, action, activityObject)
@@ -203,7 +205,8 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
             String comment,
             Map<String, Object> context,
             ULong ownerId) {
-        Map<String, Object> mutableContext = this.prepareActivityContext(access, context, EntitySeries.OWNER, createdOn);
+        Map<String, Object> mutableContext =
+                this.prepareActivityContext(access, context, EntitySeries.OWNER, createdOn);
         LocalDateTime activityDate = (LocalDateTime) mutableContext.get("dateTime");
         ActivityObject activityObject = ActivityObject.ofOwner(ownerId, comment, mutableContext);
         Activity activity = Activity.of(null, ownerId, null, action, activityObject)
@@ -377,8 +380,10 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
 
     public Mono<Void> acWalkIn(ProcessorAccess access, Ticket ticket, String comment) {
         Map<String, Object> context = Map.of(
-                Activity.Fields.ticketId, ticket.getId(),
-                "user", IdAndValue.of(access.getUserId(), access.getUserName()));
+                Activity.Fields.ticketId,
+                ticket.getId(),
+                "user",
+                IdAndValue.of(access.getUserId(), access.getUserName()));
         return this.createActivityInternal(access, ActivityAction.WALK_IN, null, comment, context)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acWalkIn"));
     }
@@ -441,48 +446,53 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     private Map<String, Object> buildTaskActivityContext(Task task) {
         return CollectionUtil.merge(
                 this.buildContentContext(task),
-                Map.of(
-                        Activity.Fields.taskId, task.getId(),
-                        ActivityAction.getClassName(Task.class), task));
+                Map.of(Activity.Fields.taskId, task.getId(), ActivityAction.getClassName(Task.class), task));
     }
 
     private Map<String, Object> buildReminderSetContext(Task task) {
         return CollectionUtil.merge(
                 this.buildContentContext(task),
                 Map.of(
-                        Activity.Fields.taskId, task.getId(),
-                        Task.Fields.nextReminder, task.getNextReminder(),
-                        ActivityAction.getClassName(Task.class), task));
+                        Activity.Fields.taskId,
+                        task.getId(),
+                        Task.Fields.nextReminder,
+                        task.getNextReminder(),
+                        ActivityAction.getClassName(Task.class),
+                        task));
     }
 
-    private Map<String, Object> buildTaskUpdateContext(
-            Task task, Object updatedNode, Object oldNode, Object diffNode) {
+    private Map<String, Object> buildTaskUpdateContext(Task task, Object updatedNode, Object oldNode, Object diffNode) {
         return CollectionUtil.merge(
                 this.buildContentContext(task),
                 Map.of(
-                        Activity.Fields.taskId, task.getId(),
-                        ActivityAction.getClassName(Task.class), updatedNode,
-                        ActivityAction.getOldName(Task.class), oldNode,
-                        ActivityAction.getDiffName(Task.class), diffNode));
+                        Activity.Fields.taskId,
+                        task.getId(),
+                        ActivityAction.getClassName(Task.class),
+                        updatedNode,
+                        ActivityAction.getOldName(Task.class),
+                        oldNode,
+                        ActivityAction.getDiffName(Task.class),
+                        diffNode));
     }
 
     private Map<String, Object> buildNoteContentContext(Note note) {
         return CollectionUtil.merge(
                 this.buildContentContext(note),
-                Map.of(
-                        Activity.Fields.noteId, note.getId(),
-                        ActivityAction.getClassName(Note.class), note));
+                Map.of(Activity.Fields.noteId, note.getId(), ActivityAction.getClassName(Note.class), note));
     }
 
-    private Map<String, Object> buildNoteUpdateContext(
-            Note note, Object updatedNode, Object oldNode, Object diffNode) {
+    private Map<String, Object> buildNoteUpdateContext(Note note, Object updatedNode, Object oldNode, Object diffNode) {
         return CollectionUtil.merge(
                 this.buildContentContext(note),
                 Map.of(
-                        Activity.Fields.noteId, note.getId(),
-                        ActivityAction.getClassName(Note.class), updatedNode,
-                        ActivityAction.getOldName(Note.class), oldNode,
-                        ActivityAction.getDiffName(Note.class), diffNode));
+                        Activity.Fields.noteId,
+                        note.getId(),
+                        ActivityAction.getClassName(Note.class),
+                        updatedNode,
+                        ActivityAction.getOldName(Note.class),
+                        oldNode,
+                        ActivityAction.getDiffName(Note.class),
+                        diffNode));
     }
 
     public Mono<Void> acTaskUpdate(ProcessorAccess access, Task task, Task updated, String comment) {
@@ -547,11 +557,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     public Mono<Void> acTaskDelete(Task task, String comment, LocalDateTime deletedDate) {
         return this.hasAccess()
                 .flatMap(access -> this.createActivityInternal(
-                        access,
-                        ActivityAction.TASK_DELETE,
-                        deletedDate,
-                        comment,
-                        this.buildTaskActivityContext(task)))
+                        access, ActivityAction.TASK_DELETE, deletedDate, comment, this.buildTaskActivityContext(task)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acTaskDelete"));
     }
 
@@ -597,11 +603,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     public Mono<Void> acNoteDelete(Note note, String comment, LocalDateTime deletedDate) {
         return this.hasAccess()
                 .flatMap(access -> this.createActivityInternal(
-                        access,
-                        ActivityAction.NOTE_DELETE,
-                        deletedDate,
-                        comment,
-                        this.buildNoteContentContext(note)))
+                        access, ActivityAction.NOTE_DELETE, deletedDate, comment, this.buildNoteContentContext(note)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ActivityService.acNoteDelete"));
     }
 
@@ -737,9 +739,7 @@ public class ActivityService extends BaseService<EntityProcessorActivitiesRecord
     }
 
     private Map<String, Object> buildCallLogContext(Ticket ticket, CallLogRequest request) {
-        Map<String, Object> base = Map.of(
-                Activity.Fields.ticketId, ticket.getId(),
-                "customer", ticket.getName());
+        Map<String, Object> base = Map.of(Activity.Fields.ticketId, ticket.getId(), "customer", ticket.getName());
         if (request.getIsOutbound() == null
                 && request.getCallStatus() == null
                 && request.getCallDate() == null
