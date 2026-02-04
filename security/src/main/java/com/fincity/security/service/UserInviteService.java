@@ -51,8 +51,8 @@ public class UserInviteService
     private final ProfileService profileService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
-            AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
-            ProfileService profileService) {
+                             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
+                             ProfileService profileService) {
 
         this.msgService = msgService;
         this.clientService = clientService;

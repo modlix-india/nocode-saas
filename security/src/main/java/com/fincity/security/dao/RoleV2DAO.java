@@ -3,10 +3,11 @@ package com.fincity.security.dao;
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.util.CommonsUtil;
 import com.fincity.saas.commons.util.LogUtil;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.jooq.tables.*;
 import com.fincity.security.util.AuthoritiesNameUtil;
-import io.r2dbc.spi.Result;
+
 import org.jooq.Field;
 import org.jooq.Record3;
 import org.jooq.impl.DSL;
@@ -32,14 +33,14 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
-public class RoleV2DAO extends AbstractClientCheckDAO<SecurityV2RoleRecord, ULong, RoleV2> {
+public class RoleV2DAO extends AbstractUpdatableClientCheckDAO<SecurityV2RoleRecord, ULong, RoleV2> {
 
     public RoleV2DAO() {
         super(RoleV2.class, SecurityV2Role.SECURITY_V2_ROLE, SecurityV2Role.SECURITY_V2_ROLE.ID);
     }
 
     @Override
-    public Field<ULong> getClientIDField() {
+    protected Field<ULong> getClientIDField() {
         return SecurityV2Role.SECURITY_V2_ROLE.CLIENT_ID;
     }
 

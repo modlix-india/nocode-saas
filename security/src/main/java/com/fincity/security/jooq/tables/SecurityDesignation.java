@@ -217,6 +217,11 @@ public class SecurityDesignation extends TableImpl<SecurityDesignationRecord> {
     }
 
     @Override
+    public List<UniqueKey<SecurityDesignationRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.KEY_SECURITY_DESIGNATION_UK1_SECURITY_DESIGNATION_CLIENT_ID_NAME);
+    }
+
+    @Override
     public List<ForeignKey<SecurityDesignationRecord, ?>> getReferences() {
         return Arrays.asList(Keys.FK1_DESIGNATION_CLIENT_ID, Keys.FK2_DESIGNATION_DEPARTMENT_ID, Keys.FK3_DESIGNATION_PARENT_ID, Keys.FK4_DESIGNATION_NEXT_DESIGNATION_ID, Keys.FK5_DESIGNATION_PROFILE_ID);
     }

@@ -41,8 +41,8 @@ public class PaymentService
     private final List<IPaymentGatewayIntegration> paymentGatewayIntegrations;
 
     public PaymentService(PaymentDAO dao, PaymentGatewayDAO paymentGatewayDAO, InvoiceDAO invoiceDAO,
-            ClientService clientService, SecurityMessageResourceService messageResourceService,
-            List<IPaymentGatewayIntegration> paymentGatewayIntegrations) {
+                          ClientService clientService, SecurityMessageResourceService messageResourceService,
+                          List<IPaymentGatewayIntegration> paymentGatewayIntegrations) {
         this.dao = dao;
         this.paymentGatewayDAO = paymentGatewayDAO;
         this.invoiceDAO = invoiceDAO;
