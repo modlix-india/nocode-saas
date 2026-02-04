@@ -16,4 +16,5 @@ public class CampaignDetails implements Serializable {
     private String campaignName;
     private String adSetId;
     private String adSetName;
+    private String keyword;
 }
