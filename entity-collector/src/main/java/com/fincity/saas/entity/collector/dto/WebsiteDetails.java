@@ -20,6 +20,7 @@ public class WebsiteDetails extends AbstractLeadBase<WebsiteDetails> {
     private String utmAdSet;
     private String utmSource;
     private String utmCustomer;
+    private String utmKeyword;
     private String utmLoginCustomer;
     private String productURL;
 }
