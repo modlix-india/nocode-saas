@@ -84,28 +84,19 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return instant.atZone(zoneId).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    public static <V> DatePair findContainingDate(
-            LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
-        if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
+	public static <V> DatePair findContainingDate(
+			LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
+		if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-        LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-        LocalDate searchDate = localDateTime.toLocalDate();
+		LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
+		LocalDate searchDate = localDateTime.toLocalDate();
 
-        LocalDateTime startOfDay = searchDate.atStartOfDay();
-        LocalDateTime endOfDay = searchDate.atTime(LocalTime.MAX);
+		LocalDateTime startOfDay = searchDate.atStartOfDay();
 
-        String effectiveTimezone = StringUtil.safeIsBlank(timezone) ? "UTC" : timezone;
-        ZoneId zone = resolveZoneId(effectiveTimezone);
-        ZoneOffset offset = zone.getRules().getOffset(endOfDay);
+		Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, startOfDay, timezone));
 
-        int offsetSeconds = offset.getTotalSeconds();
-        if (offsetSeconds > 0)
-            endOfDay = endOfDay.minusSeconds(offsetSeconds);
-
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, endOfDay, timezone));
-
-        return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
-    }
+		return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
+	}
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
         return convertToTimezone(utcDateTime, timezone);
