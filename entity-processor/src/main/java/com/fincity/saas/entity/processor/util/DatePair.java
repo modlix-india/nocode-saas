@@ -84,19 +84,19 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return instant.atZone(zoneId).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-	public static <V> DatePair findContainingDate(
-			LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
-		if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
+    public static <V> DatePair findContainingDate(
+            LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
+        if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-		LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-		LocalDate searchDate = localDateTime.toLocalDate();
+        LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
+        LocalDate searchDate = localDateTime.toLocalDate();
 
-		LocalDateTime startOfDay = searchDate.atStartOfDay();
+        LocalDateTime startOfDay = searchDate.atStartOfDay();
 
-		Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, startOfDay, timezone));
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, startOfDay, timezone));
 
-		return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
-	}
+        return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
+    }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
         return convertToTimezone(utcDateTime, timezone);
