@@ -12,9 +12,9 @@ import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import java.io.Serial;
 import java.util.HashMap;
 import java.util.Map;
-import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -138,16 +138,13 @@ public class Ticket extends BaseProcessorDto<Ticket> {
             Map<String, Object> metaData = new HashMap<>();
             CampaignTicketRequest.CampaignDetails cd = campaignTicketRequest.getCampaignDetails();
 
-            if (!StringUtil.safeIsBlank(cd.getKeyword()))
-                metaData.put("keyword", cd.getKeyword());
+            if (!StringUtil.safeIsBlank(cd.getKeyword())) metaData.put("keyword", cd.getKeyword());
 
-            if (!metaData.isEmpty())
-                ticket.setMetaData(metaData);
+            if (!metaData.isEmpty()) ticket.setMetaData(metaData);
         }
 
         return ticket;
     }
-
 
     public static Ticket of(WalkInFormTicketRequest walkInFormTicketRequest) {
         return new Ticket()
