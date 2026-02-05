@@ -31,8 +31,6 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static final Map<String, ZoneId> ZONE_CACHE = new ConcurrentHashMap<>();
 
-    private static final LocalDateTime MAX_DATE_TIME = LocalDateTime.MAX;
-
     private final LocalDateTime first;
     private final LocalDateTime second;
     private final String timezone;
