@@ -25,6 +25,7 @@ public final class GoogleEntityUtil {
     public static Mono<CampaignDetails> buildCampaignDetails(
             String loginCustomerId,
             String customerId,
+            String keyword,
             String adId,
             String accessToken) {
 
@@ -52,6 +53,9 @@ public final class GoogleEntityUtil {
                     cd.setAdSetName(adGroupNode.path("name").asText());
                     cd.setCampaignId(campaignNode.path("id").asText());
                     cd.setCampaignName(campaignNode.path("name").asText());
+                    if (keyword != null) {
+                        cd.setKeyword(keyword);
+                    }
 
                     return Mono.just(cd);
                 });
