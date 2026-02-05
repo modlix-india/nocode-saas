@@ -31,8 +31,6 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static final Map<String, ZoneId> ZONE_CACHE = new ConcurrentHashMap<>();
 
-    private static final LocalDateTime MAX_DATE_TIME = LocalDateTime.MAX;
-
     private final LocalDateTime first;
     private final LocalDateTime second;
     private final String timezone;
@@ -86,27 +84,25 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return instant.atZone(zoneId).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    public static <V> DatePair findContainingDate(LocalDate date, NavigableMap<DatePair, V> datePairMap) {
-        if (date == null || datePairMap == null || datePairMap.isEmpty()) return null;
-
-        LocalDateTime dateTime = date.atStartOfDay();
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, MAX_DATE_TIME));
-        return (entry != null && entry.getKey().containsDate(date)) ? entry.getKey() : null;
-    }
-
     public static <V> DatePair findContainingDate(
             LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
         LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-        return findContainingDate(localDateTime, datePairMap);
-    }
 
-    public static <V> DatePair findContainingDate(LocalDateTime dateTime, NavigableMap<DatePair, V> datePairMap) {
-        if (dateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
+        LocalDate searchDate = localDateTime.toLocalDate();
+        LocalDateTime startOfDay = searchDate.atStartOfDay();
 
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, MAX_DATE_TIME));
-        return (entry != null && entry.getKey().contains(dateTime)) ? entry.getKey() : null;
+        LocalDateTime endOfDay = searchDate.atTime(LocalTime.MAX);
+        String effectiveTimezone = StringUtil.safeIsBlank(timezone) ? "UTC" : timezone;
+        ZoneId zone = resolveZoneId(effectiveTimezone);
+        ZoneOffset offset = zone.getRules().getOffset(endOfDay);
+
+        int offsetSeconds = offset.getTotalSeconds();
+        if (offsetSeconds > 0) endOfDay = endOfDay.minusSeconds(offsetSeconds);
+
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, endOfDay, effectiveTimezone));
+        return (entry != null && entry.getKey().contains(localDateTime)) ? entry.getKey() : null;
     }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
@@ -147,9 +143,8 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
     private static LocalDateTime getQuarterEnd(LocalDate date) {
         int monthInQuarter = (date.getMonthValue() - 1) % 3;
         LocalDate quarterEnd = date.plusMonths(2L - monthInQuarter).with(TemporalAdjusters.lastDayOfMonth());
-        if (quarterEnd.isAfter(date)) {
-            return quarterEnd.atTime(LocalTime.MAX);
-        }
+        if (quarterEnd.isAfter(date)) return quarterEnd.atTime(LocalTime.MAX);
+
         LocalDate nextQuarterStart = date.plusMonths(3);
         int nextMonthInQuarter = (nextQuarterStart.getMonthValue() - 1) % 3;
         return nextQuarterStart
@@ -184,8 +179,20 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
             LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
             LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-            valueMap.put(DatePair.of(current, actualEnd, this.timezone), valueSupplier.get());
-            current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
+            LocalDateTime adjustedEnd = actualEnd;
+
+            String effectiveTimezone = StringUtil.safeIsBlank(this.timezone) ? "UTC" : this.timezone;
+            ZoneId zone = resolveZoneId(effectiveTimezone);
+
+            LocalDate endDate = actualEnd.toLocalDate();
+            LocalDateTime endOfDay = endDate.atTime(LocalTime.MAX);
+            ZoneOffset offset = zone.getRules().getOffset(endOfDay);
+
+            int offsetSeconds = offset.getTotalSeconds();
+            if (offsetSeconds > 0) adjustedEnd = endOfDay.minusSeconds(offsetSeconds);
+
+            valueMap.put(DatePair.of(current, adjustedEnd, this.timezone), valueSupplier.get());
+            current = endDate.plusDays(1).atStartOfDay();
         }
 
         return valueMap;
