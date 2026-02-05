@@ -174,22 +174,34 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return !dateTime.isBefore(first) && !dateTime.isAfter(second);
     }
 
-    public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
-        Assert.notNull(timePeriod, "Time period must not be null");
+	public <V> NavigableMap<DatePair, V> toTimePeriodMap(TimePeriod timePeriod, Supplier<V> valueSupplier) {
+		Assert.notNull(timePeriod, "Time period must not be null");
 
-        NavigableMap<DatePair, V> valueMap = new TreeMap<>();
-        LocalDateTime current = this.first;
+		NavigableMap<DatePair, V> valueMap = new TreeMap<>();
+		LocalDateTime current = this.first;
 
-        while (current.isBefore(this.second)) {
-            LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
-            LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
+		while (current.isBefore(this.second)) {
+			LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
+			LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-            valueMap.put(DatePair.of(current, actualEnd, this.timezone), valueSupplier.get());
-            current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
-        }
+			LocalDateTime adjustedEnd = actualEnd;
 
-        return valueMap;
-    }
+			String effectiveTimezone = StringUtil.safeIsBlank(this.timezone) ? "UTC" : this.timezone;
+			ZoneId zone = resolveZoneId(effectiveTimezone);
+			ZoneOffset offset = zone.getRules().getOffset(actualEnd);
+
+			int offsetSeconds = offset.getTotalSeconds();
+			if (offsetSeconds > 0) {
+				LocalDate endDate = actualEnd.toLocalDate();
+				adjustedEnd = endDate.atTime(LocalTime.MAX).minusSeconds(offsetSeconds);
+			}
+
+			valueMap.put(DatePair.of(current, adjustedEnd, this.timezone), valueSupplier.get());
+			current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
+		}
+
+		return valueMap;
+	}
 
     @Override
     public boolean equals(Object o) {
