@@ -12,6 +12,8 @@ import com.fincity.saas.entity.processor.model.request.form.WalkInFormTicketRequ
 import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
+import java.util.HashMap;
+import java.util.Map;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -44,6 +46,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong campaignId;
     private Boolean dnc = Boolean.FALSE;
     private Tag tag;
+    private Map<String, Object> metaData;
 
     private ULong productTemplateId = null;
 
@@ -73,6 +76,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.campaignId = ticket.campaignId;
         this.dnc = ticket.dnc;
         this.tag = ticket.tag;
+        this.metaData = ticket.metaData;
         this.productTemplateId = ticket.productTemplateId;
     }
 
@@ -97,7 +101,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     }
 
     public static Ticket of(CampaignTicketRequest campaignTicketRequest) {
-        return new Ticket()
+        Ticket ticket = new Ticket()
                 .setDialCode(
                         campaignTicketRequest.getLeadDetails().getPhone() != null
                                 ? campaignTicketRequest
@@ -129,7 +133,21 @@ public class Ticket extends BaseProcessorDto<Ticket> {
                                 ? campaignTicketRequest.getLeadDetails().getFullName()
                                 : campaignTicketRequest.getLeadDetails().getFirstName() + " "
                                         + campaignTicketRequest.getLeadDetails().getLastName());
+
+        if (campaignTicketRequest.getCampaignDetails() != null) {
+            Map<String, Object> metaData = new HashMap<>();
+            CampaignTicketRequest.CampaignDetails cd = campaignTicketRequest.getCampaignDetails();
+
+            if (!StringUtil.safeIsBlank(cd.getKeyword()))
+                metaData.put("keyword", cd.getKeyword());
+
+            if (!metaData.isEmpty())
+                ticket.setMetaData(metaData);
+        }
+
+        return ticket;
     }
+
 
     public static Ticket of(WalkInFormTicketRequest walkInFormTicketRequest) {
         return new Ticket()

@@ -7,6 +7,8 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.request.content.INoteRequest;
 import com.fincity.saas.entity.processor.model.request.content.NoteRequest;
 import java.io.Serial;
+import java.util.Map;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -30,6 +32,7 @@ public class TicketRequest extends BaseRequest<TicketRequest> implements INoteRe
     private NoteRequest noteRequest;
     private String comment;
     private Identity campaignId;
+    private Map<String, Object> metaData;
 
     public boolean hasIdentifyInfo() {
         return this.getPhoneNumber() != null || this.getEmail() != null;
