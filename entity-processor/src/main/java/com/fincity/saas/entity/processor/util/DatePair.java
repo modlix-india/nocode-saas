@@ -89,20 +89,22 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
         LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-
         LocalDate searchDate = localDateTime.toLocalDate();
-        LocalDateTime startOfDay = searchDate.atStartOfDay();
 
+        LocalDateTime startOfDay = searchDate.atStartOfDay();
         LocalDateTime endOfDay = searchDate.atTime(LocalTime.MAX);
+
         String effectiveTimezone = StringUtil.safeIsBlank(timezone) ? "UTC" : timezone;
         ZoneId zone = resolveZoneId(effectiveTimezone);
         ZoneOffset offset = zone.getRules().getOffset(endOfDay);
 
         int offsetSeconds = offset.getTotalSeconds();
-        if (offsetSeconds > 0) endOfDay = endOfDay.minusSeconds(offsetSeconds);
+        if (offsetSeconds > 0)
+            endOfDay = endOfDay.minusSeconds(offsetSeconds);
 
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, endOfDay, effectiveTimezone));
-        return (entry != null && entry.getKey().contains(localDateTime)) ? entry.getKey() : null;
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, endOfDay, timezone));
+
+        return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
     }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
