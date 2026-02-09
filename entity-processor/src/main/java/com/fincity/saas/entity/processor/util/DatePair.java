@@ -95,8 +95,13 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
     public static <V> DatePair findContainingDate(LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap) {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(utcDateTime, MAX_DATE_TIME));
-        return (entry != null && entry.getKey().contains(utcDateTime)) ? entry.getKey() : null;
+        LocalDateTime zonedDateTime = utcDateTime
+                .atZone(ZoneOffset.UTC)
+                .withZoneSameInstant(datePairMap.firstKey().getZoneId())
+                .toLocalDateTime();
+
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(zonedDateTime, MAX_DATE_TIME));
+        return (entry != null && entry.getKey().contains(zonedDateTime)) ? entry.getKey() : null;
     }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
