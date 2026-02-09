@@ -9,6 +9,7 @@ import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.model.dto.AbstractDTO;
+import com.fincity.saas.commons.util.StringUtil;
 import com.fincity.saas.entity.processor.analytics.dao.base.BaseAnalyticsDAO;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.analytics.model.TicketBucketFilter;
@@ -335,7 +336,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             boolean requiresNonNull) {
 
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
-        Field<LocalDateTime> dateGroupField = this.toDateBucketGroupKeyField(timePeriod, dateField);
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> dateGroupField = this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
         Field<LocalDateTime> minDateField = DSL.min(dateField).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
@@ -437,7 +439,8 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             boolean requiresCreatedByNotNull,
             Boolean requiresClientIdNotNull) {
 
-        Field<LocalDateTime> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField);
+        String timezone = ticketBucketFilter.getTimezone();
+        Field<LocalDateTime> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
         Field<LocalDateTime> selectedBucketDateField = DSL.min(dateField).as("bucketDate");
 
         return FlatMapUtil.flatMapFlux(
@@ -555,30 +558,36 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
                 Boolean.TRUE);
     }
 
-    private Field<LocalDateTime> toDateBucketGroupKeyField(TimePeriod timePeriod, Field<LocalDateTime> dateTimeField) {
+    private Field<LocalDateTime> toDateBucketGroupKeyField(
+            TimePeriod timePeriod, Field<LocalDateTime> dateTimeField, String timezone) {
+
+        Field<LocalDateTime> effectiveDateField = StringUtil.safeIsBlank(timezone) || "UTC".equalsIgnoreCase(timezone)
+                ? dateTimeField
+                : DSL.field(
+                        "convert_tz({0}, 'UTC', {1})", SQLDataType.LOCALDATETIME, dateTimeField, DSL.inline(timezone));
 
         if (timePeriod == null)
-            return DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
+            return DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, effectiveDateField);
 
         return switch (timePeriod) {
             case WEEKS ->
                 DSL.field(
                         "timestamp(date_sub(cast({0} as date), interval weekday(cast({0} as date)) day))",
-                        SQLDataType.LOCALDATETIME, dateTimeField);
+                        SQLDataType.LOCALDATETIME, effectiveDateField);
             case MONTHS ->
                 DSL.field(
                         "str_to_date(date_format({0}, '%Y-%m-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
-                        SQLDataType.LOCALDATETIME, dateTimeField);
+                        SQLDataType.LOCALDATETIME, effectiveDateField);
             case QUARTERS ->
                 DSL.field(
                         "str_to_date(concat(year({0}), '-', lpad(((quarter({0})-1)*3)+1, 2, '0'), '-01 00:00:00'),"
                                 + " '%Y-%m-%d %H:%i:%s')",
-                        SQLDataType.LOCALDATETIME, dateTimeField);
+                        SQLDataType.LOCALDATETIME, effectiveDateField);
             case YEARS ->
                 DSL.field(
                         "str_to_date(date_format({0}, '%Y-01-01 00:00:00'), '%Y-%m-%d %H:%i:%s')",
-                        SQLDataType.LOCALDATETIME, dateTimeField);
-            default -> DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, dateTimeField);
+                        SQLDataType.LOCALDATETIME, effectiveDateField);
+            default -> DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, effectiveDateField);
         };
     }
 
@@ -608,8 +617,9 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             ProcessorAccess access, TicketBucketFilter ticketBucketFilter) {
         Field<String> clientIdAsString = DSL.cast(ENTITY_PROCESSOR_TICKETS.CLIENT_ID, SQLDataType.VARCHAR);
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
+        String timezone = ticketBucketFilter.getTimezone();
         Field<LocalDateTime> dateGroupField =
-                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT);
+                this.toDateBucketGroupKeyField(timePeriod, ENTITY_PROCESSOR_TICKETS.CREATED_AT, timezone);
         Field<LocalDateTime> groupByDateField =
                 DSL.min(ENTITY_PROCESSOR_TICKETS.CREATED_AT).as("groupDate");
 
