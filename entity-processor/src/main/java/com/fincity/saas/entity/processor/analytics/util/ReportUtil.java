@@ -67,7 +67,7 @@ public class ReportUtil {
         if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList, options.timezone());
+                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList);
 
         requiredValueList = resolveRequiredValuesIfMissing(requiredValueList, perDateCountList, false);
 
@@ -155,8 +155,8 @@ public class ReportUtil {
         List<PerDateCount> totalEntries = options.includeTotal() ? partitioned.get(true) : List.of();
         List<PerDateCount> regularDateCountList = partitioned.get(false);
 
-        NavigableMap<DatePair, List<PerDateCount>> datePairMap = buildDatePairMap(
-                options.totalDatePair(), options.timePeriod(), regularDateCountList, options.timezone());
+        NavigableMap<DatePair, List<PerDateCount>> datePairMap =
+                buildDatePairMap(options.totalDatePair(), options.timePeriod(), regularDateCountList);
 
         if (options.includeTotal() && !totalEntries.isEmpty())
             datePairMap.values().forEach(list -> list.addAll(totalEntries));
@@ -194,7 +194,7 @@ public class ReportUtil {
     // --- Date report helpers ---
 
     private static NavigableMap<DatePair, List<PerDateCount>> buildDatePairMap(
-            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList, String timezone) {
+            DatePair totalDatePair, TimePeriod timePeriod, List<PerDateCount> perDateCountList) {
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
                 totalDatePair.toTimePeriodMap(timePeriod, LinkedList::new);
@@ -204,7 +204,7 @@ public class ReportUtil {
                 totalDatePair.toTimePeriodMap(timePeriod, () -> new ArrayList<>(estimatedSize));
 
         for (PerDateCount pdc : perDateCountList) {
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), optimizedMap, timezone);
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), optimizedMap);
             if (datePair != null) optimizedMap.get(datePair).add(pdc);
         }
 
@@ -764,7 +764,7 @@ public class ReportUtil {
         if (perDateCountList.isEmpty() && !options.includeZero()) return Flux.empty();
 
         NavigableMap<DatePair, List<PerDateCount>> datePairMap =
-                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList, options.timezone());
+                buildDatePairMap(options.totalDatePair(), options.timePeriod(), perDateCountList);
 
         Map<ULong, String> outerEntityMap = IdAndValue.toMap(outerEntityList);
 
@@ -772,7 +772,7 @@ public class ReportUtil {
         Map<ULong, NavigableMap<DatePair, Long>> grouped =
                 LinkedHashMap.newLinkedHashMap((int) (expectedSize / 0.75f) + 1);
 
-        accumulateEntityDateCounts(perDateCountList, datePairMap, grouped, options.timezone());
+        accumulateEntityDateCounts(perDateCountList, datePairMap, grouped);
 
         if (options.includeZero() && !outerEntityList.isEmpty())
             outerEntityList.forEach(client -> grouped.computeIfAbsent(client.getId(), k -> new TreeMap<>()));
@@ -789,15 +789,14 @@ public class ReportUtil {
     private static void accumulateEntityDateCounts(
             List<PerDateCount> perDateCountList,
             NavigableMap<DatePair, List<PerDateCount>> datePairMap,
-            Map<ULong, NavigableMap<DatePair, Long>> grouped,
-            String timezone) {
+            Map<ULong, NavigableMap<DatePair, Long>> grouped) {
 
         for (PerDateCount pdc : perDateCountList) {
             String entityIdStr = pdc.getGroupedValue();
             if (entityIdStr == null) continue;
 
             ULong entityId = ULongUtil.valueOf(entityIdStr);
-            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap, timezone);
+            DatePair datePair = DatePair.findContainingDate(pdc.getDate(), datePairMap);
             if (datePair != null)
                 grouped.computeIfAbsent(entityId, k -> new TreeMap<>()).merge(datePair, pdc.getCount(), Long::sum);
         }
