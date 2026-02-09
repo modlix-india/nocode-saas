@@ -16,6 +16,7 @@ import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dto.plansnbilling.PlanCycle;
+import com.fincity.security.jooq.enums.SecurityPlanCycleIntervalType;
 import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 import com.fincity.security.jooq.tables.records.SecurityPlanCycleRecord;
 
@@ -42,7 +43,7 @@ public class PlanCycleDAO extends AbstractUpdatableDAO<SecurityPlanCycleRecord, 
 
         return FlatMapUtil.flatMapMono(
                 () -> Flux
-                        .from(this.dslContext.selectFrom(SECURITY_PLAN_CYCLE).where(SECURITY_PLAN_CYCLE.ID.eq(planId)))
+                        .from(this.dslContext.selectFrom(SECURITY_PLAN_CYCLE).where(SECURITY_PLAN_CYCLE.PLAN_ID.eq(planId)))
                         .map(rec -> rec.into(PlanCycle.class)).collectMap(PlanCycle::getId),
 
                 existingMap -> {
@@ -50,15 +51,32 @@ public class PlanCycleDAO extends AbstractUpdatableDAO<SecurityPlanCycleRecord, 
                     Set<PlanCycle> cyclesForUpdate = new HashSet<>();
                     Set<PlanCycle> cyclesForCreate = new HashSet<>();
                     Set<ULong> cyclesForDelete = new HashSet<>();
+                    Set<ULong> incomingCycleIds = new HashSet<>();
+                    Set<SecurityPlanCycleIntervalType> incomingIntervalTypes = new HashSet<>();
 
+                    // Process incoming cycles
                     for (PlanCycle cycle : cycles) {
                         if (cycle.getId() == null) {
                             cyclesForCreate.add(cycle);
-                        } else if (existingMap.containsKey(cycle.getId())) {
-                            if (existingMap.get(cycle.getId()).getStatus() != SecurityPlanCycleStatus.DELETED)
-                                cyclesForUpdate.add(cycle);
                         } else {
-                            cyclesForDelete.add(cycle.getId());
+                            incomingCycleIds.add(cycle.getId());
+                            if (existingMap.containsKey(cycle.getId())) {
+                                if (existingMap.get(cycle.getId()).getStatus() != SecurityPlanCycleStatus.DELETED)
+                                    cyclesForUpdate.add(cycle);
+                            }
+                        }
+                        if (cycle.getIntervalType() != null) {
+                            incomingIntervalTypes.add(cycle.getIntervalType());
+                        }
+                    }
+
+                    // Delete existing cycles that are NOT in the incoming list
+                    // but ONLY if they have the same intervalType as any incoming cycle
+                    for (PlanCycle existing : existingMap.values()) {
+                        if (!incomingCycleIds.contains(existing.getId())
+                            && existing.getStatus() != SecurityPlanCycleStatus.DELETED
+                            && incomingIntervalTypes.contains(existing.getIntervalType())) {
+                            cyclesForDelete.add(existing.getId());
                         }
                     }
 
