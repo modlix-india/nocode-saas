@@ -92,19 +92,11 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return instant.atZone(zoneId).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    public static <V> DatePair findContainingDate(
-            LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
+    public static <V> DatePair findContainingDate(LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap) {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-        LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-        return findContainingDate(localDateTime, datePairMap);
-    }
-
-    public static <V> DatePair findContainingDate(LocalDateTime dateTime, NavigableMap<DatePair, V> datePairMap) {
-        if (dateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
-
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(dateTime, MAX_DATE_TIME));
-        return (entry != null && entry.getKey().contains(dateTime)) ? entry.getKey() : null;
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(utcDateTime, MAX_DATE_TIME));
+        return (entry != null && entry.getKey().contains(utcDateTime)) ? entry.getKey() : null;
     }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
