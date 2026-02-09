@@ -337,8 +337,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
 
         TimePeriod timePeriod = ticketBucketFilter.getTimePeriod();
         String timezone = ticketBucketFilter.getTimezone();
-        Field<LocalDateTime> dateGroupField =
-                this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
+        Field<LocalDateTime> dateGroupField = this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
         Field<LocalDateTime> minDateField = DSL.min(dateField).as("groupDate");
 
         return FlatMapUtil.flatMapFlux(
@@ -441,8 +440,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
             Boolean requiresClientIdNotNull) {
 
         String timezone = ticketBucketFilter.getTimezone();
-        Field<LocalDateTime> groupByBucketField =
-                this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
+        Field<LocalDateTime> groupByBucketField = this.toDateBucketGroupKeyField(timePeriod, dateField, timezone);
         Field<LocalDateTime> selectedBucketDateField = DSL.min(dateField).as("bucketDate");
 
         return FlatMapUtil.flatMapFlux(
@@ -566,10 +564,7 @@ public class TicketBucketDAO extends BaseAnalyticsDAO<EntityProcessorTicketsReco
         Field<LocalDateTime> effectiveDateField = StringUtil.safeIsBlank(timezone) || "UTC".equalsIgnoreCase(timezone)
                 ? dateTimeField
                 : DSL.field(
-                        "convert_tz({0}, 'UTC', {1})",
-                        SQLDataType.LOCALDATETIME,
-                        dateTimeField,
-                        DSL.inline(timezone));
+                        "convert_tz({0}, 'UTC', {1})", SQLDataType.LOCALDATETIME, dateTimeField, DSL.inline(timezone));
 
         if (timePeriod == null)
             return DSL.field("timestamp(cast({0} as date))", SQLDataType.LOCALDATETIME, effectiveDateField);
