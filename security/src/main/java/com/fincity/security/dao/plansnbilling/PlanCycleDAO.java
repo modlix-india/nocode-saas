@@ -42,9 +42,9 @@ public class PlanCycleDAO extends AbstractUpdatableDAO<SecurityPlanCycleRecord, 
     public Mono<List<PlanCycle>> updateCycles(ULong planId, List<PlanCycle> cycles) {
 
         return FlatMapUtil.flatMapMono(
-                () -> Flux
-                        .from(this.dslContext.selectFrom(SECURITY_PLAN_CYCLE).where(SECURITY_PLAN_CYCLE.PLAN_ID.eq(planId)))
-                        .map(rec -> rec.into(PlanCycle.class)).collectMap(PlanCycle::getId),
+                () -> this.getCycles(planId)
+                        .flatMapMany(Flux::fromIterable)
+                        .collectMap(PlanCycle::getId),
 
                 existingMap -> {
 
