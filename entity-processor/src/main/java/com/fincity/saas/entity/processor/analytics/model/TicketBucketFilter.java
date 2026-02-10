@@ -7,6 +7,7 @@ import com.fincity.saas.entity.processor.util.CollectionUtil;
 import com.fincity.saas.entity.processor.util.DatePair;
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -78,8 +79,12 @@ public class TicketBucketFilter extends BaseFilter<TicketBucketFilter> {
 
     @Override
     public BaseFilter.ReportOptions toReportOptions() {
+
+        LocalDateTime startInTimezone = DatePair.convertUtcToTimezone(super.getStartDate(), super.getTimezone());
+        LocalDateTime endInTimezone = DatePair.convertUtcToTimezone(super.getEndDate(), super.getTimezone());
+
         return new BaseFilter.ReportOptions(
-                DatePair.of(this.getStartDate(), this.getEndDate(), this.getTimezone()),
+                DatePair.of(startInTimezone, endInTimezone, super.getTimezone()),
                 this.getTimePeriod(),
                 this.isIncludeZero(),
                 this.isIncludePercentage(),

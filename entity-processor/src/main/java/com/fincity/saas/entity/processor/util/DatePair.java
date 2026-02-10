@@ -31,12 +31,18 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
 
     private static final Map<String, ZoneId> ZONE_CACHE = new ConcurrentHashMap<>();
 
+    private static final LocalDateTime MAX_DATE_TIME = LocalDateTime.MAX;
+
     private final LocalDateTime first;
     private final LocalDateTime second;
     private final String timezone;
 
     @JsonIgnore
-    private final transient ZoneId zoneId;
+    private final ZoneId zoneId;
+
+    private final Long zonedFirst;
+
+    private final Long zonedSecond;
 
     private DatePair(LocalDateTime first, LocalDateTime second, String timezone) {
         Assert.notNull(first, "First must not be null");
@@ -46,6 +52,8 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         this.second = second;
         this.timezone = timezone;
         this.zoneId = resolveZoneId(timezone);
+        this.zonedFirst = first.atZone(zoneId).toEpochSecond();
+        this.zonedSecond = second.atZone(zoneId).toEpochSecond();
     }
 
     public static DatePair of(LocalDateTime first, LocalDateTime second) {
@@ -84,18 +92,16 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         return instant.atZone(zoneId).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    public static <V> DatePair findContainingDate(
-            LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap, String timezone) {
+    public static <V> DatePair findContainingDate(LocalDateTime utcDateTime, NavigableMap<DatePair, V> datePairMap) {
         if (utcDateTime == null || datePairMap == null || datePairMap.isEmpty()) return null;
 
-        LocalDateTime localDateTime = convertUtcToTimezone(utcDateTime, timezone);
-        LocalDate searchDate = localDateTime.toLocalDate();
+        LocalDateTime zonedDateTime = utcDateTime
+                .atZone(ZoneOffset.UTC)
+                .withZoneSameInstant(datePairMap.firstKey().getZoneId())
+                .toLocalDateTime();
 
-        LocalDateTime startOfDay = searchDate.atStartOfDay();
-
-        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(startOfDay, startOfDay, timezone));
-
-        return (entry != null && entry.getKey().containsDate(searchDate)) ? entry.getKey() : null;
+        Map.Entry<DatePair, V> entry = datePairMap.floorEntry(DatePair.of(zonedDateTime, MAX_DATE_TIME));
+        return (entry != null && entry.getKey().contains(zonedDateTime)) ? entry.getKey() : null;
     }
 
     public static LocalDateTime convertUtcToTimezone(LocalDateTime utcDateTime, String timezone) {
@@ -119,7 +125,8 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
     private static LocalDateTime getPeriodEnd(LocalDate date, TimePeriod timePeriod) {
         return switch (timePeriod) {
             case DAYS -> date.plusDays(1).atTime(LocalTime.MAX);
-            case WEEKS -> date.with(TemporalAdjusters.next(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
+            case WEEKS ->
+                date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).atTime(LocalTime.MAX);
             case MONTHS -> getMonthEnd(date);
             case QUARTERS -> getQuarterEnd(date);
             case YEARS -> getYearEnd(date);
@@ -137,7 +144,6 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         int monthInQuarter = (date.getMonthValue() - 1) % 3;
         LocalDate quarterEnd = date.plusMonths(2L - monthInQuarter).with(TemporalAdjusters.lastDayOfMonth());
         if (quarterEnd.isAfter(date)) return quarterEnd.atTime(LocalTime.MAX);
-
         LocalDate nextQuarterStart = date.plusMonths(3);
         int nextMonthInQuarter = (nextQuarterStart.getMonthValue() - 1) % 3;
         return nextQuarterStart
@@ -150,12 +156,6 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
         LocalDate lastDay = date.with(TemporalAdjusters.lastDayOfYear());
         return (lastDay.isAfter(date) ? lastDay : date.plusYears(1).with(TemporalAdjusters.lastDayOfYear()))
                 .atTime(LocalTime.MAX);
-    }
-
-    public boolean containsDate(LocalDate date) {
-        LocalDate firstDate = first.toLocalDate();
-        LocalDate secondDate = second.toLocalDate();
-        return !date.isBefore(firstDate) && !date.isAfter(secondDate);
     }
 
     public boolean contains(LocalDateTime dateTime) {
@@ -172,20 +172,8 @@ public final class DatePair implements Comparable<DatePair>, Serializable {
             LocalDateTime periodEnd = getPeriodEnd(current.toLocalDate(), timePeriod);
             LocalDateTime actualEnd = periodEnd.isBefore(this.second) ? periodEnd : this.second;
 
-            LocalDateTime adjustedEnd = actualEnd;
-
-            String effectiveTimezone = StringUtil.safeIsBlank(this.timezone) ? "UTC" : this.timezone;
-            ZoneId zone = resolveZoneId(effectiveTimezone);
-
-            LocalDate endDate = actualEnd.toLocalDate();
-            LocalDateTime endOfDay = endDate.atTime(LocalTime.MAX);
-            ZoneOffset offset = zone.getRules().getOffset(endOfDay);
-
-            int offsetSeconds = offset.getTotalSeconds();
-            if (offsetSeconds > 0) adjustedEnd = endOfDay.minusSeconds(offsetSeconds);
-
-            valueMap.put(DatePair.of(current, adjustedEnd, this.timezone), valueSupplier.get());
-            current = endDate.plusDays(1).atStartOfDay();
+            valueMap.put(DatePair.of(current, actualEnd, this.timezone), valueSupplier.get());
+            current = actualEnd.toLocalDate().plusDays(1).atStartOfDay();
         }
 
         return valueMap;

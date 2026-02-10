@@ -70,24 +70,17 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     }
 
     public ReportOptions toReportOptions() {
+
+        LocalDateTime startInTimezone = DatePair.convertUtcToTimezone(this.startDate, this.timezone);
+        LocalDateTime endInTimezone = DatePair.convertUtcToTimezone(this.endDate, this.timezone);
+
         return new ReportOptions(
-                DatePair.of(this.startDate, this.endDate, this.timezone),
+                DatePair.of(startInTimezone, endInTimezone, this.timezone),
                 this.timePeriod,
                 this.includeZero,
                 this.includePercentage,
                 this.includeTotal,
                 null,
-                this.timezone);
-    }
-
-    public ReportOptions toReportOptions(Boolean includeNone) {
-        return new ReportOptions(
-                DatePair.of(this.startDate, this.endDate, this.timezone),
-                this.timePeriod,
-                this.includeZero,
-                this.includePercentage,
-                this.includeTotal,
-                includeNone,
                 this.timezone);
     }
 
