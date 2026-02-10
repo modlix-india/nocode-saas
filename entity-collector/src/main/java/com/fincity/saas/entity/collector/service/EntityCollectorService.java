@@ -199,7 +199,12 @@ public class EntityCollectorService extends AbstractConnectionService {
                                         .then(Mono.empty())),
 
                         token -> websiteDetails.getUtmSource().equals(EntityUtil.GOOGLE_UTM_SOURCE)
-                                ? GoogleEntityUtil.buildCampaignDetails(websiteDetails.getUtmLoginCustomer(), websiteDetails.getUtmCustomer(), adId, token)
+                                ? GoogleEntityUtil.buildCampaignDetails(
+                                        websiteDetails.getUtmLoginCustomer(),
+                                        websiteDetails.getUtmCustomer(),
+                                        websiteDetails.getUtmKeyword(),
+                                        adId,
+                                        token)
                                 : MetaEntityUtil.buildCampaignDetails(adId, token),
 
                         (token, campaignDetails) -> {

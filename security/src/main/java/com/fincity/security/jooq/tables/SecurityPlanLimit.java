@@ -11,6 +11,7 @@ import com.fincity.security.jooq.enums.SecurityPlanLimitStatus;
 import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.records.SecurityPlanLimitRecord;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -93,6 +94,30 @@ public class SecurityPlanLimit extends TableImpl<SecurityPlanLimitRecord> {
      * the limit in a plan
      */
     public final TableField<SecurityPlanLimitRecord, SecurityPlanLimitStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityPlanLimitStatus.class), this, "Status of the limit in a plan");
+
+    /**
+     * The column <code>security.security_plan_limit.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public final TableField<SecurityPlanLimitRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+
+    /**
+     * The column <code>security.security_plan_limit.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public final TableField<SecurityPlanLimitRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+
+    /**
+     * The column <code>security.security_plan_limit.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public final TableField<SecurityPlanLimitRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_plan_limit.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public final TableField<SecurityPlanLimitRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityPlanLimit(Name alias, Table<SecurityPlanLimitRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
