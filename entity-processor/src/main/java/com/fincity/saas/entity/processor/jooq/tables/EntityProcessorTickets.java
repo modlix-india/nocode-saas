@@ -27,6 +27,7 @@ import org.jooq.ForeignKey;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSON;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -191,9 +192,9 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT / WARM / COLD
+     * Deal Tag - HOT/WARM/COLD
      */
-    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT / WARM / COLD");
+    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT/WARM/COLD");
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
@@ -221,6 +222,13 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * client who created this ticket.
      */
     public final TableField<EntityProcessorTicketsRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED, this, "Id of client who created this ticket.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.META_DATA</code>.
+     * Metadata information related to ticket
+     */
+    public final TableField<EntityProcessorTicketsRecord, JSON> META_DATA = createField(DSL.name("META_DATA"), SQLDataType.JSON, this, "Metadata information related to ticket");
 
     /**
      * The column
