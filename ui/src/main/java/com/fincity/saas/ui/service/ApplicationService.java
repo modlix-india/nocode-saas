@@ -1,5 +1,7 @@
 package com.fincity.saas.ui.service;
 
+import static com.fincity.nocode.reactor.util.FlatMapUtil.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +13,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
-import static com.fincity.nocode.reactor.util.FlatMapUtil.flatMapMono;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.model.ObjectWithUniqueID;
 import com.fincity.saas.commons.mongo.service.AbstractMongoMessageResourceService;
@@ -256,6 +257,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                         }
                     }
 
+                    object.getProperties().put("sso3", processForVariables(object.getProperties().get("sso3")));
+
                     if (shellPage == null) {
 
                         if (filler == null)
@@ -285,7 +288,13 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ApplicationService.applyChange"));
     }
 
-    public String processForVariables(String url) {
+    public String processForVariables(Object urlObject) {
+
+        if (urlObject == null)
+            return null;
+
+        String url = urlObject.toString();
+
         if (StringUtil.safeIsBlank(url)) {
             return url;
         }

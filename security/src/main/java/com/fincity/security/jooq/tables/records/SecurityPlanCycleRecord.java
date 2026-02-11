@@ -9,6 +9,7 @@ import com.fincity.security.jooq.enums.SecurityPlanCycleStatus;
 import com.fincity.security.jooq.tables.SecurityPlanCycle;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -355,6 +356,74 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
         return (SecurityPlanCycleStatus) get(19);
     }
 
+    /**
+     * Setter for <code>security.security_plan_cycle.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public SecurityPlanCycleRecord setCreatedBy(ULong value) {
+        set(20, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_cycle.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public ULong getCreatedBy() {
+        return (ULong) get(20);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_cycle.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public SecurityPlanCycleRecord setCreatedAt(LocalDateTime value) {
+        set(21, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_cycle.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(21);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_cycle.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public SecurityPlanCycleRecord setUpdatedBy(ULong value) {
+        set(22, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_cycle.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(22);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_cycle.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public SecurityPlanCycleRecord setUpdatedAt(LocalDateTime value) {
+        set(23, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_cycle.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(23);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -378,7 +447,7 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
     /**
      * Create a detached, initialised SecurityPlanCycleRecord
      */
-    public SecurityPlanCycleRecord(ULong id, String name, String description, ULong planId, BigDecimal cost, String currency, BigDecimal tax1, String tax1Name, BigDecimal tax2, String tax2Name, BigDecimal tax3, String tax3Name, BigDecimal tax4, String tax4Name, BigDecimal tax5, String tax5Name, SecurityPlanCycleIntervalType intervalType, Integer reminderIntervalDays, Integer paymentTermsDays, SecurityPlanCycleStatus status) {
+    public SecurityPlanCycleRecord(ULong id, String name, String description, ULong planId, BigDecimal cost, String currency, BigDecimal tax1, String tax1Name, BigDecimal tax2, String tax2Name, BigDecimal tax3, String tax3Name, BigDecimal tax4, String tax4Name, BigDecimal tax5, String tax5Name, SecurityPlanCycleIntervalType intervalType, Integer reminderIntervalDays, Integer paymentTermsDays, SecurityPlanCycleStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityPlanCycle.SECURITY_PLAN_CYCLE);
 
         setId(id);
@@ -401,6 +470,10 @@ public class SecurityPlanCycleRecord extends UpdatableRecordImpl<SecurityPlanCyc
         setReminderIntervalDays(reminderIntervalDays);
         setPaymentTermsDays(paymentTermsDays);
         setStatus(status);
+        setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
     }
 }

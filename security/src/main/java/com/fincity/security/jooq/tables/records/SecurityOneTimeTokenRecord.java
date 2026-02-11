@@ -86,11 +86,28 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     }
 
     /**
+     * Setter for <code>security.security_one_time_token.REMEMBER_ME</code>.
+     * Flag to indicate if token should be permanent
+     */
+    public SecurityOneTimeTokenRecord setRememberMe(Byte value) {
+        set(4, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_one_time_token.REMEMBER_ME</code>.
+     * Flag to indicate if token should be permanent
+     */
+    public Byte getRememberMe() {
+        return (Byte) get(4);
+    }
+
+    /**
      * Setter for <code>security.security_one_time_token.CREATED_AT</code>. Time
      * when this row is created
      */
     public SecurityOneTimeTokenRecord setCreatedAt(LocalDateTime value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -99,7 +116,7 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
      * when this row is created
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(5);
     }
 
     // -------------------------------------------------------------------------
@@ -125,13 +142,14 @@ public class SecurityOneTimeTokenRecord extends UpdatableRecordImpl<SecurityOneT
     /**
      * Create a detached, initialised SecurityOneTimeTokenRecord
      */
-    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, LocalDateTime createdAt) {
+    public SecurityOneTimeTokenRecord(ULong id, ULong userId, String token, String ipAddress, Byte rememberMe, LocalDateTime createdAt) {
         super(SecurityOneTimeToken.SECURITY_ONE_TIME_TOKEN);
 
         setId(id);
         setUserId(userId);
         setToken(token);
         setIpAddress(ipAddress);
+        setRememberMe(rememberMe);
         setCreatedAt(createdAt);
         resetTouchedOnNotNull();
     }

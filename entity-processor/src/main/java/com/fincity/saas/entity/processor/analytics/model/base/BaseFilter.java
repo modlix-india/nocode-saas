@@ -3,7 +3,8 @@ package com.fincity.saas.entity.processor.analytics.model.base;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fincity.saas.entity.processor.analytics.enums.TimePeriod;
 import com.fincity.saas.entity.processor.model.common.IdAndValue;
-import com.fincity.saas.entity.processor.util.FilterUtil;
+import com.fincity.saas.entity.processor.util.CollectionUtil;
+import com.fincity.saas.entity.processor.util.DatePair;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -33,22 +34,23 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private TimePeriod timePeriod = TimePeriod.WEEKS;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String timezone;
 
     @JsonIgnore
     private BaseFieldData baseFieldData = new BaseFieldData();
 
     public T filterCreatedByIds(List<ULong> createdByIds) {
-        this.createdByIds = FilterUtil.intersectLists(this.createdByIds, createdByIds);
+        this.createdByIds = CollectionUtil.intersectLists(this.createdByIds, createdByIds);
         return (T) this;
     }
 
     public T filterAssignedUserIds(List<ULong> assignedUserIds) {
-        this.assignedUserIds = FilterUtil.intersectLists(this.assignedUserIds, assignedUserIds);
+        this.assignedUserIds = CollectionUtil.intersectLists(this.assignedUserIds, assignedUserIds);
         return (T) this;
     }
 
     public T filterClientIds(List<ULong> clientIds) {
-        this.clientIds = FilterUtil.intersectLists(this.clientIds, clientIds);
+        this.clientIds = CollectionUtil.intersectLists(this.clientIds, clientIds);
         return (T) this;
     }
 
@@ -66,6 +68,30 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
         this.baseFieldData.setClients(clients);
         return (T) this;
     }
+
+    public ReportOptions toReportOptions() {
+
+        LocalDateTime startInTimezone = DatePair.convertUtcToTimezone(this.startDate, this.timezone);
+        LocalDateTime endInTimezone = DatePair.convertUtcToTimezone(this.endDate, this.timezone);
+
+        return new ReportOptions(
+                DatePair.of(startInTimezone, endInTimezone, this.timezone),
+                this.timePeriod,
+                this.includeZero,
+                this.includePercentage,
+                this.includeTotal,
+                null,
+                this.timezone);
+    }
+
+    public record ReportOptions(
+            DatePair totalDatePair,
+            TimePeriod timePeriod,
+            boolean includeZero,
+            boolean includePercentage,
+            boolean includeTotal,
+            Boolean includeNone,
+            String timezone) {}
 
     @Data
     @Accessors(chain = true)

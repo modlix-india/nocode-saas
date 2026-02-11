@@ -2,7 +2,7 @@ package com.fincity.saas.entity.processor.analytics.model.common;
 
 import com.fincity.saas.entity.processor.analytics.model.base.PerCount;
 import java.io.Serial;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -17,5 +17,5 @@ public class PerDateCount extends PerCount<PerDateCount> {
     @Serial
     private static final long serialVersionUID = 8924787024207584607L;
 
-    private LocalDate date;
+    private LocalDateTime date;
 }

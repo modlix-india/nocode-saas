@@ -85,5 +85,6 @@ public class CampaignTicketRequest implements Serializable, INoteRequest {
         private String campaignName;
         private String adSetId;
         private String adSetName;
+        private String keyword;
     }
 }

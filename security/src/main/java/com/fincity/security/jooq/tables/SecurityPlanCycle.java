@@ -14,6 +14,7 @@ import com.fincity.security.jooq.tables.SecurityPlan.SecurityPlanPath;
 import com.fincity.security.jooq.tables.records.SecurityPlanCycleRecord;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -178,6 +179,30 @@ public class SecurityPlanCycle extends TableImpl<SecurityPlanCycleRecord> {
      * the cycle in a plan
      */
     public final TableField<SecurityPlanCycleRecord, SecurityPlanCycleStatus> STATUS = createField(DSL.name("STATUS"), SQLDataType.VARCHAR(8).nullable(false).defaultValue(DSL.inline("ACTIVE", SQLDataType.VARCHAR)).asEnumDataType(SecurityPlanCycleStatus.class), this, "Status of the cycle in a plan");
+
+    /**
+     * The column <code>security.security_plan_cycle.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public final TableField<SecurityPlanCycleRecord, ULong> CREATED_BY = createField(DSL.name("CREATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who created this row");
+
+    /**
+     * The column <code>security.security_plan_cycle.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public final TableField<SecurityPlanCycleRecord, LocalDateTime> CREATED_AT = createField(DSL.name("CREATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is created");
+
+    /**
+     * The column <code>security.security_plan_cycle.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public final TableField<SecurityPlanCycleRecord, ULong> UPDATED_BY = createField(DSL.name("UPDATED_BY"), SQLDataType.BIGINTUNSIGNED, this, "ID of the user who updated this row");
+
+    /**
+     * The column <code>security.security_plan_cycle.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public final TableField<SecurityPlanCycleRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("UPDATED_AT"), SQLDataType.LOCALDATETIME(0).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.LOCALDATETIME)), this, "Time when this row is updated");
 
     private SecurityPlanCycle(Name alias, Table<SecurityPlanCycleRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
