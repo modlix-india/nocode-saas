@@ -8,6 +8,8 @@ import com.fincity.security.jooq.enums.SecurityPlanLimitName;
 import com.fincity.security.jooq.enums.SecurityPlanLimitStatus;
 import com.fincity.security.jooq.tables.SecurityPlanLimit;
 
+import java.time.LocalDateTime;
+
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -119,6 +121,74 @@ public class SecurityPlanLimitRecord extends UpdatableRecordImpl<SecurityPlanLim
         return (SecurityPlanLimitStatus) get(5);
     }
 
+    /**
+     * Setter for <code>security.security_plan_limit.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public SecurityPlanLimitRecord setCreatedBy(ULong value) {
+        set(6, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_limit.CREATED_BY</code>. ID of
+     * the user who created this row
+     */
+    public ULong getCreatedBy() {
+        return (ULong) get(6);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_limit.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public SecurityPlanLimitRecord setCreatedAt(LocalDateTime value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_limit.CREATED_AT</code>. Time
+     * when this row is created
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(7);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_limit.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public SecurityPlanLimitRecord setUpdatedBy(ULong value) {
+        set(8, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_limit.UPDATED_BY</code>. ID of
+     * the user who updated this row
+     */
+    public ULong getUpdatedBy() {
+        return (ULong) get(8);
+    }
+
+    /**
+     * Setter for <code>security.security_plan_limit.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public SecurityPlanLimitRecord setUpdatedAt(LocalDateTime value) {
+        set(9, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>security.security_plan_limit.UPDATED_AT</code>. Time
+     * when this row is updated
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(9);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -142,7 +212,7 @@ public class SecurityPlanLimitRecord extends UpdatableRecordImpl<SecurityPlanLim
     /**
      * Create a detached, initialised SecurityPlanLimitRecord
      */
-    public SecurityPlanLimitRecord(ULong id, ULong planId, SecurityPlanLimitName name, String customName, Integer limit, SecurityPlanLimitStatus status) {
+    public SecurityPlanLimitRecord(ULong id, ULong planId, SecurityPlanLimitName name, String customName, Integer limit, SecurityPlanLimitStatus status, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(SecurityPlanLimit.SECURITY_PLAN_LIMIT);
 
         setId(id);
@@ -151,6 +221,10 @@ public class SecurityPlanLimitRecord extends UpdatableRecordImpl<SecurityPlanLim
         setCustomName(customName);
         setLimit(limit);
         setStatus(status);
+        setCreatedBy(createdBy);
+        setCreatedAt(createdAt);
+        setUpdatedBy(updatedBy);
+        setUpdatedAt(updatedAt);
         resetTouchedOnNotNull();
     }
 }

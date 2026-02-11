@@ -267,7 +267,7 @@
                                             <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
                                             <includeTypes>JSON</includeTypes>
                                             <genericConverter>true</genericConverter>
-                                            <includeExpression>.*\.OBJECT_DATA</includeExpression>
+                                            <includeExpression>.*\.(OBJECT_DATA|META_DATA)</includeExpression>
                                         </forcedType>
                                         <forcedType>
                                             <userType>com.fincity.saas.entity.processor.oserver.files.model.FileDetail</userType>
