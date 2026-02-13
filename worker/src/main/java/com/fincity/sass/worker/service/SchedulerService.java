@@ -5,9 +5,10 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.sass.worker.dao.SchedulerDAO;
-import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulerRecord;
-import com.fincity.sass.worker.model.WorkerScheduler;
+import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulersRecord;
+import com.fincity.sass.worker.dto.Scheduler;
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.types.ULong;
 import org.quartz.Scheduler;
@@ -18,15 +19,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 @Service
 @Slf4j
 public class SchedulerService
-        extends AbstractJOOQUpdatableDataService<WorkerSchedulerRecord, ULong, WorkerScheduler, SchedulerDAO> {
+        extends AbstractJOOQUpdatableDataService<WorkerSchedulersRecord, ULong, Scheduler, SchedulerDAO> {
 
     private static final String NAME = "name";
     private static final String DESCRIPTION = "description";
@@ -42,9 +38,7 @@ public class SchedulerService
     private final QuartzService quartzService;
 
     public SchedulerService(
-            SchedulerRepository schedulerRepository,
-            SchedulerDAO schedulerDAO,
-            QuartzService quartzService) {
+            SchedulerRepository schedulerRepository, SchedulerDAO schedulerDAO, QuartzService quartzService) {
         this.schedulerRepository = schedulerRepository;
         this.schedulerDAO = schedulerDAO;
         this.quartzService = quartzService;
@@ -73,7 +67,7 @@ public class SchedulerService
     }
 
     @Override
-    public Mono<WorkerScheduler> create(WorkerScheduler workerScheduler) {
+    public Mono<Scheduler> create(Scheduler workerScheduler) {
         return Mono.fromCallable(() -> this.quartzService.initializeSchedulerOnStartUp(workerScheduler))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(super::create)
@@ -90,21 +84,21 @@ public class SchedulerService
         return Mono.error(new GenericException(HttpStatus.BAD_REQUEST, "Scheduler deletion is not allowed"));
     }
 
-    public Mono<List<WorkerScheduler>> findAll() {
+    public Mono<List<Scheduler>> findAll() {
         return this.dao.findAll();
     }
 
-    public Mono<WorkerScheduler> findById(ULong id) {
+    public Mono<Scheduler> findById(ULong id) {
         return this.dao.readById(id);
     }
 
     // TODO : add caching
-    public Mono<WorkerScheduler> findByName(String schedulerName) {
+    public Mono<Scheduler> findByName(String schedulerName) {
         return schedulerDAO.findByName(schedulerName);
     }
 
     // what if scheduler is already running?
-    public Mono<WorkerScheduler> start(String schedulerName) {
+    public Mono<Scheduler> start(String schedulerName) {
 
         return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
                                 () -> this.quartzService.startScheduler(ws))
@@ -117,7 +111,7 @@ public class SchedulerService
     }
 
     // what if scheduler is already paused ?
-    public Mono<WorkerScheduler> pause(String schedulerName) {
+    public Mono<Scheduler> pause(String schedulerName) {
 
         return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
                                 () -> this.quartzService.pauseScheduler(ws))
@@ -129,7 +123,7 @@ public class SchedulerService
                 });
     }
 
-    public Mono<WorkerScheduler> shutdown(String schedulerName) {
+    public Mono<Scheduler> shutdown(String schedulerName) {
 
         return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
                                 () -> this.quartzService.shutdownScheduler(ws))
@@ -141,7 +135,7 @@ public class SchedulerService
                 });
     }
 
-    public Mono<WorkerScheduler> restore(String schedulerName) {
+    public Mono<Scheduler> restore(String schedulerName) {
         return FlatMapUtil.flatMapMono(() -> findByName(schedulerName), scheduler -> Mono.fromCallable(
                         () -> this.quartzService.initializeSchedulerOnStartUp(scheduler))
                 .subscribeOn(Schedulers.boundedElastic())
@@ -151,18 +145,18 @@ public class SchedulerService
                 }));
     }
 
-    // TODO remove this funtion only created for testing purpose
-    public Mono<List<Scheduler>> testQuartzRepo() {
+    // TODO remove this function only created for testing purpose
+    public Mono<List<org.quartz.Scheduler>> testQuartzRepo() {
         return Mono.just(schedulerRepository.lookupAll().stream().toList());
     }
 
     @Override
-    protected Mono<WorkerScheduler> updatableEntity(WorkerScheduler entity) {
+    protected Mono<Scheduler> updatableEntity(Scheduler entity) {
 
         return this.read(entity.getId()).flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
                 .map(ca -> {
                     existing.setName(entity.getName());
-                    existing.setStatus(entity.getStatus());
+                    existing.setSchedulerStatus(entity.getSchedulerStatus());
                     return existing;
                 }));
     }

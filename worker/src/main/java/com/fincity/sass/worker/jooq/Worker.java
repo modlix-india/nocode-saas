@@ -4,15 +4,14 @@
 package com.fincity.sass.worker.jooq;
 
 
-import com.fincity.sass.worker.jooq.tables.WorkerScheduler;
-import com.fincity.sass.worker.jooq.tables.WorkerTask;
+import com.fincity.sass.worker.jooq.tables.WorkerSchedulers;
+import com.fincity.sass.worker.jooq.tables.WorkerTasks;
 
 import java.util.Arrays;
 import java.util.List;
 
 import org.jooq.Catalog;
 import org.jooq.Table;
-import org.jooq.impl.DSL;
 import org.jooq.impl.SchemaImpl;
 
 
@@ -30,20 +29,20 @@ public class Worker extends SchemaImpl {
     public static final Worker WORKER = new Worker();
 
     /**
-     * The table <code>worker.worker_scheduler</code>.
+     * The table <code>worker.worker_schedulers</code>.
      */
-    public final WorkerScheduler WORKER_SCHEDULER = WorkerScheduler.WORKER_SCHEDULER;
+    public final WorkerSchedulers WORKER_SCHEDULERS = WorkerSchedulers.WORKER_SCHEDULERS;
 
     /**
-     * The table <code>worker.worker_task</code>.
+     * The table <code>worker.worker_tasks</code>.
      */
-    public final WorkerTask WORKER_TASK = WorkerTask.WORKER_TASK;
+    public final WorkerTasks WORKER_TASKS = WorkerTasks.WORKER_TASKS;
 
     /**
      * No further instances allowed
      */
     private Worker() {
-        super(DSL.name("worker"), null, DSL.comment(""));
+        super("worker", null);
     }
 
 
@@ -55,8 +54,8 @@ public class Worker extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
-            WorkerScheduler.WORKER_SCHEDULER,
-            WorkerTask.WORKER_TASK
+            WorkerSchedulers.WORKER_SCHEDULERS,
+            WorkerTasks.WORKER_TASKS
         );
     }
 }

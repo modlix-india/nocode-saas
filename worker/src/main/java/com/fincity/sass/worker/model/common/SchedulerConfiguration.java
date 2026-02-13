@@ -1,9 +1,9 @@
-package com.fincity.sass.worker.model;
+package com.fincity.sass.worker.model.common;
 
-import com.fincity.sass.worker.jooq.enums.WorkerSchedulerStatus;
+import com.fincity.sass.worker.dto.Scheduler;
+import com.fincity.sass.worker.enums.SchedulerStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -11,20 +11,20 @@ public class SchedulerConfiguration {
 
     private String schedulerId;
     private String name;
-    private WorkerSchedulerStatus status = WorkerSchedulerStatus.STARTED;
+    private SchedulerStatus schedulerStatus = SchedulerStatus.STARTED;
 
     public static SchedulerConfiguration defaultConfiguration() {
         SchedulerConfiguration config = new SchedulerConfiguration();
         config.setSchedulerId("default");
         config.setName("Default Scheduler");
-        config.setStatus(WorkerSchedulerStatus.STARTED);
+        config.setSchedulerStatus(SchedulerStatus.STARTED);
         return config;
     }
 
-    public WorkerScheduler toModel() {
-        WorkerScheduler scheduler = new WorkerScheduler();
+    public Scheduler toDto() {
+        Scheduler scheduler = new Scheduler();
         scheduler.setName(this.name);
-        scheduler.setStatus(this.status);
+        scheduler.setSchedulerStatus(this.schedulerStatus);
         return scheduler;
     }
 }

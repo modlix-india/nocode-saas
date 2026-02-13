@@ -4,7 +4,7 @@
 package com.fincity.sass.worker.jooq;
 
 
-import com.fincity.sass.worker.jooq.tables.WorkerTask;
+import com.fincity.sass.worker.jooq.tables.WorkerTasks;
 
 import org.jooq.Index;
 import org.jooq.OrderField;
@@ -22,5 +22,5 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
-    public static final Index WORKER_TASK_IDX_WORKER_TASK_NAME = Internal.createIndex(DSL.name("IDX_WORKER_TASK_NAME"), WorkerTask.WORKER_TASK, new OrderField[] { WorkerTask.WORKER_TASK.NAME }, false);
+    public static final Index WORKER_TASKS_IDX1_TASKS_NAME = Internal.createIndex(DSL.name("IDX1_TASKS_NAME"), WorkerTasks.WORKER_TASKS, new OrderField[] { WorkerTasks.WORKER_TASKS.NAME }, false);
 }

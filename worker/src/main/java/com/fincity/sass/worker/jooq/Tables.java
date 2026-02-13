@@ -4,8 +4,8 @@
 package com.fincity.sass.worker.jooq;
 
 
-import com.fincity.sass.worker.jooq.tables.WorkerScheduler;
-import com.fincity.sass.worker.jooq.tables.WorkerTask;
+import com.fincity.sass.worker.jooq.tables.WorkerSchedulers;
+import com.fincity.sass.worker.jooq.tables.WorkerTasks;
 
 
 /**
@@ -15,12 +15,12 @@ import com.fincity.sass.worker.jooq.tables.WorkerTask;
 public class Tables {
 
     /**
-     * The table <code>worker.worker_scheduler</code>.
+     * The table <code>worker.worker_schedulers</code>.
      */
-    public static final WorkerScheduler WORKER_SCHEDULER = WorkerScheduler.WORKER_SCHEDULER;
+    public static final WorkerSchedulers WORKER_SCHEDULERS = WorkerSchedulers.WORKER_SCHEDULERS;
 
     /**
-     * The table <code>worker.worker_task</code>.
+     * The table <code>worker.worker_tasks</code>.
      */
-    public static final WorkerTask WORKER_TASK = WorkerTask.WORKER_TASK;
+    public static final WorkerTasks WORKER_TASKS = WorkerTasks.WORKER_TASKS;
 }

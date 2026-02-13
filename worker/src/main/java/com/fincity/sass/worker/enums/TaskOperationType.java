@@ -5,4 +5,3 @@ public enum TaskOperationType {
     PAUSE,
     CANCEL
 }
-

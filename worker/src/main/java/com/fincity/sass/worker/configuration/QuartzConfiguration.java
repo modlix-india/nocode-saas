@@ -1,7 +1,7 @@
 package com.fincity.sass.worker.configuration;
 
+import java.util.Properties;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.JobExecutionContext;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.SchedulerRepository;
@@ -16,8 +16,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 import org.springframework.util.Assert;
-
-import java.util.Properties;
 
 @Configuration
 @Slf4j
@@ -55,7 +53,6 @@ public class QuartzConfiguration {
     @Value("${worker.qdb.password}")
     private String password;
 
-
     @Bean
     public SchedulerRepository schedulerRepository() {
         return SchedulerRepository.getInstance();
@@ -63,7 +60,7 @@ public class QuartzConfiguration {
 
     /**
      * Creates the default scheduler factory bean with predefined configuration.
-     * 
+     *
      * @param applicationContext the Spring application context
      * @return the default scheduler factory bean
      */
@@ -76,13 +73,14 @@ public class QuartzConfiguration {
 
     /**
      * Creates the default Quartz scheduler from the factory.
-     * 
+     *
      * @param factory the scheduler factory bean
      * @return the Quartz scheduler
      * @throws SchedulerException if an error occurs while getting the scheduler
      */
     @Bean(name = "defaultQuartzScheduler")
-    public Scheduler defaultScheduler(@Qualifier("defaultSchedulerFactory") SchedulerFactoryBean factory) throws SchedulerException {
+    public Scheduler defaultScheduler(@Qualifier("defaultSchedulerFactory") SchedulerFactoryBean factory)
+            throws SchedulerException {
         log.debug("Getting default Quartz scheduler from factory");
         return factory.getScheduler();
     }

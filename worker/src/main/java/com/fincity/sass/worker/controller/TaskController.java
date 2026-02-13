@@ -2,8 +2,8 @@ package com.fincity.sass.worker.controller;
 
 import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
 import com.fincity.sass.worker.dao.TaskDAO;
-import com.fincity.sass.worker.jooq.tables.records.WorkerTaskRecord;
-import com.fincity.sass.worker.model.Task;
+import com.fincity.sass.worker.dto.Task;
+import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
 import com.fincity.sass.worker.service.TaskService;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +12,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/worker/tasks")
-public class TaskController
-        extends AbstractJOOQDataController<WorkerTaskRecord, ULong, Task, TaskDAO, TaskService> {
-
+public class TaskController extends AbstractJOOQDataController<WorkerTasksRecord, ULong, Task, TaskDAO, TaskService> {
 
     @PostMapping("cancel/{taskId}")
     public Mono<ResponseEntity<Task>> cancel(@PathVariable final ULong taskId) {
