@@ -32,7 +32,7 @@ public class PaymentGatewayService
     private final SecurityMessageResourceService messageResourceService;
 
     public PaymentGatewayService(PaymentGatewayDAO dao, ClientService clientService,
-            SecurityMessageResourceService messageResourceService) {
+                                 SecurityMessageResourceService messageResourceService) {
         this.dao = dao;
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
