@@ -37,13 +37,11 @@
         <package.c.jooq>${package.c.base}.${package.c.server}.jooq</package.c.jooq>
         <package.c.server>worker</package.c.server>
         <!-- internal -->
-        <package.i.nocode-flatmap-util-version>1.3.0</package.i.nocode-flatmap-util-version>
         <package.i.nocode-kirun-version>3.14.1</package.i.nocode-kirun-version>
         <package.i.saas-commons-core-version>1.0.0</package.i.saas-commons-core-version>
-        <package.i.saas-commons-jooq-version>2.0.0</package.i.saas-commons-jooq-version>
-        <package.i.saas-commons-mq-version>2.0.0</package.i.saas-commons-mq-version>
-        <package.i.saas-commons-security-version>2.0.0</package.i.saas-commons-security-version>
-        <package.i.saas-commons-version>2.0.0</package.i.saas-commons-version>
+        <package.i.saas-commons2-jooq-version>2.0.0</package.i.saas-commons2-jooq-version>
+        <package.i.saas-commons2-security-version>2.0.0</package.i.saas-commons2-security-version>
+        <package.i.saas-commons2-version>2.0.0</package.i.saas-commons2-version>
         <!-- open source -->
         <package.o.jooq.version>3.20.5</package.o.jooq.version>
         <package.o.mockito.version>5.10.0</package.o.mockito.version>
@@ -70,34 +68,24 @@
             <version>${package.i.nocode-kirun-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.nocode</groupId>
-            <artifactId>reactor-flatmap-util</artifactId>
-            <version>${package.i.nocode-flatmap-util-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons</artifactId>
-            <version>${package.i.saas-commons-version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.fincity.saas</groupId>
             <artifactId>commons-core</artifactId>
             <version>${package.i.saas-commons-core-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-jooq</artifactId>
-            <version>${package.i.saas-commons-jooq-version}</version>
+            <groupId>com.modlix.saas</groupId>
+            <artifactId>commons2</artifactId>
+            <version>${package.i.saas-commons2-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-mq</artifactId>
-            <version>${package.i.saas-commons-mq-version}</version>
+            <groupId>com.modlix.saas</groupId>
+            <artifactId>commons2-jooq</artifactId>
+            <version>${package.i.saas-commons2-jooq-version}</version>
         </dependency>
         <dependency>
-            <groupId>com.fincity.saas</groupId>
-            <artifactId>commons-security</artifactId>
-            <version>${package.i.saas-commons-security-version}</version>
+            <groupId>com.modlix.saas</groupId>
+            <artifactId>commons2-security</artifactId>
+            <version>${package.i.saas-commons2-security-version}</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -108,16 +96,8 @@
             <artifactId>HikariCP</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.asyncer</groupId>
-            <artifactId>r2dbc-mysql</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.r2dbc</groupId>
-            <artifactId>r2dbc-pool</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -156,11 +136,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -172,7 +148,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -290,9 +266,8 @@
                                         </forcedType>
                                         <forcedType>
                                             <userType>java.util.Map</userType>
-                                            <converter>com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter</converter>
+                                            <converter>com.modlix.saas.commons2.jooq.convertor.JSONMysqlMapConvertor</converter>
                                             <includeTypes>JSON</includeTypes>
-                                            <genericConverter>true</genericConverter>
                                             <includeExpression>.*\.JOB_DATA</includeExpression>
                                         </forcedType>
                                         <forcedType>
@@ -336,9 +311,9 @@
                         </configuration>
                         <dependencies>
                             <dependency>
-                                <groupId>com.fincity.saas</groupId>
-                                <artifactId>commons-jooq</artifactId>
-                                <version>${package.i.saas-commons-jooq-version}</version>
+                                <groupId>com.modlix.saas</groupId>
+                                <artifactId>commons2-jooq</artifactId>
+                                <version>${package.i.saas-commons2-jooq-version}</version>
                             </dependency>
                             <dependency>
                                 <groupId>com.mysql</groupId>
