@@ -160,7 +160,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
 
         if (tableFields == null || tableFields.isEmpty()) {
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
-            list.add(DSL.field(DSL.name("latestTask", "latestTaskDueDate"), LocalDateTime.class));
+            list.add(DSL.field(DSL.name("latest_task", "LATEST_TASK_DUE_DATE"), LocalDateTime.class));
             return list;
         }
 
@@ -168,7 +168,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
 
         if (tableFields.contains(Ticket.Fields.latestTaskDueDate))
-            list.add(DSL.field(DSL.name("latestTask", "latestTaskDueDate"), LocalDateTime.class));
+            list.add(DSL.field(DSL.name("latest_task", "LATEST_TASK_DUE_DATE"), LocalDateTime.class));
 
         return list;
     }
@@ -312,25 +312,16 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     private Table<?> getLatestTaskTable() {
-        String taskAlias = "latestTask";
-
-        Table<?> latestTaskTable = dslContext
-                .select(
-                        ENTITY_PROCESSOR_TASKS.TICKET_ID,
-                        DSL.max(ENTITY_PROCESSOR_TASKS.CREATED_AT).as("latest_created_task"))
-                .from(ENTITY_PROCESSOR_TASKS)
-                .groupBy(ENTITY_PROCESSOR_TASKS.TICKET_ID)
-                .asTable("latestTaskTable");
+        String taskAlias = "latest_task";
 
         return dslContext
-                .select(ENTITY_PROCESSOR_TASKS.TICKET_ID, ENTITY_PROCESSOR_TASKS.DUE_DATE.as("latestTaskDueDate"))
+                .select(
+                        ENTITY_PROCESSOR_TASKS.TICKET_ID,
+                        DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE).as("LATEST_TASK_DUE_DATE"))
                 .from(ENTITY_PROCESSOR_TASKS)
-                .join(latestTaskTable)
-                .on(ENTITY_PROCESSOR_TASKS
-                        .TICKET_ID
-                        .eq(latestTaskTable.field("TICKET_ID", ULong.class))
-                        .and(ENTITY_PROCESSOR_TASKS.CREATED_AT.eq(
-                                latestTaskTable.field("latest_created_task", LocalDateTime.class))))
+                .where(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
+                .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(false))
+                .groupBy(ENTITY_PROCESSOR_TASKS.TICKET_ID)
                 .asTable(taskAlias);
     }
 }
