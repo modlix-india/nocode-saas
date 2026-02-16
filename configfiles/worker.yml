@@ -75,6 +75,16 @@ spring:
         class: org.quartz.simpl.SimpleThreadPool
         threadCount: 5
 
+worker:
+  quartz:
+    thread-count: 5
+    misfire-threshold: 60000
+    max-connections: 5
+    virtual-threads: true
+  task-execution:
+    timeout-minutes: 5
+    max-result-length: 2000
+
 management:
   endpoint:
     flyway:

@@ -1,6 +1,7 @@
 package com.fincity.sass.worker.configuration;
 
 import java.util.Properties;
+import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -13,6 +14,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.support.TaskExecutorAdapter;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 import org.springframework.util.Assert;
@@ -52,6 +54,18 @@ public class QuartzConfiguration {
 
     @Value("${worker.qdb.password}")
     private String password;
+
+    @Value("${worker.quartz.thread-count:5}")
+    private int threadCount;
+
+    @Value("${worker.quartz.misfire-threshold:60000}")
+    private long misfireThreshold;
+
+    @Value("${worker.quartz.max-connections:5}")
+    private String maxConnections;
+
+    @Value("${worker.quartz.virtual-threads:true}")
+    private boolean useVirtualThreads;
 
     @Bean
     public SchedulerRepository schedulerRepository() {
@@ -109,7 +123,7 @@ public class QuartzConfiguration {
         quartzProperties.setProperty(JOBSTORE_PREFIX + "useProperties", "true");
         quartzProperties.setProperty(JOBSTORE_PREFIX + "tablePrefix", "QRTZ_");
         quartzProperties.setProperty(JOBSTORE_PREFIX + "isClustered", String.valueOf(DEFAULT_CLUSTERED));
-        quartzProperties.setProperty(JOBSTORE_PREFIX + "misfireThreshold", String.valueOf(DEFAULT_MISFIRE_THRESHOLD));
+        quartzProperties.setProperty(JOBSTORE_PREFIX + "misfireThreshold", String.valueOf(misfireThreshold));
         quartzProperties.setProperty(JOBSTORE_PREFIX + "dataSource", DATASOURCE_NAME);
 
         // DataSource properties
@@ -118,14 +132,19 @@ public class QuartzConfiguration {
         quartzProperties.setProperty(DATASOURCE_PREFIX + "URL", dbURL);
         quartzProperties.setProperty(DATASOURCE_PREFIX + "user", userName);
         quartzProperties.setProperty(DATASOURCE_PREFIX + "password", password);
-        quartzProperties.setProperty(DATASOURCE_PREFIX + "maxConnections", DEFAULT_MAX_CONNECTIONS);
+        quartzProperties.setProperty(DATASOURCE_PREFIX + "maxConnections", maxConnections);
 
-        // ThreadPool properties
+        // ThreadPool properties (used when not using virtual thread executor)
         quartzProperties.setProperty(THREADPOOL_PREFIX + "class", THREADPOOL_CLASS);
-        quartzProperties.setProperty(THREADPOOL_PREFIX + "threadCount", String.valueOf(DEFAULT_THREAD_COUNT));
+        quartzProperties.setProperty(THREADPOOL_PREFIX + "threadCount", String.valueOf(threadCount));
 
         schedulerFactory.setQuartzProperties(quartzProperties);
         schedulerFactory.setSchedulerName(schedulerName);
+
+        if (useVirtualThreads) {
+            schedulerFactory.setTaskExecutor(new TaskExecutorAdapter(Executors.newVirtualThreadPerTaskExecutor()));
+            log.debug("Quartz configured to use virtual threads for job execution");
+        }
 
         // Create and configure job factory
         AutowiringSpringBeanJobFactory jobFactory = new AutowiringSpringBeanJobFactory();

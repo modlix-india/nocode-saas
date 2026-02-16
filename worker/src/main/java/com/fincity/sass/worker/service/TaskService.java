@@ -1,5 +1,11 @@
 package com.fincity.sass.worker.service;
 
+import java.time.LocalDateTime;
+
+import org.jooq.types.ULong;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fincity.sass.worker.dao.TaskDAO;
 import com.fincity.sass.worker.dto.Scheduler;
 import com.fincity.sass.worker.dto.Task;
@@ -8,10 +14,6 @@ import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
 import com.fincity.sass.worker.model.task.FunctionExecutionTask;
 import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.jooq.service.AbstractJOOQUpdatableDataService;
-import java.time.LocalDateTime;
-import org.jooq.types.ULong;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 
 @Service
 public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRecord, ULong, Task, TaskDAO> {
@@ -40,20 +42,11 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
         }
-        try {
-            this.quartzService.initializeTask(scheduler, task);
-        } catch (Exception e) {
-            logger.error("Error initializing scheduler: {}", task.getName(), e);
-            throw new GenericException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_INITIALIZE_SCHEDULER),
-                    e);
-        }
         Task created = super.create(task);
         try {
-            this.quartzService.addTaskIdToJob(scheduler, created);
+            this.quartzService.initializeTask(scheduler, created);
         } catch (Exception e) {
-            logger.error("Error adding task ID to job: {}", task.getName(), e);
+            logger.error("Error initializing task in Quartz: {}", task.getName(), e);
             throw new GenericException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_INITIALIZE_SCHEDULER),
@@ -67,7 +60,6 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
      * functionParams) into jobData via prepareForPersistence(), then persists as Task.
      */
     public Task createFunctionExecutionTask(FunctionExecutionTask task) {
-        task.prepareForPersistence();
         return create(task);
     }
 
@@ -79,75 +71,37 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
     }
 
     public Task cancelTask(ULong taskId) {
-        Task task = this.read(taskId);
-        if (task == null) {
-            throw new GenericException(
-                    HttpStatus.NOT_FOUND,
-                    messageResourceService.getMessage(WorkerMessageResourceService.TASK_NOT_FOUND));
-        }
-        Scheduler scheduler = this.schedulerService.read(task.getSchedulerId());
-        if (scheduler == null) {
-            throw new GenericException(
-                    HttpStatus.BAD_REQUEST,
-                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
-        try {
-            this.quartzService.updateTask(scheduler, task, TaskOperationType.CANCEL);
-        } catch (Exception e) {
-            logger.error("Error canceling task: {}", task.getName(), e);
-            throw new GenericException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_CANCEL_TASK),
-                    e);
-        }
-        return super.update(task);
+        return executeTaskOperation(taskId, TaskOperationType.CANCEL, WorkerMessageResourceService.FAILED_TO_CANCEL_TASK);
     }
 
     public Task pauseTask(ULong taskId) {
-        Task task = this.read(taskId);
-        if (task == null) {
-            throw new GenericException(
-                    HttpStatus.NOT_FOUND,
-                    messageResourceService.getMessage(WorkerMessageResourceService.TASK_NOT_FOUND));
-        }
-        Scheduler scheduler = this.schedulerService.read(task.getSchedulerId());
-        if (scheduler == null) {
-            throw new GenericException(
-                    HttpStatus.BAD_REQUEST,
-                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
-        }
-        try {
-            this.quartzService.updateTask(scheduler, task, TaskOperationType.PAUSE);
-        } catch (Exception e) {
-            logger.error("Error pausing task: {}", task.getName(), e);
-            throw new GenericException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_PAUSE_TASK),
-                    e);
-        }
-        return super.update(task);
+        return executeTaskOperation(taskId, TaskOperationType.PAUSE, WorkerMessageResourceService.FAILED_TO_PAUSE_TASK);
     }
 
     public Task resumeTask(ULong taskId) {
-        Task task = this.read(taskId);
+        return executeTaskOperation(taskId, TaskOperationType.RESUME, WorkerMessageResourceService.FAILED_TO_RESUME_TASK);
+    }
+
+    private Task executeTaskOperation(ULong taskId, TaskOperationType operationType, String failureMessageKey) {
+        Task task = read(taskId);
         if (task == null) {
             throw new GenericException(
                     HttpStatus.NOT_FOUND,
                     messageResourceService.getMessage(WorkerMessageResourceService.TASK_NOT_FOUND));
         }
-        Scheduler scheduler = this.schedulerService.read(task.getSchedulerId());
+        Scheduler scheduler = schedulerService.read(task.getSchedulerId());
         if (scheduler == null) {
             throw new GenericException(
                     HttpStatus.BAD_REQUEST,
                     messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
         }
         try {
-            this.quartzService.updateTask(scheduler, task, TaskOperationType.RESUME);
+            quartzService.updateTask(scheduler, task, operationType);
         } catch (Exception e) {
-            logger.error("Error resuming task: {}", task.getName(), e);
+            logger.error("Error {} task: {}", operationType.name().toLowerCase() + "ing", task.getName(), e);
             throw new GenericException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_RESUME_TASK),
+                    messageResourceService.getMessage(failureMessageKey),
                     e);
         }
         return super.update(task);
@@ -156,16 +110,18 @@ public class TaskService extends AbstractJOOQUpdatableDataService<WorkerTasksRec
     @Override
     protected Task updatableEntity(Task entity) {
         Task existing = this.read(entity.getId());
-        if (existing == null) {
+        if (existing == null)
             return null;
-        }
-        existing.setName(entity.getName());
-        existing.setTaskState(entity.getTaskState());
-        existing.setNextFireTime(entity.getNextFireTime());
-        existing.setLastFireTime(entity.getLastFireTime());
-        existing.setTaskLastFireStatus(entity.getTaskLastFireStatus());
-        existing.setLastFireResult(entity.getLastFireResult());
-        existing.setUpdatedAt(LocalDateTime.now());
+
+	    if (entity.getName() != null)
+		    existing.setName(entity.getName());
+
+	    existing.setTaskState(entity.getTaskState());
+	    existing.setNextFireTime(entity.getNextFireTime());
+	    existing.setLastFireTime(entity.getLastFireTime());
+	    existing.setTaskLastFireStatus(entity.getTaskLastFireStatus());
+	    existing.setLastFireResult(entity.getLastFireResult());
+	    existing.setUpdatedAt(LocalDateTime.now());
         return existing;
     }
 }
