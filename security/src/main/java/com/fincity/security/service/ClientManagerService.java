@@ -2,26 +2,33 @@ package com.fincity.security.service;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
-import com.fincity.saas.commons.security.jwt.ContextAuthentication;
+import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.ClientManagerDAO;
+import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -35,132 +42,179 @@ public class ClientManagerService
     private final SecurityMessageResourceService messageResourceService;
     private final CacheService cacheService;
     private final ClientService clientService;
-    private UserService userService;
+    private final UserService userService;
 
     public ClientManagerService(
             SecurityMessageResourceService messageResourceService,
             CacheService cacheService,
-            ClientService clientService) {
+            ClientService clientService, @Lazy UserService userService) {
         this.messageResourceService = messageResourceService;
         this.cacheService = cacheService;
         this.clientService = clientService;
-    }
-
-    private static boolean checkIfUserIsOwner(ContextAuthentication ca) {
-        if (ca == null || ca.getUser() == null) return false;
-
-        Collection<? extends GrantedAuthority> authorities = ca.getUser().getAuthorities();
-        if (authorities != null && !authorities.isEmpty())
-            return SecurityContextUtil.hasAuthority(OWNER_ROLE, authorities);
-
-        List<String> stringAuthorities = ca.getUser().getStringAuthorities();
-        return stringAuthorities != null && stringAuthorities.contains(OWNER_ROLE);
-    }
-
-    @Autowired
-    @Lazy
-    public void setUserService(UserService userService) {
         this.userService = userService;
     }
 
-    private String buildCacheKey(ULong clientId, ULong userId) {
-        return clientId + ":" + userId;
+    private Mono<Boolean> checkAccess(ULong targetUserClientId) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+
+                    if (ca.isSystemClient())
+                        return Mono.just(Boolean.TRUE);
+
+                    ULong contextUserClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+                    if (contextUserClientId.equals(targetUserClientId))
+                        return Mono.just(
+                                SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+
+                    return this.clientService.isBeingManagedBy(contextUserClientId, targetUserClientId);
+                });
     }
 
-    public Mono<Boolean> isUserManagerForClient(ULong userId, ULong clientId) {
-        return this.cacheService.cacheValueOrGet(
-                CACHE_NAME_CLIENT_MANAGER,
-                () -> this.readByClientIdAndManagerId(clientId, userId)
-                        .hasElement()
-                        .defaultIfEmpty(Boolean.FALSE),
-                this.buildCacheKey(clientId, userId));
+    private static Collection<? extends GrantedAuthority> toGrantedAuthorities(List<String> authorities) {
+
+        if (authorities == null || authorities.isEmpty())
+            return Set.of();
+
+        return authorities.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toSet());
     }
 
-    public Mono<Boolean> isUserOwnerOrManagerForClient(ContextAuthentication ca, ULong clientId) {
-        if (ca == null || ca.getUser() == null) return Mono.just(Boolean.FALSE);
-
-        if (checkIfUserIsOwner(ca)) return Mono.just(Boolean.TRUE);
-
-        ULong userId = ULong.valueOf(ca.getUser().getId());
-        ULong userClientId = ULong.valueOf(ca.getUser().getClientId());
-
-        return this.isUserManagerForClient(userId, clientId)
-                .flatMap(isManager -> Boolean.TRUE.equals(isManager)
-                        ? Mono.just(Boolean.TRUE)
-                        : this.clientService.isBeingManagedBy(userClientId, clientId))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.isUserOwnerOrManagerForClient"));
+    private Mono<Boolean> evictCacheForUserAndClient(ULong userId, ULong clientId) {
+        return this.cacheService.evict(CACHE_NAME_CLIENT_MANAGER, userId, clientId);
     }
 
-    private Mono<ClientManager> readByClientIdAndManagerId(ULong clientId, ULong managerId) {
-        return this.dao.readByClientIdAndManagerId(clientId, managerId);
-    }
-
-    private Mono<Boolean> evictClientManagerCache(ULong clientId, ULong managerId) {
-        return this.cacheService.evict(CACHE_NAME_CLIENT_MANAGER, this.buildCacheKey(clientId, managerId));
-    }
-
-    private Mono<ClientManager> validateCreatePermissions(
-            ContextAuthentication ca, ClientManager entity, boolean exists) {
-        if (exists)
-            return this.messageResourceService.throwMessage(
-                    msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                    SecurityMessageResourceService.CLIENT_MANAGER_ALREADY_EXISTS);
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Boolean> create(ULong userId, ULong clientId) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.clientService.isBeingManagedBy(
-                                ULong.valueOf(ca.getUser().getClientId()), entity.getClientId()),
-                        isManagingClient -> Boolean.TRUE.equals(isManagingClient)
-                                ? this.userService.readInternal(entity.getManagerId())
-                                : this.messageResourceService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                        SecurityMessageResourceService.FORBIDDEN_CREATE,
-                                        "Client Manager"),
-                        (isManagingClient, managerUser) ->
-                                this.clientService.isBeingManagedBy(managerUser.getClientId(), entity.getClientId()),
-                        (isManagingClient, managerUser, isManagerClientInHierarchy) ->
-                                Boolean.FALSE.equals(isManagerClientInHierarchy)
-                                        ? this.messageResourceService.throwMessage(
-                                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                                                SecurityMessageResourceService.FORBIDDEN_CREATE,
-                                                "Client Manager")
-                                        : Mono.just(entity))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.validateCreatePermissions"));
-    }
 
-    @PreAuthorize("hasAuthority('Authorities.Client_CREATE')")
-    @Override
-    public Mono<ClientManager> create(ClientManager entity) {
-        return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.readByClientIdAndManagerId(entity.getClientId(), entity.getManagerId())
-                                .hasElement(),
-                        (ca, exists) -> this.validateCreatePermissions(ca, entity, exists),
-                        (ca, exists, entityToCreate) -> super.create(entityToCreate),
-                        (ca, exists, entityToCreate, created) -> this.evictClientManagerCache(
-                                        created.getClientId(), created.getManagerId())
-                                .thenReturn(created))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.create"));
-    }
+                SecurityContextUtil::getUsersContextAuthentication,
 
-    @PreAuthorize("hasAuthority('Authorities.Client_DELETE')")
-    @Override
-    public Mono<Integer> delete(ULong id) {
-        return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> this.read(id),
-                        (ca, clientManager) -> this.clientService.isBeingManagedBy(
-                                ULong.valueOf(ca.getUser().getClientId()), clientManager.getClientId()),
-                        (ca, clientManager, isManagingClient) -> Boolean.TRUE.equals(isManagingClient)
-                                ? this.dao.hasAnyOtherClientAssociations(clientManager.getManagerId(), id)
-                                : Mono.empty(),
-                        (ca, clientManager, isManagingClient, hasOtherAssociations) -> super.delete(id),
-                        (ca, clientManager, isManagingClient, hasOtherAssociations, deleted) ->
-                                this.evictClientManagerCache(clientManager.getClientId(), clientManager.getManagerId())
-                                        .thenReturn(deleted))
+                ca -> this.userService.readInternal(userId),
+
+                (ca, user) -> {
+
+                    if (user.getClientId().equals(clientId))
+                        return this.messageResourceService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                SecurityMessageResourceService.HIERARCHY_ERROR, "Client manager");
+
+                    return Mono.just(Boolean.TRUE);
+                },
+
+                (ca, user, validated) -> this.checkAccess(user.getClientId()),
+
+                (ca, user, validated, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.createIfNotExists(clientId, userId,
+                            ULongUtil.valueOf(ca.getUser().getId()));
+                },
+
+                (ca, user, validated, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
+                        .thenReturn(Boolean.TRUE))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.create"))
                 .switchIfEmpty(this.messageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
-                        SecurityMessageResourceService.FORBIDDEN_DELETE,
-                        "Client Manager"))
-                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.delete"));
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager CREATE"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Client_READ')")
+    public Mono<Page<Client>> getClientsOfUser(ULong userId, Pageable pageable) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userService.readInternal(userId),
+
+                user -> this.checkAccess(user.getClientId()),
+
+                (user, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.getClientsOfManager(userId, pageable);
+                },
+
+                (user, hasAccess, page) -> Flux.fromIterable(page.getContent())
+                        .flatMap(this.clientService::readInternal)
+                        .collectList()
+                        .map(clients -> (Page<Client>) PageableExecutionUtils.getPage(
+                                clients, pageable, page::getTotalElements)))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientsOfUser"))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager READ"));
+    }
+
+    @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
+    public Mono<Boolean> delete(ULong userId, ULong clientId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userService.readInternal(userId),
+
+                user -> this.checkAccess(user.getClientId()),
+
+                (user, hasAccess) -> {
+
+                    if (!Boolean.TRUE.equals(hasAccess))
+                        return Mono.empty();
+
+                    return this.dao.deleteByClientIdAndManagerId(clientId, userId);
+                },
+
+                (user, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
+                        .thenReturn(Boolean.TRUE))
+
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.delete"))
+                .switchIfEmpty(this.messageResourceService.throwMessage(
+                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager DELETE"));
+    }
+
+    public Mono<Boolean> isUserOwnerOrManagerForClient(ULong clientId) {
+
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> {
+
+                    ULong userId = ULongUtil.valueOf(ca.getUser().getId());
+                    ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+                    if (userClientId.equals(clientId))
+                        return Mono.just(
+                                SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+
+                    return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+                            () -> this.dao.isManagerForClient(userId, clientId),
+                            userId, clientId);
+                });
+    }
+
+    public Mono<Boolean> hasUserAccessToClient(ULong userId, ULong clientId) {
+
+        return this.userService.readInternal(userId)
+                .flatMap(user -> {
+
+                    if (user.getClientId().equals(clientId)) {
+
+                        return SecurityContextUtil.getUsersContextAuthentication()
+                                .flatMap(ca -> this.userService.getUserAuthorities(
+                                        ca.getUrlAppCode(), user.getClientId(), userId))
+                                .map(auths -> SecurityContextUtil.hasAuthority(
+                                        OWNER_ROLE, toGrantedAuthorities(auths)));
+                    }
+
+                    return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+                            () -> this.dao.isManagerForClient(userId, clientId),
+                            userId, clientId);
+                });
     }
 }

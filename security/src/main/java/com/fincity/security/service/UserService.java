@@ -172,8 +172,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 .handle((msg, sink) -> sink.error(new GenericException(HttpStatus.FORBIDDEN, msg)));
     }
 
-    private Mono<Boolean> canAccessClientForUserOperation(ContextAuthentication ca, ULong clientId) {
-        return this.clientManagerService.isUserOwnerOrManagerForClient(ca, clientId);
+    private Mono<Boolean> canAccessClientForUserOperation(ULong clientId) {
+        return this.clientManagerService.isUserOwnerOrManagerForClient(clientId);
     }
 
     public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(
@@ -358,7 +358,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         return Mono.just(entity);
 
                     return FlatMapUtil.flatMapMono(
-                            () -> this.canAccessClientForUserOperation(ca, entity.getClientId()),
+                            () -> this.canAccessClientForUserOperation(entity.getClientId()),
                             canAccess -> {
                                 if (Boolean.TRUE.equals(canAccess)) {
                                     return Mono.just(entity);
@@ -570,7 +570,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.TRUE.equals(userExists)) {
                         return Mono.empty();
                     }
-                    return this.canAccessClientForUserOperation(ca, clientId)
+                    return this.canAccessClientForUserOperation(clientId)
                             .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
                                     ? super.update(key, fields)
                                     : Mono.empty());
@@ -613,7 +613,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     if (Boolean.TRUE.equals(userExists)) {
                         return Mono.empty();
                     }
-                    return this.canAccessClientForUserOperation(ca, entity.getClientId())
+                    return this.canAccessClientForUserOperation(entity.getClientId())
                             .flatMap(canAccess -> Boolean.TRUE.equals(canAccess)
                                     ? super.update(entity)
                                     : Mono.empty());
@@ -668,7 +668,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
         return FlatMapUtil.flatMapMono(
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> this.read(id),
-                (ca, user) -> this.canAccessClientForUserOperation(ca, user.getClientId()),
+                (ca, user) -> this.canAccessClientForUserOperation(user.getClientId()),
                 (ca, user, canAccess) -> {
                     if (!Boolean.TRUE.equals(canAccess)) {
                         return this.forbiddenError(SecurityMessageResourceService.FORBIDDEN_UPDATE, "user")
