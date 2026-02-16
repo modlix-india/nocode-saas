@@ -8,8 +8,8 @@ import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
-import org.jooq.JSON;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 import org.jooq.types.ULong;
@@ -451,7 +451,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.META_DATA</code>.
      * Metadata information related to ticket
      */
-    public EntityProcessorTicketsRecord setMetaData(JSON value) {
+    public EntityProcessorTicketsRecord setMetaData(Map value) {
         set(23, value);
         return this;
     }
@@ -461,8 +461,8 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
      * <code>entity_processor.entity_processor_tickets.META_DATA</code>.
      * Metadata information related to ticket
      */
-    public JSON getMetaData() {
-        return (JSON) get(23);
+    public Map getMetaData() {
+        return (Map) get(23);
     }
 
     /**
@@ -564,7 +564,7 @@ public class EntityProcessorTicketsRecord extends UpdatableRecordImpl<EntityProc
     /**
      * Create a detached, initialised EntityProcessorTicketsRecord
      */
-    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, EntityProcessorTicketsTag tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, JSON metaData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public EntityProcessorTicketsRecord(ULong id, String appCode, String clientCode, String code, String name, String description, ULong version, ULong ownerId, ULong assignedUserId, Short dialCode, String phoneNumber, String email, ULong productId, ULong stage, ULong status, String source, String subSource, ULong campaignId, EntityProcessorTicketsTag tag, Boolean dnc, Boolean tempActive, Boolean isActive, ULong clientId, Map metaData, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS);
 
         setId(id);

@@ -4,6 +4,7 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -228,7 +230,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * <code>entity_processor.entity_processor_tickets.META_DATA</code>.
      * Metadata information related to ticket
      */
-    public final TableField<EntityProcessorTicketsRecord, JSON> META_DATA = createField(DSL.name("META_DATA"), SQLDataType.JSON, this, "Metadata information related to ticket");
+    public final TableField<EntityProcessorTicketsRecord, Map> META_DATA = createField(DSL.name("META_DATA"), SQLDataType.JSON, this, "Metadata information related to ticket", new JSONtoClassConverter<JSON, Map>(JSON.class, Map.class));
 
     /**
      * The column
