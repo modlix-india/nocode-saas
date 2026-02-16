@@ -3,6 +3,7 @@ package com.fincity.saas.entity.processor.dao;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.ENTITY_PROCESSOR_TASKS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
+
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.ComplexCondition;
@@ -322,13 +323,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .asTable("latestTaskTable");
 
         return dslContext
-                .select(
-                        ENTITY_PROCESSOR_TASKS.TICKET_ID,
-                        ENTITY_PROCESSOR_TASKS.DUE_DATE.as("latestTaskDueDate"))
+                .select(ENTITY_PROCESSOR_TASKS.TICKET_ID, ENTITY_PROCESSOR_TASKS.DUE_DATE.as("latestTaskDueDate"))
                 .from(ENTITY_PROCESSOR_TASKS)
                 .join(latestTaskTable)
-                .on(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(latestTaskTable.field("TICKET_ID", ULong.class))
-                        .and(ENTITY_PROCESSOR_TASKS.CREATED_AT.eq(latestTaskTable.field("latest_created_task", LocalDateTime.class))))
+                .on(ENTITY_PROCESSOR_TASKS
+                        .TICKET_ID
+                        .eq(latestTaskTable.field("TICKET_ID", ULong.class))
+                        .and(ENTITY_PROCESSOR_TASKS.CREATED_AT.eq(
+                                latestTaskTable.field("latest_created_task", LocalDateTime.class))))
                 .asTable(taskAlias);
     }
 }
