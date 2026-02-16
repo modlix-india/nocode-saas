@@ -1,9 +1,9 @@
 package com.fincity.sass.worker.dto;
 
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.sass.worker.enums.TaskJobType;
 import com.fincity.sass.worker.enums.TaskLastFireStatus;
 import com.fincity.sass.worker.enums.TaskState;
+import com.modlix.saas.commons2.model.dto.AbstractUpdatableDTO;
 import java.io.Serial;
 import java.time.LocalDateTime;
 import java.util.Map;

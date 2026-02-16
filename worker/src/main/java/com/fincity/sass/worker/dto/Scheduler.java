@@ -1,7 +1,7 @@
 package com.fincity.sass.worker.dto;
 
-import com.fincity.saas.commons.model.dto.AbstractUpdatableDTO;
 import com.fincity.sass.worker.enums.SchedulerStatus;
+import com.modlix.saas.commons2.model.dto.AbstractUpdatableDTO;
 import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

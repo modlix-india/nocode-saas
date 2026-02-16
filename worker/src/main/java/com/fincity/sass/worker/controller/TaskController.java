@@ -1,41 +1,30 @@
 package com.fincity.sass.worker.controller;
 
-import com.fincity.saas.commons.jooq.controller.AbstractJOOQDataController;
 import com.fincity.sass.worker.dao.TaskDAO;
 import com.fincity.sass.worker.dto.Task;
 import com.fincity.sass.worker.jooq.tables.records.WorkerTasksRecord;
 import com.fincity.sass.worker.service.TaskService;
+import com.modlix.saas.commons2.jooq.controller.AbstractJOOQDataController;
 import org.jooq.types.ULong;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/worker/tasks")
 public class TaskController extends AbstractJOOQDataController<WorkerTasksRecord, ULong, Task, TaskDAO, TaskService> {
 
     @PostMapping("cancel/{taskId}")
-    public Mono<ResponseEntity<Task>> cancel(@PathVariable final ULong taskId) {
-        return this.service.cancelTask(taskId).map(ResponseEntity::ok);
+    public ResponseEntity<Task> cancel(@PathVariable final ULong taskId) {
+        return ResponseEntity.ok(this.service.cancelTask(taskId));
     }
 
     @PostMapping("pause/{taskId}")
-    public Mono<ResponseEntity<Task>> pause(@PathVariable final ULong taskId) {
-        return this.service.pauseTask(taskId).map(ResponseEntity::ok);
+    public ResponseEntity<Task> pause(@PathVariable final ULong taskId) {
+        return ResponseEntity.ok(this.service.pauseTask(taskId));
     }
 
     @PostMapping("resume/{taskId}")
-    public Mono<ResponseEntity<Task>> resume(@PathVariable final ULong taskId) {
-        return this.service.resumeTask(taskId).map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/test/{taskId}")
-    public Mono<ResponseEntity<Task>> test(@PathVariable String taskId) {
-        return this.service.test(ULong.valueOf(taskId)).map(ResponseEntity::ok);
-    }
-
-    @GetMapping("/test1/{taskId}")
-    public Mono<ResponseEntity<String>> test1(@PathVariable String taskId) {
-        return this.service.test1(ULong.valueOf(taskId)).map(ResponseEntity::ok);
+    public ResponseEntity<Task> resume(@PathVariable final ULong taskId) {
+        return ResponseEntity.ok(this.service.resumeTask(taskId));
     }
 }

@@ -1,47 +1,33 @@
 package com.fincity.sass.worker.service;
 
-import com.fincity.nocode.reactor.util.FlatMapUtil;
-import com.fincity.saas.commons.exeception.GenericException;
-import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.sass.worker.dao.SchedulerDAO;
-import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulersRecord;
 import com.fincity.sass.worker.dto.Scheduler;
+import com.fincity.sass.worker.jooq.tables.records.WorkerSchedulersRecord;
+import com.modlix.saas.commons2.exception.GenericException;
+import com.modlix.saas.commons2.jooq.service.AbstractJOOQUpdatableDataService;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.types.ULong;
-import org.quartz.Scheduler;
-import org.quartz.impl.SchedulerRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @Service
 @Slf4j
 public class SchedulerService
         extends AbstractJOOQUpdatableDataService<WorkerSchedulersRecord, ULong, Scheduler, SchedulerDAO> {
 
-    private static final String NAME = "name";
-    private static final String DESCRIPTION = "description";
-    private static final String STATUS = "status";
-    private static final String RUNNING = "is_running";
-    private static final String STANDBY_MODE = "is_standby_mode";
-    private static final String SHUTDOWN = "is_shutdown";
-    private static final String UPDATED_BY = "updatedBy";
-    private static final String UPDATED_AT = "updatedAt";
-
-    private final SchedulerRepository schedulerRepository;
     private final SchedulerDAO schedulerDAO;
     private final QuartzService quartzService;
+    private final WorkerMessageResourceService messageResourceService;
 
     public SchedulerService(
-            SchedulerRepository schedulerRepository, SchedulerDAO schedulerDAO, QuartzService quartzService) {
-        this.schedulerRepository = schedulerRepository;
+            SchedulerDAO schedulerDAO,
+            QuartzService quartzService,
+            WorkerMessageResourceService messageResourceService) {
         this.schedulerDAO = schedulerDAO;
         this.quartzService = quartzService;
+        this.messageResourceService = messageResourceService;
     }
 
     /**
@@ -49,115 +35,136 @@ public class SchedulerService
      * This method is automatically called after the service is fully initialized.
      */
     @PostConstruct
-    public Mono<Void> initializeSchedulersFromDatabase() {
-
+    public void initializeSchedulersFromDatabase() {
         log.info("Initializing schedulers from database...");
-
-        return findAll()
-                .flatMapMany(Flux::fromIterable)
-                .doOnNext(scheduler -> log.debug("Found scheduler in database: {}", scheduler.getName()))
-                .flatMap(ws -> Mono.fromCallable(() -> this.quartzService.initializeSchedulerOnStartUp(ws))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .onErrorResume(e -> {
-                            log.error("Error initializing scheduler: {}", ws.getName(), e);
-                            return Mono.error(new RuntimeException("Failed to initialize scheduler", e));
-                        }))
-                .collectList()
-                .flatMap(list -> Mono.empty());
+        List<Scheduler> schedulers = findAll();
+        for (Scheduler scheduler : schedulers) {
+            log.debug("Found scheduler in database: {}", scheduler.getName());
+            try {
+                this.quartzService.initializeSchedulerOnStartUp(scheduler);
+            } catch (Exception e) {
+                log.error("Error initializing scheduler: {}", scheduler.getName(), e);
+                throw new GenericException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_INITIALIZE_SCHEDULER),
+                        e);
+            }
+        }
     }
 
     @Override
-    public Mono<Scheduler> create(Scheduler workerScheduler) {
-        return Mono.fromCallable(() -> this.quartzService.initializeSchedulerOnStartUp(workerScheduler))
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(super::create)
-                .onErrorResume(e -> {
-                    log.error("Error initializing scheduler: {}", workerScheduler.getName(), e);
-                    return Mono.error(new RuntimeException("Failed to initialize scheduler", e));
-                });
+    public Scheduler create(Scheduler workerScheduler) {
+        try {
+            this.quartzService.initializeSchedulerOnStartUp(workerScheduler);
+        } catch (Exception e) {
+            log.error("Error initializing scheduler: {}", workerScheduler.getName(), e);
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_INITIALIZE_SCHEDULER),
+                    e);
+        }
+        return super.create(workerScheduler);
     }
 
-    // delete we should prevent delete
     @Override
-    public Mono<Integer> delete(ULong id) {
-
-        return Mono.error(new GenericException(HttpStatus.BAD_REQUEST, "Scheduler deletion is not allowed"));
+    public Integer delete(ULong id) {
+        throw new GenericException(
+                HttpStatus.BAD_REQUEST,
+                messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_DELETION_NOT_ALLOWED));
     }
 
-    public Mono<List<Scheduler>> findAll() {
+    public List<Scheduler> findAll() {
         return this.dao.findAll();
     }
 
-    public Mono<Scheduler> findById(ULong id) {
-        return this.dao.readById(id);
-    }
-
-    // TODO : add caching
-    public Mono<Scheduler> findByName(String schedulerName) {
+    public Scheduler findByName(String schedulerName) {
         return schedulerDAO.findByName(schedulerName);
     }
 
-    // what if scheduler is already running?
-    public Mono<Scheduler> start(String schedulerName) {
-
-        return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
-                                () -> this.quartzService.startScheduler(ws))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .flatMap(this::update))
-                .onErrorResume(e -> {
-                    log.error("Error starting scheduler: {}", schedulerName, e);
-                    return Mono.error(new RuntimeException("Failed to start scheduler", e));
-                });
+    public Scheduler start(String schedulerName) {
+        Scheduler ws = this.findByName(schedulerName);
+        if (ws == null) {
+            throw new GenericException(
+                    HttpStatus.NOT_FOUND,
+                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
+        }
+        try {
+            this.quartzService.startScheduler(ws);
+        } catch (Exception e) {
+            log.error("Error starting scheduler: {}", schedulerName, e);
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_START_SCHEDULER),
+                    e);
+        }
+        return super.update(ws);
     }
 
-    // what if scheduler is already paused ?
-    public Mono<Scheduler> pause(String schedulerName) {
-
-        return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
-                                () -> this.quartzService.pauseScheduler(ws))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .flatMap(this::update))
-                .onErrorResume(e -> {
-                    log.error("Error pausing scheduler: {}", schedulerName, e);
-                    return Mono.error(new RuntimeException("Failed to pause scheduler", e));
-                });
+    public Scheduler pause(String schedulerName) {
+        Scheduler ws = this.findByName(schedulerName);
+        if (ws == null) {
+            throw new GenericException(
+                    HttpStatus.NOT_FOUND,
+                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
+        }
+        try {
+            this.quartzService.pauseScheduler(ws);
+        } catch (Exception e) {
+            log.error("Error pausing scheduler: {}", schedulerName, e);
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_PAUSE_SCHEDULER),
+                    e);
+        }
+        return super.update(ws);
     }
 
-    public Mono<Scheduler> shutdown(String schedulerName) {
-
-        return FlatMapUtil.flatMapMono(() -> this.findByName(schedulerName), ws -> Mono.fromCallable(
-                                () -> this.quartzService.shutdownScheduler(ws))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .flatMap(this::update))
-                .onErrorResume(e -> {
-                    log.error("Error shutting down scheduler: {}", schedulerName, e);
-                    return Mono.error(new RuntimeException("Failed to shoutdown scheduler", e));
-                });
+    public Scheduler shutdown(String schedulerName) {
+        Scheduler ws = this.findByName(schedulerName);
+        if (ws == null) {
+            throw new GenericException(
+                    HttpStatus.NOT_FOUND,
+                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
+        }
+        try {
+            this.quartzService.shutdownScheduler(ws);
+        } catch (Exception e) {
+            log.error("Error shutting down scheduler: {}", schedulerName, e);
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_SHUTDOWN_SCHEDULER),
+                    e);
+        }
+        return super.update(ws);
     }
 
-    public Mono<Scheduler> restore(String schedulerName) {
-        return FlatMapUtil.flatMapMono(() -> findByName(schedulerName), scheduler -> Mono.fromCallable(
-                        () -> this.quartzService.initializeSchedulerOnStartUp(scheduler))
-                .subscribeOn(Schedulers.boundedElastic())
-                .onErrorResume(e -> {
-                    log.error("Error initializing scheduler: {}", scheduler.getName(), e);
-                    return Mono.error(new RuntimeException("Failed to initialize scheduler", e));
-                }));
-    }
-
-    // TODO remove this function only created for testing purpose
-    public Mono<List<org.quartz.Scheduler>> testQuartzRepo() {
-        return Mono.just(schedulerRepository.lookupAll().stream().toList());
+    public Scheduler restore(String schedulerName) {
+        Scheduler scheduler = findByName(schedulerName);
+        if (scheduler == null) {
+            throw new GenericException(
+                    HttpStatus.NOT_FOUND,
+                    messageResourceService.getMessage(WorkerMessageResourceService.SCHEDULER_NOT_FOUND));
+        }
+        try {
+            this.quartzService.initializeSchedulerOnStartUp(scheduler);
+        } catch (Exception e) {
+            log.error("Error initializing scheduler: {}", scheduler.getName(), e);
+            throw new GenericException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    messageResourceService.getMessage(WorkerMessageResourceService.FAILED_TO_INITIALIZE_SCHEDULER),
+                    e);
+        }
+        return scheduler;
     }
 
     @Override
-    protected Mono<Scheduler> updatableEntity(Scheduler entity) {
-
-        return this.read(entity.getId()).flatMap(existing -> SecurityContextUtil.getUsersContextAuthentication()
-                .map(ca -> {
-                    existing.setName(entity.getName());
-                    existing.setSchedulerStatus(entity.getSchedulerStatus());
-                    return existing;
-                }));
+    protected Scheduler updatableEntity(Scheduler entity) {
+        Scheduler existing = this.read(entity.getId());
+        if (existing == null) {
+            return null;
+        }
+        existing.setName(entity.getName());
+        existing.setSchedulerStatus(entity.getSchedulerStatus());
+        return existing;
     }
 }
