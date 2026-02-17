@@ -93,6 +93,11 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 .map(Authentication.class::cast);
     }
 
+    public Mono<Boolean> isUserClientManageClient(String appCode, BigInteger userId, BigInteger userClientId,
+            BigInteger targetClientId) {
+        return this.feignAuthService.isUserClientManageClient(appCode, userId, userClientId, targetClientId);
+    }
+
     public Mono<Boolean> doesClientManageClient(BigInteger managingClientId, BigInteger clientId) {
         return this.feignAuthService.doesClientManageClient(managingClientId, clientId);
     }

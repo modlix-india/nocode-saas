@@ -108,35 +108,6 @@ public class ClientHierarchyService
                 .defaultIfEmpty(Boolean.FALSE);
     }
 
-    // public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId)
-    // {
-
-    // if (managingClientId.equals(clientId))
-    // return Mono.just(Boolean.TRUE);
-
-    // return this.getClientHierarchy(clientId)
-    // .flatMap(clientHierarchy ->
-    // Mono.just(clientHierarchy.isManagedBy(managingClientId)))
-    // .switchIfEmpty(Mono.just(Boolean.FALSE));
-    // }
-
-    // public Mono<Boolean> isBeingManagedBy(String managingClientCode, String
-    // clientCode) {
-
-    // if (managingClientCode.equals(clientCode))
-    // return Mono.just(Boolean.TRUE);
-
-    // return FlatMapUtil.flatMapMono(
-
-    // () -> this.clientService.getClientId(clientCode),
-
-    // clientId -> this.clientService.getClientId(managingClientCode),
-
-    // (clientId, managingClientId) -> this.isBeingManagedBy(managingClientId,
-    // clientId))
-    // .switchIfEmpty(Mono.just(Boolean.FALSE));
-    // }
-
     public Mono<ULong> getManagingClient(ULong clientId, ClientHierarchy.Level level) {
 
         if (level.equals(ClientHierarchy.Level.SYSTEM))
@@ -145,25 +116,6 @@ public class ClientHierarchyService
         return this.getClientHierarchy(clientId)
                 .mapNotNull(clientHierarchy -> clientHierarchy.getManagingClient(level));
     }
-
-    // public Mono<Boolean> isUserBeingManaged(ULong managingClientId, ULong userId)
-    // {
-    // return this.getUserClientHierarchy(userId)
-    // .flatMap(clientHierarchy ->
-    // Mono.just(clientHierarchy.isManagedBy(managingClientId)))
-    // .switchIfEmpty(Mono.just(Boolean.FALSE));
-    // }
-
-    // public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong
-    // userId) {
-
-    // return FlatMapUtil.flatMapMono(
-
-    // () -> this.clientService.getClientId(managingClientCode),
-
-    // managingClientId -> isUserBeingManaged(managingClientId, userId))
-    // .switchIfEmpty(Mono.just(Boolean.FALSE));
-    // }
 
     private static class ClientHierarchyBuilder {
 
