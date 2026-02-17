@@ -36,6 +36,7 @@ import com.fincity.security.dto.SSLCertificate;
 import com.fincity.security.model.SSLCertificateConfiguration;
 import com.fincity.security.model.SSLCertificateOrder;
 import com.fincity.security.model.SSLCertificateOrderRequest;
+import com.fincity.security.model.SSLCertificateRenewalResult;
 import com.fincity.security.service.SSLCertificateService;
 import com.fincity.security.service.SecurityMessageResourceService;
 
@@ -192,6 +193,12 @@ public class SSLCertificateController {
 
         return this.service.getToken(token)
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/internal/renew-certificates")
+    public Mono<ResponseEntity<SSLCertificateRenewalResult>> renewExpiringCertificates(
+            @RequestParam(defaultValue = "30") int daysBeforeExpiry) {
+        return this.service.renewExpiringCertificates(daysBeforeExpiry).map(ResponseEntity::ok);
     }
 
     @GetMapping("/internal/certificates")

@@ -2,6 +2,7 @@ package com.fincity.sass.worker.service;
 
 import com.fincity.saas.commons.core.service.CoreFunctionService;
 import com.fincity.sass.worker.dto.Task;
+import com.fincity.sass.worker.enums.TaskJobType;
 import com.fincity.sass.worker.model.common.FunctionExecutionSpec;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -19,6 +20,7 @@ public class TaskExecutionService {
 
     private final TaskService taskService;
     private final CoreFunctionService coreFunctionService;
+    private final SSLCertificateRenewalService sslCertificateRenewalService;
     private final Gson gson;
 
     private final Logger logger = LoggerFactory.getLogger(TaskExecutionService.class);
@@ -29,9 +31,14 @@ public class TaskExecutionService {
     @Value("${worker.task-execution.max-result-length:2000}")
     private int maxResultLength;
 
-    private TaskExecutionService(TaskService taskService, CoreFunctionService coreFunctionService, Gson gson) {
+    private TaskExecutionService(
+            TaskService taskService,
+            CoreFunctionService coreFunctionService,
+            SSLCertificateRenewalService sslCertificateRenewalService,
+            Gson gson) {
         this.taskService = taskService;
         this.coreFunctionService = coreFunctionService;
+        this.sslCertificateRenewalService = sslCertificateRenewalService;
         this.gson = gson;
     }
 
@@ -51,7 +58,9 @@ public class TaskExecutionService {
             }
             task.setLastFireTime(LocalDateTime.now());
             Task processedTask = processTask(task);
-            processedTask.setLastFireResult("Task completed successfully");
+            if (processedTask.getLastFireResult() == null) {
+                processedTask.setLastFireResult("Task completed successfully");
+            }
             taskService.update(processedTask);
             return true;
         } catch (Exception error) {
@@ -80,6 +89,12 @@ public class TaskExecutionService {
     }
 
     private Task processTask(Task task) {
+        if (TaskJobType.SSL_RENEWAL.equals(task.getTaskJobType())) {
+            String result = sslCertificateRenewalService.renewExpiringCertificates(task);
+            task.setLastFireResult(truncateResult(result));
+            return task;
+        }
+
         FunctionExecutionSpec spec = FunctionExecutionSpec.fromJobData(task.getJobData());
         if (spec == null || !spec.hasFunctionSpec()) {
             task.setLastFireResult("No function specified for execution");
