@@ -168,44 +168,6 @@ public class ClientManagerService
                         SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager DELETE"));
     }
 
-    // public Mono<Boolean> isUserOwnerOrManagerForClient(ULong clientId) {
-
-    // return SecurityContextUtil.getUsersContextAuthentication()
-    // .flatMap(ca -> {
-
-    // ULong userId = ULongUtil.valueOf(ca.getUser().getId());
-    // ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
-
-    // if (userClientId.equals(clientId))
-    // return Mono.just(
-    // SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
-
-    // return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
-    // () -> this.dao.isManagerForClient(userId, clientId),
-    // userId, clientId);
-    // });
-    // }
-
-    // public Mono<Boolean> isUserClientManager(ULong userId, ULong clientId) {
-
-    // return this.userService.readInternal(userId)
-    // .flatMap(user -> {
-
-    // if (user.getClientId().equals(clientId)) {
-
-    // return SecurityContextUtil.getUsersContextAuthentication()
-    // .flatMap(ca -> this.userService.getUserAuthorities(
-    // ca.getUrlAppCode(), user.getClientId(), userId))
-    // .map(auths -> SecurityContextUtil.hasAuthority(
-    // OWNER_ROLE, toGrantedAuthorities(auths)));
-    // }
-
-    // return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
-    // () -> this.dao.isManagerForClient(userId, clientId),
-    // userId, clientId);
-    // });
-    // }
-
     public Mono<Boolean> isUserClientManager(ContextAuthentication ca, ULong targetClientId) {
 
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
