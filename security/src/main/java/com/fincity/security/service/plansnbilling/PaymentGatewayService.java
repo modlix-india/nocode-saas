@@ -32,7 +32,7 @@ public class PaymentGatewayService
     private final SecurityMessageResourceService messageResourceService;
 
     public PaymentGatewayService(PaymentGatewayDAO dao, ClientService clientService,
-                                 SecurityMessageResourceService messageResourceService) {
+            SecurityMessageResourceService messageResourceService) {
         this.dao = dao;
         this.clientService = clientService;
         this.messageResourceService = messageResourceService;
@@ -51,7 +51,7 @@ public class PaymentGatewayService
                     }
 
                     return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                            .isUserClientManageClient(ca, entity.getClientId())
                             .filter(BooleanUtil::safeValueOf);
                 },
 
@@ -71,7 +71,7 @@ public class PaymentGatewayService
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                        .isUserClientManageClient(ca, entity.getClientId())
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess) -> this.validatePaymentGatewayDetails(entity),

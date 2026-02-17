@@ -93,28 +93,12 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 .map(Authentication.class::cast);
     }
 
-    public Mono<Boolean> isBeingManaged(String managingClientCode, String clientCode) {
-
-        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
-                () -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
-                clientCode);
+    public Mono<Boolean> doesClientManageClient(BigInteger managingClientId, BigInteger clientId) {
+        return this.feignAuthService.doesClientManageClient(managingClientId, clientId);
     }
 
-    public Mono<Boolean> isBeingManaged(BigInteger managingClientId, BigInteger clientId) {
-
-        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED_ID,
-                () -> this.feignAuthService.isBeingManagedById(managingClientId, clientId), managingClientId, ":",
-                clientId);
-    }
-
-    public Mono<Boolean> isUserBeingManaged(Object userId, String clientCode) {
-
-        return cacheService.cacheValueOrGet(CACHE_NAME_USER_BEING_MANAGED, () -> {
-
-            BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
-
-            return this.feignAuthService.isUserBeingManaged(biUserId, clientCode);
-        }, clientCode, ":", userId);
+    public Mono<Boolean> doesClientManageClientCode(String managingClientCode, String clientCode) {
+        return this.feignAuthService.doesClientManageClientCode(managingClientCode, clientCode);
     }
 
     public Mono<Boolean> isUserPartOfHierarchy(Object userId, String clientCode) {

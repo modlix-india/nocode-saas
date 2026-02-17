@@ -36,12 +36,6 @@ public interface IFeignSecurityService {
             @RequestHeader("clientCode") String clientCode,
             @RequestHeader("appCode") String appCode);
 
-    @GetMapping("${security.feign.isBeingManaged:/api/security/clients/internal/isBeingManaged}")
-    Boolean isBeingManaged(@RequestParam String managingClientCode, @RequestParam String clientCode);
-
-    @GetMapping("${security.feign.isBeingManagedById:/api/security/clients/internal/isBeingManagedById}")
-    Boolean isBeingManagedById(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
-
     @GetMapping("${security.feign.getClientById:/api/security/clients/internal/getClientById}")
     Client getClientById(@RequestParam BigInteger clientId);
 
@@ -50,9 +44,6 @@ public interface IFeignSecurityService {
 
     @GetMapping("${security.feign.getManagedClientOfClientById:/api/security/clients/internal/managedClient}")
     Client getManagedClientOfClientById(@RequestParam BigInteger clientId);
-
-    @GetMapping("${security.feign.isUserBeingManaged:/api/security/clients/internal/isUserBeingManaged}")
-    Boolean isUserBeingManaged(@RequestParam BigInteger userId, @RequestParam String clientCode);
 
     @GetMapping("${security.feign.getClientHierarchy:/api/security/clients/internal/clientHierarchy}")
     List<BigInteger> getClientHierarchy(@RequestParam BigInteger clientId);
@@ -213,4 +204,14 @@ public interface IFeignSecurityService {
 
     @PostMapping(value = "${security.feign.getUsersForEntityProcessor:/api/security/users/internal/processor}")
     List<EntityProcessorUser> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
+
+    @GetMapping(value = "${security.feign.isUserClientManageClient:/api/security/clients/internal/isUserClientManageClient}")
+    Boolean isUserClientManageClient(String appCode, BigInteger userId, BigInteger userClientId,
+            BigInteger targetClientId);
+
+    @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
+    Boolean doesClientManageClient(BigInteger managingClientId, BigInteger clientId);
+
+    @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClientCode}")
+    Boolean doesClientManageClientCode(String managingClientCode, String clientCode);
 }

@@ -49,7 +49,7 @@ public class RoleV2Service
     private final ClientHierarchyService clientHierarchyService;
 
     public RoleV2Service(SecurityMessageResourceService securityMessageResourceService, ClientService clientService,
-                         ClientHierarchyService clientHierarchyService) {
+            ClientHierarchyService clientHierarchyService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.clientHierarchyService = clientHierarchyService;
@@ -61,24 +61,24 @@ public class RoleV2Service
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> {
-                            if (entity.getClientId() == null)
-                                return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
+                ca -> {
+                    if (entity.getClientId() == null)
+                        return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
-                            if (ca.isSystemClient())
-                                return Mono.just(entity);
+                    if (ca.isSystemClient())
+                        return Mono.just(entity);
 
-                            return this.clientService
-                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                                    .filter(BooleanUtil::safeValueOf)
-                                    .map(x -> entity);
-                        },
+                    return this.clientService
+                            .isUserClientManageClient(ca, entity.getClientId())
+                            .filter(BooleanUtil::safeValueOf)
+                            .map(x -> entity);
+                },
 
-                        (ca, managed) -> super.create(entity)
+                (ca, managed) -> super.create(entity)
 
-                )
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService
                         .getMessage(SecurityMessageResourceService.FORBIDDEN_CREATE)
@@ -143,25 +143,25 @@ public class RoleV2Service
     @Override
     public Mono<Integer> delete(ULong id) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> this.read(id),
+                ca -> this.read(id),
 
-                        (ca, existing) -> super.delete(id)
+                (ca, existing) -> super.delete(id)
 
-                )
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.create"))
                 .onErrorResume(
                         ex -> ex instanceof DataAccessException || ex instanceof R2dbcDataIntegrityViolationException
                                 ? this.securityMessageResourceService.throwMessage(
-                                msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
-                                SecurityMessageResourceService.DELETE_ROLE_ERROR)
+                                        msg -> new GenericException(HttpStatus.FORBIDDEN, msg, ex),
+                                        SecurityMessageResourceService.DELETE_ROLE_ERROR)
                                 : Mono.error(ex));
     }
 
     @Override
     public Mono<RoleV2> readObject(ULong id,
-                                   AppRegistrationObjectType type) {
+            AppRegistrationObjectType type) {
         return super.read(id);
     }
 
@@ -169,20 +169,19 @@ public class RoleV2Service
     public Mono<Boolean> hasAccessTo(ULong id, ULong clientId, AppRegistrationObjectType type) {
         return FlatMapUtil.flatMapMono(
 
-                        () -> super.read(id),
+                () -> super.read(id),
 
-                        role -> this.clientService.isBeingManagedBy(role.getClientId(), clientId)
-                                .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
-                                        : this.clientService.isBeingManagedBy(clientId, role.getClientId()))
+                role -> this.clientService.doesClientManageClient(role.getClientId(), clientId)
+                        .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true)
+                                : this.clientService.doesClientManageClient(clientId, role.getClientId()))
 
-                )
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.hasAccessTo"));
     }
 
-
     public Mono<Map<ULong, RoleV2>> getRolesForProfileService(Collection<ULong> roleIds) {
-        return this.dao.getRoles(roleIds).map(lst ->
-                lst.stream().collect(Collectors.toMap(RoleV2::getId, Function.identity())));
+        return this.dao.getRoles(roleIds)
+                .map(lst -> lst.stream().collect(Collectors.toMap(RoleV2::getId, Function.identity())));
     }
 
     public Mono<Map<String, List<String>>> getRoleAuthoritiesPerApp(ULong userId) {
@@ -195,8 +194,8 @@ public class RoleV2Service
 
                 ca -> this.clientHierarchyService.getClientHierarchy(ULong.valueOf(ca.getUser().getClientId())),
 
-                (ca, hierarchy) -> this.dao.getRolesForAssignmentInApp(appCode, hierarchy)
-        ).contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.getRolesForAssignmentInApp"));
+                (ca, hierarchy) -> this.dao.getRolesForAssignmentInApp(appCode, hierarchy))
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "RoleV2Service.getRolesForAssignmentInApp"));
     }
 
     public Mono<List<RoleV2>> fetchSubRolesAlso(List<RoleV2> list) {
@@ -204,11 +203,13 @@ public class RoleV2Service
                 .map(subRoleMap -> {
 
                     for (RoleV2 r : list) {
-                        if (!subRoleMap.containsKey(r.getId())) continue;
+                        if (!subRoleMap.containsKey(r.getId()))
+                            continue;
                         r.setSubRoles(subRoleMap.get(r.getId()));
                     }
 
-                    return Stream.concat(list.stream(), subRoleMap.values().stream().flatMap(List::stream)).collect(Collectors.toList());
+                    return Stream.concat(list.stream(), subRoleMap.values().stream().flatMap(List::stream))
+                            .collect(Collectors.toList());
                 });
     }
 }

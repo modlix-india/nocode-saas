@@ -1,5 +1,8 @@
 package com.fincity.saas.commons.core.functions.security;
 
+import java.util.List;
+import java.util.Map;
+
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.model.Event;
@@ -11,8 +14,7 @@ import com.fincity.nocode.kirun.engine.runtime.reactive.ReactiveFunctionExecutio
 import com.fincity.saas.commons.mongo.function.DefinitionFunction;
 import com.fincity.saas.commons.security.feign.IFeignSecurityService;
 import com.google.gson.JsonPrimitive;
-import java.util.List;
-import java.util.Map;
+
 import reactor.core.publisher.Mono;
 
 public class IsBeingManagedByCode extends AbstractReactiveFunction {
@@ -53,14 +55,14 @@ public class IsBeingManagedByCode extends AbstractReactiveFunction {
     @Override
     protected Mono<FunctionOutput> internalExecute(ReactiveFunctionExecutionParameters context) {
         String clientCode = context.getArguments().get(CLIENT_CODE).getAsString();
-        String managingClientCode =
-                context.getArguments().get(MANAGING_CLIENT_CODE).getAsString();
+        String managingClientCode = context.getArguments().get(MANAGING_CLIENT_CODE).getAsString();
 
         return Mono.deferContextual(cv -> {
-            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY))) return Mono.empty();
+            if (!"true".equals(cv.get(DefinitionFunction.CONTEXT_KEY)))
+                return Mono.empty();
 
             return this.securityService
-                    .isBeingManaged(managingClientCode, clientCode)
+                    .doesClientManageClientCode(managingClientCode, clientCode)
                     .map(c -> new FunctionOutput(
                             List.of(EventResult.outputOf(Map.of(EVENT_DATA_RESULT, new JsonPrimitive(c))))));
         });

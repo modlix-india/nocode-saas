@@ -1,5 +1,7 @@
 package com.fincity.security.service;
 
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
+
 import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -61,7 +63,6 @@ import com.fincity.security.dto.UserClient;
 import com.fincity.security.enums.otp.OtpPurpose;
 import com.fincity.security.jooq.enums.SecurityClientStatusCode;
 import com.fincity.security.jooq.enums.SecuritySoxLogActionName;
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
 import com.fincity.security.jooq.enums.SecuritySoxLogObjectName;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
 import com.fincity.security.jooq.tables.records.SecurityUserRecord;
@@ -173,7 +174,8 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
     }
 
     private Mono<Boolean> canAccessClientForUserOperation(ULong clientId) {
-        return this.clientManagerService.isUserOwnerOrManagerForClient(clientId);
+        return SecurityContextUtil.getUsersContextAuthentication()
+                .flatMap(ca -> this.clientService.isUserClientManageClient(ca, clientId));
     }
 
     public Mono<Tuple3<Client, Client, User>> findNonDeletedUserNClient(
@@ -690,8 +692,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, user) -> ca.isSystemClient()
                         ? Mono.just(true)
                         : clientService
-                                .isBeingManagedBy(
-                                        ULong.valueOf(ca.getUser().getClientId()), user.getClientId())
+                                .isUserClientManageClient(ca, user.getClientId())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
                 (ca, user, isManaged) -> this.dao
                         .removeRoleForUser(userId, roleId)
@@ -722,10 +723,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                     (ca, user) -> ca.isSystemClient()
                             ? Mono.just(true)
                             : clientService
-                                    .isBeingManagedBy(
-                                            ULongUtil.valueOf(
-                                                    ca.getUser().getClientId()),
-                                            user.getClientId())
+                                    .isUserClientManageClient(ca, user.getClientId())
                                     .flatMap(BooleanUtil::safeValueOfWithEmpty),
                     (ca, user, sysOrManaged) -> this.profileService
                             .hasAccessToRoles(user.getClientId(), Set.of(roleId))
@@ -753,7 +751,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> this.dao.readById(userId),
                 (ca, user) -> clientService
-                        .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+                        .isUserClientManageClient(ca, user.getClientId())
                         .filter(BooleanUtil::safeValueOf),
                 (ca, user, sysManaged) -> profileService
                         .hasAccessToProfiles(user.getClientId(), Set.of(profileId))
@@ -774,13 +772,14 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 SecurityContextUtil::getUsersContextAuthentication,
                 ca -> this.dao.readById(userId),
                 (ca, user) -> clientService
-                        .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+                        .isUserClientManageClient(ca, user.getClientId())
                         .filter(BooleanUtil::safeValueOf),
                 (ca, user, sysManaged) -> this.dao.removeProfileForUser(userId, profileId).map(e -> e != 0),
                 (ca, user, sysManaged, profileRemoved) -> this.evictCache(userId, user.getClientId())
                         .<Boolean>map(evicted -> profileRemoved))
                 .contextWrite(Context.of(
-                        LogUtil.METHOD_NAME, "UserService.assignProfileToUser : [ " + userId + ", " + profileId + "]"))
+                        LogUtil.METHOD_NAME,
+                        "UserService.removeProfileFromUser : [ " + userId + ", " + profileId + "]"))
                 .switchIfEmpty(
                         this.forbiddenError(SecurityMessageResourceService.PROFILE_FORBIDDEN, profileId, userId));
     }
@@ -843,7 +842,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
         return Mono.zip(
                 SecurityContextUtil.hasAuthority("Authorities.User_UPDATE"),
-                this.clientService.isBeingManagedBy(loggedInUserClientId, user.getClientId()),
+                this.clientService.isUserClientManageClient(ca, user.getClientId()),
                 (hasAuthority, isManaged) -> hasAuthority && isManaged)
                 .flatMap(BooleanUtil::safeValueOfWithEmpty)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.checkHierarchy"))
@@ -1265,8 +1264,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 ULongUtil.valueOf(ca.getUser().getId())),
                 (ca, user) -> ca.isSystemClient()
                         ? Mono.just(Boolean.TRUE)
-                        : this.clientService.isBeingManagedBy(
-                                ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        : this.clientService.isUserClientManageClient(ca, user.getClientId()),
                 (ca, user, managed) -> {
                     if (Boolean.FALSE.equals(managed))
                         return Mono.empty();
@@ -1293,8 +1291,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                                 ULongUtil.valueOf(ca.getUser().getId())),
                 (ca, user) -> ca.isSystemClient()
                         ? Mono.just(Boolean.TRUE)
-                        : this.clientService.isBeingManagedBy(
-                                ULongUtil.valueOf(ca.getLoggedInFromClientId()), user.getClientId()),
+                        : this.clientService.isUserClientManageClient(ca, user.getClientId()),
                 (ca, user, managed) -> {
                     if (Boolean.FALSE.equals(managed))
                         return Mono.empty();
@@ -1321,8 +1318,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                         ? Mono.just(Boolean.TRUE)
                         : this.dao
                                 .readById(id)
-                                .flatMap(e -> this.clientService.isBeingManagedBy(
-                                        ULong.valueOf(ca.getLoggedInFromClientId()), e.getClientId())),
+                                .flatMap(e -> this.clientService.isUserClientManageClient(ca, e.getClientId())),
                 (ca, id, sysOrManaged) -> Boolean.FALSE.equals(sysOrManaged) ? Mono.empty()
                         : this.unlockUserInternal(id))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "UserService.unblockUser"))
@@ -1414,8 +1410,7 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
                 (ca, user) -> ca.isSystemClient()
                         ? Mono.just(Boolean.TRUE)
                         : clientService
-                                .isBeingManagedBy(
-                                        ULongUtil.valueOf(ca.getUser().getClientId()), user.getClientId())
+                                .isUserClientManageClient(ca, user.getClientId())
                                 .flatMap(BooleanUtil::safeValueOfWithEmpty),
                 (ca, user, sysOrManaged) -> this.designationService
                         .canAssignDesignation(user.getClientId(), designationId)

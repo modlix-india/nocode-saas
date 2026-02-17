@@ -113,7 +113,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                             if (ca.isSystemClient())
                                 return Mono.just(true);
 
-                            return this.securityService.isBeingManaged(ca.getUser().getClientId(), targetId);
+                            return this.securityService.doesClientManageClient(ca.getUser().getClientId(), targetId);
                         }
                         case CLIENT_CODE -> {
                             if ((targetCode == null || targetCode.isEmpty()) && !ca.isSystemClient())
@@ -122,7 +122,7 @@ public class NotificationService extends AbstractOverridableDataService<Notifica
                             if (ca.isSystemClient())
                                 return Mono.just(true);
 
-                            return this.securityService.isBeingManaged(ca.getClientCode(), targetCode);
+                            return this.securityService.doesClientManageClientCode(ca.getClientCode(), targetCode);
                         }
 
                         default -> {

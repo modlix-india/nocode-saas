@@ -51,7 +51,7 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
     private AppService appService;
 
     protected AbstractPolicyService(SecurityMessageResourceService securityMessageResourceService,
-                                    CacheService cacheService) {
+            CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.cacheService = cacheService;
     }
@@ -92,19 +92,19 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> this.updateClientIdAndAppId(ca, entity),
+                ca -> this.updateClientIdAndAppId(ca, entity),
 
-                        (ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, uEntity, canCreate) -> super.create(uEntity),
+                (ca, uEntity, canCreate) -> super.create(uEntity),
 
-                        (ca, uEntity, canCreate, created) -> cacheService.evict(getPolicyCacheName(),
-                                getCacheKeys(created.getClientId(), created.getAppId())),
+                (ca, uEntity, canCreate, created) -> cacheService.evict(getPolicyCacheName(),
+                        getCacheKeys(created.getClientId(), created.getAppId())),
 
-                        (ca, uEntity, canCreate, created, evicted) -> Mono.just(created))
+                (ca, uEntity, canCreate, created, evicted) -> Mono.just(created))
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -157,19 +157,19 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> key != null ? this.read(key)
-                                : this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
+                ca -> key != null ? this.read(key)
+                        : this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
 
-                        (ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, entity, canUpdate) -> this.dao.canBeUpdated(key).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, entity, canUpdate) -> this.dao.canBeUpdated(key).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, entity, canUpdate, canEntityUpdate) -> super.update(key, fields),
+                (ca, entity, canUpdate, canEntityUpdate) -> super.update(key, fields),
 
-                        (ca, entity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-                                getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated))
+                (ca, entity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+                        getCacheKeys(updated.getClientId(), updated.getAppId())).<D>map(evicted -> updated))
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -181,20 +181,20 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> this.dao.readById(entity.getId()),
+                ca -> this.dao.readById(entity.getId()),
 
-                        (ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, uEntity) -> this.canUpdatePolicy(ca, uEntity.getAppId())
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, uEntity, canUpdate) -> this.dao.canBeUpdated(uEntity.getId())
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, uEntity, canUpdate) -> this.dao.canBeUpdated(uEntity.getId())
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, uEntity, canUpdate, canEntityUpdate) -> super.update(entity),
+                (ca, uEntity, canUpdate, canEntityUpdate) -> super.update(entity),
 
-                        (ca, uEntity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
-                                getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated))
+                (ca, uEntity, canUpdate, canEntityUpdate, updated) -> cacheService.evict(getPolicyCacheName(),
+                        getCacheKeys(uEntity.getClientId(), uEntity.getAppId())).<D>map(evicted -> updated))
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -206,20 +206,20 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> id != null ? this.read(id)
-                                : this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
+                ca -> id != null ? this.read(id)
+                        : this.getClientAppPolicy(ca.getLoggedInFromClientCode(), ca.getUrlAppCode()),
 
-                        (ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, entity) -> this.canUpdatePolicy(ca, entity.getAppId()).flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, entity, canDelete) -> this.dao.canBeUpdated(entity.getId())
-                                .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (ca, entity, canDelete) -> this.dao.canBeUpdated(entity.getId())
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
 
-                        (ca, entity, canDelete, canEntityDelete) -> super.delete(id),
+                (ca, entity, canDelete, canEntityDelete) -> super.delete(id),
 
-                        (ca, entity, canDelete, canEntityDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
-                                getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted))
+                (ca, entity, canDelete, canEntityDelete, deleted) -> cacheService.evict(getPolicyCacheName(),
+                        getCacheKeys(entity.getClientId(), entity.getAppId())).<Integer>map(evicted -> deleted))
                 .switchIfEmpty(securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
                         SecurityMessageResourceService.FORBIDDEN_CREATE, getPolicyName()));
@@ -231,15 +231,15 @@ public abstract class AbstractPolicyService<R extends UpdatableRecord<R>, D exte
 
         return FlatMapUtil.flatMapMono(
 
-                        () -> this.appService.getAppById(appId),
+                () -> this.appService.getAppById(appId),
 
-                        app -> FlatMapUtil.flatMapMonoConsolidate(
-                                () -> this.clientService.isBeingManagedBy(loggedInClientId, app.getClientId()),
-                                isManaged -> this.appService.hasWriteAccess(appId, loggedInClientId),
-                                (isManaged, hasEditAccess) -> Mono.just(ca.isSystemClient())),
+                app -> FlatMapUtil.flatMapMonoConsolidate(
+                        () -> this.clientService.isUserClientManageClient(ca, app.getClientId()),
+                        isManaged -> this.appService.hasWriteAccess(appId, loggedInClientId),
+                        (isManaged, hasEditAccess) -> Mono.just(ca.isSystemClient())),
 
-                        (app, managedOrEdit) -> Mono
-                                .just(managedOrEdit.getT1() || managedOrEdit.getT2() || managedOrEdit.getT3()))
+                (app, managedOrEdit) -> Mono
+                        .just(managedOrEdit.getT1() || managedOrEdit.getT2() || managedOrEdit.getT3()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "AbstractPolicyService.canUpdatePolicy"))
                 .switchIfEmpty(Mono.just(Boolean.FALSE));
     }

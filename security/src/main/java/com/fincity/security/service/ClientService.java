@@ -28,6 +28,7 @@ import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.jwt.ContextUser;
 import com.fincity.saas.commons.security.model.ClientUrlPattern;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
@@ -97,6 +98,10 @@ public class ClientService
     private ClientPinPolicyService clientPinPolicyService;
     @Autowired
     private ClientOtpPolicyService clientOtpPolicyService;
+    @Autowired
+    @Lazy
+    private ClientManagerService clientManagerService;
+
     @Value("${security.subdomain.endings}")
     private String[] subDomainURLEndings;
 
@@ -144,25 +149,81 @@ public class ClientService
         return this.dao.getClientsBy(ids);
     }
 
-    public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId) {
-        return this.clientHierarchyService.isBeingManagedBy(managingClientId, clientId);
+    public Mono<Boolean> isUserClientManageClient(ContextAuthentication ca, ULong targetClientId) {
+
+        ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
+
+                isManaged -> Boolean.TRUE.equals(isManaged)
+                        ? this.clientManagerService.isUserClientManager(ca, targetClientId)
+                        : Mono.just(Boolean.FALSE))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Boolean> isBeingManagedBy(String managingClientCode, String clientCode) {
-        return this.clientHierarchyService.isBeingManagedBy(managingClientCode, clientCode);
+    public Mono<Boolean> isUserClientManageClient(ContextAuthentication ca, String targetClientCode) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.getClientBy(targetClientCode),
+
+                targetClient -> this.isUserClientManageClient(ca, targetClient.getId()))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong userId) {
-        return this.clientHierarchyService.isUserBeingManaged(managingClientCode, userId);
+    public Mono<Boolean> isUserClientManageClient(String appCode, ULong userId, ULong userClientId,
+            ULong targetClientId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
+
+                isManaged -> Boolean.TRUE.equals(isManaged)
+                        ? this.clientManagerService.isUserClientManager(appCode, userId, userClientId, targetClientId)
+                        : Mono.just(Boolean.FALSE))
+                .switchIfEmpty(Mono.just(Boolean.FALSE));
     }
 
-    public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
-        return this.userService.readInternal(userId).map(User::getClientId).flatMap(this::readInternal)
-                .map(Client::getCode)
-                .flatMap(uClientCode -> Mono.zip(this.clientHierarchyService.isBeingManagedBy(uClientCode, clientCode),
-                        this.clientHierarchyService.isBeingManagedBy(clientCode, uClientCode)))
-                .map(tup -> tup.getT1() || tup.getT2());
+    public Mono<Boolean> doesClientManageClient(ULong managingClientId, ULong clientId) {
+        return this.clientHierarchyService.isClientBeingManagedBy(managingClientId, clientId);
     }
+
+    // public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId)
+    // {
+    // return this.clientHierarchyService.isBeingManagedBy(managingClientId,
+    // clientId);
+    // }
+
+    // public Mono<Boolean> isBeingManagedBy(ULong managingClientId, ULong clientId)
+    // {
+    // return this.clientHierarchyService.isBeingManagedBy(managingClientId,
+    // clientId);
+    // }
+
+    // public Mono<Boolean> isBeingManagedBy(String managingClientCode, String
+    // clientCode) {
+    // return this.clientHierarchyService.isBeingManagedBy(managingClientCode,
+    // clientCode);
+    // }
+
+    // public Mono<Boolean> isUserBeingManaged(String managingClientCode, ULong
+    // userId) {
+    // return this.clientHierarchyService.isUserBeingManaged(managingClientCode,
+    // userId);
+    // }
+
+    // public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
+    // return
+    // this.userService.readInternal(userId).map(User::getClientId).flatMap(this::readInternal)
+    // .map(Client::getCode)
+    // .flatMap(uClientCode ->
+    // Mono.zip(this.clientHierarchyService.isBeingManagedBy(uClientCode,
+    // clientCode),
+    // this.clientHierarchyService.isBeingManagedBy(clientCode, uClientCode)))
+    // .map(tup -> tup.getT1() || tup.getT2());
+    // }
 
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
         return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
@@ -375,7 +436,7 @@ public class ClientService
                         .getClientId()))),
 
                 (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), id),
+                        : this.isUserClientManageClient(ca, id),
 
                 (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged)
                         ? this.dao.makeClientActiveIfInActive(clientId)
@@ -399,8 +460,7 @@ public class ClientService
                         .getClientId()))),
 
                 (ca, id) -> ca.isSystemClient() ? Mono.just(Boolean.TRUE)
-                        : this.isBeingManagedBy(ULong.valueOf(ca.getUser()
-                                .getClientId()), id),
+                        : this.isUserClientManageClient(ca, id),
 
                 (ca, id, sysOrManaged) -> Boolean.TRUE.equals(sysOrManaged) ? this.dao.makeClientInActive(clientId)
                         : Mono.empty())

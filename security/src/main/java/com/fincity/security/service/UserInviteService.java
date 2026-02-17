@@ -1,7 +1,7 @@
 package com.fincity.security.service;
 
-import static com.fincity.saas.commons.util.StringUtil.safeIsBlank;
-import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.CREATE;
+import static com.fincity.saas.commons.util.StringUtil.*;
+import static com.fincity.security.jooq.enums.SecuritySoxLogActionName.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,8 +51,8 @@ public class UserInviteService
     private final ProfileService profileService;
 
     public UserInviteService(SecurityMessageResourceService msgService, ClientService clientService,
-                             AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
-                             ProfileService profileService) {
+            AuthenticationService authenticationService, UserDAO userDao, SoxLogService soxLogService,
+            ProfileService profileService) {
 
         this.msgService = msgService;
         this.clientService = clientService;
@@ -75,8 +75,7 @@ public class UserInviteService
                     }
 
                     return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId())
+                            .isUserClientManageClient(ca, entity.getClientId())
                             .filter(BooleanUtil::safeValueOf)
                             .map(x -> entity);
                 },

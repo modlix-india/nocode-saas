@@ -87,8 +87,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     }
 
                     return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId())
+                            .isUserClientManageClient(ca, entity.getClientId())
                             .filter(BooleanUtil::safeValueOf);
                 },
 
@@ -209,7 +208,8 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                     existing.setStatus(entity.getStatus());
                     existing.setFeatures(entity.getFeatures());
                     existing.setAppId(entity.getAppId());
-                    // DO NOT copy cycles/limits here - they are handled separately in update() method
+                    // DO NOT copy cycles/limits here - they are handled separately in update()
+                    // method
                     existing.setPlanCode(entity.getPlanCode());
                     existing.setFallBackPlanId(entity.getFallBackPlanId());
                     existing.setForRegistration(entity.isForRegistration());
@@ -232,8 +232,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                 ca -> this.read(id),
 
                 (ca, existing) -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                existing.getClientId())
+                        .isUserClientManageClient(ca, existing.getClientId())
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, existing, hasAccess) -> this.dao.delete(id),
@@ -313,7 +312,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .isUserClientManageClient(ca, clientId)
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess) -> this.dao.findConflictPlans(clientId, urlClientCode, planId)
@@ -355,7 +354,7 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .isUserClientManageClient(ca, clientId)
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess) -> this.dao.removeClientFromPlan(clientId, planId))

@@ -1,10 +1,5 @@
 package com.fincity.security.service;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -12,14 +7,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQDataService;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
+import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.LogUtil;
@@ -43,17 +37,21 @@ public class ClientManagerService
     private final CacheService cacheService;
     private final ClientService clientService;
     private final UserService userService;
+    private final ClientHierarchyService clientHierarchyService;
 
     public ClientManagerService(
             SecurityMessageResourceService messageResourceService,
             CacheService cacheService,
-            ClientService clientService, @Lazy UserService userService) {
+            ClientService clientService, @Lazy UserService userService, ClientHierarchyService clientHierarchyService) {
         this.messageResourceService = messageResourceService;
         this.cacheService = cacheService;
         this.clientService = clientService;
         this.userService = userService;
+        this.clientHierarchyService = clientHierarchyService;
     }
 
+    // This method is used to check if context user has access to make a user client
+    // manager.
     private Mono<Boolean> checkAccess(ULong targetUserClientId) {
 
         return SecurityContextUtil.getUsersContextAuthentication()
@@ -68,18 +66,8 @@ public class ClientManagerService
                         return Mono.just(
                                 SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
 
-                    return this.clientService.isBeingManagedBy(contextUserClientId, targetUserClientId);
+                    return this.clientHierarchyService.isClientBeingManagedBy(contextUserClientId, targetUserClientId);
                 });
-    }
-
-    private static Collection<? extends GrantedAuthority> toGrantedAuthorities(List<String> authorities) {
-
-        if (authorities == null || authorities.isEmpty())
-            return Set.of();
-
-        return authorities.stream()
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toSet());
     }
 
     private Mono<Boolean> evictCacheForUserAndClient(ULong userId, ULong clientId) {
@@ -180,41 +168,65 @@ public class ClientManagerService
                         SecurityMessageResourceService.FORBIDDEN_PERMISSION, "Client Manager DELETE"));
     }
 
-    public Mono<Boolean> isUserOwnerOrManagerForClient(ULong clientId) {
+    // public Mono<Boolean> isUserOwnerOrManagerForClient(ULong clientId) {
 
-        return SecurityContextUtil.getUsersContextAuthentication()
-                .flatMap(ca -> {
+    // return SecurityContextUtil.getUsersContextAuthentication()
+    // .flatMap(ca -> {
 
-                    ULong userId = ULongUtil.valueOf(ca.getUser().getId());
-                    ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+    // ULong userId = ULongUtil.valueOf(ca.getUser().getId());
+    // ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
-                    if (userClientId.equals(clientId))
-                        return Mono.just(
-                                SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+    // if (userClientId.equals(clientId))
+    // return Mono.just(
+    // SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
 
-                    return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
-                            () -> this.dao.isManagerForClient(userId, clientId),
-                            userId, clientId);
-                });
+    // return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+    // () -> this.dao.isManagerForClient(userId, clientId),
+    // userId, clientId);
+    // });
+    // }
+
+    // public Mono<Boolean> isUserClientManager(ULong userId, ULong clientId) {
+
+    // return this.userService.readInternal(userId)
+    // .flatMap(user -> {
+
+    // if (user.getClientId().equals(clientId)) {
+
+    // return SecurityContextUtil.getUsersContextAuthentication()
+    // .flatMap(ca -> this.userService.getUserAuthorities(
+    // ca.getUrlAppCode(), user.getClientId(), userId))
+    // .map(auths -> SecurityContextUtil.hasAuthority(
+    // OWNER_ROLE, toGrantedAuthorities(auths)));
+    // }
+
+    // return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+    // () -> this.dao.isManagerForClient(userId, clientId),
+    // userId, clientId);
+    // });
+    // }
+
+    public Mono<Boolean> isUserClientManager(ContextAuthentication ca, ULong targetClientId) {
+
+        ULong userId = ULongUtil.valueOf(ca.getUser().getId());
+        ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
+
+        if (userClientId.equals(targetClientId))
+            return Mono.just(SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+                () -> this.dao.isManagerForClient(userId, targetClientId),
+                userId, targetClientId);
     }
 
-    public Mono<Boolean> hasUserAccessToClient(ULong userId, ULong clientId) {
+    public Mono<Boolean> isUserClientManager(String appCode, ULong userId, ULong userClientId, ULong targetClientId) {
 
-        return this.userService.readInternal(userId)
-                .flatMap(user -> {
+        if (userClientId.equals(targetClientId))
+            return this.userService.getUserAuthorities(appCode, userClientId, userId)
+                    .map(list -> SecurityContextUtil.hasAuthority(OWNER_ROLE, list));
 
-                    if (user.getClientId().equals(clientId)) {
-
-                        return SecurityContextUtil.getUsersContextAuthentication()
-                                .flatMap(ca -> this.userService.getUserAuthorities(
-                                        ca.getUrlAppCode(), user.getClientId(), userId))
-                                .map(auths -> SecurityContextUtil.hasAuthority(
-                                        OWNER_ROLE, toGrantedAuthorities(auths)));
-                    }
-
-                    return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
-                            () -> this.dao.isManagerForClient(userId, clientId),
-                            userId, clientId);
-                });
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
+                () -> this.dao.isManagerForClient(userId, targetClientId),
+                userId, targetClientId);
     }
 }
