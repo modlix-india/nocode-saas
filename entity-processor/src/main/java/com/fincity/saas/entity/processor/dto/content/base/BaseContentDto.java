@@ -1,6 +1,6 @@
 package com.fincity.saas.entity.processor.dto.content.base;
 
-import com.fincity.saas.entity.processor.dto.base.BaseUpdatableDto;
+import com.fincity.saas.entity.processor.dto.base.BaseProcessorDto;
 import com.fincity.saas.entity.processor.eager.relations.resolvers.field.UserFieldResolver;
 import com.fincity.saas.entity.processor.enums.EntitySeries;
 import com.fincity.saas.entity.processor.enums.content.ContentEntitySeries;
@@ -18,7 +18,7 @@ import org.springframework.data.annotation.Version;
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @FieldNameConstants
-public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUpdatableDto<T> {
+public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseProcessorDto<T> {
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;
@@ -32,7 +32,6 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
     private ULong ownerId;
     private ULong ticketId;
     private ULong userId;
-    private ULong clientId;
 
     protected BaseContentDto() {
         super();
@@ -50,7 +49,6 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
         this.ownerId = baseContentDto.ownerId;
         this.ticketId = baseContentDto.ticketId;
         this.userId = baseContentDto.userId;
-        this.clientId = baseContentDto.clientId;
     }
 
     public T setOwnerId(ULong ownerId) {
@@ -68,3 +66,4 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BaseUp
         return (T) this;
     }
 }
+
