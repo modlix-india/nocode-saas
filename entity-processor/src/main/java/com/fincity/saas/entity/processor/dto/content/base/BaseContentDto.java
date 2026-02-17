@@ -11,7 +11,6 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.experimental.FieldNameConstants;
 import org.jooq.types.ULong;
-import org.springframework.data.annotation.Version;
 
 @Data
 @Accessors(chain = true)
@@ -22,9 +21,6 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BasePr
 
     @Serial
     private static final long serialVersionUID = 5174424228629814984L;
-
-    @Version
-    private int version = 1;
 
     private String content;
     private Boolean hasAttachment;
@@ -42,7 +38,6 @@ public abstract class BaseContentDto<T extends BaseContentDto<T>> extends BasePr
 
     protected BaseContentDto(BaseContentDto<T> baseContentDto) {
         super(baseContentDto);
-        this.version = baseContentDto.version;
         this.content = baseContentDto.content;
         this.hasAttachment = baseContentDto.hasAttachment;
         this.contentEntitySeries = baseContentDto.contentEntitySeries;
