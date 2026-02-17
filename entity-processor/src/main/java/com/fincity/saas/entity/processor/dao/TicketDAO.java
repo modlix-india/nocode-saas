@@ -158,9 +158,11 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     public List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
         List<Field<?>> list = super.getMainTableBaseFields(tableFields, queryParams);
 
+        Field<LocalDateTime> latestTaskDueDate = this.getLatestTaskDueDateField();
+
         if (tableFields == null || tableFields.isEmpty()) {
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
-            list.add(DSL.field(DSL.name("latest_task", "LATEST_TASK_DUE_DATE"), LocalDateTime.class));
+            list.add(latestTaskDueDate);
             return list;
         }
 
@@ -168,7 +170,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
 
         if (tableFields.contains(Ticket.Fields.latestTaskDueDate))
-            list.add(DSL.field(DSL.name("latest_task", "LATEST_TASK_DUE_DATE"), LocalDateTime.class));
+            list.add(latestTaskDueDate);
 
         return list;
     }
@@ -177,12 +179,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     public SelectJoinStep<Record> applyBaseTableJoins(
             SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
 
-        Table<?> taskTable = this.getLatestTaskTable();
-
         return query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
-                .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))
-                .leftJoin(taskTable)
-                .on(this.idField.eq(taskTable.field(ENTITY_PROCESSOR_TASKS.TICKET_ID)));
+                .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
     }
 
     @Override
@@ -277,18 +275,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @Override
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
 
-        Table<?> taskTable = this.getLatestTaskTable();
-
         return Mono.just(Tuples.of(
                 dslContext
                         .select(Arrays.asList(table.fields()))
                         .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID)
-                        .select(taskTable.field("latestTaskDueDate", LocalDateTime.class))
+                        .select(this.getLatestTaskDueDateField())
                         .from(table)
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
-                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID))
-                        .leftJoin(taskTable)
-                        .on(this.idField.eq(taskTable.field(ENTITY_PROCESSOR_TASKS.TICKET_ID))),
+                        .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
                 dslContext
                         .select(DSL.count())
                         .from(table)
@@ -311,17 +305,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                 .switchIfEmpty(super.processorAccessCondition(condition, access));
     }
 
-    private Table<?> getLatestTaskTable() {
-        String taskAlias = "latest_task";
-
-        return dslContext
-                .select(
-                        ENTITY_PROCESSOR_TASKS.TICKET_ID,
-                        DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE).as("LATEST_TASK_DUE_DATE"))
+    private Field<LocalDateTime> getLatestTaskDueDateField() {
+        return dslContext.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
                 .from(ENTITY_PROCESSOR_TASKS)
-                .where(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
-                .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(false))
-                .groupBy(ENTITY_PROCESSOR_TASKS.TICKET_ID)
-                .asTable(taskAlias);
+                .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                .and(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
+                .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
+                .asField("LATEST_TASK_DUE_DATE");
     }
 }
