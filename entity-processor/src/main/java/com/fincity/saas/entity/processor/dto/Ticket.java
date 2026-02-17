@@ -14,6 +14,7 @@ import com.fincity.saas.entity.processor.model.request.ticket.TicketRequest;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.fincity.saas.entity.processor.util.PhoneUtil;
 import java.io.Serial;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
@@ -50,6 +51,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private Map<String, Object> metaData;
 
     private ULong productTemplateId = null;
+    private LocalDateTime latestTaskDueDate;
 
     public Ticket() {
         super();
@@ -79,6 +81,7 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.tag = ticket.tag;
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
         this.productTemplateId = ticket.productTemplateId;
+        this.latestTaskDueDate = ticket.latestTaskDueDate;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {

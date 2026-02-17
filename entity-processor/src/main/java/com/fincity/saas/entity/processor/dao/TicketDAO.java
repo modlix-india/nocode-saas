@@ -1,6 +1,7 @@
 package com.fincity.saas.entity.processor.dao;
 
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
+import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTasks.ENTITY_PROCESSOR_TASKS;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
@@ -17,6 +18,7 @@ import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.model.common.ProcessorAccess;
 import com.fincity.saas.entity.processor.service.product.ProductTicketRuRuleService;
 import com.fincity.saas.entity.processor.service.rule.TicketPeDuplicationRuleService;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -156,13 +158,19 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     public List<Field<?>> getMainTableBaseFields(List<String> tableFields, MultiValueMap<String, String> queryParams) {
         List<Field<?>> list = super.getMainTableBaseFields(tableFields, queryParams);
 
+        Field<LocalDateTime> latestTaskDueDate = this.getLatestTaskDueDateField();
+
         if (tableFields == null || tableFields.isEmpty()) {
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
+            list.add(latestTaskDueDate);
             return list;
         }
 
         if (tableFields.contains(Ticket.Fields.productTemplateId))
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
+
+        if (tableFields.contains(Ticket.Fields.latestTaskDueDate))
+            list.add(latestTaskDueDate);
 
         return list;
     }
@@ -170,6 +178,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     @Override
     public SelectJoinStep<Record> applyBaseTableJoins(
             SelectJoinStep<Record> query, MultiValueMap<String, String> queryParams) {
+
         return query.join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                 .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID));
     }
@@ -265,10 +274,12 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
 
     @Override
     protected Mono<Tuple2<SelectJoinStep<Record>, SelectJoinStep<Record1<Integer>>>> getSelectJointStep() {
+
         return Mono.just(Tuples.of(
                 dslContext
                         .select(Arrays.asList(table.fields()))
                         .select(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID)
+                        .select(this.getLatestTaskDueDateField())
                         .from(table)
                         .join(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS)
                         .on(this.productIdField.eq(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.ID)),
@@ -292,5 +303,14 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
                                 ? Mono.just(baseCondition)
                                 : Mono.just(ComplexCondition.or(baseCondition, readCondition)))
                 .switchIfEmpty(super.processorAccessCondition(condition, access));
+    }
+
+    private Field<LocalDateTime> getLatestTaskDueDateField() {
+        return dslContext.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+                .from(ENTITY_PROCESSOR_TASKS)
+                .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
+                .and(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))
+                .and(ENTITY_PROCESSOR_TASKS.IS_COMPLETED.eq(DSL.inline(false)))
+                .asField("LATEST_TASK_DUE_DATE");
     }
 }
