@@ -30,7 +30,7 @@ jobs:
           cache: 'maven'
 
       - working-directory: eureka
-        run: mvn -q -DskipTests clean package
+        run: mvn -q clean package
 
       - run: |
           mkdir -p target

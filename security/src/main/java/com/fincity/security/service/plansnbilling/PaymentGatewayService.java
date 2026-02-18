@@ -51,7 +51,7 @@ public class PaymentGatewayService
                     }
 
                     return this.clientService
-                            .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                            .isUserClientManageClient(ca, entity.getClientId())
                             .filter(BooleanUtil::safeValueOf);
                 },
 
@@ -71,7 +71,7 @@ public class PaymentGatewayService
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
+                        .isUserClientManageClient(ca, entity.getClientId())
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess) -> this.validatePaymentGatewayDetails(entity),

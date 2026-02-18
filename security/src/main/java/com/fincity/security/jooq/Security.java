@@ -22,6 +22,7 @@ import com.fincity.security.jooq.tables.SecurityAppRegUserRoleV2;
 import com.fincity.security.jooq.tables.SecurityClient;
 import com.fincity.security.jooq.tables.SecurityClientAddress;
 import com.fincity.security.jooq.tables.SecurityClientHierarchy;
+import com.fincity.security.jooq.tables.SecurityClientManager;
 import com.fincity.security.jooq.tables.SecurityClientOtpPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPasswordPolicy;
 import com.fincity.security.jooq.tables.SecurityClientPinPolicy;
@@ -171,6 +172,11 @@ public class Security extends SchemaImpl {
      * The table <code>security.security_client_hierarchy</code>.
      */
     public final SecurityClientHierarchy SECURITY_CLIENT_HIERARCHY = SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY;
+
+    /**
+     * The table <code>security.security_client_manager</code>.
+     */
+    public final SecurityClientManager SECURITY_CLIENT_MANAGER = SecurityClientManager.SECURITY_CLIENT_MANAGER;
 
     /**
      * The table <code>security.security_client_otp_policy</code>.
@@ -391,6 +397,7 @@ public class Security extends SchemaImpl {
             SecurityClient.SECURITY_CLIENT,
             SecurityClientAddress.SECURITY_CLIENT_ADDRESS,
             SecurityClientHierarchy.SECURITY_CLIENT_HIERARCHY,
+            SecurityClientManager.SECURITY_CLIENT_MANAGER,
             SecurityClientOtpPolicy.SECURITY_CLIENT_OTP_POLICY,
             SecurityClientPasswordPolicy.SECURITY_CLIENT_PASSWORD_POLICY,
             SecurityClientPinPolicy.SECURITY_CLIENT_PIN_POLICY,

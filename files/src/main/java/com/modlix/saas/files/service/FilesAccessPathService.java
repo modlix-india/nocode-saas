@@ -1,5 +1,6 @@
 package com.modlix.saas.files.service;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import org.jooq.types.ULong;
@@ -200,7 +201,10 @@ public class FilesAccessPathService
         boolean systemOrLoggedIn = ca.isSystemClient()
                 || ca.getLoggedInFromClientId().equals(ca.getUser().getClientId());
 
-        boolean managed = systemOrLoggedIn || securityService.isUserBeingManaged(ca.getUser().getId(), clientCode);
+        BigInteger clientId = this.securityService.getClientIdByCode(clientCode);
+
+        boolean managed = systemOrLoggedIn || securityService.isUserClientManageClient(ca.getUrlAppCode(),
+                ca.getUser().getId(), ca.getUser().getClientId(), clientId);
 
         if (!managed || !SecurityContextUtil.hasAuthority(this.getAuthority(resourceType),
                 ca.getAuthorities())) {
@@ -231,8 +235,11 @@ public class FilesAccessPathService
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
+        BigInteger clientId = this.securityService.getClientIdByCode(clientCode);
+
         boolean managed = ca.isSystemClient()
-                || securityService.isBeingManaged(ca.getClientCode(), clientCode);
+                || securityService.isUserClientManageClient(ca.getUrlAppCode(),
+                        ca.getUser().getId(), ca.getUser().getClientId(), clientId);
 
         if (!managed)
             return false;
@@ -251,8 +258,11 @@ public class FilesAccessPathService
 
         ContextAuthentication ca = SecurityContextUtil.getUsersContextAuthentication();
 
+        BigInteger clientId = this.securityService.getClientIdByCode(clientCode);
+
         boolean managed = ca.isSystemClient() ? this.securityService.isValidClientCode(clientCode)
-                : this.securityService.isBeingManaged(ca.getClientCode(), clientCode);
+                : securityService.isUserClientManageClient(ca.getUrlAppCode(),
+                        ca.getUser().getId(), ca.getUser().getClientId(), clientId);
 
         if (!managed)
             return false;
@@ -299,6 +309,6 @@ public class FilesAccessPathService
         if (StringUtil.safeEquals(managingClientCode, clientCode))
             return true;
 
-        return this.securityService.isBeingManaged(managingClientCode, clientCode);
+        return this.securityService.doesClientManageClientCode(managingClientCode, clientCode);
     }
 }

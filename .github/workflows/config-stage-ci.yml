@@ -32,7 +32,7 @@ jobs:
           cache: 'maven'
 
       - working-directory: config
-        run: mvn -q -DskipTests clean package
+        run: mvn -q clean package
 
       - run: |
           mkdir -p target

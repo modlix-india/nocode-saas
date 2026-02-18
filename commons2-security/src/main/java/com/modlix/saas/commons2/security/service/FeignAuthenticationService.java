@@ -3,15 +3,14 @@ package com.modlix.saas.commons2.security.service;
 import java.math.BigInteger;
 import java.util.List;
 
-import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import com.modlix.saas.commons2.security.dto.App;
 import com.modlix.saas.commons2.security.feign.IFeignSecurityService;
+import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
 import com.modlix.saas.commons2.service.CacheService;
-import com.modlix.saas.commons2.security.util.LogUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -24,6 +23,7 @@ public class FeignAuthenticationService implements IAuthenticationService {
     private static final String CACHE_NAME_APP_WRITE_ACCESS = "appWriteAccess";
     private static final String CACHE_NAME_APP_BY_APPCODE_EXPLICIT = "byAppCodeExplicit";
     private static final String CACHE_NAME_APP_DEP_LIST = "appDepList";
+    private static final String CACHE_NAME_CLIENT_ID_BY_CODE = "clientByCode";
 
     @Autowired(required = false)
     private IFeignSecurityService feignAuthService;
@@ -73,21 +73,17 @@ public class FeignAuthenticationService implements IAuthenticationService {
                 .contextAuthentication(isBasic ? "basic " + bearerToken : bearerToken, host, port, clientCode, appCode);
     }
 
-    public Boolean isBeingManaged(String managingClientCode, String clientCode) {
-
-        return cacheService.cacheEmptyValueOrGet(CACHE_NAME_BEING_MANAGED,
-                () -> this.feignAuthService.isBeingManaged(managingClientCode, clientCode), managingClientCode, ":",
-                clientCode);
+    public Boolean isUserClientManageClient(String appCode, BigInteger userId, BigInteger userClientId,
+            BigInteger targetClientId) {
+        return this.feignAuthService.isUserClientManageClient(appCode, userId, userClientId, targetClientId);
     }
 
-    public Boolean isUserBeingManaged(Object userId, String clientCode) {
+    public Boolean doesClientManageClient(BigInteger managingClientId, BigInteger clientId) {
+        return this.feignAuthService.doesClientManageClient(managingClientId, clientId);
+    }
 
-        return cacheService.cacheValueOrGet(CACHE_NAME_USER_BEING_MANAGED, () -> {
-
-            BigInteger biUserId = userId instanceof BigInteger id ? id : new BigInteger(userId.toString());
-
-            return this.feignAuthService.isUserBeingManaged(biUserId, clientCode);
-        }, clientCode, ":", userId);
+    public Boolean doesClientManageClientCode(String managingClientCode, String clientCode) {
+        return this.feignAuthService.doesClientManageClientCode(managingClientCode, clientCode);
     }
 
     public Boolean hasReadAccess(String appCode, String clientCode) {
@@ -116,5 +112,11 @@ public class FeignAuthenticationService implements IAuthenticationService {
         return cacheService.cacheValueOrGet(CACHE_NAME_APP_DEP_LIST,
                 () -> this.feignAuthService.getDependencies(appCode),
                 appCode);
+    }
+
+    public BigInteger getClientIdByCode(String clientCode) {
+        return cacheService.cacheValueOrGet(
+                CACHE_NAME_CLIENT_ID_BY_CODE,
+                () -> this.feignAuthService.getClientByCode(clientCode).getId(), clientCode);
     }
 }

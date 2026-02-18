@@ -21,7 +21,7 @@ public class ClientPinPolicyDAO extends AbstractPolicyDao<SecurityClientPinPolic
 	}
 
 	@Override
-	protected Field<ULong> getClientIDField() {
+	public Field<ULong> getClientIDField() {
 		return SECURITY_CLIENT_PIN_POLICY.CLIENT_ID;
 	}
 

@@ -1,5 +1,21 @@
 package com.fincity.saas.entity.processor.service;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.jooq.types.ULong;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.kirun.engine.function.reactive.ReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.reactive.ReactiveRepository;
@@ -39,21 +55,8 @@ import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.util.EntityProcessorArgSpec;
 import com.fincity.saas.entity.processor.util.NameUtil;
 import com.google.gson.Gson;
+
 import jakarta.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.jooq.types.ULong;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -72,8 +75,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     private final Gson gson;
 
-    private static final ClassSchema classSchema =
-            ClassSchema.getInstance(ClassSchema.PackageConfig.forEntityProcessor());
+    private static final ClassSchema classSchema = ClassSchema
+            .getInstance(ClassSchema.PackageConfig.forEntityProcessor());
 
     private TicketService ticketService;
 
@@ -180,11 +183,11 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Override
     protected Mono<Boolean> evictCache(Partner entity) {
         return Mono.zip(
-                        super.evictCache(entity),
-                        super.cacheService.evict(
-                                this.getCacheName(),
-                                super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getClientId())),
-                        (baseEvicted, cIdEvicted) -> baseEvicted && cIdEvicted)
+                super.evictCache(entity),
+                super.cacheService.evict(
+                        this.getCacheName(),
+                        super.getCacheKey(entity.getAppCode(), entity.getClientCode(), entity.getClientId())),
+                (baseEvicted, cIdEvicted) -> baseEvicted && cIdEvicted)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.evictCache"));
     }
 
@@ -208,36 +211,36 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     @Override
     public Mono<ProcessorAccess> hasAccess() {
         return FlatMapUtil.flatMapMono(super::hasAccess, access -> {
-                    if (!access.isHasBpAccess())
-                        return super.msgService.throwMessage(
-                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
+            if (!access.isHasBpAccess())
+                return super.msgService.throwMessage(
+                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                        ProcessorMessageResourceService.PARTNER_ACCESS_DENIED);
 
-                    return Mono.just(access);
-                })
+            return Mono.just(access);
+        })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.hasAccess"));
     }
 
     public Mono<Partner> createRequest(PartnerRequest partnerRequest) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> super.securityService.getClientById(
-                                partnerRequest.getClientId().toBigInteger()),
-                        (access, client) -> {
-                            if (!client.getLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP))
-                                return super.msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
-                                        client.getLevelType(),
-                                        this.getEntityName(),
-                                        BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
+                this::hasAccess,
+                access -> super.securityService.getClientById(
+                        partnerRequest.getClientId().toBigInteger()),
+                (access, client) -> {
+                    if (!client.getLevelType().equals(BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP))
+                        return super.msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_CLIENT_TYPE,
+                                client.getLevelType(),
+                                this.getEntityName(),
+                                BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP);
 
-                            return super.createInternal(
-                                    access,
-                                    Partner.of(partnerRequest)
-                                            .setManagerId(access.getUserId())
-                                            .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT));
-                        })
+                    return super.createInternal(
+                            access,
+                            Partner.of(partnerRequest)
+                                    .setManagerId(access.getUserId())
+                                    .setPartnerVerificationStatus(PartnerVerificationStatus.INVITATION_SENT));
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.createPartner"));
     }
 
@@ -254,81 +257,82 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     public Mono<Partner> updateLoggedInPartnerVerificationStatus(PartnerVerificationStatus status) {
         return FlatMapUtil.flatMapMono(
-                        this::getLoggedInPartner,
-                        partner -> super.updateInternalForOutsideUser(partner.setPartnerVerificationStatus(status)),
-                        (partner, uPartner) -> this.evictCache(partner).map(evicted -> uPartner))
+                this::getLoggedInPartner,
+                partner -> super.updateInternalForOutsideUser(partner.setPartnerVerificationStatus(status)),
+                (partner, uPartner) -> this.evictCache(partner).map(evicted -> uPartner))
                 .contextWrite(
                         Context.of(LogUtil.METHOD_NAME, "PartnerService.updateLoggedInPartnerVerificationStatus"));
     }
 
     public Mono<Partner> toggleLoggedInPartnerDnc() {
         return FlatMapUtil.flatMapMono(
-                        this::getLoggedInPartner,
-                        partner -> super.hasAccess(),
-                        (partner, access) -> super.updateInternalForOutsideUser(partner.setDnc(!partner.getDnc())),
-                        (partner, access, uPartner) -> this.evictCache(partner),
-                        (partner, access, uPartner, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
-                                .then(Mono.just(uPartner)))
+                this::getLoggedInPartner,
+                partner -> super.hasAccess(),
+                (partner, access) -> super.updateInternalForOutsideUser(partner.setDnc(!partner.getDnc())),
+                (partner, access, uPartner) -> this.evictCache(partner),
+                (partner, access, uPartner, evicted) -> this.ticketService
+                        .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
+                        .then(Mono.just(uPartner)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.toggleLoggedInPartnerDnc"));
     }
 
     public Mono<Partner> updatePartnerVerificationStatus(Identity partnerId, PartnerVerificationStatus status) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)),
-                        (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
+                this::hasAccess,
+                access -> super.readByIdentity(access, partnerId),
+                (access, partner) -> super.updateInternal(access, partner.setPartnerVerificationStatus(status)),
+                (access, partner, updated) -> this.evictCache(partner).map(evicted -> updated))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updatePartnerVerificationStatus"));
     }
 
     public Mono<Partner> togglePartnerDnc(Identity partnerId) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> super.readByIdentity(access, partnerId),
-                        (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
-                        (access, partner, updated) -> this.evictCache(partner),
-                        (access, partner, updated, evicted) -> this.ticketService
-                                .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
-                                .then(Mono.just(updated)))
+                this::hasAccess,
+                access -> super.readByIdentity(access, partnerId),
+                (access, partner) -> super.updateInternal(access, partner.setDnc(!partner.getDnc())),
+                (access, partner, updated) -> this.evictCache(partner),
+                (access, partner, updated, evicted) -> this.ticketService
+                        .updateTicketDncByClientId(access, partner.getClientId(), !partner.getDnc())
+                        .then(Mono.just(updated)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.togglePartnerDnc"));
     }
 
     public Mono<Partner> updateManager(Identity partnerId, ULong managerId) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> super.readByIdentity(access, partnerId),
-                        (access, partner) ->
-                                this.canUpdateManager(partner, managerId).flatMap(BooleanUtil::safeValueOfWithEmpty),
-                        (access, partner, valid) -> super.update(access, partner.setManagerId(managerId)))
+                this::hasAccess,
+                access -> super.readByIdentity(access, partnerId),
+                (access, partner) -> this.canUpdateManager(partner, managerId)
+                        .flatMap(BooleanUtil::safeValueOfWithEmpty),
+                (access, partner, valid) -> super.update(access, partner.setManagerId(managerId)))
                 .switchIfEmpty(this.readByIdentity(partnerId))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateManager"));
     }
 
     private Mono<Boolean> canUpdateManager(Partner partner, ULong managerId) {
 
-        if (partner.getManagerId().equals(managerId)) return Mono.just(false);
+        if (partner.getManagerId().equals(managerId))
+            return Mono.just(false);
 
         return FlatMapUtil.flatMapMono(
-                        () -> super.securityService
-                                .getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
-                                .switchIfEmpty(msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
-                                        managerId,
-                                        partner.getClientId())),
-                        user -> super.securityService.isBeingManagedById(
-                                user.getClientId(), partner.getClientId().toBigInteger()),
-                        (user, isManaged) -> {
-                            if (!Boolean.TRUE.equals(isManaged))
-                                return msgService.throwMessage(
-                                        msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
-                                        ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
-                                        managerId,
-                                        partner.getClientId());
+                () -> super.securityService
+                        .getUserInternal(managerId.toBigInteger(), new LinkedMultiValueMap<>())
+                        .switchIfEmpty(msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                managerId,
+                                partner.getClientId())),
+                user -> super.securityService.doesClientManageClient(
+                        user.getClientId(), partner.getClientId().toBigInteger()),
+                (user, isManaged) -> {
+                    if (!Boolean.TRUE.equals(isManaged))
+                        return msgService.throwMessage(
+                                msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                                ProcessorMessageResourceService.INVALID_USER_FOR_CLIENT,
+                                managerId,
+                                partner.getClientId());
 
-                            return Mono.just(true);
-                        })
+                    return Mono.just(true);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.canUpdateManager"));
     }
 
@@ -343,33 +347,33 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
     public Mono<Boolean> getPartnerDnc(ProcessorAccess access) {
 
-        if (!access.isOutsideUser()) return Mono.just(Boolean.FALSE);
+        if (!access.isOutsideUser())
+            return Mono.just(Boolean.FALSE);
 
         return this.getPartnerByClientId(
-                        access, ULongUtil.valueOf(access.getUser().getClientId()))
+                access, ULongUtil.valueOf(access.getUser().getClientId()))
                 .map(partner -> partner.getDnc() != null && partner.getDnc())
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartnerDnc"));
     }
 
     public Mono<Page<Map<String, Object>>> readPartnerClient(Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> super.securityService
-                                .getManagingClientIds(access.getUser().getClientId())
-                                .map(ids -> ids.stream().map(ULongUtil::valueOf).toList()),
-                        (access, clientIds) -> this.addClientConditions(query.getCondition(), clientIds),
-                        (access, clientIds, clientCondition) ->
-                                this.getPartners(query.getCondition(), access, clientIds),
-                        (access, clientIds, clientCondition, partners) -> this.updateClientCondition(
-                                clientCondition,
-                                partners.stream().map(Partner::getClientId).toList()),
-                        (access, clientIds, clientCondition, partners, uClientCondition) -> super.securityService
-                                .readClientPageFilterInternal(
-                                        this.updateQueryCondition(query, uClientCondition), queryParams)
-                                .map(page -> page.map(IClassConvertor::toMap)),
-                        (access, clientIds, clientCondition, partners, uClientCondition, clientPage) ->
-                                this.fillClientDetails(access, partners, clientPage.getContent(), queryParams)
-                                        .thenReturn(clientPage))
+                this::hasAccess,
+                access -> super.securityService
+                        .getManagingClientIds(access.getUser().getClientId())
+                        .map(ids -> ids.stream().map(ULongUtil::valueOf).toList()),
+                (access, clientIds) -> this.addClientConditions(query.getCondition(), clientIds),
+                (access, clientIds, clientCondition) -> this.getPartners(query.getCondition(), access, clientIds),
+                (access, clientIds, clientCondition, partners) -> this.updateClientCondition(
+                        clientCondition,
+                        partners.stream().map(Partner::getClientId).toList()),
+                (access, clientIds, clientCondition, partners, uClientCondition) -> super.securityService
+                        .readClientPageFilterInternal(
+                                this.updateQueryCondition(query, uClientCondition), queryParams)
+                        .map(page -> page.map(IClassConvertor::toMap)),
+                (access, clientIds, clientCondition, partners, uClientCondition, clientPage) -> this
+                        .fillClientDetails(access, partners, clientPage.getContent(), queryParams)
+                        .thenReturn(clientPage))
                 .switchIfEmpty(Mono.just(Page.empty()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPartnerClient"));
     }
@@ -377,7 +381,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     private Mono<List<Partner>> getPartners(
             AbstractCondition condition, ProcessorAccess access, List<ULong> clientIds) {
 
-        if (clientIds == null || clientIds.isEmpty()) return Mono.empty();
+        if (clientIds == null || clientIds.isEmpty())
+            return Mono.empty();
 
         if (condition == null || condition.isEmpty())
             return this.dao
@@ -385,26 +390,26 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartners"));
 
         return FlatMapUtil.flatMapMono(
-                        () -> condition
-                                .findAndCreatePrefix(this.getEntityPrefix(access.getAppCode()))
-                                .collectList(),
-                        conditions -> this.dao.getPartners(
-                                ComplexCondition.and(conditions.toArray(new AbstractCondition[0])), access, clientIds))
+                () -> condition
+                        .findAndCreatePrefix(this.getEntityPrefix(access.getAppCode()))
+                        .collectList(),
+                conditions -> this.dao.getPartners(
+                        ComplexCondition.and(conditions.toArray(new AbstractCondition[0])), access, clientIds))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.getPartners"));
     }
 
     public Mono<Page<Map<String, Object>>> readPartnerTeammates(
             Identity partnerId, Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        access -> this.readByIdentity(access, partnerId),
-                        (access, partner) -> this.addClientIds(partner, query.getCondition()),
-                        (access, partner, pCondition) -> super.securityService
-                                .readUserPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)
-                                .map(page -> page.map(IClassConvertor::toMap)),
-                        (access, partner, pCondition, userPage) -> this.fillUserDetails(
-                                        access, userPage.getContent(), queryParams)
-                                .thenReturn(userPage))
+                this::hasAccess,
+                access -> this.readByIdentity(access, partnerId),
+                (access, partner) -> this.addClientIds(partner, query.getCondition()),
+                (access, partner, pCondition) -> super.securityService
+                        .readUserPageFilterInternal(this.updateQueryCondition(query, pCondition), queryParams)
+                        .map(page -> page.map(IClassConvertor::toMap)),
+                (access, partner, pCondition, userPage) -> this.fillUserDetails(
+                        access, userPage.getContent(), queryParams)
+                        .thenReturn(userPage))
                 .switchIfEmpty(Mono.just(Page.empty()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readPartnerTeammates"));
     }
@@ -412,15 +417,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     public Mono<Page<Map<String, Object>>> readLoggedInPartnerTeammates(
             Query query, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                        this::hasAccess,
-                        this::getLoggedInPartner,
-                        (access, partner) -> this.addClientIds(partner, query.getCondition()),
-                        (access, partner, pCondition) -> super.securityService
-                                .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
-                                .map(page -> page.map(IClassConvertor::toMap)),
-                        (access, partner, pCondition, userPage) -> this.fillUserDetails(
-                                        access, userPage.getContent(), queryParams)
-                                .thenReturn(userPage))
+                this::hasAccess,
+                this::getLoggedInPartner,
+                (access, partner) -> this.addClientIds(partner, query.getCondition()),
+                (access, partner, pCondition) -> super.securityService
+                        .readUserPageFilterInternal(updateQueryCondition(query, pCondition), queryParams)
+                        .map(page -> page.map(IClassConvertor::toMap)),
+                (access, partner, pCondition, userPage) -> this.fillUserDetails(
+                        access, userPage.getContent(), queryParams)
+                        .thenReturn(userPage))
                 .switchIfEmpty(Mono.just(Page.empty()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.readLoggedInPartnerTeammates"));
     }
@@ -455,13 +460,15 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         boolean fetchPartner = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARTNERS));
 
-        if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
+        if (!fetchPartner || clientMapById.isEmpty())
+            return Mono.just(clientMapById.values());
 
         String partnerEntityKey = this.getEntityKey();
 
         partners.forEach(partner -> {
             Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-            if (clientMap != null) clientMap.put(partnerEntityKey, partner.toMap());
+            if (clientMap != null)
+                clientMap.put(partnerEntityKey, partner.toMap());
         });
         return Mono.just(clientMapById.values());
     }
@@ -484,7 +491,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .map(ULongUtil::valueOf)
                 .toList();
 
-        if (!fetchPartner || clientMapById.isEmpty()) return Mono.just(clientMapById.values());
+        if (!fetchPartner || clientMapById.isEmpty())
+            return Mono.just(clientMapById.values());
 
         Map<ULong, IdAndValue<ULong, String>> clientFilterMap = clientMapById.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -514,7 +522,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                     partners.forEach(partner -> {
                         StatusEntityCount count = status.get(partner.getClientId());
                         Map<String, Object> clientMap = clientMapById.get(partner.getClientId());
-                        if (count != null && clientMap != null) clientMap.put(ticketKey, count.toMap());
+                        if (count != null && clientMap != null)
+                            clientMap.put(ticketKey, count.toMap());
                     });
 
                     return Mono.just(clientMapById.values());
@@ -538,7 +547,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
                 .map(ULongUtil::valueOf)
                 .toList();
 
-        if (!fetchPartner || userMapByIds.isEmpty()) return Mono.just(userMapByIds.values());
+        if (!fetchPartner || userMapByIds.isEmpty())
+            return Mono.just(userMapByIds.values());
 
         Map<ULong, IdAndValue<ULong, String>> userFilterMap = userMapByIds.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -570,7 +580,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
                     userMapByIds.forEach((key, value) -> {
                         StatusEntityCount count = status.get(ULongUtil.valueOf(key));
-                        if (count != null) value.put(ticketKey, count.toMap());
+                        if (count != null)
+                            value.put(ticketKey, count.toMap());
                     });
 
                     return Mono.just(userMapByIds.values());
@@ -578,7 +589,8 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
     }
 
     private Query updateQueryCondition(Query query, AbstractCondition condition) {
-        if (condition == null || condition.isEmpty()) return query;
+        if (condition == null || condition.isEmpty())
+            return query;
 
         query.setCount(Boolean.FALSE);
 
@@ -594,26 +606,26 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         if (condition == null || condition.isEmpty())
             return Mono.<AbstractCondition>just(FilterCondition.make(User.Fields.clientId, partner.getClientId())
-                            .setOperator(FilterConditionOperator.EQUALS))
+                    .setOperator(FilterConditionOperator.EQUALS))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
 
         return Mono.<AbstractCondition>just(ComplexCondition.and(
-                        condition,
-                        FilterCondition.make(User.Fields.clientId, partner.getClientId())
-                                .setOperator(FilterConditionOperator.EQUALS)))
+                condition,
+                FilterCondition.make(User.Fields.clientId, partner.getClientId())
+                        .setOperator(FilterConditionOperator.EQUALS)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientIds"));
     }
 
     private Mono<AbstractCondition> updateClientCondition(AbstractCondition condition, List<ULong> clientIds) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
-                        conditions -> Mono.<AbstractCondition>just(ComplexCondition.and(
-                                conditions,
-                                new FilterCondition()
-                                        .setField(AbstractDTO.Fields.id)
-                                        .setOperator(FilterConditionOperator.IN)
-                                        .setMultiValue(clientIds))))
+                () -> condition.removeConditionWithField(AbstractDTO.Fields.id),
+                conditions -> Mono.<AbstractCondition>just(ComplexCondition.and(
+                        conditions,
+                        new FilterCondition()
+                                .setField(AbstractDTO.Fields.id)
+                                .setOperator(FilterConditionOperator.IN)
+                                .setMultiValue(clientIds))))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.updateClientCondition"));
     }
 
@@ -625,20 +637,20 @@ public class PartnerService extends BaseUpdatableService<EntityProcessorPartners
 
         if (condition == null || condition.isEmpty())
             return Mono.<AbstractCondition>just(ComplexCondition.and(
-                            FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
-                            new FilterCondition()
-                                    .setField(AbstractDTO.Fields.id)
-                                    .setOperator(FilterConditionOperator.IN)
-                                    .setMultiValue(clientIds)))
+                    FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
+                    new FilterCondition()
+                            .setField(AbstractDTO.Fields.id)
+                            .setOperator(FilterConditionOperator.IN)
+                            .setMultiValue(clientIds)))
                     .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientConditions"));
 
         return Mono.<AbstractCondition>just(ComplexCondition.and(
-                        condition,
-                        FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
-                        new FilterCondition()
-                                .setField(AbstractDTO.Fields.id)
-                                .setOperator(FilterConditionOperator.IN)
-                                .setMultiValue(clientIds)))
+                condition,
+                FilterCondition.make(Client.Fields.levelType, BusinessPartnerConstant.CLIENT_LEVEL_TYPE_BP),
+                new FilterCondition()
+                        .setField(AbstractDTO.Fields.id)
+                        .setOperator(FilterConditionOperator.IN)
+                        .setMultiValue(clientIds)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PartnerService.addClientConditions"));
     }
 
