@@ -5,10 +5,10 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
@@ -44,6 +44,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -196,7 +197,7 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
      * Deal Tag - HOT / WARM / COLD
      */
-    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT / WARM / COLD");
+    public final TableField<EntityProcessorTicketsRecord, Tag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4), this, "Deal Tag - HOT / WARM / COLD", new EnumConverter<String, Tag>(String.class, Tag.class));
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do
@@ -217,6 +218,21 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
      * check if this product is active or not.
      */
     public final TableField<EntityProcessorTicketsRecord, Boolean> IS_ACTIVE = createField(DSL.name("IS_ACTIVE"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("1", SQLDataType.BOOLEAN)), this, "Flag to check if this product is active or not.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.IS_EXPIRED</code>. Flag
+     * to indicate if ticket is expired due to no activity within configured
+     * days.
+     */
+    public final TableField<EntityProcessorTicketsRecord, Boolean> IS_EXPIRED = createField(DSL.name("IS_EXPIRED"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "Flag to indicate if ticket is expired due to no activity within configured days.");
+
+    /**
+     * The column
+     * <code>entity_processor.entity_processor_tickets.EXPIRED_ON</code>.
+     * Timestamp when the ticket was marked as expired.
+     */
+    public final TableField<EntityProcessorTicketsRecord, LocalDateTime> EXPIRED_ON = createField(DSL.name("EXPIRED_ON"), SQLDataType.LOCALDATETIME(0), this, "Timestamp when the ticket was marked as expired.");
 
     /**
      * The column

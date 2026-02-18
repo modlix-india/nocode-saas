@@ -22,10 +22,10 @@ public class Task extends AbstractUpdatableDTO<ULong, ULong> {
     @Serial
     private static final long serialVersionUID = -8484383577414055084L;
 
+    private String clientCode;
+    private String appCode;
     private String name;
     private String groupName;
-    private ULong clientId;
-    private ULong appId;
     private TaskState taskState = TaskState.NORMAL;
     private ULong schedulerId;
     private String description;

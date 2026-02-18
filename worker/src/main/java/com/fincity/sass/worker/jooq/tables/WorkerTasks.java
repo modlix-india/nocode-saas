@@ -80,16 +80,16 @@ public class WorkerTasks extends TableImpl<WorkerTasksRecord> {
     public final TableField<WorkerTasksRecord, String> NAME = createField(DSL.name("NAME"), SQLDataType.VARCHAR(255).nullable(false), this, "name of job");
 
     /**
-     * The column <code>worker.worker_tasks.CLIENT_ID</code>. Identifier for the
-     * client. References security_client table
+     * The column <code>worker.worker_tasks.CLIENT_CODE</code>. Client code
+     * (e.g. tenant identifier, aligned with entity-processor)
      */
-    public final TableField<WorkerTasksRecord, ULong> CLIENT_ID = createField(DSL.name("CLIENT_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the client. References security_client table");
+    public final TableField<WorkerTasksRecord, String> CLIENT_CODE = createField(DSL.name("CLIENT_CODE"), SQLDataType.CHAR(8).nullable(false), this, "Client code (e.g. tenant identifier, aligned with entity-processor)");
 
     /**
-     * The column <code>worker.worker_tasks.APP_ID</code>. Identifier for the
-     * application. References security_app table
+     * The column <code>worker.worker_tasks.APP_CODE</code>. Application code
+     * (e.g. app identifier, aligned with entity-processor)
      */
-    public final TableField<WorkerTasksRecord, ULong> APP_ID = createField(DSL.name("APP_ID"), SQLDataType.BIGINTUNSIGNED.nullable(false), this, "Identifier for the application. References security_app table");
+    public final TableField<WorkerTasksRecord, String> APP_CODE = createField(DSL.name("APP_CODE"), SQLDataType.CHAR(64).nullable(false), this, "Application code (e.g. app identifier, aligned with entity-processor)");
 
     /**
      * The column <code>worker.worker_tasks.SCHEDULER_ID</code>. Identifier for

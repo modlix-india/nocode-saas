@@ -58,37 +58,37 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.CLIENT_ID</code>. Identifier for the
-     * client. References security_client table
+     * Setter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client code
+     * (e.g. tenant identifier, aligned with entity-processor)
      */
-    public WorkerTasksRecord setClientId(ULong value) {
+    public WorkerTasksRecord setClientCode(String value) {
         set(2, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.CLIENT_ID</code>. Identifier for the
-     * client. References security_client table
+     * Getter for <code>worker.worker_tasks.CLIENT_CODE</code>. Client code
+     * (e.g. tenant identifier, aligned with entity-processor)
      */
-    public ULong getClientId() {
-        return (ULong) get(2);
+    public String getClientCode() {
+        return (String) get(2);
     }
 
     /**
-     * Setter for <code>worker.worker_tasks.APP_ID</code>. Identifier for the
-     * application. References security_app table
+     * Setter for <code>worker.worker_tasks.APP_CODE</code>. Application code
+     * (e.g. app identifier, aligned with entity-processor)
      */
-    public WorkerTasksRecord setAppId(ULong value) {
+    public WorkerTasksRecord setAppCode(String value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for <code>worker.worker_tasks.APP_ID</code>. Identifier for the
-     * application. References security_app table
+     * Getter for <code>worker.worker_tasks.APP_CODE</code>. Application code
+     * (e.g. app identifier, aligned with entity-processor)
      */
-    public ULong getAppId() {
-        return (ULong) get(3);
+    public String getAppCode() {
+        return (String) get(3);
     }
 
     /**
@@ -450,13 +450,13 @@ public class WorkerTasksRecord extends UpdatableRecordImpl<WorkerTasksRecord> {
     /**
      * Create a detached, initialised WorkerTasksRecord
      */
-    public WorkerTasksRecord(ULong id, String name, ULong clientId, ULong appId, ULong schedulerId, String groupName, String description, TaskState taskState, TaskJobType taskJobType, Map jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, TaskLastFireStatus taskLastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
+    public WorkerTasksRecord(ULong id, String name, String clientCode, String appCode, ULong schedulerId, String groupName, String description, TaskState taskState, TaskJobType taskJobType, Map jobData, Byte durable, LocalDateTime startTime, LocalDateTime endTime, String schedule, Integer repeatInterval, Byte recoverable, LocalDateTime nextFireTime, LocalDateTime lastFireTime, TaskLastFireStatus taskLastFireStatus, String lastFireResult, ULong createdBy, LocalDateTime createdAt, ULong updatedBy, LocalDateTime updatedAt) {
         super(WorkerTasks.WORKER_TASKS);
 
         setId(id);
         setName(name);
-        setClientId(clientId);
-        setAppId(appId);
+        setClientCode(clientCode);
+        setAppCode(appCode);
         setSchedulerId(schedulerId);
         setGroupName(groupName);
         setDescription(description);

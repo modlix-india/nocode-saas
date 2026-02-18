@@ -5,7 +5,8 @@ import org.jooq.EnumType;
 public enum TaskJobType implements EnumType {
     SIMPLE("SIMPLE"),
     CRON("CRON"),
-    SSL_RENEWAL("SSL_RENEWAL");
+    SSL_RENEWAL("SSL_RENEWAL"),
+    TICKET_EXPIRATION("TICKET_EXPIRATION");
 
     private final String literal;
 

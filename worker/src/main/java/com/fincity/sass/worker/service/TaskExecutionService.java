@@ -31,14 +31,18 @@ public class TaskExecutionService {
     @Value("${worker.task-execution.max-result-length:2000}")
     private int maxResultLength;
 
+    private final TicketExpirationService ticketExpirationService;
+
     private TaskExecutionService(
             TaskService taskService,
             CoreFunctionService coreFunctionService,
             SSLCertificateRenewalService sslCertificateRenewalService,
+            TicketExpirationService ticketExpirationService,
             Gson gson) {
         this.taskService = taskService;
         this.coreFunctionService = coreFunctionService;
         this.sslCertificateRenewalService = sslCertificateRenewalService;
+        this.ticketExpirationService = ticketExpirationService;
         this.gson = gson;
     }
 
@@ -94,6 +98,11 @@ public class TaskExecutionService {
             task.setLastFireResult(truncateResult(result));
             return task;
         }
+        if (TaskJobType.TICKET_EXPIRATION.equals(task.getTaskJobType())) {
+            String result = ticketExpirationService.runExpiration(task);
+            task.setLastFireResult(truncateResult(result));
+            return task;
+        }
 
         FunctionExecutionSpec spec = FunctionExecutionSpec.fromJobData(task.getJobData());
         if (spec == null || !spec.hasFunctionSpec()) {
@@ -102,8 +111,8 @@ public class TaskExecutionService {
         }
 
         try {
-            String clientCode = task.getClientId() != null ? task.getClientId().toString() : null;
-            String appCode = task.getAppId() != null ? task.getAppId().toString() : null;
+            String clientCode = task.getClientCode();
+            String appCode = task.getAppCode();
             Map<String, JsonElement> params = spec.getParams() != null ? spec.getParams() : Map.of();
             executeFunction(task, spec, clientCode, appCode, params);
         } catch (Exception e) {

@@ -1,8 +1,16 @@
 package com.fincity.sass.worker.service;
 
+import com.fincity.sass.worker.configuration.QuartzConfiguration;
+import com.fincity.sass.worker.dto.Scheduler;
+import com.fincity.sass.worker.dto.Task;
+import com.fincity.sass.worker.enums.SchedulerStatus;
+import com.fincity.sass.worker.enums.TaskJobType;
+import com.fincity.sass.worker.enums.TaskOperationType;
+import com.fincity.sass.worker.enums.TaskState;
+import com.fincity.sass.worker.job.TaskExecutorJob;
+import com.google.gson.Gson;
 import java.time.ZoneId;
 import java.util.Date;
-
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -18,16 +26,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.stereotype.Service;
-
-import com.fincity.sass.worker.configuration.QuartzConfiguration;
-import com.fincity.sass.worker.dto.Scheduler;
-import com.fincity.sass.worker.dto.Task;
-import com.fincity.sass.worker.enums.SchedulerStatus;
-import com.fincity.sass.worker.enums.TaskJobType;
-import com.fincity.sass.worker.enums.TaskOperationType;
-import com.fincity.sass.worker.enums.TaskState;
-import com.fincity.sass.worker.job.TaskExecutorJob;
-import com.google.gson.Gson;
 
 @Service
 public class QuartzService {

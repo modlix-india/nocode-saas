@@ -27,14 +27,14 @@ DROP TABLE IF EXISTS `worker`.`worker_tasks`;
 CREATE TABLE IF NOT EXISTS `worker`.`worker_tasks`
 (
     `ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Primary key, unique identifier for each task',
+    `APP_CODE` CHAR(64) NOT NULL COMMENT 'App Code on which this task was created.',
+    `CLIENT_CODE` CHAR(8) NOT NULL COMMENT 'Client Code who created this task.',
     `NAME` VARCHAR(255) NOT NULL COMMENT 'name of job',
-    `CLIENT_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the client. References security_client table',
-    `APP_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the application. References security_app table',
     `SCHEDULER_ID` BIGINT UNSIGNED NOT NULL COMMENT 'Identifier for the scheduler. References worker_schedulers table',
     `GROUP_NAME` VARCHAR(255) NOT NULL COMMENT 'job group name',
     `DESCRIPTION` VARCHAR(255) DEFAULT NULL COMMENT 'description about the job',
     `TASK_STATE` ENUM ('NONE', 'NORMAL', 'PAUSED', 'COMPLETE', 'ERROR', 'BLOCKED') NOT NULL DEFAULT 'NORMAL' COMMENT 'Task triggering state.',
-    `TASK_JOB_TYPE` ENUM ('SIMPLE', 'CRON') NOT NULL DEFAULT 'SIMPLE' COMMENT 'Job type.',
+    `TASK_JOB_TYPE` ENUM ('SIMPLE', 'CRON', 'SSL_RENEWAL', 'TICKET_EXPIRATION') NOT NULL DEFAULT 'SIMPLE' COMMENT 'Job type.',
     `JOB_DATA` JSON DEFAULT NULL COMMENT 'FunctionExecutionSpec: functionName, functionNamespace, functionParams (Map)',
     `DURABLE` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'if we want to keep job even if it does not have any trigger',
     `START_TIME` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'task start datetime',
