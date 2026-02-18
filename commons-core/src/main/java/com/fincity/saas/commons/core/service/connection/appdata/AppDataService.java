@@ -1604,9 +1604,9 @@ public class AppDataService {
                     if (blank)
                         return Mono.just(ca.getClientCode());
 
-                    return this.securityService.isBeingManaged(clientCode, ca.getClientCode())
+                    return this.securityService.doesClientManageClientCode(clientCode, ca.getClientCode())
                             .flatMap(e -> e ? Mono.just(true)
-                                    : this.securityService.isBeingManaged(ca.getClientCode(), clientCode))
+                                    : this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode))
                             .flatMap(e -> e ? Mono.just(clientCode) : Mono.empty());
                 }).contextWrite(Context.of(LogUtil.METHOD_NAME, "AppDataService.clientCode"));
     }

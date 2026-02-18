@@ -1,7 +1,7 @@
 package com.fincity.security.service;
 
-import static com.fincity.security.service.AppService.APP_PROP_URL;
-import static com.fincity.security.service.ClientService.CACHE_NAME_CLIENT_URL;
+import static com.fincity.security.service.AppService.*;
+import static com.fincity.security.service.ClientService.*;
 
 import java.util.List;
 import java.util.Map;
@@ -64,7 +64,7 @@ public class ClientUrlService
     private static final String SLASH = "/";
 
     public ClientUrlService(CacheService cacheService, SecurityMessageResourceService msgService,
-                            ClientService clientService, AppService appService) {
+            ClientService clientService, AppService appService) {
 
         this.cacheService = cacheService;
         this.msgService = msgService;
@@ -78,23 +78,23 @@ public class ClientUrlService
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> super.read(id),
+                ca -> super.read(id),
 
-                        (ca, cu) -> {
+                (ca, cu) -> {
 
-                            if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
-                                return Mono.just(true);
+                    if (ca.isSystemClient() || ca.getUser().getClientId().equals(cu.getClientId().toBigInteger()))
+                        return Mono.just(true);
 
-                            return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), cu.getClientId());
-                        },
+                    return clientService.isUserClientManageClient(ca, cu.getClientId());
+                },
 
-                        (ca, cu, hasAccess) -> {
-                            if (BooleanUtil.safeValueOf(hasAccess))
-                                return Mono.just(cu);
-                            return Mono.empty();
-                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+                (ca, cu, hasAccess) -> {
+                    if (BooleanUtil.safeValueOf(hasAccess))
+                        return Mono.just(cu);
+                    return Mono.empty();
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
                 .switchIfEmpty(msgService.throwMessage(msg -> new GenericException(HttpStatus.NOT_FOUND, msg),
                         AbstractMessageService.OBJECT_NOT_FOUND, CLIENT_URL, id));
     }
@@ -114,29 +114,28 @@ public class ClientUrlService
 
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> {
+                ca -> {
 
-                            if (ca.isSystemClient() || entity.getClientId() == null
-                                    || ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
-                                return Mono.just(true);
+                    if (ca.isSystemClient() || entity.getClientId() == null
+                            || ca.getUser().getClientId().equals(entity.getClientId().toBigInteger()))
+                        return Mono.just(true);
 
-                            return clientService.isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()),
-                                    entity.getClientId());
-                        },
+                    return clientService.isUserClientManageClient(ca, entity.getClientId());
+                },
 
-                        (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty(),
+                (ca, hasAccess) -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(entity) : Mono.empty(),
 
-                        (ca, hasAccess, ent) -> {
+                (ca, hasAccess, ent) -> {
 
-                            ULong clientId = ULong.valueOf(ca.getUser().getClientId());
+                    ULong clientId = ULong.valueOf(ca.getUser().getClientId());
 
-                            if (ent.getClientId() == null)
-                                ent.setClientId(clientId);
+                    if (ent.getClientId() == null)
+                        ent.setClientId(clientId);
 
-                            return super.create(ent);
-                        }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
+                    return super.create(ent);
+                }).contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.read"))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URL))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_CLIENT_URI))
                 .flatMap(cacheService.evictAllFunction(CACHE_NAME_GATEWAY_URL_CLIENT_APP_CODE))
@@ -326,14 +325,16 @@ public class ClientUrlService
     public Mono<List<ClientUrl>> getClientUrls(String appCode, String clientCode) {
         return FlatMapUtil.flatMapMono(
 
-                        SecurityContextUtil::getUsersContextAuthentication,
+                SecurityContextUtil::getUsersContextAuthentication,
 
-                        ca -> this.appService.hasReadAccess(appCode, ca.getClientCode()).filter(BooleanUtil::safeValueOf),
+                ca -> this.appService.hasReadAccess(appCode, ca.getClientCode()).filter(BooleanUtil::safeValueOf),
 
-                        (ca, hasAccess) -> this.clientService.isBeingManagedBy(ca.getClientCode(), clientCode).filter(BooleanUtil::safeValueOf),
+                (ca, hasAccess) -> this.clientService.isUserClientManageClient(ca, clientCode)
+                        .filter(BooleanUtil::safeValueOf),
 
-                        (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode)
-                ).switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg), SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
+                (ca, hasAccess, hasClientAccess) -> this.dao.getClientUrls(appCode, clientCode))
+                .switchIfEmpty(this.msgService.throwMessage(msg -> new GenericException(HttpStatus.FORBIDDEN, msg),
+                        SecurityMessageResourceService.FORBIDDEN_WRITE_APPLICATION_ACCESS))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientUrlService.getClientUrls"));
     }
 }

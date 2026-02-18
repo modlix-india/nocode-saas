@@ -2,6 +2,7 @@ package com.fincity.saas.commons.security.util;
 
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -60,8 +61,7 @@ public class SecurityContextUtil {
                 .cast(ContextAuthentication.class)
                 .map(auth -> Tuples.of(
                         !StringUtil.safeIsBlank(appCode) ? appCode : auth.getUrlAppCode(),
-                        !StringUtil.safeIsBlank(clientCode) ? clientCode : auth.getClientCode()
-                ));
+                        !StringUtil.safeIsBlank(clientCode) ? clientCode : auth.getClientCode()));
     }
 
     public static Mono<Boolean> hasAuthority(String authority) {
@@ -84,7 +84,23 @@ public class SecurityContextUtil {
         AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
         JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
                 .getAsJsonPrimitive();
-        
+
+        return jp.isBoolean() && jp.getAsBoolean();
+    }
+
+    public static boolean hasAuthority(String authority, List<String> collection) {
+
+        if (authority == null || authority.isBlank())
+            return true;
+
+        if (collection == null || collection.isEmpty())
+            return false;
+
+        ExpressionEvaluator ev = new ExpressionEvaluator(authority);
+        AuthoritiesTokenExtractor extractor = new AuthoritiesTokenExtractor(collection);
+        JsonPrimitive jp = ev.evaluate(Map.of(extractor.getPrefix(), extractor))
+                .getAsJsonPrimitive();
+
         return jp.isBoolean() && jp.getAsBoolean();
     }
 

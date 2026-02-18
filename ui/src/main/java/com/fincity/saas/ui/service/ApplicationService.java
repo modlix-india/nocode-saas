@@ -325,7 +325,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                         .hasWriteAccess(mobileApp.getAppCode(), mobileApp.getClientCode())
                         .filter(BooleanUtil::safeValueOf),
 
-                (ca, mobileApp, hasAccess) -> this.securityService.isBeingManaged(ca.getClientCode(),
+                (ca, mobileApp, hasAccess) -> this.securityService.doesClientManageClientCode(ca.getClientCode(),
                         mobileApp.getClientCode()),
 
                 (ca, mobileApp, hasAccess, beingManaged) -> this.mobileAppService.deleteMobileApp(id))
@@ -342,7 +342,7 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> clientCode == null ? Mono.just(true)
-                        : this.securityService.isBeingManaged(ca.getClientCode(), clientCode),
+                        : this.securityService.doesClientManageClientCode(ca.getClientCode(), clientCode),
 
                 (ca, hasAccess) -> {
 
@@ -364,7 +364,8 @@ public class ApplicationService extends AbstractUIOverridableDataService<Applica
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> mobileApp.getClientCode() == null ? Mono.just(true)
-                        : this.securityService.isBeingManaged(ca.getClientCode(), mobileApp.getClientCode()),
+                        : this.securityService.doesClientManageClientCode(ca.getClientCode(),
+                                mobileApp.getClientCode()),
 
                 (ca, hasAccess) -> {
 

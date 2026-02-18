@@ -23,6 +23,7 @@ import com.modlix.saas.commons2.exception.GenericException;
 import com.modlix.saas.commons2.jooq.util.ULongUtil;
 import com.modlix.saas.commons2.security.feign.IFeignSecurityService;
 import com.modlix.saas.commons2.security.jwt.ContextAuthentication;
+import com.modlix.saas.commons2.security.model.User;
 import com.modlix.saas.commons2.security.util.SecurityContextUtil;
 import com.modlix.saas.commons2.service.CacheService;
 import com.modlix.saas.commons2.util.BooleanUtil;
@@ -134,9 +135,11 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
                 case WITH_IN_CLIENT -> ca.getClientCode().equals(finalClientCode);
                 case WITH_IN_SUB_CLIENT -> ca.getClientCode().equals(finalClientCode) ? false
                         : BooleanUtil
-                                .safeValueOf(this.securityService.isBeingManaged(finalClientCode, ca.getClientCode()));
+                                .safeValueOf(this.securityService.doesClientManageClientCode(finalClientCode,
+                                        ca.getClientCode()));
                 case ALL_SUB_CLIENTS ->
-                    BooleanUtil.safeValueOf(this.securityService.isBeingManaged(finalClientCode, ca.getClientCode()));
+                    BooleanUtil.safeValueOf(
+                            this.securityService.doesClientManageClientCode(finalClientCode, ca.getClientCode()));
                 default -> false;
             };
         }
@@ -239,8 +242,13 @@ public class SecuredFileResourceService extends AbstractFilesResourceService {
         if (userId == null) {
             uid = ULong.valueOf(ca.getUser().getId());
         } else {
+
+            User user = this.securityService.getUserInternal(userId.toBigInteger(), null);
+
             uid = BooleanUtil
-                    .safeValueOf(this.securityService.isUserBeingManaged(userId.toBigInteger(), ca.getClientCode()))
+                    .safeValueOf(
+                            this.securityService.isUserClientManageClient(ca.getUrlAppCode(), userId.toBigInteger(),
+                                    user.getClientId(), ca.getUser().getClientId()))
                     && SecurityContextUtil.hasAuthority("Authorities.User_UPDATE",
                             ca.getUser().getAuthorities()) ? ULong.valueOf(userId.toBigInteger()) : null;
         }
