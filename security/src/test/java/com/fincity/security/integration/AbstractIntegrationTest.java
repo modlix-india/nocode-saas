@@ -70,14 +70,10 @@ public abstract class AbstractIntegrationTest {
 	}
 
 	protected Mono<Void> cleanupTestData() {
-		return databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0")
-				.then()
+		return databaseClient.sql("DELETE FROM security_user_token WHERE USER_ID > 1").then()
 				.then(databaseClient.sql("DELETE FROM security_client_manager WHERE ID > 0").then())
-				.then(databaseClient.sql(
-						"DELETE FROM security_user WHERE ID > 1").then())
-				.then(databaseClient.sql(
-						"DELETE FROM security_client WHERE ID > 1").then())
-				.then(databaseClient.sql("SET FOREIGN_KEY_CHECKS = 1").then());
+				.then(databaseClient.sql("DELETE FROM security_user WHERE ID > 1").then())
+				.then(databaseClient.sql("DELETE FROM security_client WHERE ID > 1").then());
 	}
 
 	protected Mono<ULong> insertTestClient(String code, String name, String typeCode) {

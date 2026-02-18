@@ -30,10 +30,10 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - run: mvn -q -DskipTests clean install -f commons/pom.xml
+      - run: mvn -q clean install -f commons/pom.xml
 
       - working-directory: gateway
-        run: mvn -q -DskipTests clean package
+        run: mvn -q clean package
 
       - run: |
           mkdir -p target
