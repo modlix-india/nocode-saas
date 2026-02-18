@@ -52,3 +52,6 @@ deletedFiles/
 
 server-files/
 .DS_Store
+
+.claude/
+.claude1/
