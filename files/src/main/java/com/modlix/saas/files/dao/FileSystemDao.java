@@ -323,7 +323,7 @@ public class FileSystemDao {
 
             updatedCreated = this.context.insertInto(FILES_FILE_SYSTEM)
                     .set(FILES_FILE_SYSTEM.CODE, clientCode)
-                    .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.get())
+                    .set(FILES_FILE_SYSTEM.PARENT_ID, parentId.orElse(null))
                     .set(FILES_FILE_SYSTEM.FILE_TYPE, FilesFileSystemFileType.FILE)
                     .set(FILES_FILE_SYSTEM.NAME, name)
                     .set(FILES_FILE_SYSTEM.SIZE, fileLength)
