@@ -3,11 +3,12 @@ package com.fincity.saas.entity.processor.dao;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.ENTITY_PROCESSOR_ACTIVITIES;
 import static com.fincity.saas.entity.processor.jooq.tables.EntityProcessorTickets.ENTITY_PROCESSOR_TICKETS;
 
+import com.fincity.saas.entity.processor.dto.rule.ProductTicketExRule;
+import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -16,10 +17,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.types.ULong;
 import org.springframework.stereotype.Component;
-
-import com.fincity.saas.entity.processor.dto.rule.ProductTicketExRule;
-import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorProducts;
-
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 

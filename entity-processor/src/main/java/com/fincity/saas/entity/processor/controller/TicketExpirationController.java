@@ -22,8 +22,7 @@ public class TicketExpirationController {
 
     @PostMapping("/run")
     public Mono<ResponseEntity<ExpireTicketsResult>> runExpiration(
-            @RequestHeader("appCode") String appCode,
-            @RequestHeader("clientCode") String clientCode) {
+            @RequestHeader("appCode") String appCode, @RequestHeader("clientCode") String clientCode) {
         ProcessorAccess access = ProcessorAccess.of(appCode, clientCode, true, null, null);
         return ticketExpirationService.runExpiration(access).map(ResponseEntity::ok);
     }

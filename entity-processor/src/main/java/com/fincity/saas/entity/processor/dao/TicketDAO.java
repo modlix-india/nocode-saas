@@ -169,8 +169,7 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
         if (tableFields.contains(Ticket.Fields.productTemplateId))
             list.add(EntityProcessorProducts.ENTITY_PROCESSOR_PRODUCTS.PRODUCT_TEMPLATE_ID);
 
-        if (tableFields.contains(Ticket.Fields.latestTaskDueDate))
-            list.add(latestTaskDueDate);
+        if (tableFields.contains(Ticket.Fields.latestTaskDueDate)) list.add(latestTaskDueDate);
 
         return list;
     }
@@ -306,7 +305,8 @@ public class TicketDAO extends BaseProcessorDAO<EntityProcessorTicketsRecord, Ti
     }
 
     private Field<LocalDateTime> getLatestTaskDueDateField() {
-        return dslContext.select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
+        return dslContext
+                .select(DSL.min(ENTITY_PROCESSOR_TASKS.DUE_DATE))
                 .from(ENTITY_PROCESSOR_TASKS)
                 .where(ENTITY_PROCESSOR_TASKS.TICKET_ID.eq(ENTITY_PROCESSOR_TICKETS.ID))
                 .and(ENTITY_PROCESSOR_TASKS.DUE_DATE.ge(DSL.currentLocalDateTime()))

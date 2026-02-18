@@ -11,14 +11,13 @@ import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService
 import com.fincity.saas.entity.processor.service.base.BaseUpdatableService;
 import com.fincity.saas.entity.processor.service.product.ProductService;
 import com.fincity.saas.entity.processor.service.product.template.ProductTemplateService;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
-
-import java.util.List;
 
 @Service
 public class ProductTicketExRuleService
@@ -60,7 +59,8 @@ public class ProductTicketExRuleService
     public Mono<List<ProductTicketExRule>> getActiveRules(ProcessorAccess access) {
         return cacheService.cacheValueOrGet(
                 getCacheName(),
-                () -> dao.findActiveByAppCodeAndClientCode(access.getAppCode(), access.getClientCode()).collectList(),
+                () -> dao.findActiveByAppCodeAndClientCode(access.getAppCode(), access.getClientCode())
+                        .collectList(),
                 getCacheKey(access.getAppCode(), access.getClientCode(), "activeRules"));
     }
 
