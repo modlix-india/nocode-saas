@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
 import org.jooq.Record2;
@@ -223,6 +224,25 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
     @Override
     protected Condition filterConditionFilter(FilterCondition fc, SelectJoinStep<Record> selectJoinStep) {
 
+        if (fc.getField().startsWith("user.")) {
+            String userFieldName = fc.getField().substring(5);
+            String jooqFieldName = this.convertToJOOQFieldName(userFieldName);
+            Field<?> userField = SECURITY_USER.field(jooqFieldName);
+
+            if (userField == null)
+                return DSL.noCondition();
+
+            Condition userCondition = this.buildUserFieldCondition(userField, fc);
+
+            if (fc.isNegate())
+                userCondition = DSL.not(userCondition);
+
+            return SECURITY_CLIENT.ID.in(
+                    DSL.select(SECURITY_USER.CLIENT_ID)
+                            .from(SECURITY_USER)
+                            .where(userCondition));
+        }
+
         if (!fc.getField().equals("appId") && !fc.getField().equals("appCode"))
             return super.filterConditionFilter(fc, selectJoinStep);
 
@@ -267,6 +287,28 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                 DSL.exists(DSL.select(DSL.value(1)).from(SECURITY_APP_ACCESS)
                         .leftJoin(SECURITY_APP).on(SECURITY_APP.ID.eq(SECURITY_APP_ACCESS.APP_ID))
                         .where(SECURITY_APP_ACCESS.CLIENT_ID.eq(SECURITY_CLIENT.ID).and(appCodeCondition))));
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Condition buildUserFieldCondition(Field userField, FilterCondition fc) {
+
+        return switch (fc.getOperator()) {
+            case EQUALS -> userField.eq(this.fieldValue(userField, fc.getValue()));
+            case LESS_THAN -> userField.lt(this.fieldValue(userField, fc.getValue()));
+            case GREATER_THAN -> userField.gt(this.fieldValue(userField, fc.getValue()));
+            case LESS_THAN_EQUAL -> userField.le(this.fieldValue(userField, fc.getValue()));
+            case GREATER_THAN_EQUAL -> userField.ge(this.fieldValue(userField, fc.getValue()));
+            case IN -> userField.in(this.multiFieldValue(userField, fc.getValue(), fc.getMultiValue()));
+            case LIKE -> userField.like(fc.getValue().toString());
+            case STRING_LOOSE_EQUAL -> userField.like("%" + fc.getValue() + "%");
+            case IS_TRUE -> userField.isTrue();
+            case IS_FALSE -> userField.isFalse();
+            case IS_NULL -> userField.isNull();
+            case BETWEEN -> userField.between(
+                    this.fieldValue(userField, fc.getValue()),
+                    this.fieldValue(userField, fc.getToValue()));
+            default -> DSL.noCondition();
+        };
     }
 
     public Mono<List<Client>> fillUserCounts(Map<ULong, Client> map, String appCode, String appId) {
