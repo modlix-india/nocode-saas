@@ -297,7 +297,11 @@ public class PlanService extends AbstractJOOQUpdatableDataService<SecurityPlanRe
     public Mono<Boolean> addPlanAndCyCle(ClientPlanRequest request) {
 
         if (StringUtil.safeIsBlank(request.getUrlClientCode()))
-            return this.clientService.getClientInfoById(request.getUrlClientId()).map(Client::getCode)
+            return this.clientService.getClientInfoById(request.getUrlClientId())
+                    .switchIfEmpty(this.messageResourceService.throwMessage(
+                            msg -> new GenericException(HttpStatus.BAD_REQUEST, msg),
+                            SecurityMessageResourceService.PARAMS_NOT_FOUND, "Client"))
+                    .map(Client::getCode)
                     .flatMap(urlClientCode -> this.addPlanAndCyCle(request.getClientId(), urlClientCode,
                             request.getPlanId(), request.getCycleId(), request.getEndDate()));
 

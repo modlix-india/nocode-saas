@@ -86,8 +86,8 @@ public class PlanDAO extends AbstractUpdatableClientCheckDAO<SecurityPlanRecord,
                         .where(DSL.and(SECURITY_CLIENT_PLAN.CLIENT_ID.eq(clientId),
                                 SECURITY_CLIENT.CODE.eq(urlClientCode),
                                 SECURITY_CLIENT_PLAN.END_DATE.gt(LocalDateTime.now()))))
-                        .map(Record1::value1).filter(appId -> !planApps.contains(appId)).collectList()
-                        .map(apps -> !apps.isEmpty()))
+                        .map(Record1::value1).filter(planApps::contains).collectList()
+                        .map(List::isEmpty))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "PlanDao.findConflictPlans"));
     }
 
