@@ -1,0 +1,35 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+eureka:
+  client:
+    enabled: false
+
+security:
+  subdomain:
+    endings: .test.local
+  appCodeSuffix: .test
+
+jwt:
+  key: testSecretKeyForJWTTokenGenerationThatIsLongEnoughForHS256Algorithm1234567890
+  token:
+    rememberme:
+      expiry: 1440
+    default:
+      expiry: 60
+      refresh: 10
+
+events:
+  mq:
+    exchange: test-events
+    routingkeys: test-events1
