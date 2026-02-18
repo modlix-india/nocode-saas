@@ -17,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -630,7 +631,7 @@ class UserControllerTest {
             invite.setEmailId("invite@test.com");
             invite.setFirstName("Invited");
 
-            Page<UserInvite> page = new PageImpl<>(List.of(invite));
+            Page<UserInvite> page = new PageImpl<>(List.of(invite), PageRequest.of(0, 10), 1);
 
             when(inviteService.getAllInvitedUsers(any(), any()))
                     .thenReturn(Mono.just(page));
@@ -857,7 +858,7 @@ class UserControllerTest {
         @DisplayName("Should return 200 with paginated users for internal query")
         void readPageFilterInternal_Success_ReturnsPage() {
 
-            Page<User> page = new PageImpl<>(List.of(sampleUser));
+            Page<User> page = new PageImpl<>(List.of(sampleUser), PageRequest.of(0, 10), 1);
 
             when(userService.readPageFilterInternal(any(), any()))
                     .thenReturn(Mono.just(page));
@@ -1227,7 +1228,7 @@ class UserControllerTest {
         @DisplayName("Should return paginated users on GET with query params")
         void readPageFilter_Success_ReturnsPage() {
 
-            Page<User> page = new PageImpl<>(List.of(sampleUser));
+            Page<User> page = new PageImpl<>(List.of(sampleUser), PageRequest.of(0, 10), 1);
 
             when(userService.readPageFilter(any(), nullable(AbstractCondition.class)))
                     .thenReturn(Mono.just(page));

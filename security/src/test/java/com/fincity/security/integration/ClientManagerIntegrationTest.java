@@ -87,9 +87,12 @@ class ClientManagerIntegrationTest extends AbstractIntegrationTest {
 
 		ULong bus1Id = insertTestClient("BUS1", "Business Client 1", "BUS").block();
 		insertClientHierarchy(bus1Id, SYSTEM_CLIENT_ID, null, null, null).block();
-		ULong userId = insertTestUser(SYSTEM_CLIENT_ID, "manager1", "manager1@test.com", "password123").block();
 
-		// Assign the user as manager of BUS1
+		// Use the SYSTEM user (ID=1) as the manager. The system ContextAuthentication
+		// has userId=1, so isUserClientManager(ca, ...) will look up user 1.
+		ULong userId = ULong.valueOf(1);
+
+		// Assign the SYSTEM user as manager of BUS1
 		clientManagerService.create(userId, bus1Id)
 				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(ca))
 				.block();

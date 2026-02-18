@@ -119,6 +119,9 @@ class TokenServiceTest extends AbstractServiceUnitTest {
 
 		@Test
 		void create_CreatesToken() {
+			var ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
 			TokenObject token = TestDataFactory.createTokenObject(null, USER_ID, "new-token-value",
 					LocalDateTime.now().plusHours(1));
 

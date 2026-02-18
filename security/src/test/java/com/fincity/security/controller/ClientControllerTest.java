@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -786,7 +787,7 @@ class ClientControllerTest {
         @DisplayName("Should return 200 with page of clients")
         void readPageFilter_Returns200WithPage() {
 
-            Page<Client> page = new PageImpl<>(List.of(sampleClient));
+            Page<Client> page = new PageImpl<>(List.of(sampleClient), PageRequest.of(0, 10), 1);
 
             when(clientService.readPageFilter(any(Pageable.class), any()))
                     .thenReturn(Mono.just(page));
@@ -809,7 +810,7 @@ class ClientControllerTest {
         @DisplayName("Should return 200 with empty page when no clients exist")
         void readPageFilter_EmptyPage_Returns200() {
 
-            Page<Client> emptyPage = new PageImpl<>(List.of());
+            Page<Client> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
             when(clientService.readPageFilter(any(Pageable.class), any()))
                     .thenReturn(Mono.just(emptyPage));
@@ -863,7 +864,7 @@ class ClientControllerTest {
         @DisplayName("Should return 200 with page of clients from internal query")
         void readPageFilterInternal_Returns200WithPage() {
 
-            Page<Client> page = new PageImpl<>(List.of(sampleClient));
+            Page<Client> page = new PageImpl<>(List.of(sampleClient), PageRequest.of(0, 10), 1);
 
             when(clientService.readPageFilterInternal(any(Pageable.class), any()))
                     .thenReturn(Mono.just(page));
@@ -891,8 +892,12 @@ class ClientControllerTest {
         @DisplayName("Should return 200 with empty page when internal query returns empty")
         void readPageFilterInternal_EmptyResult_ReturnsEmptyPage() {
 
+            Page<Client> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+
             when(clientService.readPageFilterInternal(any(Pageable.class), any()))
-                    .thenReturn(Mono.empty());
+                    .thenReturn(Mono.just(emptyPage));
+            when(clientService.fillDetails(anyList(), any()))
+                    .thenReturn(Mono.just(List.of()));
 
             Query query = new Query();
             query.setPage(0);

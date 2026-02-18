@@ -206,12 +206,13 @@ public interface IFeignSecurityService {
     List<EntityProcessorUser> getUsersForEntityProcessor(@RequestBody UsersListRequest request);
 
     @GetMapping(value = "${security.feign.isUserClientManageClient:/api/security/clients/internal/isUserClientManageClient}")
-    Boolean isUserClientManageClient(String appCode, BigInteger userId, BigInteger userClientId,
-            BigInteger targetClientId);
+    Boolean isUserClientManageClient(@RequestParam String appCode, @RequestParam BigInteger userId,
+            @RequestParam BigInteger userClientId, @RequestParam BigInteger targetClientId);
 
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
-    Boolean doesClientManageClient(BigInteger managingClientId, BigInteger clientId);
+    Boolean doesClientManageClient(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClientCode}")
-    Boolean doesClientManageClientCode(String managingClientCode, String clientCode);
+    Boolean doesClientManageClientCode(@RequestParam String managingClientCode,
+            @RequestParam String clientCode);
 }

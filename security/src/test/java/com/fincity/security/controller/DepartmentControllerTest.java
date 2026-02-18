@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -52,9 +53,9 @@ class DepartmentControllerTest {
 	@DisplayName("GET /api/security/departments - Should return page of departments")
 	void readPageFilter_returnsPageOfDepartments() {
 
-		Page<Department> page = new PageImpl<>(List.of(sampleDepartment));
+		Page<Department> page = new PageImpl<>(List.of(sampleDepartment), PageRequest.of(0, 10), 1);
 
-		when(departmentService.readPageFilter(any(), any(AbstractCondition.class)))
+		when(departmentService.readPageFilter(any(), any()))
 				.thenReturn(Mono.just(page));
 		when(departmentService.fillDetails(anyList(), any()))
 				.thenReturn(Mono.just(List.of(sampleDepartment)));

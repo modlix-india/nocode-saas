@@ -554,8 +554,8 @@ class ClientServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated Name", result.getName()))
 					.verifyComplete();
 
-			verify(cacheService).evict("clientCodeId", BUS_CLIENT_ID);
-			verify(cacheService).evict("clientId", BUS_CLIENT_ID);
+			verify(cacheService, atLeast(1)).evict("clientCodeId", BUS_CLIENT_ID);
+			verify(cacheService, atLeast(1)).evict("clientId", BUS_CLIENT_ID);
 		}
 	}
 

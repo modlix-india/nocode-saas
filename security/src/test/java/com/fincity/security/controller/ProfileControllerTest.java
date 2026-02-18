@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -108,7 +109,7 @@ class ProfileControllerTest {
     void readPageFilter_returnsPage() {
 
         Profile profile = createTestProfile();
-        Page<Profile> page = new PageImpl<>(List.of(profile));
+        Page<Profile> page = new PageImpl<>(List.of(profile), PageRequest.of(0, 10), 1);
 
         when(profileService.readAll(eq(ULong.valueOf(100)), any(Pageable.class)))
                 .thenReturn(Mono.just(page));

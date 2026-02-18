@@ -1,6 +1,7 @@
 package com.fincity.security.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -17,12 +18,11 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 
 import com.fincity.security.dto.App;
 import com.fincity.security.dto.AppProperty;
@@ -301,12 +301,12 @@ class AppControllerTest {
             client.setCode("clientA");
             client.setName("Client A");
 
-            Page<Client> clientPage = new PageImpl<>(List.of(client));
-            when(appService.getAppClients(eq("testapp"), any(), any(), any(Pageable.class)))
+            Page<Client> clientPage = new PageImpl<>(List.of(client), PageRequest.of(0, 10), 1);
+            when(appService.getAppClients(eq("testapp"), anyBoolean(), any(), any(Pageable.class)))
                     .thenReturn(Mono.just(clientPage));
 
             webTestClient.get()
-                    .uri(BASE_PATH + "/clients/testapp")
+                    .uri(BASE_PATH + "/clients/testapp?onlyWriteAccess=false")
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody()
@@ -530,9 +530,9 @@ class AppControllerTest {
         @DisplayName("GET /findAnyApps - returns paginated apps")
         void findAnyApps_returnsPage() {
             App app = createTestApp();
-            Page<App> appPage = new PageImpl<>(List.of(app));
+            Page<App> appPage = new PageImpl<>(List.of(app), PageRequest.of(0, 10), 1);
 
-            when(appService.findAnyAppsByPage(any(Pageable.class), any(AbstractCondition.class)))
+            when(appService.findAnyAppsByPage(any(Pageable.class), any()))
                     .thenReturn(Mono.just(appPage));
 
             webTestClient.get()

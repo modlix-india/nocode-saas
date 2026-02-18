@@ -1,6 +1,7 @@
 package com.fincity.security.integration;
 
 import org.jooq.types.ULong;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -9,8 +10,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.security.feign.IFeignFilesService;
@@ -20,17 +19,19 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 public abstract class AbstractIntegrationTest {
 
-	@Container
 	static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
 			.withDatabaseName("security")
 			.withUsername("test")
 			.withPassword("test")
 			.withReuse(true);
+
+	static {
+		mysql.start();
+	}
 
 	@DynamicPropertySource
 	static void configureProperties(DynamicPropertyRegistry registry) {
@@ -48,6 +49,9 @@ public abstract class AbstractIntegrationTest {
 		registry.add("spring.flyway.user", () -> "test");
 		registry.add("spring.flyway.password", () -> "test");
 	}
+
+	@MockitoBean
+	protected CachingConnectionFactory cachingConnectionFactory;
 
 	@MockitoBean
 	protected EventCreationService eventCreationService;
@@ -101,14 +105,16 @@ public abstract class AbstractIntegrationTest {
 
 	protected Mono<Void> insertClientHierarchy(ULong clientId, ULong level0, ULong level1, ULong level2,
 			ULong level3) {
-		return databaseClient.sql(
+		var spec = databaseClient.sql(
 				"INSERT INTO security_client_hierarchy (CLIENT_ID, MANAGE_CLIENT_LEVEL_0, MANAGE_CLIENT_LEVEL_1, MANAGE_CLIENT_LEVEL_2, MANAGE_CLIENT_LEVEL_3) VALUES (:clientId, :level0, :level1, :level2, :level3)")
-				.bind("clientId", clientId.longValue())
-				.bind("level0", level0 != null ? level0.longValue() : null)
-				.bind("level1", level1 != null ? level1.longValue() : null)
-				.bind("level2", level2 != null ? level2.longValue() : null)
-				.bind("level3", level3 != null ? level3.longValue() : null)
-				.then();
+				.bind("clientId", clientId.longValue());
+
+		spec = level0 != null ? spec.bind("level0", level0.longValue()) : spec.bindNull("level0", Long.class);
+		spec = level1 != null ? spec.bind("level1", level1.longValue()) : spec.bindNull("level1", Long.class);
+		spec = level2 != null ? spec.bind("level2", level2.longValue()) : spec.bindNull("level2", Long.class);
+		spec = level3 != null ? spec.bind("level3", level3.longValue()) : spec.bindNull("level3", Long.class);
+
+		return spec.then();
 	}
 
 	protected Mono<Void> insertClientManager(ULong clientId, ULong managerId) {
@@ -117,5 +123,16 @@ public abstract class AbstractIntegrationTest {
 				.bind("clientId", clientId.longValue())
 				.bind("managerId", managerId.longValue())
 				.then();
+	}
+
+	protected Mono<ULong> insertTestApp(ULong clientId, String appCode, String appName) {
+		return databaseClient.sql(
+				"INSERT INTO security_app (CLIENT_ID, APP_NAME, APP_CODE, APP_TYPE) VALUES (:clientId, :appName, :appCode, 'APP')")
+				.bind("clientId", clientId.longValue())
+				.bind("appName", appName)
+				.bind("appCode", appCode)
+				.filter(s -> s.returnGeneratedValues("ID"))
+				.map(row -> ULong.valueOf(row.get("ID", Long.class)))
+				.one();
 	}
 }

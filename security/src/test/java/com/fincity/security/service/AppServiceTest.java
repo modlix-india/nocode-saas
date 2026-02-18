@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
@@ -56,6 +57,9 @@ class AppServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private AppRegistrationV2DAO appRegistrationDao;
 
+	@Mock
+	private ObjectMapper objectMapper;
+
 	private AppService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -78,6 +82,17 @@ class AppServiceTest extends AbstractServiceUnitTest {
 			daoField.set(service, dao);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to inject DAO", e);
+		}
+
+		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(App.class));
+
+		// Inject objectMapper from parent class
+		try {
+			var omField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "objectMapper");
+			omField.setAccessible(true);
+			omField.set(service, objectMapper);
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to inject ObjectMapper", e);
 		}
 
 		setupMessageResourceService(messageResourceService);
@@ -267,6 +282,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getManagedClientOfClientById(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(managedClient));
+			when(clientService.getSystemClientId())
+					.thenReturn(Mono.just(SYSTEM_CLIENT_ID));
 			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
 			when(dao.addClientAccess(APP_ID, BUS_CLIENT_ID, true))
 					.thenReturn(Mono.just(true));
@@ -316,6 +333,8 @@ class AppServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getManagedClientOfClientById(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(managedClient));
+			when(clientService.getSystemClientId())
+					.thenReturn(Mono.just(SYSTEM_CLIENT_ID));
 			when(dao.generateAppCode(any(App.class))).thenReturn(Mono.just("gencode"));
 			when(dao.create(any(App.class))).thenReturn(Mono.just(created));
 			when(dao.addClientAccess(APP_ID, BUS_CLIENT_ID, true))
@@ -470,9 +489,11 @@ class AppServiceTest extends AbstractServiceUnitTest {
 					.assertNext(AppServiceTest.this::assertNotNull)
 					.verifyComplete();
 
-			verify(cacheService).evictAllFunction("appInheritance");
-			verify(cacheService).evict("byAppCode", "testapp");
-			verify(cacheService).evict("byAppId", APP_ID);
+			// Called twice: once from AppService.update(App) and once from AppService.update(ULong, Map)
+			// because super.update(key, fields) chains to this.update(entity) which also evicts.
+			verify(cacheService, atLeast(2)).evictAllFunction("appInheritance");
+			verify(cacheService, atLeast(1)).evict("byAppCode", "testapp");
+			verify(cacheService, atLeast(1)).evict("byAppId", APP_ID);
 		}
 	}
 

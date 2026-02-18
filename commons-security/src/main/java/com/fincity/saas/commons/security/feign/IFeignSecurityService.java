@@ -259,12 +259,13 @@ public interface IFeignSecurityService {
             @RequestParam List<BigInteger> departmentIds, @RequestParam MultiValueMap<String, String> params);
 
     @GetMapping(value = "${security.feign.isUserClientManageClient:/api/security/clients/internal/isUserClientManageClient}")
-    Mono<Boolean> isUserClientManageClient(String appCode, BigInteger userId, BigInteger userClientId,
-            BigInteger targetClientId);
+    Mono<Boolean> isUserClientManageClient(@RequestParam String appCode, @RequestParam BigInteger userId,
+            @RequestParam BigInteger userClientId, @RequestParam BigInteger targetClientId);
 
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClient}")
-    Mono<Boolean> doesClientManageClient(BigInteger managingClientId, BigInteger clientId);
+    Mono<Boolean> doesClientManageClient(@RequestParam BigInteger managingClientId, @RequestParam BigInteger clientId);
 
     @GetMapping("${security.feign.doesClientManageClient:/api/security/clients/internal/doesClientManageClientCode}")
-    Mono<Boolean> doesClientManageClientCode(String managingClientCode, String clientCode);
+    Mono<Boolean> doesClientManageClientCode(@RequestParam String managingClientCode,
+            @RequestParam String clientCode);
 }

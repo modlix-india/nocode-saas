@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -228,7 +229,7 @@ class SSLCertificateControllerTest {
         @DisplayName("GET / - returns paginated certificates")
         void readPageFilter_returnsCertificates() {
             SSLCertificate cert = createTestCertificate();
-            Page<SSLCertificate> page = new PageImpl<>(List.of(cert));
+            Page<SSLCertificate> page = new PageImpl<>(List.of(cert), PageRequest.of(0, 10), 1);
 
             when(sslCertificateService.findSSLCertificates(any(), any(Pageable.class), any()))
                     .thenReturn(Mono.just(page));

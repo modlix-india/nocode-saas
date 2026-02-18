@@ -16,11 +16,11 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import com.fincity.saas.commons.model.condition.AbstractCondition;
 import com.fincity.security.dto.Designation;
 import com.fincity.security.service.DesignationService;
 import com.fincity.security.testutil.TestWebSecurityConfig;
@@ -53,9 +53,9 @@ class DesignationControllerTest {
 	@DisplayName("GET /api/security/designations - Should return page of designations")
 	void readPageFilter_returnsPageOfDesignations() {
 
-		Page<Designation> page = new PageImpl<>(List.of(sampleDesignation));
+		Page<Designation> page = new PageImpl<>(List.of(sampleDesignation), PageRequest.of(0, 10), 1);
 
-		when(designationService.readPageFilter(any(), any(AbstractCondition.class)))
+		when(designationService.readPageFilter(any(), any()))
 				.thenReturn(Mono.just(page));
 		when(designationService.fillDetails(anyList(), any()))
 				.thenReturn(Mono.just(List.of(sampleDesignation)));

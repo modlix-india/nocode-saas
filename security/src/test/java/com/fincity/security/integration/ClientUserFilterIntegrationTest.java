@@ -10,18 +10,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
 import com.fincity.saas.commons.model.condition.ComplexCondition;
 import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.Client;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.testutil.TestDataFactory;
@@ -34,7 +32,7 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 	@Autowired
 	private ClientService clientService;
 
-	private MockedStatic<SecurityContextUtil> securityContextMock;
+	private ContextAuthentication systemAuth;
 
 	private ULong client1Id;
 	private ULong client2Id;
@@ -43,11 +41,7 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 	@BeforeEach
 	void setUp() {
 		setupMockBeans();
-		securityContextMock = Mockito.mockStatic(SecurityContextUtil.class);
-
-		ContextAuthentication ca = TestDataFactory.createSystemAuth();
-		securityContextMock.when(SecurityContextUtil::getUsersContextAuthentication)
-				.thenReturn(Mono.just(ca));
+		systemAuth = TestDataFactory.createSystemAuth();
 
 		// Create 3 clients with different users
 		client1Id = insertTestClient("CLI1", "Client One", "BUS").block();
@@ -71,9 +65,6 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 	@AfterEach
 	void tearDown() {
-		if (securityContextMock != null)
-			securityContextMock.close();
-
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_client_manager WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
@@ -115,7 +106,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI1", page.getContent().getFirst().getCode());
@@ -134,7 +126,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI1", page.getContent().getFirst().getCode());
@@ -158,7 +151,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI2", page.getContent().getFirst().getCode());
@@ -182,7 +176,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						// Client1 has ACTIVE users, Client2 has one ACTIVE user
 						// Client3 has no ACTIVE users
@@ -209,7 +204,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI3", page.getContent().getFirst().getCode());
@@ -228,7 +224,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						// Client2 has INACTIVE user, Client3 has LOCKED user
 						List<String> codes = page.getContent().stream()
@@ -257,7 +254,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI3", page.getContent().getFirst().getCode());
@@ -281,7 +279,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI2", page.getContent().getFirst().getCode());
@@ -312,7 +311,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						assertEquals(1, page.getTotalElements());
 						assertEquals("CLI1", page.getContent().getFirst().getCode());
@@ -336,7 +336,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						// noCondition means no filtering, so all clients should be returned
 						// (at minimum the 3 test clients + the system client)
@@ -362,7 +363,8 @@ class ClientUserFilterIntegrationTest extends AbstractIntegrationTest {
 
 			Pageable pageable = PageRequest.of(0, 10);
 
-			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition))
+			StepVerifier.create(clientService.readPageFilterInternal(pageable, condition)
+							.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth)))
 					.assertNext(page -> {
 						List<String> codes = page.getContent().stream()
 								.map(Client::getCode)

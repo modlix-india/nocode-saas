@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -43,7 +44,7 @@ class ClientManagerControllerTest {
         client.setCode("testClient");
         client.setName("Test Client");
 
-        Page<Client> page = new PageImpl<>(List.of(client));
+        Page<Client> page = new PageImpl<>(List.of(client), PageRequest.of(0, 10), 1);
 
         when(clientManagerService.getClientsOfUser(eq(ULong.valueOf(10)), any(Pageable.class)))
                 .thenReturn(Mono.just(page));

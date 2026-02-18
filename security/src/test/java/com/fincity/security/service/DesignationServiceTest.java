@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
@@ -54,6 +55,9 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private CacheService cacheService;
 
+	@Mock
+	private ObjectMapper objectMapper;
+
 	@InjectMocks
 	private DesignationService service;
 
@@ -69,6 +73,19 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 		Field daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
 		daoField.setAccessible(true);
 		daoField.set(service, dao);
+
+		// Inject objectMapper via reflection
+		try {
+			var omField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "objectMapper");
+			if (omField != null) {
+				omField.setAccessible(true);
+				omField.set(service, objectMapper);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to inject ObjectMapper", e);
+		}
+
+		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(Designation.class));
 
 		setupMessageResourceService(securityMessageResourceService);
 		setupCacheService(cacheService);
@@ -263,7 +280,7 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
-			verify(cacheService).evict(eq("designation"), eq(DESIGNATION_ID));
+			verify(cacheService, atLeast(1)).evict(eq("designation"), eq(DESIGNATION_ID));
 		}
 	}
 
@@ -285,23 +302,13 @@ class DesignationServiceTest extends AbstractServiceUnitTest {
 			when(dao.readById(DESIGNATION_ID)).thenReturn(Mono.just(existing));
 			when(dao.update(any(Designation.class))).thenReturn(Mono.just(updated));
 
-			// Inject ObjectMapper for the map-based update
-			try {
-				var omField = service.getClass().getSuperclass().getSuperclass()
-						.getDeclaredField("objectMapper");
-				omField.setAccessible(true);
-				omField.set(service, new com.fasterxml.jackson.databind.ObjectMapper());
-			} catch (Exception e) {
-				throw new RuntimeException("Failed to inject ObjectMapper", e);
-			}
-
 			Map<String, Object> fields = Map.of("name", "Updated");
 
 			StepVerifier.create(service.update(DESIGNATION_ID, fields))
 					.assertNext(result -> assertEquals("Updated", result.getName()))
 					.verifyComplete();
 
-			verify(cacheService).evict(eq("designation"), eq(DESIGNATION_ID));
+			verify(cacheService, atLeast(1)).evict(eq("designation"), eq(DESIGNATION_ID));
 		}
 	}
 

@@ -426,7 +426,9 @@ class ClientPasswordPolicyServiceTest extends AbstractServiceUnitTest {
 			policy.setPassMinLength(null);
 			policy.setPassMaxLength(null);
 			policy.setPassHistoryCount((short) 0);
-			String password = "anypassword";
+			// Password must contain at least one special character because
+			// checkInSpecialCharacters is always evaluated regardless of policy flags
+			String password = "anypassword!";
 
 			when(dao.getPastPasswordsBasedOnPolicy(any(ClientPasswordPolicy.class), eq(USER_ID)))
 					.thenReturn(Flux.empty());

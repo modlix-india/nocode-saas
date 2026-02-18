@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import org.mockito.ArgumentMatchers;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.mq.events.EventCreationService;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -97,6 +99,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 	@Mock
 	private ClientManagerService clientManagerService;
 
+	private ObjectMapper objectMapper = new ObjectMapper();
+
 	private UserService service;
 
 	private static final ULong SYSTEM_CLIENT_ID = ULong.valueOf(1);
@@ -120,9 +124,33 @@ class UserServiceTest extends AbstractServiceUnitTest {
 		injectDao();
 		injectLazyDependencies();
 
+		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(User.class));
+
+		var omField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "objectMapper");
+		omField.setAccessible(true);
+		try {
+			omField.set(service, objectMapper);
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to inject objectMapper", e);
+		}
+
+		// Inject soxLogService into AbstractSecurityUpdatableDataService parent
+		var parentSoxLogField = org.springframework.util.ReflectionUtils.findField(
+				com.fincity.security.service.AbstractSecurityUpdatableDataService.class, "soxLogService");
+		if (parentSoxLogField != null) {
+			parentSoxLogField.setAccessible(true);
+			try {
+				parentSoxLogField.set(service, soxLogService);
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to inject soxLogService into parent", e);
+			}
+		}
+
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
 		setupSoxLogService(soxLogService);
+
+		lenient().when(soxLogService.create(any())).thenReturn(Mono.just(new com.fincity.security.dto.SoxLog()));
 
 		setField(service, "tokenKey",
 				"testSecretKeyForJWTTokenGenerationThatIsLongEnoughForHS256Algorithm1234567890");
@@ -130,8 +158,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 	private void injectDao() {
 		try {
-			var daoField = service.getClass().getSuperclass().getSuperclass()
-					.getSuperclass().getDeclaredField("dao");
+			var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
 			daoField.setAccessible(true);
 			daoField.set(service, dao);
 		} catch (Exception e) {
@@ -322,7 +349,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 		void getUserAuthorities_NoAppSpecificRoles_UsesDefaultRoles() {
 
 			when(roleService.getRoleAuthoritiesPerApp(any()))
-					.thenReturn(Mono.just(Map.of("", List.of("Authorities.Default_Auth"))));
+					.thenReturn(Mono.just(Map.of("", new ArrayList<>(List.of("Authorities.Default_Auth")))));
 
 			when(profileService.getProfileAuthorities(eq(APP_CODE), any(), any()))
 					.thenReturn(Mono.just(List.of()));
@@ -620,6 +647,11 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
 					.thenReturn(Mono.just(true));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+			when(dao.checkUserExists(any(), any(), any(), any(), any())).thenReturn(Mono.just(false));
+			when(dao.canBeUpdated(USER_ID)).thenReturn(Mono.just(true));
 
 			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
 
@@ -968,6 +1000,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User user = TestDataFactory.createInactiveUser(USER_ID, BUS_CLIENT_ID);
 			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
 			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -1020,6 +1053,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User user = TestDataFactory.createInactiveUser(ULong.valueOf(1), SYSTEM_CLIENT_ID);
 			when(dao.readInternal(ULong.valueOf(1))).thenReturn(Mono.just(user));
+			when(dao.readById(ULong.valueOf(1))).thenReturn(Mono.just(user));
 			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
 
 			setupEvictCacheMocks(ULong.valueOf(1), SYSTEM_CLIENT_ID);
@@ -1045,6 +1079,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
 			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
@@ -1097,6 +1132,7 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			User user = TestDataFactory.createActiveUser(ULong.valueOf(1), SYSTEM_CLIENT_ID);
 			when(dao.readInternal(ULong.valueOf(1))).thenReturn(Mono.just(user));
+			when(dao.readById(ULong.valueOf(1))).thenReturn(Mono.just(user));
 			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
 
 			setupEvictCacheMocks(ULong.valueOf(1), SYSTEM_CLIENT_ID);
@@ -1549,10 +1585,11 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			user.setPasswordHashed(true);
 			when(dao.readInternal(ULong.valueOf(10))).thenReturn(Mono.just(user));
 
-			when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+			when(passwordEncoder.matches(eq("10oldPass"), eq("hashedOldPassword"))).thenReturn(true);
+			when(passwordEncoder.matches(eq("10newPass123!"), eq("hashedOldPassword"))).thenReturn(false);
 
-			when(clientService.validatePasswordPolicy(any(ULong.class), anyString(), any(ULong.class),
-					any(AuthenticationPasswordType.class), anyString()))
+			when(clientService.validatePasswordPolicy(nullable(ULong.class), nullable(String.class), nullable(ULong.class),
+					nullable(AuthenticationPasswordType.class), nullable(String.class)))
 					.thenReturn(Mono.just(true));
 
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
@@ -1585,10 +1622,11 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			user.setPasswordHashed(true);
 			when(dao.readInternal(ULong.valueOf(1))).thenReturn(Mono.just(user));
 
-			when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+			when(passwordEncoder.matches(eq("1oldPass"), eq("hashedOldPassword"))).thenReturn(true);
+			when(passwordEncoder.matches(eq("1newPass123!"), eq("hashedOldPassword"))).thenReturn(false);
 
-			when(clientService.validatePasswordPolicy(any(ULong.class), anyString(), any(ULong.class),
-					any(AuthenticationPasswordType.class), anyString()))
+			when(clientService.validatePasswordPolicy(nullable(ULong.class), nullable(String.class), nullable(ULong.class),
+					nullable(AuthenticationPasswordType.class), nullable(String.class)))
 					.thenReturn(Mono.just(true));
 
 			when(dao.setPassword(any(), any(), anyString(), any(AuthenticationPasswordType.class)))
@@ -1715,14 +1753,16 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
 
-			when(dao.checkUserExists(eq(BUS_CLIENT_ID), anyString(), isNull(), isNull(), isNull()))
+			when(dao.checkUserExists(any(), any(), any(), any(), any()))
 					.thenReturn(Mono.just(false));
 
 			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
 					.thenReturn(Mono.just(true));
 
-			User updatedUser = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
-			when(dao.update(eq(USER_ID), any(Map.class))).thenReturn(Mono.just(updatedUser));
+			User existingUser = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(existingUser));
+			when(dao.canBeUpdated(USER_ID)).thenReturn(Mono.just(true));
+			when(dao.update(any(User.class))).thenReturn(Mono.just(existingUser));
 
 			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
 
@@ -1758,8 +1798,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			Map<String, Object> fields = Map.of("userName", "existinguser");
 
 			StepVerifier.create(service.update(USER_ID, fields))
-					.assertNext(user -> assertNotNull(user))
-					.verifyComplete();
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
 		}
 	}
 
@@ -1893,6 +1934,8 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			when(clientService.getClientTypeNCodeNClientLevel(SYSTEM_CLIENT_ID))
 					.thenReturn(Mono.just(Tuples.of("SYS", "SYSTEM", "SYSTEM")));
+
+			when(dao.checkUserExists(any(), any(), any(), any(), any())).thenReturn(Mono.just(false));
 
 			when(dao.create(any(User.class))).thenReturn(Mono.just(entity));
 

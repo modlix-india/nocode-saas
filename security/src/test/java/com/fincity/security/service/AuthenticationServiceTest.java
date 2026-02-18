@@ -635,7 +635,7 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
 			ServerHttpResponse response = mockResponse();
 
-			when(userService.findNonDeletedUserNClient(anyString(), any(), anyString(), anyString(), any()))
+			when(userService.findNonDeletedUserNClient(anyString(), any(), anyString(), any(), any()))
 					.thenReturn(Mono.empty());
 
 			StepVerifier.create(service.authenticateWSocial(authRequest, request, response))
@@ -699,7 +699,7 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 		void getAuthentication_BlankToken_ReturnsAnonymous() {
 			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
 
-			when(clientService.getClientBy(any(ServerHttpRequest.class)))
+			when(clientService.getClientBy(anyString()))
 					.thenReturn(Mono.just(TestDataFactory.createSystemClient()));
 
 			StepVerifier.create(service.getAuthentication(false, "", CLIENT_CODE, APP_CODE, request))
@@ -714,11 +714,7 @@ class AuthenticationServiceTest extends AbstractServiceUnitTest {
 		void getAuthentication_ExpiredToken_ReturnsAnonymous() {
 			ServerHttpRequest request = mockRequest(null, APP_CODE, CLIENT_CODE);
 
-			// Cache miss
-			when(cacheService.get(anyString(), anyString()))
-					.thenReturn(Mono.empty());
-
-			when(clientService.getClientBy(any(ServerHttpRequest.class)))
+			when(clientService.getClientBy(anyString()))
 					.thenReturn(Mono.just(TestDataFactory.createSystemClient()));
 
 			StepVerifier.create(

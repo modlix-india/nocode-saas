@@ -512,16 +512,15 @@ class AuthenticationControllerTest {
     class VerifyTokenTests {
 
         @Test
-        @DisplayName("Should return 200 with empty body when no security context is available")
-        void verifyToken_NoSecurityContext_ReturnsEmptyBody() {
+        @DisplayName("Should return 401 when no security context is available")
+        void verifyToken_NoSecurityContext_Returns401() {
 
-            // The verifyToken endpoint uses SecurityContextUtil directly. Without a
-            // security context in unit tests, the reactive chain returns empty Mono.
+            // Without a security context, SecurityContextUtil returns empty Mono.
+            // The controller's switchIfEmpty returns 401 UNAUTHORIZED.
             webTestClient.get()
                     .uri("/api/security/verifyToken")
                     .exchange()
-                    .expectStatus().isOk()
-                    .expectBody().isEmpty();
+                    .expectStatus().isUnauthorized();
         }
     }
 

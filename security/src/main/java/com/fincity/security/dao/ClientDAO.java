@@ -234,8 +234,9 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
 
             Condition userCondition = this.buildUserFieldCondition(userField, fc);
 
-            if (fc.isNegate())
-                userCondition = DSL.not(userCondition);
+            // Note: negate is handled by the parent filter() method in AbstractDAO,
+            // which wraps the entire condition with .not(). Do NOT apply negate here
+            // to avoid double negation.
 
             return SECURITY_CLIENT.ID.in(
                     DSL.select(SECURITY_USER.CLIENT_ID)

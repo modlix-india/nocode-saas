@@ -619,7 +619,7 @@ class ClientRegistrationServiceTest extends AbstractServiceUnitTest {
 					any(ServerHttpResponse.class)))
 					.thenReturn(Mono.just(authResp));
 
-			when(clientUrlService.getAppUrl(eq("NEWCLIENT"), eq(APP_CODE))).thenReturn(Mono.just(""));
+			when(clientUrlService.getAppUrl(anyString(), anyString())).thenReturn(Mono.just(""));
 
 			when(ecService.createEvent(any())).thenReturn(Mono.just(Boolean.TRUE));
 

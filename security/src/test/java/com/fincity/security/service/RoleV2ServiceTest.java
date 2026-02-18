@@ -18,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.security.dao.RoleV2DAO;
@@ -45,6 +47,9 @@ class RoleV2ServiceTest extends AbstractServiceUnitTest {
 
 	@Mock
 	private SoxLogService soxLogService;
+
+	@Mock
+	private ObjectMapper objectMapper;
 
 	private RoleV2Service service;
 
@@ -78,6 +83,19 @@ class RoleV2ServiceTest extends AbstractServiceUnitTest {
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to inject SoxLogService", e);
 		}
+
+		// Inject objectMapper via reflection
+		try {
+			var omField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "objectMapper");
+			if (omField != null) {
+				omField.setAccessible(true);
+				omField.set(service, objectMapper);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to inject ObjectMapper", e);
+		}
+
+		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(RoleV2.class));
 
 		setupMessageResourceService(messageResourceService);
 		setupSoxLogService(soxLogService);

@@ -3,6 +3,7 @@ package com.fincity.security.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +44,7 @@ class AppRegistrationControllerTest {
     @MockitoBean
     private AppRegistrationServiceV2 appRegistrationServiceV2;
 
-    @MockitoBean
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
     private ObjectMapper objectMapper;
 
     @Test
@@ -62,8 +63,7 @@ class AppRegistrationControllerTest {
                 "allowAppId", "20",
                 "businessType", "COMMON");
 
-        when(objectMapper.convertValue(any(Map.class), eq(AppRegistrationAccess.class)))
-                .thenReturn(access);
+        doReturn(access).when(objectMapper).convertValue(any(Map.class), eq(AppRegistrationAccess.class));
 
         when(appRegistrationServiceV2.create(
                 eq(AppRegistrationObjectType.APPLICATION_ACCESS),
@@ -97,7 +97,8 @@ class AppRegistrationControllerTest {
         access.setAppId(ULong.valueOf(5));
         access.setBusinessType("COMMON");
 
-        Page<AbstractAppRegistration> page = new PageImpl<>(List.of(access));
+        Page<AbstractAppRegistration> page = new PageImpl<>(List.of(access),
+                org.springframework.data.domain.PageRequest.of(0, 10), 1);
 
         when(appRegistrationServiceV2.get(
                 eq(AppRegistrationObjectType.APPLICATION_ACCESS),

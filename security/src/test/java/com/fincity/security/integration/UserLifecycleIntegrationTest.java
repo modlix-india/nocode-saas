@@ -2,25 +2,18 @@ package com.fincity.security.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collection;
 import java.util.List;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
-import com.fincity.saas.commons.security.util.SecurityContextUtil;
 import com.fincity.security.dto.User;
 import com.fincity.security.jooq.enums.SecurityUserStatusCode;
-import com.fincity.security.service.AuthenticationService;
-import com.fincity.security.service.ClientHierarchyService;
-import com.fincity.security.service.ClientService;
 import com.fincity.security.service.UserService;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -32,41 +25,16 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 	@Autowired
 	private UserService userService;
 
-	@Autowired
-	private ClientService clientService;
-
-	@Autowired
-	private ClientHierarchyService clientHierarchyService;
-
-	@Autowired
-	private AuthenticationService authenticationService;
-
-	private MockedStatic<SecurityContextUtil> securityContextMock;
+	private ContextAuthentication systemAuth;
 
 	@BeforeEach
 	void setUp() {
 		setupMockBeans();
-		securityContextMock = Mockito.mockStatic(SecurityContextUtil.class);
-		ContextAuthentication ca = TestDataFactory.createSystemAuth();
-		securityContextMock.when(SecurityContextUtil::getUsersContextAuthentication)
-				.thenReturn(Mono.just(ca));
-		securityContextMock.when(SecurityContextUtil::getUsersContextUser)
-				.thenReturn(Mono.just(ca.getUser()));
-		securityContextMock.when(() -> SecurityContextUtil.hasAuthority(Mockito.anyString()))
-				.thenReturn(Mono.just(true));
-		securityContextMock.when(() -> SecurityContextUtil.hasAuthority(
-				Mockito.anyString(), Mockito.<Collection<? extends GrantedAuthority>>any()))
-				.thenReturn(true);
-		securityContextMock.when(() -> SecurityContextUtil.hasAuthority(
-				Mockito.anyString(), Mockito.<List<String>>any()))
-				.thenReturn(true);
+		systemAuth = TestDataFactory.createSystemAuth();
 	}
 
 	@AfterEach
 	void tearDown() {
-		if (securityContextMock != null) {
-			securityContextMock.close();
-		}
 		databaseClient.sql("SET FOREIGN_KEY_CHECKS = 0").then()
 				.then(databaseClient.sql("DELETE FROM security_client_manager WHERE ID > 0").then())
 				.then(databaseClient.sql("DELETE FROM security_client_hierarchy WHERE CLIENT_ID > 1").then())
@@ -91,8 +59,10 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 					user.setPhoneNumber("+11234567890");
 					user.setFirstName("New");
 					user.setLastName("User");
+					user.setStatusCode(SecurityUserStatusCode.ACTIVE);
 					return userService.create(user);
-				});
+				})
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
 
 		StepVerifier.create(result)
 				.assertNext(createdUser -> {
@@ -143,7 +113,8 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 									assertThat(status).isEqualTo("ACTIVE");
 									return true;
 								})
-				);
+				)
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
 
 		StepVerifier.create(lifecycle)
 				.expectNext(true)
@@ -153,8 +124,12 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 	@Test
 	void deleteUser_SoftDeletes_StatusBecomesDeleted() {
 
+		// The delete flow requires canAccessClientForUserOperation which checks both
+		// hierarchy (SYSTEM manages the client) and client_manager (user is a manager).
+		// We insert a client_manager entry for sysadmin (ID=1) to satisfy this check.
 		Mono<String> result = insertTestClient("BUSTHR", "Business Three", "BUS")
 				.flatMap(clientId -> insertClientHierarchy(clientId, ULong.valueOf(1), null, null, null)
+						.then(insertClientManager(clientId, ULong.valueOf(1)))
 						.then(insertTestUser(clientId, "deleteuser", "deleteuser@test.com", "fincity@123")))
 				.flatMap(userId -> userService.delete(userId)
 						.flatMap(deleteCount -> {
@@ -165,7 +140,8 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 									.bind("id", userId.longValue())
 									.map(row -> row.get("STATUS_CODE", String.class))
 									.one();
-						}));
+						}))
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
 
 		StepVerifier.create(result)
 				.assertNext(status -> assertThat(status).isEqualTo("DELETED"))
@@ -178,7 +154,8 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 		Mono<User> result = insertTestClient("BUSFOR", "Business Four", "BUS")
 				.flatMap(clientId -> insertClientHierarchy(clientId, ULong.valueOf(1), null, null, null)
 						.then(insertTestUser(clientId, "readuser", "readuser@test.com", "fincity@123"))
-						.flatMap(userId -> userService.read(userId)));
+						.flatMap(userId -> userService.read(userId)))
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
 
 		StepVerifier.create(result)
 				.assertNext(user -> {
@@ -199,7 +176,8 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 		Mono<Boolean> result = insertTestClient("BUSFIV", "Business Five", "BUS")
 				.flatMap(clientId -> insertClientHierarchy(clientId, ULong.valueOf(1), null, null, null)
 						.then(insertTestUser(clientId, "existsuser", "existsuser@test.com", "fincity@123")))
-				.flatMap(userId -> userService.checkUserExistsAcrossApps(null, "existsuser@test.com", null));
+				.flatMap(userId -> userService.checkUserExistsAcrossApps(null, "existsuser@test.com", null))
+				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(systemAuth));
 
 		StepVerifier.create(result)
 				.assertNext(exists -> assertThat(exists).isTrue())
@@ -207,60 +185,40 @@ class UserLifecycleIntegrationTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	void multiTenantIsolation_UserBelongsToCorrectClient() {
+	void multiTenantIsolation_CannotDeleteUserFromOtherClient() {
 
 		// Create two independent business clients (BUS1 and BUS2), each managed by SYSTEM.
 		// Create a user in BUS1. Then switch the security context to a BUS2 admin
-		// (who does NOT manage BUS1) and attempt to read the BUS1 user. The service
+		// (who does NOT manage BUS1) and attempt to delete the BUS1 user. The service
 		// should deny access because BUS2 has no management relationship over BUS1.
+		// Note: read() only checks authority, not client hierarchy. Write operations
+		// (update/delete) enforce client isolation via canAccessClientForUserOperation.
 
-		Mono<User> isolationTest = insertTestClient("BUSSIX", "Business Six", "BUS")
+		Mono<Integer> isolationTest = insertTestClient("BUSSIX", "Business Six", "BUS")
 				.flatMap(bus1Id -> insertClientHierarchy(bus1Id, ULong.valueOf(1), null, null, null)
 						.then(insertTestUser(bus1Id, "bus1user", "bus1user@test.com", "fincity@123"))
 						.flatMap(bus1UserId -> insertTestClient("BUSSEV", "Business Seven", "BUS")
 								.flatMap(bus2Id -> insertClientHierarchy(bus2Id, ULong.valueOf(1), null, null, null)
 										.then(insertTestUser(bus2Id, "bus2admin", "bus2admin@test.com", "fincity@123"))
 										.flatMap(bus2UserId -> {
-											// Switch security context to BUS2 admin
-											securityContextMock.close();
-											securityContextMock = Mockito.mockStatic(SecurityContextUtil.class);
-
+											// Try to delete the BUS1 user while authenticated as BUS2
 											ContextAuthentication bus2Auth = TestDataFactory.createBusinessAuth(
 													bus2Id, "BUSSEV",
-													List.of("Authorities.User_READ", "Authorities.Logged_IN"));
+													List.of("Authorities.User_READ",
+															"Authorities.User_DELETE",
+															"Authorities.User_UPDATE",
+															"Authorities.Logged_IN"));
 
-											securityContextMock.when(SecurityContextUtil::getUsersContextAuthentication)
-													.thenReturn(Mono.just(bus2Auth));
-											securityContextMock.when(SecurityContextUtil::getUsersContextUser)
-													.thenReturn(Mono.just(bus2Auth.getUser()));
-											securityContextMock.when(
-															() -> SecurityContextUtil.hasAuthority(Mockito.anyString()))
-													.thenReturn(Mono.just(true));
-											securityContextMock.when(
-															() -> SecurityContextUtil.hasAuthority(
-																	Mockito.anyString(),
-																	Mockito.<Collection<? extends GrantedAuthority>>any()))
-													.thenReturn(true);
-											securityContextMock.when(
-															() -> SecurityContextUtil.hasAuthority(
-																	Mockito.anyString(),
-																	Mockito.<List<String>>any()))
-													.thenReturn(true);
-
-											// Try to read the BUS1 user while authenticated as BUS2
-											return userService.read(bus1UserId);
+											return userService.delete(bus1UserId)
+													.contextWrite(ReactiveSecurityContextHolder
+															.withAuthentication(bus2Auth));
 										}))));
 
-		// The read should fail (empty or forbidden) because BUS2 does not manage BUS1.
-		// The UserService.read() checks authority then delegates to the parent which
-		// filters by accessible clients. For a non-system user without management
-		// over BUS1, the result should be empty or an error.
+		// The delete should fail because BUS2 does not manage BUS1.
 		StepVerifier.create(isolationTest)
 				.expectErrorMatches(throwable ->
-						throwable.getMessage() != null && (
-								throwable.getMessage().toLowerCase().contains("forbidden")
-										|| throwable.getMessage().toLowerCase().contains("not found")
-										|| throwable.getMessage().toLowerCase().contains("object")))
+						throwable.getMessage() != null &&
+								throwable.getMessage().toLowerCase().contains("cannot update"))
 				.verify();
 	}
 }

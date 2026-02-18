@@ -23,6 +23,7 @@ import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ClientManagerDAO;
 import com.fincity.security.dto.Client;
+import com.fincity.security.dto.ClientManager;
 import com.fincity.security.dto.User;
 import com.fincity.security.testutil.TestDataFactory;
 
@@ -63,14 +64,15 @@ class ClientManagerServiceTest extends AbstractServiceUnitTest {
 				clientService, userService, clientHierarchyService);
 
 		// Inject the mocked DAO using reflection since it's set by the parent class
-		// ClientManagerService -> AbstractJOOQDataService (has dao)
 		try {
-			var daoField = service.getClass().getSuperclass().getDeclaredField("dao");
+			var daoField = org.springframework.util.ReflectionUtils.findField(service.getClass(), "dao");
 			daoField.setAccessible(true);
 			daoField.set(service, dao);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to inject DAO", e);
 		}
+
+		lenient().when(dao.getPojoClass()).thenReturn(Mono.just(ClientManager.class));
 
 		setupMessageResourceService(messageResourceService);
 		setupCacheService(cacheService);
