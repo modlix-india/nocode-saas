@@ -80,6 +80,13 @@ public class ClientController
         return this.service.getClientBy(clientCode).map(ResponseEntity::ok);
     }
 
+    @GetMapping("/internal/isUserPartOfHierarchy")
+    public Mono<ResponseEntity<Boolean>> isUserPartOfHierarchy(@RequestParam BigInteger userId,
+            @RequestParam String clientCode) {
+
+        return this.service.isUserPartOfHierarchy(clientCode, ULong.valueOf(userId)).map(ResponseEntity::ok);
+    }
+
     @GetMapping("/internal/managedClient")
     public Mono<ResponseEntity<Client>> getManagedClientOfClientById(@RequestParam ULong clientId) {
         return this.service.getManagedClientOfClientById(clientId).map(ResponseEntity::ok);
