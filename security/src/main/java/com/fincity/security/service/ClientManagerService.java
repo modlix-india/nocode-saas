@@ -173,8 +173,12 @@ public class ClientManagerService
         ULong userId = ULongUtil.valueOf(ca.getUser().getId());
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
-        if (userClientId.equals(targetClientId))
-            return Mono.just(SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities()));
+        if (userClientId.equals(targetClientId)) {
+            boolean hasOwner = SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities());
+            System.out.println("Checking OWNER_ROLE in authorities: " + hasOwner + " | authorities: "
+                    + ca.getUser().getStringAuthorities());
+            return Mono.just(hasOwner);
+        }
 
         return this.cacheService.cacheValueOrGet(CACHE_NAME_CLIENT_MANAGER,
                 () -> this.dao.isManagerForClient(userId, targetClientId),

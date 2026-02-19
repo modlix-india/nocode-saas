@@ -1,5 +1,14 @@
 package com.fincity.saas.entity.processor.configuration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fincity.nocode.kirun.engine.json.schema.array.ArraySchemaType;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
@@ -21,15 +30,8 @@ import com.fincity.saas.entity.processor.model.common.Identity;
 import com.fincity.saas.entity.processor.model.common.PhoneNumber;
 import com.fincity.saas.entity.processor.service.ProcessorMessageResourceService;
 import com.google.gson.Gson;
+
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implements ISecurityConfiguration {
@@ -49,11 +51,13 @@ public class ProcessorConfiguration extends AbstractJooqBaseConfiguration implem
         Logger log = LoggerFactory.getLogger(FlatMapUtil.class);
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
             if (name != null)
-                log.debug(
-                        "{} - {}",
-                        name,
-                        !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
-            else log.debug(v);
+                signal.getContextView()
+                        .getOrEmpty(LogUtil.DEBUG_KEY)
+                        .ifPresent(dc -> log.debug("{} - {}", name,
+                                !dc.toString().startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..."
+                                        : v));
+            else
+                log.debug(v);
         }));
     }
 
