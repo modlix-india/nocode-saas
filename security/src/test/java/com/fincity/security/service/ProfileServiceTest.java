@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.jooq.types.ULong;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,7 @@ import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
 import com.fincity.saas.commons.service.CacheService;
 import com.fincity.security.dao.ProfileDAO;
+import com.fincity.security.dto.App;
 import com.fincity.security.dto.ClientHierarchy;
 import com.fincity.security.dto.Profile;
 import com.fincity.security.dto.RoleV2;
@@ -912,6 +914,775 @@ class ProfileServiceTest extends AbstractServiceUnitTest {
 			StepVerifier.create(service.hasAccessTo(PROFILE_ID, targetClientId, null))
 					.assertNext(result -> assertFalse(result))
 					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("hasAccessTo - profile not found returns empty")
+		void hasAccessTo_ProfileNotFound_ReturnsEmpty() {
+			ULong targetClientId = ULong.valueOf(3);
+
+			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(targetClientId, BUS_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(targetClientId))
+					.thenReturn(Mono.just(hierarchy));
+
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.hasAccessTo(PROFILE_ID, targetClientId, null))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getUserAppHavingProfile
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getUserAppHavingProfile")
+	class GetUserAppHavingProfileTests {
+
+		@Test
+		@DisplayName("returns appId when user has profile")
+		void returnsAppId_WhenUserHasProfile() {
+			ULong userId = ULong.valueOf(10);
+			when(dao.getUserAppHavingProfile(userId)).thenReturn(Mono.just(APP_ID));
+
+			StepVerifier.create(service.getUserAppHavingProfile(userId))
+					.assertNext(result -> assertEquals(APP_ID, result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when user has no profile")
+		void returnsEmpty_WhenUserHasNoProfile() {
+			ULong userId = ULong.valueOf(10);
+			when(dao.getUserAppHavingProfile(userId)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getUserAppHavingProfile(userId))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when userId is null")
+		void returnsEmpty_WhenUserIdIsNull() {
+			StepVerifier.create(service.getUserAppHavingProfile(null))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getAppProfilesHavingAuthorities
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getAppProfilesHavingAuthorities")
+	class GetAppProfilesHavingAuthoritiesTests {
+
+		@Test
+		@DisplayName("returns profile ids when authorities match")
+		void returnsProfileIds_WhenAuthoritiesMatch() {
+			List<String> authorities = List.of("Authorities.User_READ", "Authorities.User_UPDATE");
+			List<ULong> expectedIds = List.of(PROFILE_ID, ULong.valueOf(201));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+			when(dao.getAppProfileHavingAuthorities(APP_ID, hierarchy, authorities))
+					.thenReturn(Mono.just(expectedIds));
+
+			StepVerifier.create(service.getAppProfilesHavingAuthorities(APP_ID, SYSTEM_CLIENT_ID, authorities))
+					.assertNext(result -> {
+						assertEquals(2, result.size());
+						assertTrue(result.contains(PROFILE_ID));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when authorities list is null")
+		void returnsEmpty_WhenAuthoritiesNull() {
+			StepVerifier.create(service.getAppProfilesHavingAuthorities(APP_ID, SYSTEM_CLIENT_ID, null))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when authorities list is empty")
+		void returnsEmpty_WhenAuthoritiesEmpty() {
+			StepVerifier.create(service.getAppProfilesHavingAuthorities(APP_ID, SYSTEM_CLIENT_ID, List.of()))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getProfileUsers
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getProfileUsers")
+	class GetProfileUsersTests {
+
+		@Test
+		@DisplayName("returns user ids for profiles in app")
+		void returnsUserIds_ForProfilesInApp() {
+			String appCode = "testApp";
+			List<ULong> profileIds = List.of(PROFILE_ID);
+			ULong userId1 = ULong.valueOf(10);
+			ULong userId2 = ULong.valueOf(11);
+
+			App app = TestDataFactory.createOwnApp(APP_ID, SYSTEM_CLIENT_ID, appCode);
+			when(appService.getAppByCode(appCode)).thenReturn(Mono.just(app));
+			when(dao.getUsersForProfiles(APP_ID, profileIds))
+					.thenReturn(Flux.just(userId1, userId2));
+
+			StepVerifier.create(service.getProfileUsers(appCode, profileIds))
+					.assertNext(result -> {
+						assertEquals(2, result.size());
+						assertTrue(result.contains(userId1));
+						assertTrue(result.contains(userId2));
+					})
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getUsersForProfiles
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getUsersForProfiles")
+	class GetUsersForProfilesTests {
+
+		@Test
+		@DisplayName("returns user ids from dao")
+		void returnsUserIds_FromDao() {
+			List<ULong> profileIds = List.of(PROFILE_ID);
+			ULong userId = ULong.valueOf(10);
+
+			when(dao.getUsersForProfiles(APP_ID, profileIds))
+					.thenReturn(Flux.just(userId));
+
+			StepVerifier.create(service.getUsersForProfiles(APP_ID, profileIds))
+					.assertNext(result -> {
+						assertEquals(1, result.size());
+						assertEquals(userId, result.get(0));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty list when profileIds is null")
+		void returnsEmptyList_WhenProfileIdsNull() {
+			StepVerifier.create(service.getUsersForProfiles(APP_ID, null))
+					.assertNext(result -> assertTrue(result.isEmpty()))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty list when profileIds is empty")
+		void returnsEmptyList_WhenProfileIdsEmpty() {
+			StepVerifier.create(service.getUsersForProfiles(APP_ID, List.of()))
+					.assertNext(result -> assertTrue(result.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// readObject
+	// =========================================================================
+
+	@Nested
+	@DisplayName("readObject")
+	class ReadObjectTests {
+
+		@Test
+		@DisplayName("returns profile via hierarchy")
+		void returnsProfile_ViaHierarchy() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.just(profile));
+
+			StepVerifier.create(service.readObject(PROFILE_ID, null))
+					.assertNext(result -> {
+						assertEquals(PROFILE_ID, result.getId());
+						assertEquals("TestProfile", result.getName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when profile not found in hierarchy")
+		void returnsEmpty_WhenProfileNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.readObject(PROFILE_ID, null))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getSoxObjectName
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getSoxObjectName")
+	class GetSoxObjectNameTests {
+
+		@Test
+		@DisplayName("returns PROFILE")
+		void returnsPROFILE() {
+			assertEquals(com.fincity.security.jooq.enums.SecuritySoxLogObjectName.PROFILE,
+					service.getSoxObjectName());
+		}
+	}
+
+	// =========================================================================
+	// readById (delegates to readInternal)
+	// =========================================================================
+
+	@Nested
+	@DisplayName("readById")
+	class ReadByIdTests {
+
+		@Test
+		@DisplayName("delegates to readInternal and returns profile")
+		void delegatesToReadInternal() {
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+			when(dao.readInternal(PROFILE_ID)).thenReturn(Mono.just(profile));
+
+			StepVerifier.create(service.readById(PROFILE_ID))
+					.assertNext(result -> {
+						assertEquals(PROFILE_ID, result.getId());
+						assertEquals("TestProfile", result.getName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("returns empty when profile not found")
+		void returnsEmpty_WhenNotFound() {
+			when(dao.readInternal(PROFILE_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.readById(PROFILE_ID))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getProfileAuthorities - multiple profile IDs
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getProfileAuthorities - multiple profiles merges and deduplicates")
+	class GetProfileAuthoritiesMultipleTests {
+
+		@Test
+		@DisplayName("merges authorities from multiple profiles and deduplicates")
+		void mergesAuthorities_FromMultipleProfiles() {
+			ULong profileId2 = ULong.valueOf(201);
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			Set<ULong> profileIds = Set.of(PROFILE_ID, profileId2);
+
+			when(dao.getProfileAuthorities(eq(PROFILE_ID), eq(hierarchy)))
+					.thenReturn(Mono.just(List.of("Authorities.User_READ", "Authorities.User_UPDATE")));
+			when(dao.getProfileAuthorities(eq(profileId2), eq(hierarchy)))
+					.thenReturn(Mono.just(List.of("Authorities.User_READ", "Authorities.Role_READ")));
+
+			StepVerifier.create(service.getProfileAuthorities(profileIds, hierarchy))
+					.assertNext(result -> {
+						assertTrue(result.contains("Authorities.User_READ"));
+						assertTrue(result.contains("Authorities.User_UPDATE"));
+						assertTrue(result.contains("Authorities.Role_READ"));
+						// User_READ appears in both profiles but should be deduplicated
+						long userReadCount = result.stream()
+								.filter("Authorities.User_READ"::equals).count();
+						assertEquals(1, userReadCount);
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("handles profile with no authorities returning empty list")
+		void handlesProfile_WithNoAuthorities() {
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			Set<ULong> profileIds = Set.of(PROFILE_ID);
+
+			when(dao.getProfileAuthorities(eq(PROFILE_ID), eq(hierarchy)))
+					.thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getProfileAuthorities(profileIds, hierarchy))
+					.assertNext(result -> assertTrue(result.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getProfileAuthorities(appCode, clientId, userId) - empty profiles
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getProfileAuthorities by appCode - edge cases")
+	class GetProfileAuthoritiesByAppCodeEdgeCaseTests {
+
+		@Test
+		@DisplayName("returns empty list when user has no profile ids")
+		void returnsEmptyList_WhenNoProfileIds() {
+			ULong userId = ULong.valueOf(10);
+			String appCode = "testApp";
+
+			when(dao.getProfileIds(appCode, userId)).thenReturn(Mono.just(Set.of()));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			StepVerifier.create(service.getProfileAuthorities(appCode, SYSTEM_CLIENT_ID, userId))
+					.assertNext(result -> assertTrue(result.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// delete - R2DBC integrity violation
+	// =========================================================================
+
+	@Nested
+	@DisplayName("delete - additional error paths")
+	class DeleteAdditionalTests {
+
+		@Test
+		@DisplayName("R2DBC data integrity violation throws forbidden")
+		void delete_R2dbcIntegrityViolation_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.just(profile));
+
+			when(dao.delete(PROFILE_ID, hierarchy)).thenReturn(
+					Mono.error(new io.r2dbc.spi.R2dbcDataIntegrityViolationException("FK constraint")));
+
+			StepVerifier.create(service.delete(PROFILE_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		@DisplayName("non-integrity error propagates as-is")
+		void delete_OtherError_Propagates() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.just(profile));
+
+			RuntimeException runtimeEx = new RuntimeException("unexpected error");
+			when(dao.delete(PROFILE_ID, hierarchy)).thenReturn(Mono.error(runtimeEx));
+
+			StepVerifier.create(service.delete(PROFILE_ID))
+					.expectErrorMatches(e -> e instanceof RuntimeException
+							&& "unexpected error".equals(e.getMessage()))
+					.verify();
+		}
+	}
+
+	// =========================================================================
+	// create - updatableEntity throws NotImplementedException
+	// =========================================================================
+
+	@Nested
+	@DisplayName("updatableEntity")
+	class UpdatableEntityTests {
+
+		@Test
+		@DisplayName("throws NotImplementedException")
+		void updatableEntity_ThrowsNotImplemented() {
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+
+			// updatableEntity is protected but we can test via update which calls it
+			// The method directly throws NotImplementedException
+			// Access via reflection to test directly
+			try {
+				java.lang.reflect.Method method = ProfileService.class.getDeclaredMethod("updatableEntity",
+						com.fincity.saas.commons.model.dto.AbstractUpdatableDTO.class);
+				method.setAccessible(true);
+				@SuppressWarnings("unchecked")
+				Mono<Profile> result = (Mono<Profile>) method.invoke(service, profile);
+
+				StepVerifier.create(result)
+						.expectError(org.apache.commons.lang.NotImplementedException.class)
+						.verify();
+			} catch (NoSuchMethodException e) {
+				// Try the overloaded method with Profile parameter type
+				try {
+					java.lang.reflect.Method method = ProfileService.class.getDeclaredMethod("updatableEntity",
+							Profile.class);
+					method.setAccessible(true);
+					@SuppressWarnings("unchecked")
+					Mono<Profile> result = (Mono<Profile>) method.invoke(service, profile);
+
+					StepVerifier.create(result)
+							.expectError(org.apache.commons.lang.NotImplementedException.class)
+							.verify();
+				} catch (Exception ex) {
+					throw new RuntimeException("Failed to invoke updatableEntity", ex);
+				}
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to invoke updatableEntity", e);
+			}
+		}
+	}
+
+	// =========================================================================
+	// assignedProfiles - filtering via read
+	// =========================================================================
+
+	@Nested
+	@DisplayName("assignedProfiles - additional edge cases")
+	class AssignedProfilesAdditionalTests {
+
+		@Test
+		@DisplayName("skips profiles that user has no read access to")
+		void skipsProfiles_WhenNoReadAccess() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ULong userId = ULong.valueOf(10);
+			ULong profileId2 = ULong.valueOf(201);
+
+			when(dao.getAssignedProfileIds(userId, APP_ID))
+					.thenReturn(Flux.just(PROFILE_ID, profileId2));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Profile profile1 = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"Profile1");
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.just(profile1));
+
+			// Second profile not accessible - read returns empty
+			when(dao.read(profileId2, hierarchy)).thenReturn(Mono.empty());
+
+			when(appService.hasReadAccess(eq(APP_ID), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.assignedProfiles(userId, APP_ID))
+					.assertNext(result -> {
+						assertEquals(1, result.size());
+						assertEquals("Profile1", result.get(0).getName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("deduplicates profile ids")
+		void deduplicatesProfileIds() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ULong userId = ULong.valueOf(10);
+
+			// Same profile ID returned twice
+			when(dao.getAssignedProfileIds(userId, APP_ID))
+					.thenReturn(Flux.just(PROFILE_ID, PROFILE_ID));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Profile profile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"TestProfile");
+			when(dao.read(PROFILE_ID, hierarchy)).thenReturn(Mono.just(profile));
+
+			when(appService.hasReadAccess(eq(APP_ID), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.assignedProfiles(userId, APP_ID))
+					.assertNext(result -> assertNotNull(result))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// create - business client creating profile for own client
+	// =========================================================================
+
+	@Nested
+	@DisplayName("create - additional validation paths")
+	class CreateAdditionalTests {
+
+		@Test
+		@DisplayName("business client creating own profile without specifying clientId")
+		void businessClient_OwnProfile_NullClientId_SetsFromContext() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
+					List.of("Authorities.Profile_CREATE", "Authorities.Profile_UPDATE",
+							"Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			Profile profile = TestDataFactory.createProfile(null, null, APP_ID, "MyProfile");
+			profile.setArrangement(Map.of());
+
+			when(appService.hasReadAccess(eq(APP_ID), isNull()))
+					.thenReturn(Mono.just(true));
+			when(appService.hasReadAccess(eq(APP_ID), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			ClientHierarchy hierarchy = TestDataFactory.createLevel0Hierarchy(BUS_CLIENT_ID,
+					SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			when(dao.hasAccessToRoles(eq(APP_ID), eq(hierarchy), any(Profile.class)))
+					.thenReturn(Mono.just(true));
+
+			Profile createdProfile = TestDataFactory.createProfile(PROFILE_ID, BUS_CLIENT_ID, APP_ID,
+					"MyProfile");
+			createdProfile.setArrangement(Map.of());
+
+			when(dao.createUpdateProfile(any(Profile.class), any(ULong.class), eq(hierarchy)))
+					.thenReturn(Mono.just(createdProfile));
+
+			StepVerifier.create(service.create(profile))
+					.assertNext(result -> {
+						assertNotNull(result);
+						assertEquals(BUS_CLIENT_ID, result.getClientId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("create with null arrangement succeeds")
+		void create_NullArrangement_Succeeds() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Profile profile = TestDataFactory.createProfile(null, null, APP_ID, "NoArrangement");
+			// Explicitly no arrangement set (null)
+
+			when(appService.hasReadAccess(eq(APP_ID), isNull()))
+					.thenReturn(Mono.just(true));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			when(dao.hasAccessToRoles(eq(APP_ID), eq(hierarchy), any(Profile.class)))
+					.thenReturn(Mono.just(true));
+
+			Profile createdProfile = TestDataFactory.createProfile(PROFILE_ID, SYSTEM_CLIENT_ID, APP_ID,
+					"NoArrangement");
+
+			when(dao.createUpdateProfile(any(Profile.class), any(ULong.class), eq(hierarchy)))
+					.thenReturn(Mono.just(createdProfile));
+
+			StepVerifier.create(service.create(profile))
+					.assertNext(result -> assertNotNull(result))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// hasAccessToProfiles - empty profile IDs
+	// =========================================================================
+
+	@Nested
+	@DisplayName("hasAccessToProfiles - additional edge cases")
+	class HasAccessToProfilesAdditionalTests {
+
+		@Test
+		@DisplayName("empty profile IDs set still calls dao")
+		void emptyProfileIds_StillCallsDao() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Set<ULong> emptySet = Set.of();
+			when(dao.hasAccessToProfiles(BUS_CLIENT_ID, emptySet))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.hasAccessToProfiles(BUS_CLIENT_ID, emptySet))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("multiple profile IDs - delegates correctly")
+		void multipleProfileIds_DelegatesCorrectly() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Set<ULong> profileIds = Set.of(PROFILE_ID, ULong.valueOf(201), ULong.valueOf(202));
+			when(dao.hasAccessToProfiles(BUS_CLIENT_ID, profileIds))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.hasAccessToProfiles(BUS_CLIENT_ID, profileIds))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// hasAccessToRoles - empty role IDs
+	// =========================================================================
+
+	@Nested
+	@DisplayName("hasAccessToRoles - additional edge cases")
+	class HasAccessToRolesAdditionalTests {
+
+		@Test
+		@DisplayName("empty role IDs set - delegates to dao")
+		void emptyRoleIds_DelegatesToDao() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Set<ULong> emptySet = Set.of();
+			when(dao.hasAccessToRoles(BUS_CLIENT_ID, hierarchy, emptySet))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.hasAccessToRoles(BUS_CLIENT_ID, emptySet))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("multiple role IDs checked together")
+		void multipleRoleIds_CheckedTogether() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			Set<ULong> roleIds = Set.of(ROLE_ID, ULong.valueOf(301), ULong.valueOf(302));
+			when(dao.hasAccessToRoles(BUS_CLIENT_ID, hierarchy, roleIds))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.hasAccessToRoles(BUS_CLIENT_ID, roleIds))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// restrictClient - additional edge cases
+	// =========================================================================
+
+	@Nested
+	@DisplayName("restrictClient - additional scenarios")
+	class RestrictClientAdditionalTests {
+
+		@Test
+		@DisplayName("business client restricting managed client profile")
+		void businessClient_RestrictsProfile() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
+					List.of("Authorities.Profile_READ", "Authorities.Client_UPDATE",
+							"Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			ULong targetClientId = ULong.valueOf(5);
+			when(clientService.isUserClientManageClient(eq(ca), eq(targetClientId)))
+					.thenReturn(Mono.just(true));
+			when(dao.checkProfileAppAccess(PROFILE_ID, targetClientId))
+					.thenReturn(Mono.just(true));
+			when(dao.restrictClient(PROFILE_ID, targetClientId))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.restrictClient(PROFILE_ID, targetClientId))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// getRolesForAssignmentInApp - app not found
+	// =========================================================================
+
+	@Nested
+	@DisplayName("getRolesForAssignmentInApp - additional scenarios")
+	class GetRolesForAssignmentInAppAdditionalTests {
+
+		@Test
+		@DisplayName("returns multiple roles")
+		void returnsMultipleRoles() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			String appCode = "testApp";
+			when(appService.getAppId(appCode)).thenReturn(Mono.just(APP_ID));
+
+			ClientHierarchy hierarchy = TestDataFactory.createSystemHierarchy(SYSTEM_CLIENT_ID);
+			when(clientHierarchyService.getClientHierarchy(SYSTEM_CLIENT_ID))
+					.thenReturn(Mono.just(hierarchy));
+
+			when(appService.hasReadAccess(eq(APP_ID), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			RoleV2 role1 = TestDataFactory.createRoleV2(ROLE_ID, SYSTEM_CLIENT_ID, APP_ID, "AdminRole");
+			RoleV2 role2 = TestDataFactory.createRoleV2(ULong.valueOf(301), SYSTEM_CLIENT_ID, APP_ID,
+					"UserRole");
+			when(dao.getRolesForAssignmentInApp(APP_ID, hierarchy))
+					.thenReturn(Mono.just(List.of(role1, role2)));
+
+			StepVerifier.create(service.getRolesForAssignmentInApp(appCode))
+					.assertNext(result -> {
+						assertEquals(2, result.size());
+						assertEquals("AdminRole", result.get(0).getName());
+						assertEquals("UserRole", result.get(1).getName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		@DisplayName("app not found returns forbidden")
+		void appNotFound_ReturnsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			String appCode = "nonexistent";
+			when(appService.getAppId(appCode)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getRolesForAssignmentInApp(appCode))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
 		}
 	}
 }

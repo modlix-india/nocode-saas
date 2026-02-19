@@ -175,8 +175,6 @@ public class ClientManagerService
 
         if (userClientId.equals(targetClientId)) {
             boolean hasOwner = SecurityContextUtil.hasAuthority(OWNER_ROLE, ca.getAuthorities());
-            System.out.println("Checking OWNER_ROLE in authorities: " + hasOwner + " | authorities: "
-                    + ca.getUser().getStringAuthorities());
             return Mono.just(hasOwner);
         }
 
