@@ -72,6 +72,7 @@ public class ClientService
     private static final String FETCH_MANAGING_CLIENT = "fetchManagingClient";
     private static final String FETCH_APPS = "fetchApps";
     private static final String FETCH_CREATED_BY_USER = "fetchCreatedByUser";
+    private static final String FETCH_CLIENT_MANAGERS = "fetchClientManagers";
     private static final String CACHE_NAME_CLIENT_TYPE_CODE_LEVEL = "clientTypeCodeLevel";
     private static final String CACHE_NAME_CLIENT_CODE = "clientCodeId";
     private static final String CACHE_NAME_MANAGED_CLIENT_INFO = "managedClientInfoById";
@@ -533,6 +534,7 @@ public class ClientService
         boolean fetchManagingClient = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_MANAGING_CLIENT));
         boolean fetchApps = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_APPS));
         boolean fetchCreatedByUser = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CREATED_BY_USER));
+        boolean fetchClientManagers = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_CLIENT_MANAGERS));
 
         Map<ULong, Client> map = clients.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
 
@@ -566,6 +568,22 @@ public class ClientService
                                             : client.setOwners(
                                                     idsMap.get(client.getId()).stream().map(userMap::get).toList()))
                                     .toList()));
+
+        if (fetchClientManagers)
+            clientsMono = clientsMono.flatMap(c -> {
+
+                Map<ULong, Client> cMap = c.stream().collect(Collectors.toMap(Client::getId, Function.identity()));
+
+                return this.clientManagerService.getManagerIds(cMap.keySet())
+                        .flatMap(idsMap -> Flux.fromStream(idsMap.values().stream().flatMap(Collection::stream))
+                                .distinct().flatMap(this.userService::readInternal)
+                                .collectMap(User::getId)
+                                .map(userMap -> c.stream()
+                                        .map(client -> idsMap.get(client.getId()) == null ? client
+                                                : client.setClientManagers(
+                                                        idsMap.get(client.getId()).stream().map(userMap::get).toList()))
+                                        .toList()));
+            });
 
         return clientsMono;
     }

@@ -1,5 +1,9 @@
 package com.fincity.security.service;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+
 import org.jooq.types.ULong;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -199,5 +203,9 @@ public class ClientManagerService
                             () -> this.dao.isManagerForClient(userId, targetClientId),
                             userId, targetClientId);
                 });
+    }
+
+    public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
+        return this.dao.getManagerIds(clientIds);
     }
 }
