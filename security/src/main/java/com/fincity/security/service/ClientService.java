@@ -191,6 +191,22 @@ public class ClientService
         return this.clientHierarchyService.isClientBeingManagedBy(managingClientId, clientId);
     }
 
+    public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userService.readInternal(userId),
+
+                user -> this.getClientBy(clientCode),
+
+                (user, client) -> Mono.zip(
+                        this.clientHierarchyService.isClientBeingManagedBy(user.getClientId(), client.getId()),
+                        this.clientHierarchyService.isClientBeingManagedBy(client.getId(), user.getClientId()))
+                        .map(tup -> tup.getT1() || tup.getT2()))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.isUserPartOfHierarchy"));
+    }
+
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
         return this.clientHierarchyService.getClientHierarchyIdInOrder(clientId);
     }
