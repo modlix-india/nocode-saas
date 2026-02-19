@@ -101,7 +101,9 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
         String clientCode = null;
         if (clientId == null) {
             clientCode = ca.getClientCode();
-        } else if (this.securityService.isBeingManagedById(ca.getUser().getClientId(), clientId.toBigInteger())) {
+        } else if (securityService.isUserClientManageClient(ca.getUrlAppCode(),
+                ca.getUser().getId(), ca.getUser().getClientId(), clientId.toBigInteger()).booleanValue()) {
+
             clientCode = this.securityService.getClientById(clientId.toBigInteger()).getCode();
         }
 
@@ -152,8 +154,9 @@ public class StaticFileResourceService extends AbstractFilesResourceService {
 
         return switch (firstFolderName) {
             case WITH_IN_SUB_CLIENT -> ca.getClientCode().equals(clientCode) ? false
-                    : BooleanUtil.safeValueOf(this.securityService.isBeingManaged(clientCode, ca.getClientCode()));
-            case ALL_SUB_CLIENTS -> this.securityService.isBeingManaged(clientCode, ca.getClientCode());
+                    : BooleanUtil.safeValueOf(
+                            this.securityService.doesClientManageClientCode(clientCode, ca.getClientCode()));
+            case ALL_SUB_CLIENTS -> this.securityService.doesClientManageClientCode(clientCode, ca.getClientCode());
             default -> false;
         };
 

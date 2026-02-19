@@ -5,13 +5,13 @@ import org.jooq.Table;
 import org.jooq.UpdatableRecord;
 import org.jooq.types.ULong;
 
-import com.fincity.security.dao.AbstractClientCheckDAO;
+import com.fincity.security.dao.clientcheck.AbstractUpdatableClientCheckDAO;
 import com.fincity.security.dto.policy.AbstractPolicy;
 
 import reactor.core.publisher.Mono;
 
 public abstract class AbstractPolicyDao<R extends UpdatableRecord<R>, D extends AbstractPolicy>
-		extends AbstractClientCheckDAO<R, ULong, D> {
+		extends AbstractUpdatableClientCheckDAO<R, ULong, D> {
 
 	protected AbstractPolicyDao(Class<D> pojoClass, Table<R> table, Field<ULong> idField) {
 		super(pojoClass, table, idField);

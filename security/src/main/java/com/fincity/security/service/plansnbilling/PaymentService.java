@@ -99,7 +99,7 @@ public class PaymentService
                 SecurityContextUtil::getUsersContextAuthentication,
 
                 ca -> this.clientService
-                        .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), clientId)
+                        .isUserClientManageClient(ca, clientId)
                         .filter(BooleanUtil::safeValueOf),
 
                 (ca, hasAccess) -> this.paymentGatewayDAO.findByClientIdAndGateway(clientId, gatewayType)

@@ -1,0 +1,12 @@
+spring:
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      enabled: false
+  main:
+    allow-bean-definition-overriding: true
+
+eureka:
+  client:
+    enabled: false

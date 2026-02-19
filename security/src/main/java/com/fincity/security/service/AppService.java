@@ -118,7 +118,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                             .equals(clientId))
                         return Mono.just(entity);
 
-                    return this.clientService.isBeingManagedBy(clientId, entity.getClientId())
+                    return this.clientService.isUserClientManageClient(ca, entity.getClientId())
                             .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(entity) : Mono.empty());
                 },
 
@@ -225,7 +225,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                 ULong.valueOf(ca.getUser().getClientId()));
 
                     return this.clientService
-                            .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId());
+                            .isUserClientManageClient(ca, app.getClientId());
                 },
 
                 (ca, app, hasAccess) -> {
@@ -318,8 +318,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                                         .flatMap(hasAccess -> BooleanUtil.safeValueOf(hasAccess) ? Mono.just(existing)
                                                 : Mono.empty());
 
-                            return clientService.isBeingManagedBy(ULongUtil.valueOf(ca.getUser()
-                                    .getClientId()), existing.getClientId())
+                            return clientService.isUserClientManageClient(ca, existing.getClientId())
                                     .flatMap(managed -> {
                                         if (BooleanUtil.safeValueOf(managed))
                                             return Mono.just(existing);
@@ -369,7 +368,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                         return this.dao.addClientAccess(appId, clientId, writeAccess);
                     }
 
-                    return this.clientService.isBeingManagedBy(app.getClientId(), clientId)
+                    return this.clientService.doesClientManageClient(app.getClientId(), clientId)
                             .flatMap(managed -> {
 
                                 if (!BooleanUtil.safeValueOf(managed))
@@ -602,7 +601,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (clientId == null || userClientId.equals(clientId))
                         return Mono.just(List.of(userClientId));
 
-                    return this.clientService.isBeingManagedBy(userClientId, clientId)
+                    return this.clientService.isUserClientManageClient(ca, clientId)
                             .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(List.of(clientId))
                                     : Mono.empty());
                 },
@@ -659,7 +658,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (userClientId.equals(property.getClientId()))
                         return Mono.just(Boolean.TRUE);
 
-                    return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
+                    return this.clientService.isUserClientManageClient(ca, property.getClientId())
                             .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
                                     : Mono.empty());
                 },
@@ -697,7 +696,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (userClientId.equals(property.getClientId()))
                         return Mono.just(Boolean.TRUE);
 
-                    return this.clientService.isBeingManagedBy(userClientId, property.getClientId())
+                    return this.clientService.isUserClientManageClient(ca, property.getClientId())
                             .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
                                     : Mono.empty());
                 },
@@ -736,7 +735,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (userClientId.equals(clientId))
                         return Mono.just(Boolean.TRUE);
 
-                    return this.clientService.isBeingManagedBy(userClientId, clientId)
+                    return this.clientService.isUserClientManageClient(ca, clientId)
                             .flatMap(managed -> BooleanUtil.safeValueOf(managed) ? Mono.just(Boolean.TRUE)
                                     : Mono.empty());
                 },
@@ -866,7 +865,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                             return Mono.empty();
 
                         return this.clientService
-                                .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
+                                .isUserClientManageClient(ca, app.getClientId())
                                 .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
 
                     });
@@ -899,7 +898,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                         return Mono.just(true);
 
                     return this.clientService
-                            .isBeingManagedBy(ULongUtil.valueOf(ca.getUser().getClientId()), app.getClientId())
+                            .isUserClientManageClient(ca, app.getClientId())
                             .flatMap(e -> BooleanUtil.safeValueOf(e) ? Mono.just(true) : Mono.empty());
                 },
 
@@ -923,7 +922,7 @@ public class AppService extends AbstractJOOQUpdatableDataService<SecurityAppReco
                     if (ca.isSystemClient())
                         Mono.just(true);
 
-                    return this.clientService.isBeingManagedBy(ca.getClientCode(), clientCode)
+                    return this.clientService.isUserClientManageClient(ca, clientCode)
                             .filter(BooleanUtil::safeValueOf)
                             .flatMap(e -> this.hasWriteAccess(appCode, ca.getClientCode()))
                             .filter(BooleanUtil::safeValueOf);

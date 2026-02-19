@@ -1,5 +1,22 @@
 package com.fincity.saas.commons.core.functions.rest;
 
+import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
 import com.fincity.nocode.kirun.engine.function.reactive.AbstractReactiveFunction;
 import com.fincity.nocode.kirun.engine.json.schema.Schema;
 import com.fincity.nocode.kirun.engine.json.schema.object.AdditionalType;
@@ -23,22 +40,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+
 import feign.FeignException;
-import java.net.URLDecoder;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -181,7 +184,8 @@ public class CallRequest extends AbstractReactiveFunction {
                 Parameter.ofEntry(
                         FILE_OVERRIDE, Schema.ofBoolean(FILE_OVERRIDE).setDefaultValue(new JsonPrimitive(false)))));
 
-        if (this.hasPayload) params.put(PAYLOAD, Parameter.of(PAYLOAD, Schema.ofAny(PAYLOAD)));
+        if (this.hasPayload)
+            params.put(PAYLOAD, Parameter.of(PAYLOAD, Schema.ofAny(PAYLOAD)));
         if (StringUtil.safeIsBlank(this.methodName)) {
             params.putAll(Map.ofEntries(Parameter.ofEntry(
                     METHOD_NAME,
@@ -248,30 +252,30 @@ public class CallRequest extends AbstractReactiveFunction {
                 .setUrl(url);
 
         return FlatMapUtil.flatMapMono(
-                        () -> restService.doCall(appCode, clientCode, connectionName, request, downloadAsAFile),
-                        obj -> {
-                            if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
-                                return this.makeErrorResponseFunctionOutput(obj);
+                () -> restService.doCall(appCode, clientCode, connectionName, request, downloadAsAFile),
+                obj -> {
+                    if (obj.getStatus() >= 400 && obj.getStatus() <= 600)
+                        return this.makeErrorResponseFunctionOutput(obj);
 
-                            if (downloadAsAFile) {
-                                return this.processDownload(
-                                        obj,
-                                        url,
-                                        context.getArguments().get(FILE_NAME).getAsString(),
-                                        context.getArguments()
-                                                .get(FILE_LOCATION)
-                                                .getAsString(),
-                                        context.getArguments()
-                                                .get(FILE_OVERRIDE)
-                                                .getAsBoolean(),
-                                        context.getArguments()
-                                                .get(FILE_CLIENT_CODE)
-                                                .getAsString(),
-                                        context.getArguments().get(FILE_TYPE).getAsString());
-                            }
+                    if (downloadAsAFile) {
+                        return this.processDownload(
+                                obj,
+                                url,
+                                context.getArguments().get(FILE_NAME).getAsString(),
+                                context.getArguments()
+                                        .get(FILE_LOCATION)
+                                        .getAsString(),
+                                context.getArguments()
+                                        .get(FILE_OVERRIDE)
+                                        .getAsBoolean(),
+                                context.getArguments()
+                                        .get(FILE_CLIENT_CODE)
+                                        .getAsString(),
+                                context.getArguments().get(FILE_TYPE).getAsString());
+                    }
 
-                            return this.processOutput(obj);
-                        })
+                    return this.processOutput(obj);
+                })
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.internalExecute"))
                 .onErrorResume(this::makeExceptionResponseFunctionOutput);
     }
@@ -285,27 +289,31 @@ public class CallRequest extends AbstractReactiveFunction {
             String fileClientCode,
             String fileType) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> {
-                            if (!ca.isAuthenticated()) return Mono.empty();
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (!ca.isAuthenticated())
+                        return Mono.empty();
 
-                            if (StringUtil.safeIsBlank(fileClientCode)) return Mono.just(ca.getClientCode());
+                    if (StringUtil.safeIsBlank(fileClientCode))
+                        return Mono.just(ca.getClientCode());
 
-                            if (ca.getClientCode().equals(fileClientCode)) return Mono.just(ca.getClientCode());
+                    if (ca.getClientCode().equals(fileClientCode))
+                        return Mono.just(ca.getClientCode());
 
-                            return this.securityService
-                                    .isBeingManaged(ca.getUrlClientCode(), fileClientCode)
-                                    .map(e -> e ? fileClientCode : "");
-                        },
-                        (ca, cc) -> {
-                            if (StringUtil.safeIsBlank(cc)) return Mono.error(new Exception("Client code is invalid"));
+                    return this.securityService
+                            .doesClientManageClientCode(ca.getUrlClientCode(), fileClientCode)
+                            .map(e -> e ? fileClientCode : "");
+                },
+                (ca, cc) -> {
+                    if (StringUtil.safeIsBlank(cc))
+                        return Mono.error(new Exception("Client code is invalid"));
 
-                            if (!(obj.getData() instanceof byte[]))
-                                return Mono.error(new Exception("Data is not a file"));
+                    if (!(obj.getData() instanceof byte[]))
+                        return Mono.error(new Exception("Data is not a file"));
 
-                            return this.makeFileInFiles(obj, url, fileName, fileLocation, override, cc, fileType);
-                        },
-                        (ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj)))
+                    return this.makeFileInFiles(obj, url, fileName, fileLocation, override, cc, fileType);
+                },
+                (ca, cc, fileObj) -> this.processOutput(obj.setData(fileObj)))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "CallRequest.processDownload"));
     }
 
@@ -372,7 +380,8 @@ public class CallRequest extends AbstractReactiveFunction {
     public String parseContentDispositionForFileName(String cd) {
         int index = cd.indexOf(CD_FILE_NAME);
 
-        if (index == -1) return null;
+        if (index == -1)
+            return null;
 
         index = index + CD_FILE_NAME.length();
 
@@ -397,7 +406,8 @@ public class CallRequest extends AbstractReactiveFunction {
         }
         index = doub + 1;
         int end = cd.indexOf('\'', index);
-        if (end == -1 || end >= cd.length()) return null;
+        if (end == -1 || end >= cd.length())
+            return null;
         return URLDecoder.decode(cd.substring(end + 1), cs);
     }
 
@@ -490,10 +500,12 @@ public class CallRequest extends AbstractReactiveFunction {
         Optional<ByteBuffer> op = fe.responseBody();
         ByteBuffer byteBuffer = op.orElse(null);
 
-        if (byteBuffer == null || !byteBuffer.hasArray()) return null;
+        if (byteBuffer == null || !byteBuffer.hasArray())
+            return null;
 
         Collection<String> contentType = fe.responseHeaders().get(HttpHeaders.CONTENT_TYPE);
-        if (contentType == null || !contentType.contains("application/json")) return null;
+        if (contentType == null || !contentType.contains("application/json"))
+            return null;
 
         try {
             return this.gson.fromJson(new String(byteBuffer.array()), JsonElement.class);

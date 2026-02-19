@@ -3,21 +3,22 @@ package com.fincity.security.service;
 import java.util.List;
 import java.util.Map;
 
-import com.fincity.saas.commons.model.condition.FilterCondition;
-import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import org.jooq.types.ULong;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 
 import com.fincity.nocode.reactor.util.FlatMapUtil;
 import com.fincity.saas.commons.exeception.GenericException;
 import com.fincity.saas.commons.jooq.service.AbstractJOOQUpdatableDataService;
-import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.FilterCondition;
+import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.util.SecurityContextUtil;
+import com.fincity.saas.commons.service.CacheService;
 import com.fincity.saas.commons.util.BooleanUtil;
 import com.fincity.saas.commons.util.LogUtil;
 import com.fincity.security.dao.DesignationDAO;
@@ -28,7 +29,6 @@ import com.fincity.security.dto.appregistration.AppRegistrationDepartment;
 import com.fincity.security.dto.appregistration.AppRegistrationDesignation;
 import com.fincity.security.jooq.tables.records.SecurityDesignationRecord;
 
-import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -57,9 +57,9 @@ public class DesignationService
     private final CacheService cacheService;
 
     public DesignationService(SecurityMessageResourceService securityMessageResourceService,
-                              ClientService clientService,
-                              DepartmentService departmentService,
-                              CacheService cacheService) {
+            ClientService clientService,
+            DepartmentService departmentService,
+            CacheService cacheService) {
         this.securityMessageResourceService = securityMessageResourceService;
         this.clientService = clientService;
         this.departmentService = departmentService;
@@ -70,30 +70,30 @@ public class DesignationService
     @Override
     public Mono<Designation> create(Designation entity) {
         return FlatMapUtil.flatMapMono(
-                        SecurityContextUtil::getUsersContextAuthentication,
-                        ca -> {
-                            if (entity.getClientId() == null)
-                                return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
+                SecurityContextUtil::getUsersContextAuthentication,
+                ca -> {
+                    if (entity.getClientId() == null)
+                        return Mono.just(entity.setClientId(ULong.valueOf(ca.getUser().getClientId())));
 
-                            if (ca.isSystemClient())
-                                return Mono.just(entity);
+                    if (ca.isSystemClient())
+                        return Mono.just(entity);
 
-                            return this.clientService
-                                    .isBeingManagedBy(ULong.valueOf(ca.getUser().getClientId()), entity.getClientId())
-                                    .filter(BooleanUtil::safeValueOf)
-                                    .map(x -> entity);
-                        },
-                        (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
-                                entity.getNextDesignationId(), entity.getDepartmentId()),
+                    return this.clientService
+                            .isUserClientManageClient(ca, entity.getClientId())
+                            .filter(BooleanUtil::safeValueOf)
+                            .map(x -> entity);
+                },
+                (ca, managed) -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
+                        entity.getNextDesignationId(), entity.getDepartmentId()),
 
-                        (ca, managed, sameClient) -> super.create(entity))
+                (ca, managed, sameClient) -> super.create(entity))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.create"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.FORBIDDEN, msg), DESIGNATION, entity)));
     }
 
     private Mono<Boolean> checkSameClient(ULong clientId, ULong parentDesignationId, ULong nextDesignationId,
-                                          ULong departmentId) {
+            ULong departmentId) {
         if (departmentId == null)
             return Mono.just(true);
 
@@ -118,18 +118,17 @@ public class DesignationService
     public Mono<Designation> update(Designation entity) {
 
         return FlatMapUtil.flatMapMono(
-                        () -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
-                                entity.getNextDesignationId(), entity.getDepartmentId()),
+                () -> this.checkSameClient(entity.getClientId(), entity.getParentDesignationId(),
+                        entity.getNextDesignationId(), entity.getDepartmentId()),
 
-                        managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
+                managed -> this.dao.canBeUpdated(entity.getId()).filter(BooleanUtil::safeValueOf),
 
-                        (managed, canBeUpdated) -> super.update(entity),
-                        (managed, canBeUpdated, updatedDesignation) ->
-                                this.cacheService
-                                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
-                                .thenReturn(updatedDesignation)
+                (managed, canBeUpdated) -> super.update(entity),
+                (managed, canBeUpdated, updatedDesignation) -> this.cacheService
+                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                        .thenReturn(updatedDesignation)
 
-                )
+        )
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, entity.getId())));
@@ -139,13 +138,12 @@ public class DesignationService
     @Override
     public Mono<Designation> update(ULong key, Map<String, Object> fields) {
         return FlatMapUtil.flatMapMono(
-                        () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
+                () -> this.dao.canBeUpdated(key).filter(BooleanUtil::safeValueOf),
 
-                        canBeUpdated -> super.update(key, fields),
-                        (canBeUpdated, updatedDesignation) -> this.cacheService
-                                .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
-                                .thenReturn(updatedDesignation)
-                )
+                canBeUpdated -> super.update(key, fields),
+                (canBeUpdated, updatedDesignation) -> this.cacheService
+                        .evict(CACHE_NAME_DESIGNATION, updatedDesignation.getId())
+                        .thenReturn(updatedDesignation))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "DesignationService.update"))
                 .switchIfEmpty(Mono.defer(() -> securityMessageResourceService.throwMessage(
                         msg -> new GenericException(HttpStatus.NOT_FOUND, msg), DESIGNATION, key)));
@@ -182,15 +180,18 @@ public class DesignationService
     }
 
     public Mono<Boolean> canAssignDesignation(ULong clientId, ULong designationId) {
-        if (designationId == null) return Mono.just(true);
+        if (designationId == null)
+            return Mono.just(true);
         return this.dao.canAssignDesignation(clientId, designationId);
     }
 
     public Mono<Designation> readInternal(ULong designationId) {
-        return this.cacheService.cacheValueOrGet(CACHE_NAME_DESIGNATION, () -> this.dao.readInternal(designationId), designationId);
+        return this.cacheService.cacheValueOrGet(CACHE_NAME_DESIGNATION, () -> this.dao.readInternal(designationId),
+                designationId);
     }
 
-    public Mono<List<Designation>> fillDetails(List<Designation> designations, MultiValueMap<String, String> queryParams) {
+    public Mono<List<Designation>> fillDetails(List<Designation> designations,
+            MultiValueMap<String, String> queryParams) {
 
         boolean fetchParentDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_PARENT_DESIGNATION));
         boolean fetchNextDesignation = BooleanUtil.safeValueOf(queryParams.getFirst(FETCH_NEXT_DESIGNATION));
@@ -199,26 +200,38 @@ public class DesignationService
         Flux<Designation> designationFlux = Flux.fromIterable(designations);
 
         if (fetchParentDesignation)
-            designationFlux = designationFlux.filter(designation -> designation.getParentDesignationId() != null && designation.getParentDesignationId().intValue() != 0).flatMap(designation -> this.readInternal(designation.getParentDesignationId()).map(designation::setParentDesignation));
+            designationFlux = designationFlux
+                    .filter(designation -> designation.getParentDesignationId() != null
+                            && designation.getParentDesignationId().intValue() != 0)
+                    .flatMap(designation -> this.readInternal(designation.getParentDesignationId())
+                            .map(designation::setParentDesignation));
 
         if (fetchNextDesignation)
-            designationFlux = designationFlux.filter(designation -> designation.getNextDesignationId() != null && designation.getNextDesignationId().intValue() != 0).flatMap(designation -> this.readInternal(designation.getNextDesignationId()).map(designation::setNextDesignation));
+            designationFlux = designationFlux
+                    .filter(designation -> designation.getNextDesignationId() != null
+                            && designation.getNextDesignationId().intValue() != 0)
+                    .flatMap(designation -> this.readInternal(designation.getNextDesignationId())
+                            .map(designation::setNextDesignation));
 
         if (fetchDepartment)
-            designationFlux = designationFlux.filter(designation -> designation.getDepartmentId() != null && designation.getDepartmentId().intValue() != 0).flatMap(designation -> this.departmentService.readInternal(designation.getDepartmentId()).map(designation::setDepartment));
+            designationFlux = designationFlux
+                    .filter(designation -> designation.getDepartmentId() != null
+                            && designation.getDepartmentId().intValue() != 0)
+                    .flatMap(designation -> this.departmentService.readInternal(designation.getDepartmentId())
+                            .map(designation::setDepartment));
 
         return designationFlux.collectList();
     }
-    
-    public Mono<Designation> readById(ULong designationId, MultiValueMap<String, String> queryParams){
+
+    public Mono<Designation> readById(ULong designationId, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                ()-> this.readInternal(designationId),
+                () -> this.readInternal(designationId),
                 designation -> this.fillDetails(List.of(designation), queryParams).map(List::getFirst));
     }
-    
+
     public Mono<List<Designation>> readByIds(List<ULong> designationIds, MultiValueMap<String, String> queryParams) {
         return FlatMapUtil.flatMapMono(
-                ()-> this.readAllFilter(new FilterCondition()
+                () -> this.readAllFilter(new FilterCondition()
                         .setField("id")
                         .setOperator(FilterConditionOperator.IN)
                         .setMultiValue(designationIds))
