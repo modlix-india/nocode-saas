@@ -268,5 +268,195 @@ class PaymentServiceTest extends AbstractServiceUnitTest {
 					})
 					.verifyComplete();
 		}
+
+		@Test
+		void invoiceNotFound_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.getPaymentsByInvoiceId(INVOICE_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
+		}
+
+		@Test
+		void multiplePayments_ReturnsAll() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Invoice invoice = createInvoice(INVOICE_ID, SYSTEM_CLIENT_ID, BigDecimal.valueOf(1178.82));
+			Payment p1 = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.FAILED);
+			Payment p2 = createPayment(ULong.valueOf(201), INVOICE_ID, SecurityPaymentPaymentStatus.PAID);
+
+			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+			when(dao.findByInvoiceId(INVOICE_ID)).thenReturn(Mono.just(List.of(p1, p2)));
+
+			StepVerifier.create(service.getPaymentsByInvoiceId(INVOICE_ID))
+					.assertNext(result -> assertEquals(2, result.size()))
+					.verifyComplete();
+		}
+	}
+
+	// =========================================================================
+	// updatePaymentStatus() tests
+	// =========================================================================
+
+	@Nested
+	@DisplayName("updatePaymentStatus()")
+	class UpdatePaymentStatusTests {
+
+		@Test
+		void pendingToPaid_UpdatesPaymentAndInvoice() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Payment existing = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.PENDING);
+			Invoice invoice = createInvoice(INVOICE_ID, SYSTEM_CLIENT_ID, BigDecimal.valueOf(1178.82));
+			Payment updated = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.PAID);
+
+			when(dao.readById(PAYMENT_ID)).thenReturn(Mono.just(existing));
+			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+			when(dao.update(any(Payment.class))).thenReturn(Mono.just(updated));
+			when(invoiceDAO.update(any(Invoice.class))).thenReturn(Mono.just(invoice));
+
+			StepVerifier.create(service.updatePaymentStatus(PAYMENT_ID, SecurityPaymentPaymentStatus.PAID))
+					.assertNext(result -> assertEquals(SecurityPaymentPaymentStatus.PAID, result.getPaymentStatus()))
+					.verifyComplete();
+
+			// Verify invoice status was also updated
+			verify(invoiceDAO, times(2)).readById(INVOICE_ID);
+		}
+
+		@Test
+		void pendingToFailed_UpdatesPaymentOnly() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Payment existing = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.PENDING);
+			Invoice invoice = createInvoice(INVOICE_ID, SYSTEM_CLIENT_ID, BigDecimal.valueOf(1178.82));
+			Payment updated = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.FAILED);
+
+			when(dao.readById(PAYMENT_ID)).thenReturn(Mono.just(existing));
+			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.just(invoice));
+			when(dao.update(any(Payment.class))).thenReturn(Mono.just(updated));
+
+			StepVerifier.create(service.updatePaymentStatus(PAYMENT_ID, SecurityPaymentPaymentStatus.FAILED))
+					.assertNext(result -> assertEquals(SecurityPaymentPaymentStatus.FAILED, result.getPaymentStatus()))
+					.verifyComplete();
+
+			// Invoice update should NOT be called for non-PAID status
+			verify(invoiceDAO, times(1)).readById(any());
+		}
+
+		@Test
+		void paymentNotFound_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readById(PAYMENT_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.updatePaymentStatus(PAYMENT_ID, SecurityPaymentPaymentStatus.PAID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
+		}
+
+		@Test
+		void invoiceNotFound_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Payment existing = createPayment(PAYMENT_ID, INVOICE_ID, SecurityPaymentPaymentStatus.PENDING);
+
+			when(dao.readById(PAYMENT_ID)).thenReturn(Mono.just(existing));
+			when(invoiceDAO.readById(INVOICE_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.updatePaymentStatus(PAYMENT_ID, SecurityPaymentPaymentStatus.PAID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
+		}
+	}
+
+	// =========================================================================
+	// processCallback() additional tests
+	// =========================================================================
+
+	@Nested
+	@DisplayName("processCallback() - additional scenarios")
+	class ProcessCallbackAdditionalTests {
+
+		@Test
+		void nullPaymentReference_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway gateway = createPaymentGateway(GATEWAY_ID, SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE);
+			Payment callbackPayment = createPayment(null, null, SecurityPaymentPaymentStatus.PAID);
+			callbackPayment.setPaymentReference(null); // No reference
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(paymentGatewayDAO.findByClientIdAndGateway(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE)).thenReturn(Mono.just(gateway));
+			when(paymentGatewayIntegration.getSupportedGateway())
+					.thenReturn(SecurityPaymentGatewayPaymentGateway.CASHFREE);
+			when(paymentGatewayIntegration.processCallback(eq(gateway), any()))
+					.thenReturn(Mono.just(callbackPayment));
+
+			StepVerifier.create(service.processCallback(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE, Map.of()))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void paymentReferenceNotFound_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway gateway = createPaymentGateway(GATEWAY_ID, SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE);
+			Payment callbackPayment = createPayment(null, null, SecurityPaymentPaymentStatus.PAID);
+			callbackPayment.setPaymentReference("nonexistent_ref");
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(paymentGatewayDAO.findByClientIdAndGateway(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE)).thenReturn(Mono.just(gateway));
+			when(paymentGatewayIntegration.getSupportedGateway())
+					.thenReturn(SecurityPaymentGatewayPaymentGateway.CASHFREE);
+			when(paymentGatewayIntegration.processCallback(eq(gateway), any()))
+					.thenReturn(Mono.just(callbackPayment));
+			when(dao.findByPaymentReference("nonexistent_ref")).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.processCallback(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE, Map.of()))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
+		}
+
+		@Test
+		void gatewayConfigNotFound_ThrowsNotFound() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(SYSTEM_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+			when(paymentGatewayDAO.findByClientIdAndGateway(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.processCallback(SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY, Map.of()))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.NOT_FOUND)
+					.verify();
+		}
 	}
 }

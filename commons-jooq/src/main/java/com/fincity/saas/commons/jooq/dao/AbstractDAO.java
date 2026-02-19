@@ -105,7 +105,7 @@ public abstract class AbstractDAO<R extends UpdatableRecord<R>, I extends Serial
     @SuppressWarnings("unchecked")
     public Mono<Page<D>> readPageFilter(Pageable pageable, AbstractCondition condition) {
 
-        if (condition.hasGroupCondition())
+        if (condition != null && condition.hasGroupCondition())
             return this.readPageFilter(pageable, condition.getWhereCondition(), condition.getGroupCondition());
 
         return FlatMapUtil.flatMapMono(
