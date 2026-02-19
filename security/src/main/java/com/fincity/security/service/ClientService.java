@@ -154,6 +154,9 @@ public class ClientService
 
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
+
         return FlatMapUtil.flatMapMono(
 
                 () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
@@ -177,6 +180,9 @@ public class ClientService
     public Mono<Boolean> isUserClientManageClient(String appCode, ULong userId, ULong userClientId,
             ULong targetClientId) {
 
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
+
         return FlatMapUtil.flatMapMono(
 
                 () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
@@ -189,6 +195,22 @@ public class ClientService
 
     public Mono<Boolean> doesClientManageClient(ULong managingClientId, ULong clientId) {
         return this.clientHierarchyService.isClientBeingManagedBy(managingClientId, clientId);
+    }
+
+    public Mono<Boolean> isUserPartOfHierarchy(String clientCode, ULong userId) {
+
+        return FlatMapUtil.flatMapMono(
+
+                () -> this.userService.readInternal(userId),
+
+                user -> this.getClientBy(clientCode),
+
+                (user, client) -> Mono.zip(
+                        this.clientHierarchyService.isClientBeingManagedBy(user.getClientId(), client.getId()),
+                        this.clientHierarchyService.isClientBeingManagedBy(client.getId(), user.getClientId()))
+                        .map(tup -> tup.getT1() || tup.getT2()))
+                .defaultIfEmpty(Boolean.FALSE)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientService.isUserPartOfHierarchy"));
     }
 
     public Mono<List<ULong>> getClientHierarchy(ULong clientId) {
