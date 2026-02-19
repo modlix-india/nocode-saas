@@ -237,4 +237,171 @@ class PaymentGatewayServiceTest extends AbstractServiceUnitTest {
 					.verifyComplete();
 		}
 	}
+
+	// =========================================================================
+	// Validation tests - gateway-specific detail validation
+	// =========================================================================
+
+	@Nested
+	@DisplayName("create() - gateway-specific validation")
+	class GatewayValidationTests {
+
+		@Test
+		void cashfree_MissingApiKey_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE,
+					Map.of("apiSecret", "secret123")); // Missing apiKey
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void cashfree_MissingApiSecret_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE,
+					Map.of("apiKey", "key123")); // Missing apiSecret
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void razorpay_MissingKeyId_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY,
+					Map.of("keySecret", "rzp_secret")); // Missing keyId
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void razorpay_MissingKeySecret_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY,
+					Map.of("keyId", "rzp_key")); // Missing keySecret
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void razorpay_ValidDetails_Succeeds() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY,
+					Map.of("keyId", "rzp_key", "keySecret", "rzp_secret"));
+
+			PaymentGateway created = createGateway(GATEWAY_ID, SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.RAZORPAY,
+					Map.of("keyId", "rzp_key", "keySecret", "rzp_secret"));
+
+			when(dao.create(any(PaymentGateway.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(result -> assertEquals(GATEWAY_ID, result.getId()))
+					.verifyComplete();
+		}
+
+		@Test
+		void stripe_MissingApiKey_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.STRIPE,
+					Map.of("publishableKey", "pk_test_123")); // Missing apiKey
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void stripe_ValidDetails_Succeeds() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.STRIPE,
+					Map.of("apiKey", "sk_test_123"));
+
+			PaymentGateway created = createGateway(GATEWAY_ID, SYSTEM_CLIENT_ID,
+					SecurityPaymentGatewayPaymentGateway.STRIPE,
+					Map.of("apiKey", "sk_test_123"));
+
+			when(dao.create(any(PaymentGateway.class))).thenReturn(Mono.just(created));
+
+			StepVerifier.create(service.create(entity))
+					.assertNext(result -> assertEquals(GATEWAY_ID, result.getId()))
+					.verifyComplete();
+		}
+
+		@Test
+		void emptyDetails_ThrowsBadRequest() {
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(null, null,
+					SecurityPaymentGatewayPaymentGateway.CASHFREE,
+					Map.of()); // Empty details
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+	}
+
+	// =========================================================================
+	// update() - additional tests
+	// =========================================================================
+
+	@Nested
+	@DisplayName("update() - access control")
+	class UpdateAccessControlTests {
+
+		@Test
+		void notManaged_ThrowsForbidden() {
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, "BUSCLIENT",
+					List.of("Authorities.Payment_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			PaymentGateway entity = createGateway(GATEWAY_ID, ULong.valueOf(99),
+					SecurityPaymentGatewayPaymentGateway.CASHFREE,
+					Map.of("apiKey", "key", "apiSecret", "secret"));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(ULong.valueOf(99))))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
 }
