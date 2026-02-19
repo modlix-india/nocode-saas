@@ -154,6 +154,9 @@ public class ClientService
 
         ULong userClientId = ULongUtil.valueOf(ca.getUser().getClientId());
 
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
+
         return FlatMapUtil.flatMapMono(
 
                 () -> this.clientHierarchyService.isClientBeingManagedBy(userClientId, targetClientId),
@@ -176,6 +179,9 @@ public class ClientService
 
     public Mono<Boolean> isUserClientManageClient(String appCode, ULong userId, ULong userClientId,
             ULong targetClientId) {
+
+        if (userClientId.equals(targetClientId))
+            return Mono.just(Boolean.TRUE);
 
         return FlatMapUtil.flatMapMono(
 
