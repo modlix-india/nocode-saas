@@ -354,9 +354,6 @@ public class UserService extends AbstractSecurityUpdatableDataService<SecurityUs
 
                     updateUserIdentificationKeys(entity);
 
-                    if (ContextAuthentication.CLIENT_TYPE_SYSTEM.equals(ca.getClientTypeCode()))
-                        return Mono.just(entity);
-
                     return FlatMapUtil.flatMapMono(
                             () -> this.canAccessClientForUserOperation(entity.getClientId()),
                             canAccess -> {

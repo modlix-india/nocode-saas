@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import com.fincity.saas.commons.jooq.dao.AbstractUpdatableDAO;
 import com.fincity.saas.commons.jooq.util.ULongUtil;
 import com.fincity.saas.commons.model.condition.AbstractCondition;
+import com.fincity.saas.commons.model.condition.ComplexCondition;
+import com.fincity.saas.commons.model.condition.ComplexConditionOperator;
 import com.fincity.saas.commons.model.condition.FilterCondition;
 import com.fincity.saas.commons.model.condition.FilterConditionOperator;
 import com.fincity.saas.commons.security.jwt.ContextAuthentication;
@@ -90,6 +92,21 @@ public class ClientDAO extends AbstractUpdatableDAO<SecurityClientRecord, ULong,
                                     .on(SECURITY_CLIENT_HIERARCHY.CLIENT_ID
                                             .eq(SECURITY_CLIENT.ID))));
                 });
+    }
+
+    @Override
+    protected Mono<Condition> complexConditionFilter(ComplexCondition cc, SelectJoinStep<Record> selectJoinStep) {
+
+        if (cc.getConditions() == null || cc.getConditions().isEmpty())
+            return Mono.just(DSL.noCondition());
+
+        return Flux.concat(cc.getConditions().stream()
+                .map(condition -> super.filter(condition, selectJoinStep))
+                .toList())
+                .collectList()
+                .map(conditions -> cc.getOperator() == ComplexConditionOperator.AND
+                        ? DSL.and(conditions)
+                        : DSL.or(conditions));
     }
 
     @Override
