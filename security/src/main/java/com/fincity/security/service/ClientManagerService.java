@@ -26,6 +26,8 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
 
+import java.util.List;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -35,6 +37,7 @@ public class ClientManagerService
         extends AbstractJOOQDataService<SecurityClientManagerRecord, ULong, ClientManager, ClientManagerDAO> {
 
     private static final String CACHE_NAME_CLIENT_MANAGER = "clientManager";
+    private static final String CACHE_NAME_LATEST_MANAGER_FOR_CLIENT = "clientManagerLatest";
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
     private final SecurityMessageResourceService messageResourceService;
@@ -78,6 +81,10 @@ public class ClientManagerService
         return this.cacheService.evict(CACHE_NAME_CLIENT_MANAGER, userId, clientId);
     }
 
+    private Mono<Boolean> evictLatestManagerForClient(ULong clientId) {
+        return this.cacheService.evict(CACHE_NAME_LATEST_MANAGER_FOR_CLIENT, clientId);
+    }
+
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     public Mono<Boolean> create(ULong userId, ULong clientId) {
 
@@ -109,6 +116,7 @@ public class ClientManagerService
                 },
 
                 (ca, user, validated, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
+                        .then(this.evictLatestManagerForClient(clientId))
                         .thenReturn(Boolean.TRUE))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.create"))
@@ -164,6 +172,7 @@ public class ClientManagerService
                 },
 
                 (user, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
+                        .then(this.evictLatestManagerForClient(clientId))
                         .thenReturn(Boolean.TRUE))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.delete"))
@@ -207,5 +216,21 @@ public class ClientManagerService
 
     public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
         return this.dao.getManagerIds(clientIds);
+    }
+
+    public Mono<List<ULong>> getClientIdsOfManagerInternal(ULong managerId) {
+        return this.dao
+                .getClientIdsOfManager(managerId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
+    }
+
+    public Mono<ULong> getLatestManagerIdForClientInternal(ULong clientId) {
+        return this.cacheService
+                .cacheEmptyValueOrGet(
+                        CACHE_NAME_LATEST_MANAGER_FOR_CLIENT,
+                        () -> this.dao.getLatestManagerIdForClient(clientId),
+                        clientId)
+                .contextWrite(
+                        Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getLatestManagerIdForClientInternal"));
     }
 }

@@ -30,6 +30,7 @@ import com.fincity.security.jooq.tables.records.SecurityClientRecord;
 import com.fincity.security.model.ClientRegistrationRequest;
 import com.fincity.security.model.RegistrationResponse;
 import com.fincity.security.model.otp.OtpGenerationRequest;
+import com.fincity.security.service.ClientManagerService;
 import com.fincity.security.service.ClientService;
 import com.fincity.security.service.appregistration.ClientRegistrationService;
 
@@ -43,9 +44,12 @@ public class ClientController
         extends AbstractJOOQUpdatableDataController<SecurityClientRecord, ULong, Client, ClientDAO, ClientService> {
 
     private final ClientRegistrationService clientRegistrationService;
+    private final ClientManagerService clientManagerService;
 
-    public ClientController(ClientRegistrationService clientRegistrationService) {
+    public ClientController(ClientRegistrationService clientRegistrationService,
+            ClientManagerService clientManagerService) {
         this.clientRegistrationService = clientRegistrationService;
+        this.clientManagerService = clientManagerService;
     }
 
     @GetMapping("/internal/isUserClientManageClient")
@@ -93,6 +97,21 @@ public class ClientController
     @GetMapping("/internal/managingClientIds")
     public Mono<ResponseEntity<List<ULong>>> getManagingClientIds(@RequestParam ULong clientId) {
         return this.service.getManagingClientIds(clientId).map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/clientIdsOfManager")
+    public Mono<ResponseEntity<List<ULong>>> getClientIdsOfManager(@RequestParam ULong managerId) {
+        return this.clientManagerService
+                .getClientIdsOfManagerInternal(managerId)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/internal/latestManagerForClient")
+    public Mono<ResponseEntity<ULong>> getLatestManagerForClient(@RequestParam ULong clientId) {
+        return this.clientManagerService
+                .getLatestManagerIdForClientInternal(clientId)
+                .map(ResponseEntity::ok)
+                .switchIfEmpty(Mono.just(ResponseEntity.ok().body((ULong) null)));
     }
 
     @GetMapping("/internal/validateClientCode")
