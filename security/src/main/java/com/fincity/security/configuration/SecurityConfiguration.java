@@ -37,7 +37,11 @@ public class SecurityConfiguration extends AbstractJooqBaseConfiguration
         FlatMapUtil.setLogConsumer(signal -> LogUtil.logIfDebugKey(signal, (name, v) -> {
 
             if (name != null)
-                log.debug("{} - {}", name, !name.startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..." : v);
+                signal.getContextView()
+                        .getOrEmpty(LogUtil.DEBUG_KEY)
+                        .ifPresent(dc -> log.debug("{} - {}", name,
+                                !dc.toString().startsWith("full-") && v.length() > 500 ? v.substring(0, 500) + "..."
+                                        : v));
             else
                 log.debug(v);
         }));

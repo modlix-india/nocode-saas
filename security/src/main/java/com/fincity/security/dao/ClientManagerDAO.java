@@ -1,8 +1,11 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityClientManager.SECURITY_CLIENT_MANAGER;
+import static com.fincity.security.jooq.tables.SecurityClientManager.*;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jooq.Field;
 import org.jooq.Record1;
@@ -77,5 +80,13 @@ public class ClientManagerDAO extends AbstractClientCheckDAO<SecurityClientManag
                 .where(SECURITY_CLIENT_MANAGER.MANAGER_ID.eq(managerId)
                         .and(SECURITY_CLIENT_MANAGER.CLIENT_ID.eq(clientId))))
                 .map(r -> r.value1() > 0);
+    }
+
+    public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
+        return Flux.from(this.dslContext.select(SECURITY_CLIENT_MANAGER.CLIENT_ID, SECURITY_CLIENT_MANAGER.MANAGER_ID)
+                .from(SECURITY_CLIENT_MANAGER)
+                .where(SECURITY_CLIENT_MANAGER.CLIENT_ID.in(clientIds)))
+                .collectMultimap(r -> r.get(SECURITY_CLIENT_MANAGER.CLIENT_ID),
+                        r -> r.get(SECURITY_CLIENT_MANAGER.MANAGER_ID));
     }
 }

@@ -38,6 +38,7 @@ import com.fincity.security.model.AuthenticationPasswordType;
 import com.fincity.security.model.RequestUpdatePassword;
 import com.fincity.security.testutil.TestDataFactory;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.function.Tuples;
@@ -1865,6 +1866,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.just(ca.getUser()));
 
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
+					.thenReturn(Mono.just(true));
+
 			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
 			entity.setUserName("newuser");
 			entity.setEmailId("new@test.com");
@@ -1902,6 +1906,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.just(ca.getUser()));
 
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
+					.thenReturn(Mono.just(true));
+
 			User entity = new User();
 			entity.setClientId(BUS_CLIENT_ID);
 			entity.setUserName("");
@@ -1926,6 +1933,9 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
 					.thenReturn(Mono.just(ca.getUser()));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
+					.thenReturn(Mono.just(true));
 
 			User entity = TestDataFactory.createActiveUser(USER_ID, null);
 			entity.setUserName("newuser");
@@ -2015,6 +2025,1364 @@ class UserServiceTest extends AbstractServiceUnitTest {
 
 			assertEquals(com.fincity.security.jooq.enums.SecuritySoxLogObjectName.USER,
 					service.getSoxObjectName());
+		}
+	}
+
+	// ============================================================
+	// ReadById tests
+	// ============================================================
+
+	@Nested
+	class ReadByIdTests {
+
+		@Test
+		void readById_WithoutQueryParams_ReturnsUser() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+
+			StepVerifier.create(service.readById(USER_ID, null))
+					.assertNext(u -> assertEquals(USER_ID, u.getId()))
+					.verifyComplete();
+		}
+
+		@Test
+		void readById_WithQueryParams_FillsDetails() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+
+			Client client = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, CLIENT_CODE);
+			when(clientService.getClientInfoById(BUS_CLIENT_ID)).thenReturn(Mono.just(client));
+
+			org.springframework.util.LinkedMultiValueMap<String, String> params = new org.springframework.util.LinkedMultiValueMap<>();
+			params.add("fetchClients", "true");
+
+			StepVerifier.create(service.readById(USER_ID, params))
+					.assertNext(u -> assertEquals(USER_ID, u.getId()))
+					.verifyComplete();
+		}
+
+		@Test
+		void readById_UserNotFound_ReturnsEmpty() {
+
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.readById(USER_ID, null))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// ReadByIds tests
+	// ============================================================
+
+	@Nested
+	class ReadByIdsTests {
+
+		@Test
+		void readByIds_WithoutQueryParams_ReturnsUsers() {
+
+			User user1 = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			User user2 = TestDataFactory.createActiveUser(OTHER_USER_ID, BUS_CLIENT_ID);
+
+			when(dao.readAll(any(com.fincity.saas.commons.model.condition.AbstractCondition.class)))
+					.thenReturn(Flux.just(user1, user2));
+
+			StepVerifier.create(service.readByIds(List.of(USER_ID, OTHER_USER_ID), null))
+					.assertNext(users -> assertEquals(2, users.size()))
+					.verifyComplete();
+		}
+
+		@Test
+		void readByIds_EmptyList_ReturnsEmptyList() {
+
+			when(dao.readAll(any(com.fincity.saas.commons.model.condition.AbstractCondition.class)))
+					.thenReturn(Flux.empty());
+
+			StepVerifier.create(service.readByIds(List.of(), null))
+					.assertNext(users -> assertTrue(users.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// CheckIndividualClientUser tests
+	// ============================================================
+
+	@Nested
+	class CheckIndividualClientUserTests {
+
+		@Test
+		void checkIndividualClientUser_UserExists_ReturnsTrue() {
+
+			when(clientService.getClientId("URLCLIENT")).thenReturn(Mono.just(BUS_CLIENT_ID));
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), eq("newuser"), eq("new@test.com"),
+					eq("+1234567890"), eq("INDV")))
+					.thenReturn(Mono.just(true));
+
+			com.fincity.security.model.ClientRegistrationRequest request = new com.fincity.security.model.ClientRegistrationRequest();
+			request.setUserName("newuser");
+			request.setEmailId("new@test.com");
+			request.setPhoneNumber("+1234567890");
+
+			StepVerifier.create(service.checkIndividualClientUser("URLCLIENT", request))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void checkIndividualClientUser_UserDoesNotExist_ReturnsFalse() {
+
+			when(clientService.getClientId("URLCLIENT")).thenReturn(Mono.just(BUS_CLIENT_ID));
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), eq("newuser"), isNull(),
+					isNull(), eq("INDV")))
+					.thenReturn(Mono.just(false));
+
+			com.fincity.security.model.ClientRegistrationRequest request = new com.fincity.security.model.ClientRegistrationRequest();
+			request.setUserName("newuser");
+
+			StepVerifier.create(service.checkIndividualClientUser("URLCLIENT", request))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// UpdateByMap INDV client type tests
+	// ============================================================
+
+	@Nested
+	class UpdateByMapIndividualClientTests {
+
+		@Test
+		void update_ByMap_IndvClientType_DuplicateUser_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.getUserClientId(USER_ID)).thenReturn(Mono.just(BUS_CLIENT_ID));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("INDV", CLIENT_CODE, "CLIENT")));
+
+			ULong managingClientId = ULong.valueOf(50);
+			when(clientHierarchyService.getManagingClient(eq(BUS_CLIENT_ID),
+					eq(com.fincity.security.dto.ClientHierarchy.Level.ZERO)))
+					.thenReturn(Mono.just(managingClientId));
+
+			when(dao.checkUserExistsExclude(eq(managingClientId), eq("existinguser"), isNull(),
+					isNull(), eq("INDV"), eq(USER_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			Map<String, Object> fields = Map.of("userName", "existinguser");
+
+			StepVerifier.create(service.update(USER_ID, fields))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void update_ByMap_NoAccess_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(5), "OTHER",
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			when(dao.getUserClientId(USER_ID)).thenReturn(Mono.just(BUS_CLIENT_ID));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), eq("newname"), isNull(), isNull(), isNull()))
+					.thenReturn(Mono.just(false));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			Map<String, Object> fields = Map.of("userName", "newname");
+
+			StepVerifier.create(service.update(USER_ID, fields))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// UpdateByEntity additional tests
+	// ============================================================
+
+	@Nested
+	class UpdateByEntityAdditionalTests {
+
+		@Test
+		void update_ByEntity_DuplicateUser_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("existinguser");
+			entity.setEmailId("existing@test.com");
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), eq("existinguser"), eq("existing@test.com"),
+					isNull(), isNull()))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void update_ByEntity_IndvClientType_DuplicateUser_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("existinguser");
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("INDV", CLIENT_CODE, "CLIENT")));
+
+			ULong managingClientId = ULong.valueOf(50);
+			when(clientHierarchyService.getManagingClient(eq(BUS_CLIENT_ID),
+					eq(com.fincity.security.dto.ClientHierarchy.Level.ZERO)))
+					.thenReturn(Mono.just(managingClientId));
+
+			when(dao.checkUserExistsExclude(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void update_ByEntity_NotManaged_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(5), "OTHER",
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("updateduser");
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+
+			// checkUserExists returns false (no duplicate)
+			when(dao.checkUserExists(any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(false));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.update(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// Delete additional edge case tests
+	// ============================================================
+
+	@Nested
+	class DeleteEdgeCaseTests {
+
+		@Test
+		void delete_UserNotFound_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.delete(USER_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void delete_ManagedClient_SetsDeletedStatusAndReturnsOne() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_DELETE", "Authorities.User_UPDATE",
+							"Authorities.User_READ", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString(),
+						ArgumentMatchers.<List<String>>any()))
+					.thenReturn(true);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), any(ULong.class)))
+					.thenReturn(Mono.just(true));
+
+			when(clientService.getClientTypeNCodeNClientLevel(BUS_CLIENT_ID))
+					.thenReturn(Mono.just(Tuples.of("BUS", CLIENT_CODE, "CLIENT")));
+			when(dao.checkUserExists(any(), any(), any(), any(), any())).thenReturn(Mono.just(false));
+			when(dao.canBeUpdated(USER_ID)).thenReturn(Mono.just(true));
+
+			when(dao.update(any(User.class))).thenAnswer(invocation -> {
+				User updated = invocation.getArgument(0);
+				assertEquals(SecurityUserStatusCode.DELETED, updated.getStatusCode());
+				return Mono.just(updated);
+			});
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.delete(USER_ID))
+					.assertNext(result -> assertEquals(1, result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// UpdatePassword additional edge case tests
+	// ============================================================
+
+	@Nested
+	class UpdatePasswordEdgeCaseTests {
+
+		@Test
+		void updatePassword_WrongOldPassword_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString()))
+					.thenReturn(Mono.just(true));
+
+			User user = TestDataFactory.createActiveUser(ULong.valueOf(10), BUS_CLIENT_ID);
+			user.setPassword("hashedOldPassword");
+			user.setPasswordHashed(true);
+			when(dao.readInternal(ULong.valueOf(10))).thenReturn(Mono.just(user));
+
+			// Old password does NOT match
+			when(passwordEncoder.matches(eq("10wrongOldPass"), eq("hashedOldPassword"))).thenReturn(false);
+
+			RequestUpdatePassword reqPassword = TestDataFactory.createRequestUpdatePassword("wrongOldPass",
+					"newPass123!");
+			reqPassword.setPassType(AuthenticationPasswordType.PASSWORD);
+
+			StepVerifier.create(service.updatePassword(ULong.valueOf(10), reqPassword))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void updatePassword_NewPasswordSameAsOld_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString()))
+					.thenReturn(Mono.just(true));
+
+			User user = TestDataFactory.createActiveUser(ULong.valueOf(10), BUS_CLIENT_ID);
+			user.setPassword("hashedSamePassword");
+			user.setPasswordHashed(true);
+			when(dao.readInternal(ULong.valueOf(10))).thenReturn(Mono.just(user));
+
+			// Old password matches (correct)
+			when(passwordEncoder.matches(eq("10samePass"), eq("hashedSamePassword"))).thenReturn(true);
+			// New password also matches old (should be rejected)
+			when(passwordEncoder.matches(eq("10samePass"), eq("hashedSamePassword"))).thenReturn(true);
+
+			RequestUpdatePassword reqPassword = TestDataFactory.createRequestUpdatePassword("samePass", "samePass");
+			reqPassword.setPassType(AuthenticationPasswordType.PASSWORD);
+
+			StepVerifier.create(service.updatePassword(ULong.valueOf(10), reqPassword))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void updatePassword_DifferentUser_SystemClient_SkipsOldPasswordCheck() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			// readInternal for user 10, but logged in as user 1 (system)
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setPassword("hashedPassword");
+			user.setPasswordHashed(true);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.validatePasswordPolicy(nullable(ULong.class), nullable(String.class),
+					nullable(ULong.class), nullable(AuthenticationPasswordType.class), nullable(String.class)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.setPassword(any(), any(), anyString(), any(AuthenticationPasswordType.class)))
+					.thenReturn(Mono.just(1));
+
+			when(ecService.createEvent(any())).thenReturn(Mono.just(true));
+			when(dao.updateUserStatusToActive(any())).thenReturn(Mono.just(true));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			RequestUpdatePassword reqPassword = TestDataFactory.createRequestUpdatePassword("oldPass",
+					"newDifferentPass!");
+			reqPassword.setPassType(AuthenticationPasswordType.PASSWORD);
+
+			StepVerifier.create(service.updatePassword(USER_ID, reqPassword))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void updatePassword_PinType_WorksCorrectly() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setPin("hashedPin");
+			user.setPinHashed(true);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.validatePasswordPolicy(nullable(ULong.class), nullable(String.class),
+					nullable(ULong.class), nullable(AuthenticationPasswordType.class), nullable(String.class)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.setPassword(any(), any(), anyString(), any(AuthenticationPasswordType.class)))
+					.thenReturn(Mono.just(1));
+
+			when(ecService.createEvent(any())).thenReturn(Mono.just(true));
+			when(dao.updateUserStatusToActive(any())).thenReturn(Mono.just(true));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			RequestUpdatePassword reqPassword = TestDataFactory.createRequestUpdatePassword(null, "123456");
+			reqPassword.setPassType(AuthenticationPasswordType.PIN);
+
+			StepVerifier.create(service.updatePassword(USER_ID, reqPassword))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void updatePassword_NotManagedClient_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(5), "OTHER",
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setPassword("hashedPassword");
+			user.setPasswordHashed(true);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.validatePasswordPolicy(nullable(ULong.class), nullable(String.class),
+					nullable(ULong.class), nullable(AuthenticationPasswordType.class), nullable(String.class)))
+					.thenReturn(Mono.just(true));
+
+			securityContextMock.when(() -> SecurityContextUtil.hasAuthority(anyString()))
+					.thenReturn(Mono.just(true));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			RequestUpdatePassword reqPassword = TestDataFactory.createRequestUpdatePassword(null, "newPass123!");
+			reqPassword.setPassType(AuthenticationPasswordType.PASSWORD);
+
+			StepVerifier.create(service.updatePassword(USER_ID, reqPassword))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// CreateForRegistration tests
+	// ============================================================
+
+	@Nested
+	class CreateForRegistrationTests {
+
+		@Test
+		void createForRegistration_UserExists_ThrowsForbidden() {
+
+			Client client = TestDataFactory.createIndividualClient(BUS_CLIENT_ID, CLIENT_CODE);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setPassword("testPassword");
+
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), any(), any(), any(), eq("INDV")))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.createForRegistration(
+					ULong.valueOf(100), ULong.valueOf(200), ULong.valueOf(300),
+					client, user, AuthenticationPasswordType.PASSWORD))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void createForRegistration_NewUser_CreatesSuccessfully() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			Client client = TestDataFactory.createIndividualClient(BUS_CLIENT_ID, CLIENT_CODE);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setPassword("testPassword");
+
+			ULong appId = ULong.valueOf(100);
+			ULong appClientId = ULong.valueOf(200);
+			ULong urlClientId = ULong.valueOf(300);
+
+			when(dao.checkUserExists(eq(BUS_CLIENT_ID), any(), any(), any(), eq("INDV")))
+					.thenReturn(Mono.just(false));
+
+			when(dao.create(any(User.class))).thenReturn(Mono.just(user));
+
+			when(dao.setPassword(any(), any(), anyString(), any(AuthenticationPasswordType.class)))
+					.thenReturn(Mono.just(1));
+
+			// addRegistrationObjects stubs
+			when(clientService.getClientLevelType(any(ULong.class), any(ULong.class)))
+					.thenReturn(Mono.just(com.fincity.security.enums.ClientLevelType.CLIENT));
+
+			when(appRegistrationDAO.getRoleIdsForUserRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			when(appRegistrationDAO.getProfileIdsForUserRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			when(appRegistrationDAO.getDepartmentsForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			when(departmentService.createForRegistration(any(), any()))
+					.thenReturn(Mono.just(Map.of()));
+
+			when(appRegistrationDAO.getDesignationsForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			when(designationService.createForRegistration(any(), any(), any()))
+					.thenReturn(Mono.just(Map.of()));
+
+			when(appRegistrationDAO.getUserDesignationsForRegistration(any(), any(), any(), any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.createForRegistration(
+					appId, appClientId, urlClientId, client, user, AuthenticationPasswordType.PASSWORD))
+					.assertNext(createdUser -> assertEquals(USER_ID, createdUser.getId()))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// Create additional edge case tests
+	// ============================================================
+
+	@Nested
+	class CreateEdgeCaseTests {
+
+		@Test
+		void create_NotManagedClient_DesignationMismatch_ThrowsBadRequest() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(5), "OTHER",
+					List.of("Authorities.User_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("newuser");
+			entity.setEmailId("new@test.com");
+			entity.setPhoneNumber("+1234567890");
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			when(designationService.canAssignDesignation(any(), any())).thenReturn(Mono.just(false));
+			when(userSubOrgService.canReportTo(any(), any(), any())).thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void create_NotManagedClient_ReportingError_ThrowsBadRequest() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(ULong.valueOf(5), "OTHER",
+					List.of("Authorities.User_CREATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			securityContextMock.when(SecurityContextUtil::getUsersContextUser)
+					.thenReturn(Mono.just(ca.getUser()));
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("newuser");
+			entity.setEmailId("new@test.com");
+			entity.setPhoneNumber("+1234567890");
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(false));
+
+			when(designationService.canAssignDesignation(any(), any())).thenReturn(Mono.just(true));
+			when(userSubOrgService.canReportTo(any(), any(), any())).thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+
+		@Test
+		void create_NoSecurityContext_ThrowsForbidden() {
+
+			setupEmptySecurityContext();
+
+			User entity = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			entity.setUserName("newuser");
+
+			StepVerifier.create(service.create(entity))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// AssignedProfiles tests
+	// ============================================================
+
+	@Nested
+	class AssignedProfilesTests {
+
+		@Test
+		void assignedProfiles_DelegatesToProfileService() {
+
+			ULong appId = ULong.valueOf(100);
+			List<com.fincity.security.dto.Profile> profiles = List.of(
+					TestDataFactory.createProfile(PROFILE_ID, BUS_CLIENT_ID, appId, "TestProfile"));
+
+			when(profileService.assignedProfiles(USER_ID, appId)).thenReturn(Mono.just(profiles));
+
+			StepVerifier.create(service.assignedProfiles(USER_ID, appId))
+					.assertNext(result -> {
+						assertEquals(1, result.size());
+						assertEquals("TestProfile", result.get(0).getName());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void assignedProfiles_NoProfiles_ReturnsEmptyList() {
+
+			ULong appId = ULong.valueOf(100);
+
+			when(profileService.assignedProfiles(USER_ID, appId)).thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.assignedProfiles(USER_ID, appId))
+					.assertNext(result -> assertTrue(result.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// GetEmailsOfUsers tests
+	// ============================================================
+
+	@Nested
+	class GetEmailsOfUsersTests {
+
+		@Test
+		void getEmailsOfUsers_ReturnsEmails() {
+
+			when(dao.getEmailsOfUsers(List.of(USER_ID, OTHER_USER_ID)))
+					.thenReturn(Mono.just(List.of("test10@test.com", "test20@test.com")));
+
+			StepVerifier.create(service.getEmailsOfUsers(List.of(USER_ID, OTHER_USER_ID)))
+					.assertNext(emails -> {
+						assertEquals(2, emails.size());
+						assertTrue(emails.contains("test10@test.com"));
+						assertTrue(emails.contains("test20@test.com"));
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void getEmailsOfUsers_EmptyList_ReturnsEmptyList() {
+
+			when(dao.getEmailsOfUsers(List.of())).thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.getEmailsOfUsers(List.of()))
+					.assertNext(emails -> assertTrue(emails.isEmpty()))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// GetUsersForNotification tests
+	// ============================================================
+
+	@Nested
+	class GetUsersForNotificationTests {
+
+		@Test
+		void getUsersForNotification_DelegatesToDao() {
+
+			com.fincity.saas.commons.security.model.UsersListRequest request = new com.fincity.saas.commons.security.model.UsersListRequest();
+			request.setUserIds(List.of(USER_ID.longValue(), OTHER_USER_ID.longValue()));
+			request.setAppCode(APP_CODE);
+			request.setClientId(BUS_CLIENT_ID.longValue());
+			request.setClientCode(CLIENT_CODE);
+
+			List<com.fincity.saas.commons.security.model.NotificationUser> notifUsers = List.of();
+			when(dao.getUsersForNotification(any(), any(), any(), any()))
+					.thenReturn(Mono.just(notifUsers));
+
+			StepVerifier.create(service.getUsersForNotification(request))
+					.assertNext(result -> assertNotNull(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// MakeUserActive additional edge case tests
+	// ============================================================
+
+	@Nested
+	class MakeUserActiveEdgeCaseTests {
+
+		@Test
+		void makeUserActive_LockedUser_ChangesToActive() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createLockedUser(USER_ID, BUS_CLIENT_ID,
+					LocalDateTime.now().plusMinutes(10));
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(dao.update(any(User.class))).thenAnswer(invocation -> {
+				User updated = invocation.getArgument(0);
+				assertEquals(SecurityUserStatusCode.ACTIVE, updated.getStatusCode());
+				return Mono.just(updated);
+			});
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.makeUserActive(USER_ID))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void makeUserActive_PasswordExpiredUser_ChangesToActive() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createPasswordExpiredUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.makeUserActive(USER_ID))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void makeUserActive_ManagedClient_Succeeds() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createInactiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.makeUserActive(USER_ID))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// MakeUserInActive additional edge case tests
+	// ============================================================
+
+	@Nested
+	class MakeUserInActiveEdgeCaseTests {
+
+		@Test
+		void makeUserInActive_LockedUser_ChangesToInactive() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createLockedUser(USER_ID, BUS_CLIENT_ID,
+					LocalDateTime.now().plusMinutes(10));
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(dao.update(any(User.class))).thenAnswer(invocation -> {
+				User updated = invocation.getArgument(0);
+				assertEquals(SecurityUserStatusCode.INACTIVE, updated.getStatusCode());
+				return Mono.just(updated);
+			});
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.makeUserInActive(USER_ID))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void makeUserInActive_ManagedClient_Succeeds() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readInternal(USER_ID)).thenReturn(Mono.just(user));
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(dao.update(any(User.class))).thenReturn(Mono.just(user));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.makeUserInActive(USER_ID))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// GenerateOtpResetPassword additional tests
+	// ============================================================
+
+	@Nested
+	class GenerateOtpResetPasswordEdgeCaseTests {
+
+		@Test
+		void generateOtpResetPassword_NotAuthenticated_FindsUserAndGeneratesOtp() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			ca.setAuthenticated(false);
+			ca.setUrlClientCode(CLIENT_CODE);
+			ca.setUrlAppCode(APP_CODE);
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setAuthorities(List.of("Authorities.Logged_IN"));
+
+			when(dao.getUsersBy(any(), any(), any(), any(), any(),
+					any(), any(SecurityUserStatusCode[].class)))
+					.thenReturn(Mono.just(List.of(user)));
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(new java.util.HashMap<>()));
+
+			when(profileService.getProfileAuthorities(any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			Client client = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, CLIENT_CODE);
+			when(clientService.getActiveClient(any())).thenReturn(Mono.just(client));
+
+			com.fincity.security.dto.App app = TestDataFactory.createOwnApp(ULong.valueOf(100), BUS_CLIENT_ID,
+					APP_CODE);
+			when(appService.getAppByCode(any())).thenReturn(Mono.just(app));
+
+			when(otpService.generateOtpInternal(any())).thenReturn(Mono.just(true));
+
+			com.fincity.security.model.AuthenticationRequest authRequest = new com.fincity.security.model.AuthenticationRequest();
+			authRequest.setUserName("testuser");
+
+			org.springframework.http.server.reactive.ServerHttpRequest request = mock(
+					org.springframework.http.server.reactive.ServerHttpRequest.class);
+			when(request.getRemoteAddress()).thenReturn(new java.net.InetSocketAddress("127.0.0.1", 8080));
+
+			StepVerifier.create(service.generateOtpResetPassword(authRequest, request))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// ResetPassword additional tests
+	// ============================================================
+
+	@Nested
+	class ResetPasswordEdgeCaseTests {
+
+		@Test
+		void resetPassword_NotAuthenticated_UserNotActive_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			ca.setAuthenticated(false);
+			ca.setUrlClientCode(CLIENT_CODE);
+			ca.setUrlAppCode(APP_CODE);
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createLockedUser(USER_ID, BUS_CLIENT_ID,
+					LocalDateTime.now().plusMinutes(10));
+			user.setAuthorities(List.of("Authorities.Logged_IN"));
+
+			when(dao.getUsersBy(any(), any(), any(), any(), any(),
+					any(), any(SecurityUserStatusCode[].class)))
+					.thenReturn(Mono.just(List.of(user)));
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(new java.util.HashMap<>()));
+
+			when(profileService.getProfileAuthorities(any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			Client client = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, CLIENT_CODE);
+			when(clientService.getActiveClient(any())).thenReturn(Mono.just(client));
+
+			com.fincity.security.model.AuthenticationRequest authRequest = new com.fincity.security.model.AuthenticationRequest();
+			authRequest.setUserName("lockeduser");
+			authRequest.setOtp("1234");
+
+			RequestUpdatePassword reqPassword = new RequestUpdatePassword();
+			reqPassword.setNewPassword("newPass123!");
+			reqPassword.setPassType(AuthenticationPasswordType.PASSWORD);
+			reqPassword.setAuthRequest(authRequest);
+
+			StepVerifier.create(service.resetPassword(reqPassword))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// CheckUserStatus additional edge case tests
+	// ============================================================
+
+	@Nested
+	class CheckUserStatusEdgeCaseTests {
+
+		@Test
+		void checkUserStatus_PasswordExpiredUser_InPasswordExpiredList_ReturnsTrue() {
+
+			User user = TestDataFactory.createPasswordExpiredUser(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.checkUserStatus(user, SecurityUserStatusCode.PASSWORD_EXPIRED))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void checkUserStatus_DeletedUser_InDeletedList_ReturnsTrue() {
+
+			User user = TestDataFactory.createDeletedUser(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.checkUserStatus(user, SecurityUserStatusCode.DELETED))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void checkUserStatus_MultipleStatuses_UserMatchesOne_ReturnsTrue() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.checkUserStatus(user,
+					SecurityUserStatusCode.ACTIVE,
+					SecurityUserStatusCode.LOCKED,
+					SecurityUserStatusCode.PASSWORD_EXPIRED))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void checkUserStatus_InactiveUser_NotInActiveList_ReturnsFalse() {
+
+			User user = TestDataFactory.createInactiveUser(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.checkUserStatus(user, SecurityUserStatusCode.ACTIVE))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// UnblockUser additional edge case tests
+	// ============================================================
+
+	@Nested
+	class UnblockUserEdgeCaseTests {
+
+		@Test
+		void unblockUser_UserNotFound_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.User_UPDATE", "Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.unblockUser(USER_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// AssignRoleToUser additional edge case tests
+	// ============================================================
+
+	@Nested
+	class AssignRoleToUserEdgeCaseTests {
+
+		@Test
+		void assignRoleToUser_UserNotFound_ThrowsForbidden() {
+
+			when(dao.checkRoleAssignedForUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(false));
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.assignRoleToUser(USER_ID, ROLE_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// RemoveRoleFromUser additional edge case tests
+	// ============================================================
+
+	@Nested
+	class RemoveRoleFromUserEdgeCaseTests {
+
+		@Test
+		void removeRoleFromUser_NoRowsRemoved_ReturnsFalse() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(dao.removeRoleForUser(USER_ID, ROLE_ID)).thenReturn(Mono.just(0));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.removeRoleFromUser(USER_ID, ROLE_ID))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void removeRoleFromUser_UserNotFound_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.removeRoleFromUser(USER_ID, ROLE_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// AssignProfileToUser additional edge case tests
+	// ============================================================
+
+	@Nested
+	class AssignProfileToUserEdgeCaseTests {
+
+		@Test
+		void assignProfileToUser_UserNotFound_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.assignProfileToUser(USER_ID, PROFILE_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void assignProfileToUser_ZeroRowsInserted_ReturnsFalse() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(clientService.isUserClientManageClient(any(ContextAuthentication.class), eq(BUS_CLIENT_ID)))
+					.thenReturn(Mono.just(true));
+
+			when(profileService.hasAccessToProfiles(eq(BUS_CLIENT_ID), eq(Set.of(PROFILE_ID))))
+					.thenReturn(Mono.just(true));
+
+			when(dao.addProfileToUser(USER_ID, PROFILE_ID)).thenReturn(Mono.just(0));
+
+			setupEvictCacheMocks(USER_ID, BUS_CLIENT_ID);
+
+			StepVerifier.create(service.assignProfileToUser(USER_ID, PROFILE_ID))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// UpdateDesignation additional edge case tests
+	// ============================================================
+
+	@Nested
+	class UpdateDesignationEdgeCaseTests {
+
+		@Test
+		void updateDesignation_UserNotFound_ThrowsForbidden() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			when(dao.readById(USER_ID)).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.updateDesignation(USER_ID, DESIGNATION_ID))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.FORBIDDEN)
+					.verify();
+		}
+
+		@Test
+		void updateDesignation_NullDesignation_ThrowsBadRequest() {
+
+			ContextAuthentication ca = TestDataFactory.createSystemAuth();
+			setupSecurityContext(ca);
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			when(dao.readById(USER_ID)).thenReturn(Mono.just(user));
+
+			when(designationService.canAssignDesignation(BUS_CLIENT_ID, null))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.updateDesignation(USER_ID, null))
+					.expectErrorMatches(e -> e instanceof GenericException
+							&& ((GenericException) e).getStatusCode() == HttpStatus.BAD_REQUEST)
+					.verify();
+		}
+	}
+
+	// ============================================================
+	// CheckUserExistsAcrossApps additional edge case tests
+	// ============================================================
+
+	@Nested
+	class CheckUserExistsAcrossAppsEdgeCaseTests {
+
+		@Test
+		void checkUserExistsAcrossApps_AllThreeParams_DelegatesToDao() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			when(dao.checkUserExists(any(ULong.class), eq("testuser"), eq("test@test.com"),
+					eq("+1234567890"), isNull()))
+					.thenReturn(Mono.just(true));
+
+			StepVerifier.create(service.checkUserExistsAcrossApps("testuser", "test@test.com", "+1234567890"))
+					.assertNext(result -> assertTrue(result))
+					.verifyComplete();
+		}
+
+		@Test
+		void checkUserExistsAcrossApps_UserDoesNotExist_ReturnsFalse() {
+
+			ContextAuthentication ca = TestDataFactory.createBusinessAuth(BUS_CLIENT_ID, CLIENT_CODE,
+					List.of("Authorities.Logged_IN"));
+			setupSecurityContext(ca);
+
+			when(dao.checkUserExists(any(ULong.class), eq("nonexistent"), isNull(), isNull(), isNull()))
+					.thenReturn(Mono.just(false));
+
+			StepVerifier.create(service.checkUserExistsAcrossApps("nonexistent", null, null))
+					.assertNext(result -> assertFalse(result))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// FindUserNClient additional edge case tests
+	// ============================================================
+
+	@Nested
+	class FindUserNClientEdgeCaseTests {
+
+		@Test
+		void findUserNClient_WithUserId_FindsUser() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setAuthorities(List.of("Authorities.Logged_IN"));
+
+			when(dao.getUsersBy(isNull(), eq(USER_ID), anyString(), anyString(), any(),
+					any(), any(SecurityUserStatusCode[].class)))
+					.thenReturn(Mono.just(List.of(user)));
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(Map.of()));
+
+			when(profileService.getProfileAuthorities(any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			Client client = TestDataFactory.createBusinessClient(BUS_CLIENT_ID, CLIENT_CODE);
+			when(clientService.getActiveClient(any())).thenReturn(Mono.just(client));
+
+			StepVerifier.create(service.findUserNClient(
+					null, USER_ID, CLIENT_CODE, APP_CODE,
+					AuthenticationIdentifierType.USER_NAME, null,
+					SecurityUserStatusCode.ACTIVE))
+					.assertNext(tuple -> {
+						assertNotNull(tuple.getT3());
+						assertEquals(USER_ID, tuple.getT3().getId());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void findUserNClient_ClientServiceReturnsEmpty_ReturnsEmpty() {
+
+			User user = TestDataFactory.createActiveUser(USER_ID, BUS_CLIENT_ID);
+			user.setAuthorities(List.of("Authorities.Logged_IN"));
+
+			when(dao.getUsersBy(anyString(), any(), anyString(), anyString(), any(),
+					any(), any(SecurityUserStatusCode[].class)))
+					.thenReturn(Mono.just(List.of(user)));
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(Map.of()));
+
+			when(profileService.getProfileAuthorities(any(), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			when(clientService.getActiveClient(any())).thenReturn(Mono.empty());
+
+			StepVerifier.create(service.findUserNClient(
+					"testuser", null, CLIENT_CODE, APP_CODE,
+					AuthenticationIdentifierType.USER_NAME, null,
+					SecurityUserStatusCode.ACTIVE))
+					.verifyComplete();
+		}
+	}
+
+	// ============================================================
+	// GetUserAuthorities additional edge case tests
+	// ============================================================
+
+	@Nested
+	class GetUserAuthoritiesEdgeCaseTests {
+
+		@Test
+		void getUserAuthorities_EmptyRoleMap_OnlyProfileAndLoggedIn() {
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(Map.of()));
+
+			when(profileService.getProfileAuthorities(eq(APP_CODE), any(), any()))
+					.thenReturn(Mono.just(List.of("Authorities.Profile_Auth")));
+
+			StepVerifier.create(service.getUserAuthorities(APP_CODE, BUS_CLIENT_ID, USER_ID))
+					.assertNext(auths -> {
+						assertTrue(auths.contains("Authorities.Profile_Auth"));
+						assertTrue(auths.contains("Authorities.Logged_IN"));
+						assertEquals(2, auths.size());
+					})
+					.verifyComplete();
+		}
+
+		@Test
+		void getUserAuthorities_NullAppCodeRoles_UsesDefault() {
+
+			when(roleService.getRoleAuthoritiesPerApp(any()))
+					.thenReturn(Mono.just(Map.of("otherApp", List.of("Authorities.Other_Auth"),
+							"", new ArrayList<>(List.of("Authorities.Default_Auth")))));
+
+			when(profileService.getProfileAuthorities(eq(APP_CODE), any(), any()))
+					.thenReturn(Mono.just(List.of()));
+
+			StepVerifier.create(service.getUserAuthorities(APP_CODE, BUS_CLIENT_ID, USER_ID))
+					.assertNext(auths -> {
+						assertTrue(auths.contains("Authorities.Default_Auth"));
+						assertTrue(auths.contains("Authorities.Logged_IN"));
+						assertFalse(auths.contains("Authorities.Other_Auth"));
+					})
+					.verifyComplete();
 		}
 	}
 }
