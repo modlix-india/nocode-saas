@@ -37,7 +37,6 @@ public class ClientManagerService
         extends AbstractJOOQDataService<SecurityClientManagerRecord, ULong, ClientManager, ClientManagerDAO> {
 
     private static final String CACHE_NAME_CLIENT_MANAGER = "clientManager";
-    private static final String CACHE_NAME_LATEST_MANAGER_FOR_CLIENT = "clientManagerLatest";
     private static final String OWNER_ROLE = "Authorities.ROLE_Owner";
 
     private final SecurityMessageResourceService messageResourceService;
@@ -81,10 +80,6 @@ public class ClientManagerService
         return this.cacheService.evict(CACHE_NAME_CLIENT_MANAGER, userId, clientId);
     }
 
-    private Mono<Boolean> evictLatestManagerForClient(ULong clientId) {
-        return this.cacheService.evict(CACHE_NAME_LATEST_MANAGER_FOR_CLIENT, clientId);
-    }
-
     @PreAuthorize("hasAuthority('Authorities.Client_UPDATE')")
     public Mono<Boolean> create(ULong userId, ULong clientId) {
 
@@ -116,7 +111,6 @@ public class ClientManagerService
                 },
 
                 (ca, user, validated, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
-                        .then(this.evictLatestManagerForClient(clientId))
                         .thenReturn(Boolean.TRUE))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.create"))
@@ -172,7 +166,6 @@ public class ClientManagerService
                 },
 
                 (user, hasAccess, result) -> this.evictCacheForUserAndClient(userId, clientId)
-                        .then(this.evictLatestManagerForClient(clientId))
                         .thenReturn(Boolean.TRUE))
 
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.delete"))
@@ -222,15 +215,5 @@ public class ClientManagerService
         return this.dao
                 .getClientIdsOfManager(managerId)
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
-    }
-
-    public Mono<ULong> getLatestManagerIdForClientInternal(ULong clientId) {
-        return this.cacheService
-                .cacheEmptyValueOrGet(
-                        CACHE_NAME_LATEST_MANAGER_FOR_CLIENT,
-                        () -> this.dao.getLatestManagerIdForClient(clientId),
-                        clientId)
-                .contextWrite(
-                        Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getLatestManagerIdForClientInternal"));
     }
 }

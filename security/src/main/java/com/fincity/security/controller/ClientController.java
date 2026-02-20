@@ -106,14 +106,6 @@ public class ClientController
                 .map(ResponseEntity::ok);
     }
 
-    @GetMapping("/internal/latestManagerForClient")
-    public Mono<ResponseEntity<ULong>> getLatestManagerForClient(@RequestParam ULong clientId) {
-        return this.clientManagerService
-                .getLatestManagerIdForClientInternal(clientId)
-                .map(ResponseEntity::ok)
-                .switchIfEmpty(Mono.just(ResponseEntity.ok().body((ULong) null)));
-    }
-
     @GetMapping("/internal/validateClientCode")
     public Mono<ResponseEntity<Boolean>> validateClientCode(@RequestParam String clientCode) {
 
