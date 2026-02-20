@@ -23,4 +23,3 @@ public abstract class BaseContentDAO<R extends UpdatableRecord<R>, D extends Bas
         this.hasAttachmentField = flowTable.field(HAS_ATTACHMENT, Boolean.class);
     }
 }
-

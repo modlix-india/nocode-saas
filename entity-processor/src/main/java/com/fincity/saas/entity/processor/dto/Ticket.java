@@ -53,6 +53,9 @@ public class Ticket extends BaseProcessorDto<Ticket> {
     private ULong productTemplateId = null;
     private LocalDateTime latestTaskDueDate;
 
+    private Boolean isExpiredFlag = Boolean.FALSE;
+    private LocalDateTime expiredOn;
+
     public Ticket() {
         super();
         this.relationsMap.put(Fields.ownerId, EntitySeries.OWNER.getTable());
@@ -82,6 +85,8 @@ public class Ticket extends BaseProcessorDto<Ticket> {
         this.metaData = CloneUtil.cloneMapObject(ticket.metaData);
         this.productTemplateId = ticket.productTemplateId;
         this.latestTaskDueDate = ticket.latestTaskDueDate;
+        this.isExpiredFlag = ticket.isExpiredFlag;
+        this.expiredOn = ticket.expiredOn;
     }
 
     public static Ticket of(TicketRequest ticketRequest) {

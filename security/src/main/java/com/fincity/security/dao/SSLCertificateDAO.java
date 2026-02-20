@@ -1,8 +1,9 @@
 package com.fincity.security.dao;
 
-import static com.fincity.security.jooq.tables.SecurityClient.*;
-import static com.fincity.security.jooq.tables.SecurityClientUrl.*;
-import static com.fincity.security.jooq.tables.SecuritySslCertificate.*;
+import static com.fincity.security.jooq.tables.SecurityClient.SECURITY_CLIENT;
+import static com.fincity.security.jooq.tables.SecurityClientUrl.SECURITY_CLIENT_URL;
+import static com.fincity.security.jooq.tables.SecuritySslCertificate.SECURITY_SSL_CERTIFICATE;
+import static com.fincity.security.jooq.tables.SecuritySslRequest.SECURITY_SSL_REQUEST;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -33,6 +34,7 @@ import com.fincity.security.dto.SSLCertificate;
 import com.fincity.security.dto.SSLRequest;
 import com.fincity.security.jooq.tables.records.SecuritySslCertificateRecord;
 import com.fincity.security.model.SSLCertificateConfiguration;
+import com.fincity.security.model.SSLCertificateRenewalCandidate;
 import com.fincity.security.service.SecurityMessageResourceService;
 
 import reactor.core.publisher.Flux;
@@ -203,5 +205,41 @@ public class SSLCertificateDAO extends AbstractUpdatableDAO<SecuritySslCertifica
 
 					return Mono.just(Long.toString(cLast > uLast ? cLast : uLast));
 				});
+	}
+
+	/**
+	 * Finds certificates expiring within the given number of days that are eligible for
+	 * auto-renewal. Returns candidate info (urlId, domains, organization) from certificate
+	 * and request for creating a new certificate request. Let's Encrypt requires a fresh
+	 * request for each renewal.
+	 */
+	public Flux<SSLCertificateRenewalCandidate> findExpiringCertificatesForRenewal(int daysBeforeExpiry) {
+		LocalDateTime now = LocalDateTime.now();
+		LocalDateTime expiryThreshold = now.plusDays(daysBeforeExpiry);
+
+		return Flux.from(this.dslContext
+				.select(
+						SECURITY_SSL_CERTIFICATE.URL_ID,
+						SECURITY_SSL_CERTIFICATE.DOMAINS,
+						SECURITY_SSL_CERTIFICATE.ORGANIZATION,
+						SECURITY_SSL_REQUEST.VALIDITY)
+				.from(SECURITY_SSL_CERTIFICATE)
+				.innerJoin(SECURITY_SSL_REQUEST)
+				.on(SECURITY_SSL_CERTIFICATE.URL_ID.eq(SECURITY_SSL_REQUEST.URL_ID))
+				.where(SECURITY_SSL_CERTIFICATE.CURRENT.eq(ByteUtil.ONE))
+				.and(SECURITY_SSL_CERTIFICATE.EXPIRY_DATE.between(now, expiryThreshold))
+				.and(DSL.or(
+						SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.isNull(),
+						SECURITY_SSL_CERTIFICATE.AUTO_RENEW_TILL.greaterThan(now))))
+				.map(r -> new SSLCertificateRenewalCandidate()
+						.setUrlId(r.get(SECURITY_SSL_CERTIFICATE.URL_ID))
+						.setDomainNames(List.of(r.get(SECURITY_SSL_CERTIFICATE.DOMAINS).split(",")).stream()
+								.map(String::trim)
+								.filter(s -> !s.isBlank())
+								.toList())
+						.setOrganizationName(r.get(SECURITY_SSL_CERTIFICATE.ORGANIZATION))
+						.setValidityInMonths(r.get(SECURITY_SSL_REQUEST.VALIDITY) != null
+								? r.get(SECURITY_SSL_REQUEST.VALIDITY).intValue()
+								: 12));
 	}
 }
