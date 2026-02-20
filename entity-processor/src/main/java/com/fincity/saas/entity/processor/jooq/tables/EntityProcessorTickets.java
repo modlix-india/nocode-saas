@@ -5,10 +5,10 @@ package com.fincity.saas.entity.processor.jooq.tables;
 
 
 import com.fincity.saas.commons.jooq.convertor.jooq.converters.JSONtoClassConverter;
+import com.fincity.saas.entity.processor.enums.Tag;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Indexes;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketsTag;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorActivities.EntityProcessorActivitiesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorNotes.EntityProcessorNotesPath;
 import com.fincity.saas.entity.processor.jooq.tables.EntityProcessorOwners.EntityProcessorOwnersPath;
@@ -44,6 +44,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -194,9 +195,9 @@ public class EntityProcessorTickets extends TableImpl<EntityProcessorTicketsReco
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.TAG</code>.
-     * Deal Tag - HOT/WARM/COLD
+     * Deal Tag - HOT / WARM / COLD
      */
-    public final TableField<EntityProcessorTicketsRecord, EntityProcessorTicketsTag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4).asEnumDataType(EntityProcessorTicketsTag.class), this, "Deal Tag - HOT/WARM/COLD");
+    public final TableField<EntityProcessorTicketsRecord, Tag> TAG = createField(DSL.name("TAG"), SQLDataType.VARCHAR(4), this, "Deal Tag - HOT / WARM / COLD", new EnumConverter<String, Tag>(String.class, Tag.class));
 
     /**
      * The column <code>entity_processor.entity_processor_tickets.DNC</code>. Do

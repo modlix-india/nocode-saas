@@ -40,6 +40,7 @@ public class Client implements Serializable, IClassConvertor {
     private Client managagingClient;
     private List<App> apps;
     private User createdByUser;
+    private List<User> clientManagers;
 
     @JsonProperty(value = "totalUsers")
     public Integer getTotalUsers() {

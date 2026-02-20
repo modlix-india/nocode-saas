@@ -26,6 +26,8 @@ import com.fincity.security.dto.Client;
 import com.fincity.security.dto.ClientManager;
 import com.fincity.security.jooq.tables.records.SecurityClientManagerRecord;
 
+import java.util.List;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -207,5 +209,11 @@ public class ClientManagerService
 
     public Mono<Map<ULong, Collection<ULong>>> getManagerIds(Set<ULong> clientIds) {
         return this.dao.getManagerIds(clientIds);
+    }
+
+    public Mono<List<ULong>> getClientIdsOfManagerInternal(ULong managerId) {
+        return this.dao
+                .getClientIdsOfManager(managerId)
+                .contextWrite(Context.of(LogUtil.METHOD_NAME, "ClientManagerService.getClientIdsOfManagerInternal"));
     }
 }

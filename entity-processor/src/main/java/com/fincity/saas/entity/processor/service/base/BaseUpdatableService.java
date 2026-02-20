@@ -331,7 +331,7 @@ public abstract class BaseUpdatableService<
                         id));
     }
 
-    private Mono<D> readByIdInternal(ULong id) {
+    protected Mono<D> readByIdInternal(ULong id) {
         return this.cacheService.cacheValueOrGet(this.getCacheName(), () -> this.dao.readInternal(id), id);
     }
 
