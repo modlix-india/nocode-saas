@@ -31,6 +31,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
     private boolean includeZero;
     private boolean includePercentage;
     private boolean includeTotal;
+    private boolean includeAllTotal = true;
     private TimePeriod timePeriod = TimePeriod.WEEKS;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
@@ -80,6 +81,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
                 this.includeZero,
                 this.includePercentage,
                 this.includeTotal,
+                this.includeAllTotal,
                 null,
                 this.timezone);
     }
@@ -90,6 +92,7 @@ public class BaseFilter<T extends BaseFilter<T>> implements Serializable {
             boolean includeZero,
             boolean includePercentage,
             boolean includeTotal,
+            boolean includeAllTotal,
             Boolean includeNone,
             String timezone) {}
 

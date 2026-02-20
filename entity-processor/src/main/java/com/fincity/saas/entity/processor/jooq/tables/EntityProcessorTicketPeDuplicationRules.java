@@ -4,9 +4,9 @@
 package com.fincity.saas.entity.processor.jooq.tables;
 
 
+import com.fincity.saas.entity.processor.enums.PhoneNumberAndEmailType;
 import com.fincity.saas.entity.processor.jooq.EntityProcessor;
 import com.fincity.saas.entity.processor.jooq.Keys;
-import com.fincity.saas.entity.processor.jooq.enums.EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType;
 import com.fincity.saas.entity.processor.jooq.tables.records.EntityProcessorTicketPeDuplicationRulesRecord;
 
 import java.time.LocalDateTime;
@@ -29,6 +29,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.EnumConverter;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.jooq.types.ULong;
@@ -103,7 +104,7 @@ public class EntityProcessorTicketPeDuplicationRules extends TableImpl<EntityPro
      * <code>entity_processor.entity_processor_ticket_pe_duplication_rules.PHONE_NUMBER_AND_EMAIL_TYPE</code>.
      * Phone Number and email type for this client.
      */
-    public final TableField<EntityProcessorTicketPeDuplicationRulesRecord, EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType> PHONE_NUMBER_AND_EMAIL_TYPE = createField(DSL.name("PHONE_NUMBER_AND_EMAIL_TYPE"), SQLDataType.VARCHAR(22).nullable(false).defaultValue(DSL.inline("PHONE_NUMBER_OR_EMAIL", SQLDataType.VARCHAR)).asEnumDataType(EntityProcessorTicketPeDuplicationRulesPhoneNumberAndEmailType.class), this, "Phone Number and email type for this client.");
+    public final TableField<EntityProcessorTicketPeDuplicationRulesRecord, PhoneNumberAndEmailType> PHONE_NUMBER_AND_EMAIL_TYPE = createField(DSL.name("PHONE_NUMBER_AND_EMAIL_TYPE"), SQLDataType.VARCHAR(22).nullable(false).defaultValue(DSL.inline("PHONE_NUMBER_OR_EMAIL", SQLDataType.VARCHAR)), this, "Phone Number and email type for this client.", new EnumConverter<String, PhoneNumberAndEmailType>(String.class, PhoneNumberAndEmailType.class));
 
     /**
      * The column

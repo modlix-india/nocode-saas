@@ -693,7 +693,8 @@ public class ReportUtil {
             List<IdAndValue<ULong, String>> innerEntityList,
             List<IdAndValue<ULong, String>> outerEntityList,
             boolean includeZero,
-            boolean includePercentage) {
+            boolean includePercentage,
+            boolean includeAllTotal) {
 
         if (perValueCountList.isEmpty() && !includeZero) return Flux.empty();
 
@@ -707,6 +708,7 @@ public class ReportUtil {
                 .publishOn(Schedulers.boundedElastic())
                 .map(entry -> buildAggregatedTotalEntityStatusCount(
                         entry, innerEntityMap, outerEntityMap, includePercentage, includeZero))
+                .filter(e -> includeAllTotal || isTotalCountNonZero(e.getTotalCount()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityStageCounts"));
     }
 
@@ -781,7 +783,14 @@ public class ReportUtil {
                 .filter(entry -> options.includeZero() || !entry.getValue().isEmpty())
                 .map(entry -> buildAggregatedTotalEntityDateCount(
                         entry, datePairMap, outerEntityMap, options.includePercentage(), options.includeZero()))
+                .filter(e -> options.includeAllTotal() || isTotalCountNonZero(e.getTotalCount()))
                 .contextWrite(Context.of(LogUtil.METHOD_NAME, "ReportUtil.toEntityDateCounts"));
+    }
+
+    private static boolean isTotalCountNonZero(CountPercentage totalCount) {
+        return totalCount != null
+                && totalCount.getCount() != null
+                && totalCount.getCount().longValue() != 0L;
     }
 
     // --- EntityDate report helpers ---
